@@ -1,4 +1,4 @@
-export const removeAllObjects = obj => {
+export const removeAllObjects = (obj) => {
   let newObj = { ...obj };
   let objKeys = Object.keys(obj);
   Object.values(obj).forEach((item, index) => {
@@ -9,7 +9,7 @@ export const removeAllObjects = obj => {
   return newObj;
 };
 
-export const calcCoordsFromRect = rect => {
+export const calcCoordsFromRect = (rect) => {
   const width = rect.width;
   const height = rect.height;
   const left = rect.left;

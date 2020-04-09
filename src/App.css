@@ -36,3 +36,13 @@
     transform: rotate(360deg);
   }
 }
+
+.temp-textarea {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: Ubuntu;
+  font-weight: 600;
+  font-size: 16px;
+  resize: none;
+}

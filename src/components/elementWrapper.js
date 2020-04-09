@@ -5,8 +5,8 @@ import Loader from "components/utils/loader";
 const ElementWrapper = (element, data) => {
   const ElementName = element.toLowerCase();
   const ElementToRender = Loadable({
-    loader: () => import(`components/shapes/${ElementName}`),
-    loading: Loader
+    loader: () => import(`components/elements/${ElementName}`),
+    loading: Loader,
   });
 
   class RenderElement extends React.Component {

@@ -1,27 +1,43 @@
-import { CONSTRUCT, COMPLETE } from "redux/types";
+import { CONSTRUCT, COMPLETE, ADD_ELEMENT } from "redux/types";
 
 const initial_state = {
   app: {},
   currentStatus: null,
-  elementName: "",
-  elementData: {}
+  elementData: [],
+  elementIDs: [],
+  lastAddedElement: {},
 };
 
 export default (state = initial_state, action) => {
   switch (action.type) {
     case CONSTRUCT:
+      const newArr = action.payload.map((item) => item.id);
+
       return {
         ...state,
         currentStatus: "construct",
-        elementName: action.payload.name
+        elementData: action.payload,
+        elementIDs: [...state.elementIDs, ...newArr],
       };
 
     case COMPLETE:
+      const newItems = [...state.elementIDs];
+      const elementId = action.payload.data.id;
+      newItems.push(elementId);
       return {
         ...state,
         currentStatus: "complete",
-        elementName: action.payload.name,
-        elementData: action.payload.data
+        elementIDs: newItems,
+        lastAddedElement: {},
+      };
+
+    case ADD_ELEMENT:
+      const newElementsData = [...state.elementData, action.payload];
+      return {
+        ...state,
+        currentStatus: "complete",
+        elementData: newElementsData,
+        lastAddedElement: action.payload,
       };
 
     default:

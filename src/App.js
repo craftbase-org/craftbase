@@ -7,6 +7,7 @@ import logger from "redux-logger";
 import reduxThunk from "redux-thunk";
 import { Provider } from "react-redux";
 import { createStore, applyMiddleware } from "redux";
+import { ReactReduxContext } from "utils/misc";
 
 const createStoreWithMiddleware = applyMiddleware(
   reduxThunk,
@@ -27,6 +28,7 @@ class App extends Component {
       <Provider store={store}>
         <div className="App">
           <header className="App-header">Draftbase</header>
+
           <Canvas />
         </div>
       </Provider>
