@@ -24,12 +24,10 @@ function Toggle(props) {
     useSelector((state) => state)
   );
   const two = props.twoJSInstance;
-  console.log(
-    "CONDITION",
-    props.id,
-    props.twoJSInstance &&
-      (status === "construct" || lastAddedElement.id === props.id)
-  );
+
+  let toggleRect = null;
+  let toggleCircle = null;
+
   if (
     props.twoJSInstance &&
     (status === "construct" || lastAddedElement.id === props.id)
@@ -41,13 +39,16 @@ function Toggle(props) {
     const prevX = localStorage.getItem("toggle_coordX");
     const prevY = localStorage.getItem("toggle_coordY");
 
-    const rect = two.makeRoundedRectangle(0, 0, 65, 45, 25);
+    const rect = two.makeRoundedRectangle(0, 0, 55, 30, 16);
     rect.fill = "#0747A6";
     rect.noStroke();
+    toggleRect = rect;
 
     const calcCirclePointX = parseInt(rect.width / 4);
 
     const circle = two.makeCircle(calcCirclePointX, 0, 10);
+    circle.noStroke();
+    toggleCircle = circle;
 
     const group = two.makeGroup(rect, circle);
 
@@ -92,9 +93,24 @@ function Toggle(props) {
     });
   }
 
+  function onToggleChange() {
+    console.log("on toggle change", toggleCircle);
+    const calcCirclePointX = parseInt(toggleRect.width / 4);
+    toggleCircle.translation.x = parseInt(-calcCirclePointX);
+    toggleRect.fill = "#ccc";
+    two.update();
+  }
+
   return (
     <React.Fragment>
       <div id="two-toggle"></div>
+      <button
+        onClick={() => {
+          onToggleChange();
+        }}
+      >
+        Toggle btn
+      </button>
       {/* <button>change button in group</button> */}
     </React.Fragment>
   );

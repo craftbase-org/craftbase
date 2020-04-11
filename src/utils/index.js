@@ -19,3 +19,10 @@ export const calcCoordsFromRect = (rect) => {
   const btnCoordY = parseInt(top) + parseInt(height) / 4;
   return { left: btnCoordX, top: btnCoordY };
 };
+
+export const getFourthValue = (x1, x2, y1) => {
+  const divisor = parseInt(x2 * y1);
+  const dividend = x1;
+  const output = divisor / dividend;
+  return output;
+};

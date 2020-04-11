@@ -29,8 +29,9 @@ class App extends Component {
     }).appendTo(elem);
 
     const arr = [
-      { id: 1, name: "button" },
-      { id: 2, name: "toggle" },
+      // { id: 1, name: "button" },
+      // { id: 2, name: "toggle" },
+      { id: 1, name: "tooltip" },
     ];
     this.props.getElementsData("CONSTRUCT", arr);
     this.setState({ twoJSInstance: two });

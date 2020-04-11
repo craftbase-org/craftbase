@@ -27,8 +27,6 @@ class App extends Component {
     return (
       <Provider store={store}>
         <div className="App">
-          <header className="App-header">Draftbase</header>
-
           <Canvas />
         </div>
       </Provider>
