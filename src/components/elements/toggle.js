@@ -28,10 +28,7 @@ function Toggle(props) {
   let toggleRect = null;
   let toggleCircle = null;
 
-  if (
-    props.twoJSInstance &&
-    (status === "construct" || lastAddedElement.id === props.id)
-  ) {
+  if (status === "construct" || lastAddedElement.id === props.id) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;

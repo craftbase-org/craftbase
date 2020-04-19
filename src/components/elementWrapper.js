@@ -12,7 +12,11 @@ const ElementWrapper = (element, data) => {
   class RenderElement extends React.Component {
     componentDidMount() {}
     render() {
-      return <ElementToRender {...data} />;
+      return data.twoJSInstance ? (
+        <ElementToRender {...data} />
+      ) : (
+        <div>Loading ..</div>
+      );
     }
   }
 

@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { Component, useEffect } from "react";
 import PropTypes from "prop-types";
 import idx from "idx";
 import Two from "two.js";
@@ -9,6 +9,7 @@ import {
   useDispatch,
   useSelector,
 } from "react-redux";
+import Icon from "icons/icons";
 import { ReactReduxContext } from "utils/misc";
 import { setPeronsalInformation } from "redux/actions/main";
 
@@ -30,10 +31,21 @@ function Button(props) {
     props.twoJSInstance &&
       (status === "construct" || lastAddedElement.id === props.id)
   );
-  if (
-    props.twoJSInstance &&
-    (status === "construct" || lastAddedElement.id === props.id)
-  ) {
+
+  let rectangleInstance = null;
+  let resizeRectInstance = null;
+  let groupInstance = null;
+
+  function onBlurHandler(e) {
+    resizeRectInstance.opacity = 0;
+    two.update();
+  }
+
+  function onFocusHandler(e) {
+    document.getElementById(`${groupInstance.id}`).style.outline = 0;
+  }
+
+  if (status === "construct" || lastAddedElement.id === props.id) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -41,25 +53,60 @@ function Button(props) {
     const prevX = localStorage.getItem("button_coordX");
     const prevY = localStorage.getItem("button_coordY");
 
-    const rect = two.makeRoundedRectangle(0, 0, 110, 55);
-    rect.fill = "#0747A6";
-    rect.noStroke();
+    const rectangle = two.makeRoundedRectangle(0, 0, 140, 50);
+    rectangle.fill = "#0747A6";
+    rectangle.noStroke();
 
-    const text = new Two.Text("Button", 0, 0);
+    const text = new Two.Text("Button", 10, 0);
     text.size = "16";
     text.fill = "#fff";
     text.weight = "600";
     text.family = "Ubuntu";
+    text.translation.x = parseInt(rectangle.width / 9);
 
-    const group = two.makeGroup(rect, text);
+    const svgImage = new DOMParser().parseFromString(
+      Icon.ICON_IMAGE_1.data,
+      "text/xml"
+    );
+    console.log("svgImage", externalSVG);
+    var externalSVG = two.interpret(svgImage.firstChild);
+    externalSVG.translation.x = -parseInt(rectangle.width / 3);
+    externalSVG.translation.y = -parseInt(rectangle.height / 4);
 
-    // const calcX = parseInt(prevX) + (parseInt(rect.width / 2) - 10);
-    // const calcY = parseInt(prevY) - (parseInt(46) - parseInt(rect.height / 2));
+    const textGroup = two.makeGroup(externalSVG, text);
+
+    const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
+    const calcResizeRectHeight = rectangle.getBoundingClientRect().height;
+    const resizeRect = two.makeRoundedRectangle(
+      0,
+      0,
+      calcResizeRectWidth,
+      calcResizeRectHeight
+    );
+    resizeRect.opacity = 0;
+    resizeRectInstance = resizeRect;
+
+    const group = two.makeGroup(resizeRect, rectangle, textGroup);
+
+    // const calcX = parseInt(prevX) + (parseInt(rectangle.width / 2) - 10);
+    // const calcY = parseInt(prevY) - (parseInt(46) - parseInt(rectangle.height / 2));
     group.center();
     group.translation.x = prevX || 500;
     group.translation.y = prevY || 200;
+    groupInstance = group;
     console.log("BUtton", props.twoJSInstance);
     two.update();
+
+    const getGroupElementFromDOM = document.getElementById(`${group.id}`);
+    getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
+    getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+
+    interact(`#${group.id}`).on("click", () => {
+      console.log("on click ");
+      resizeRect.opacity = 1;
+      resizeRect.noFill();
+      two.update();
+    });
 
     // Captures double click event for text
     // and generates temporary textarea support for it
@@ -73,8 +120,9 @@ function Button(props) {
       const twoTextInstance = document.getElementById(`${text.id}`);
       const getCoordOfBtnText = twoTextInstance.getBoundingClientRect();
 
-      console.log("widthOfBox", rect.width);
-      const widthLimit = parseInt(rect.width / 2) + parseInt(rect.width / 6);
+      console.log("widthOfBox", rectangle.width);
+      const widthLimit =
+        parseInt(rectangle.width / 2) + parseInt(rectangle.width / 6);
       twoTextInstance.style.display = "none";
 
       input.style.position = "absolute";
@@ -86,30 +134,27 @@ function Button(props) {
       document.getElementById("main-two-root").append(input);
       input.focus();
 
+      let prevTextValue = input.value;
+
       input.addEventListener("input", () => {
+        let diff = parseInt(input.value.length - prevTextValue.length);
+
+        console.log(
+          "prevTextValue",
+          document.getElementById(`${externalSVG.id}`).getBoundingClientRect(),
+          input.getBoundingClientRect()
+        );
+        prevTextValue = input.value;
         inputCharCounter = inputCharCounter + 1;
-        if (inputCharCounter > 0 && inputCharCounter < 5) {
-          rect.width = rect.width += 5;
-          input.style.width = `${
-            parseInt(rect.width / 2) + parseInt(rect.width / 6)
-          }px`;
-          input.style.left = `${parseInt(input.style.left) - 3}px`;
-          two.update();
-        } else if (inputCharCounter > 5 && inputCharCounter < 9) {
-          rect.width = rect.width += 8;
-          input.style.width = `${
-            parseInt(rect.width / 2) + parseInt(rect.width / 6)
-          }px`;
-          input.style.left = `${parseInt(input.style.left) - 6}px`;
-          two.update();
-        } else if (inputCharCounter > 8) {
-          rect.width = rect.width += 10;
-          input.style.width = `${
-            parseInt(rect.width / 2) + parseInt(rect.width / 6)
-          }px`;
-          input.style.left = `${parseInt(input.style.left) - 9}px`;
-          two.update();
-        }
+
+        rectangle.width = rectangle.width += 10 * diff;
+        externalSVG.translation.x = -parseInt(rectangle.width / 3);
+
+        input.style.width = `${input.value.length * 10}px`;
+        input.style.left = `${
+          parseInt(externalSVG.getBoundingClientRect().right) - -30
+        }px`;
+        two.update();
       });
 
       input.addEventListener("blur", () => {
@@ -117,8 +162,42 @@ function Button(props) {
         twoTextInstance.style.display = "block";
         input.remove();
         text.value = input.value;
+        externalSVG.translation.x = -parseInt(rectangle.width / 3);
+        externalSVG.translation.y = -parseInt(rectangle.height / 4);
+        text.translation.x = parseInt(rectangle.width / 9);
         two.update();
       });
+    });
+
+    interact(`#${group.id}`).resizable({
+      edges: { right: true, left: true },
+
+      listeners: {
+        move(event) {
+          var target = event.target;
+          var rect = event.rect;
+
+          // update the element's style
+          //   resizeRect.width = rect.width;
+          rectangle.width = rect.width;
+          rectangle.height = rect.height;
+          // rectangle.radius = parseInt(rect.width / 2);
+
+          const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
+          const calcResizeRectHeight = rectangle.getBoundingClientRect().height;
+
+          resizeRect.width = calcResizeRectWidth;
+          resizeRect.height = calcResizeRectHeight;
+          //   target.style.width = rect.width + "px";
+          //   target.style.height = rect.height + "px";
+
+          //   target.textContent = rect.width + "×" + rect.height;
+          two.update();
+        },
+        end(event) {
+          console.log("the end");
+        },
+      },
     });
 
     interact(`#${group.id}`).draggable({
@@ -153,6 +232,18 @@ function Button(props) {
       },
     });
   }
+
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
+    let isMounted = true;
+    return () => {
+      console.log("UNMOUNTING", groupInstance);
+      const groupID = document.getElementById(`${groupInstance.id}`);
+      groupID.removeEventListener("blur", onBlurHandler);
+      groupID.removeEventListener("focus", onFocusHandler);
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <React.Fragment>

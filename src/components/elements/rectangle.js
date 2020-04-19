@@ -15,7 +15,7 @@ import { setPeronsalInformation } from "redux/actions/main";
 // const useSelector = createSelectorHook(ReactReduxContext);
 // const useDispatch = createDispatchHook(ReactReduxContext);
 
-function Circle(props) {
+function Rectangle(props) {
   const status = useSelector((state) => state.main.currentStatus);
   const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
   const dispatch = useDispatch();
@@ -25,7 +25,7 @@ function Circle(props) {
   );
   const two = props.twoJSInstance;
 
-  let circleInstance = null;
+  let rectangleInstance = null;
   let resizeRectInstance = null;
   let groupInstance = null;
 
@@ -43,17 +43,17 @@ function Circle(props) {
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
 
-    const prevX = localStorage.getItem("Circle_coordX");
-    const prevY = localStorage.getItem("Circle_coordY");
+    const prevX = localStorage.getItem("rectangle_coordX");
+    const prevY = localStorage.getItem("rectangle_coordY");
 
-    const circle = new Two.Ellipse(0, 0, 70, 70);
-    circle.fill = "#EBECF0";
-    circle.noStroke();
-    circleInstance = circle;
+    const rectangle = two.makeRectangle(0, 0, 210, 110);
+    rectangle.fill = "#EBECF0";
+    rectangle.noStroke();
+    rectangleInstance = rectangle;
 
-    console.log("circle", circle.getBoundingClientRect());
-    const calcResizeRectWidth = circle.getBoundingClientRect().width;
-    const calcResizeRectHeight = circle.getBoundingClientRect().height;
+    console.log("rectangle", rectangle.getBoundingClientRect());
+    const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
+    const calcResizeRectHeight = rectangle.getBoundingClientRect().height;
     const resizeRect = two.makeRectangle(
       0,
       0,
@@ -63,7 +63,7 @@ function Circle(props) {
     resizeRect.opacity = 0;
     resizeRectInstance = resizeRect;
 
-    const group = two.makeGroup(circle, resizeRect);
+    const group = two.makeGroup(rectangle, resizeRect);
 
     group.translation.x = prevX || 500;
     group.translation.y = prevY || 200;
@@ -93,12 +93,12 @@ function Circle(props) {
 
           // update the element's style
           //   resizeRect.width = rect.width;
-          circle.width = rect.width;
-          circle.height = rect.height;
-          circle.radius = parseInt(rect.width / 2);
+          rectangle.width = rect.width;
+          rectangle.height = rect.height;
+          rectangle.radius = parseInt(rect.width / 2);
 
-          const calcResizeRectWidth = circle.getBoundingClientRect().width;
-          const calcResizeRectHeight = circle.getBoundingClientRect().height;
+          const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
+          const calcResizeRectHeight = rectangle.getBoundingClientRect().height;
 
           resizeRect.width = calcResizeRectWidth;
           resizeRect.height = calcResizeRectHeight;
@@ -136,9 +136,9 @@ function Circle(props) {
             event.clientX
           );
           // alternate -> take event.rect.left for x
-          localStorage.setItem("Circle_coordX", parseInt(event.pageX));
+          localStorage.setItem("rectangle_coordX", parseInt(event.pageX));
           localStorage.setItem(
-            "Circle_coordY",
+            "rectangle_coordY",
             parseInt(event.pageY - offsetHeight)
           );
           dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
@@ -161,11 +161,11 @@ function Circle(props) {
 
   return (
     <React.Fragment>
-      <div id="two-Circle"></div>
+      <div id="two-rectangle"></div>
 
       {/* <button>change button in group</button> */}
     </React.Fragment>
   );
 }
 
-export default Circle;
+export default Rectangle;

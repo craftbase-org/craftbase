@@ -29,13 +29,26 @@ class App extends Component {
     }).appendTo(elem);
 
     const arr = [
-      // { id: 1, name: "button" },
+      { id: 1, name: "button" },
       // { id: 2, name: "toggle" },
-      { id: 1, name: "tooltip" },
+      // { id: 3, name: "tooltip" },
+      // { id: 4, name: "circle" },
+      // { id: 5, name: "image" },
+      // { id: 6, name: "rectangle" },
     ];
     this.props.getElementsData("CONSTRUCT", arr);
     this.setState({ twoJSInstance: two });
   }
+
+  changeInPlan = () => {
+    const arr = [
+      { id: 1, name: "button" },
+      { id: 2, name: "toggle" },
+      { id: 3, name: "tooltip" },
+      { id: 4, name: "circle" },
+    ];
+    this.props.getElementsData("CONSTRUCT", arr);
+  };
 
   renderElements = () => {
     const elements = this.props.elementData;
@@ -51,8 +64,13 @@ class App extends Component {
   };
 
   addElements = (elementName, id) => {
-    const newId = this.props.elementData.length + 1;
-    this.props.getElementsData("ADD_ELEMENT", { id: newId, name: elementName });
+    const arr = [
+      // { id: 1, name: "button" },
+      // { id: 2, name: "toggle" },
+      // { id: 1, name: "tooltip" },
+      { id: 1, name: "circle" },
+    ];
+    this.props.getElementsData("CONSTRUCT", arr);
   };
 
   render() {
@@ -82,6 +100,13 @@ class App extends Component {
             </button>
             <button id="add" onClick={() => this.addElements("circle")}>
               Add a circle
+            </button>
+            <button
+              onClick={() => {
+                this.changeInPlan();
+              }}
+            >
+              Delete
             </button>
             <button
               onClick={() => {
