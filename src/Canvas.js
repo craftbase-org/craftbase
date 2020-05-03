@@ -24,17 +24,19 @@ class App extends Component {
   componentDidMount() {
     const elem = document.getElementById("main-two-root");
     const two = new Two({
-      fullscreen: false,
-      width: window.screen.width - 100,
+      fullscreen: true,
+      // width: "auto",
     }).appendTo(elem);
 
     const arr = [
-      { id: 1, name: "button" },
+      // { id: 1, name: "text" },
       // { id: 2, name: "toggle" },
       // { id: 3, name: "tooltip" },
       // { id: 4, name: "circle" },
       // { id: 5, name: "image" },
       // { id: 6, name: "rectangle" },
+      // { id: 7, name: "divider" },
+      { id: 8, name: "avatar" },
     ];
     this.props.getElementsData("CONSTRUCT", arr);
     this.setState({ twoJSInstance: two });
@@ -98,7 +100,11 @@ class App extends Component {
             <button id="add" onClick={() => this.addElements("button", 2)}>
               Add a rectangle
             </button>
-            <button id="add" onClick={() => this.addElements("circle")}>
+            <button
+              id="add"
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              onClick={() => this.addElements("circle")}
+            >
               Add a circle
             </button>
             <button

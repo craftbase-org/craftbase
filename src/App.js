@@ -1,6 +1,6 @@
 import React, { Component } from "react";
-import "./App.css";
-import Canvas from "./Canvas";
+import "./App.scss";
+import Dashboard from "./Dashboard";
 
 import reducers from "redux/reducers";
 import logger from "redux-logger";
@@ -8,6 +8,7 @@ import reduxThunk from "redux-thunk";
 import { Provider } from "react-redux";
 import { createStore, applyMiddleware } from "redux";
 import { ReactReduxContext } from "utils/misc";
+import "./styles/main.css";
 
 const createStoreWithMiddleware = applyMiddleware(
   reduxThunk,
@@ -26,8 +27,8 @@ class App extends Component {
   render() {
     return (
       <Provider store={store}>
-        <div className="App">
-          <Canvas />
+        <div className="App bg-neutrals-n20">
+          <Dashboard />
         </div>
       </Provider>
     );

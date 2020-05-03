@@ -8,6 +8,7 @@
     "@testing-library/user-event": "^7.1.2",
     "idx": "^2.5.6",
     "interactjs": "^1.9.8",
+    "node-sass": "^4.13.1",
     "prop-types": "^15.7.2",
     "react": "^16.13.0",
     "react-dom": "^16.13.0",
@@ -19,13 +20,16 @@
     "redux": "^4.0.5",
     "redux-logger": "^3.0.6",
     "redux-thunk": "^2.3.0",
+    "tailwindcss": "^1.2.0",
     "two.js": "^0.7.0-stable.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "npm run watch:css && react-scripts start",
+    "build": "npm run build:css && react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "build:css": "postcss src/styles/tailwind.css -o src/styles/main.css",
+    "watch:css": "postcss src/styles/tailwind.css -o src/styles/main.css"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -41,5 +45,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "autoprefixer": "^9.7.6",
+    "postcss-cli": "^7.1.0"
   }
 }
