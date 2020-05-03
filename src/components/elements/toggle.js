@@ -94,13 +94,14 @@ function Toggle(props) {
     console.log("on toggle change", toggleCircle);
     const calcCirclePointX = parseInt(toggleRect.width / 4);
     toggleCircle.translation.x = parseInt(-calcCirclePointX);
-    toggleRect.fill = "#ccc";
+     toggleRect.fill = "#ccc";
     two.update();
   }
 
   return (
     <React.Fragment>
       <div id="two-toggle"></div>
+
       <button
         onClick={() => {
           onToggleChange();

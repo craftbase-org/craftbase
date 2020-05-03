@@ -70,7 +70,7 @@ function Button(props) {
     );
     console.log("svgImage", externalSVG);
     var externalSVG = two.interpret(svgImage.firstChild);
-    externalSVG.translation.x = -parseInt(rectangle.width / 3);
+    externalSVG.translation.x = text.getBoundingClientRect(true).left - 30;
     externalSVG.translation.y = -parseInt(rectangle.height / 4);
 
     const textGroup = two.makeGroup(externalSVG, text);
@@ -129,7 +129,7 @@ function Button(props) {
       input.style.top = `${getCoordOfBtnText.top}px`;
       input.style.left = `${getCoordOfBtnText.left}px`;
       input.style.width = `${widthLimit}px`;
-      input.className = "temp-textarea";
+      input.className = "temp-textarea-btn";
 
       document.getElementById("main-two-root").append(input);
       input.focus();
@@ -147,8 +147,7 @@ function Button(props) {
         prevTextValue = input.value;
         inputCharCounter = inputCharCounter + 1;
 
-        rectangle.width = rectangle.width += 10 * diff;
-        externalSVG.translation.x = -parseInt(rectangle.width / 3);
+        rectangle.width = rectangle.width += 15 * diff;
 
         input.style.width = `${input.value.length * 10}px`;
         input.style.left = `${
@@ -162,9 +161,12 @@ function Button(props) {
         twoTextInstance.style.display = "block";
         input.remove();
         text.value = input.value;
-        externalSVG.translation.x = -parseInt(rectangle.width / 3);
-        externalSVG.translation.y = -parseInt(rectangle.height / 4);
-        text.translation.x = parseInt(rectangle.width / 9);
+        text.translation.x = -text.getBoundingClientRect(true).left - 5;
+        text.translation.x = -text.getBoundingClientRect(true).left - 5;
+        externalSVG.translation.x = text.getBoundingClientRect(true).left - 30;
+        externalSVG.translation.x = text.getBoundingClientRect(true).left - 30;
+        // externalSVG.translation.y = -parseInt(rectangle.height / 4);
+
         two.update();
       });
     });
@@ -238,9 +240,14 @@ function Button(props) {
     let isMounted = true;
     return () => {
       console.log("UNMOUNTING", groupInstance);
-      const groupID = document.getElementById(`${groupInstance.id}`);
-      groupID.removeEventListener("blur", onBlurHandler);
-      groupID.removeEventListener("focus", onFocusHandler);
+
+      // In case if group instance is null
+      if (groupInstance) {
+        const groupID = document.getElementById(`${groupInstance.id}`);
+        groupID.removeEventListener("blur", onBlurHandler);
+        groupID.removeEventListener("focus", onFocusHandler);
+      }
+
       isMounted = false;
     };
   }, []);
