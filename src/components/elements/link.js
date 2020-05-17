@@ -16,7 +16,7 @@ import { setPeronsalInformation } from "redux/actions/main";
 // const useSelector = createSelectorHook(ReactReduxContext);
 // const useDispatch = createDispatchHook(ReactReduxContext);
 
-function Button(props) {
+function Link(props) {
   const status = useSelector((state) => state.main.currentStatus);
   const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
   const dispatch = useDispatch();
@@ -51,16 +51,15 @@ function Button(props) {
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
 
-    const prevX = localStorage.getItem("button_coordX");
-    const prevY = localStorage.getItem("button_coordY");
+    const prevX = localStorage.getItem("line_coordX");
+    const prevY = localStorage.getItem("line_coordY");
 
-    const text = two.makeText("Button", 10, 0);
+    const text = two.makeText("Link", 10, 0);
     text.size = "16";
     text.weight = "600";
     text.family = "Ubuntu";
     text.decoration = "underline";
     text.size = 18;
-    text.fill = "#fff";
     // text.baseline = "sub";
     text.alignment = "left";
 
@@ -77,7 +76,7 @@ function Button(props) {
     externalSVGInstance = externalSVG;
 
     let textGroup = two.makeGroup(externalSVG, text);
-    textGroup.center();
+    textGroup.fill = "#0052CC";
     console.log("textGroup", textGroup, textGroup.id);
 
     const group = two.makeGroup(textGroup);
@@ -88,29 +87,12 @@ function Button(props) {
     groupInstance = group;
     console.log("text bounding initial", text.getBoundingClientRect(true));
 
-    const selector = new ObjectSelector(two, group, 0, 0, 0, 0);
+    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, true);
     selector.create();
     selectorInstance = selector;
 
     // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
-
-    const rectangle = two.makePath(
-      group.getBoundingClientRect(true).left - 40,
-      group.getBoundingClientRect(true).top - 10,
-
-      group.getBoundingClientRect(true).right + 10,
-      group.getBoundingClientRect(true).top - 10,
-
-      group.getBoundingClientRect(true).right + 10,
-      group.getBoundingClientRect(true).bottom + 10,
-
-      group.getBoundingClientRect(true).left - 40,
-      group.getBoundingClientRect(true).bottom + 10
-    );
-    rectangle.fill = "#0052CC";
-    rectangle.noStroke();
-
-    group.add(rectangle);
+    group.children.shift(textGroup);
     group.children.unshift(textGroup);
 
     two.update();
@@ -122,10 +104,10 @@ function Button(props) {
     interact(`#${group.id}`).on("click", () => {
       console.log("on click ", text.getBoundingClientRect(true));
       selector.update(
-        textGroup.getBoundingClientRect(true).left - 42,
-        textGroup.getBoundingClientRect(true).right + 12,
-        textGroup.getBoundingClientRect(true).top - 12,
-        textGroup.getBoundingClientRect(true).bottom + 12
+        textGroup.getBoundingClientRect(true).left - 30,
+        textGroup.getBoundingClientRect(true).right,
+        textGroup.getBoundingClientRect(true).top - 10,
+        textGroup.getBoundingClientRect(true).bottom + 10
       );
       two.update();
     });
@@ -144,7 +126,6 @@ function Button(props) {
       const topBuffer = 2;
       input.type = "text";
       input.value = text.value;
-      input.style.color = "#fff";
       input.style.fontSize = "18px";
       input.style.position = "absolute";
       input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
@@ -169,17 +150,11 @@ function Button(props) {
         // Synchronously update selector tool's coordinates
         text.value = input.value;
         selector.update(
-          textGroup.getBoundingClientRect(true).left - 42,
-          textGroup.getBoundingClientRect(true).right + 12,
-          textGroup.getBoundingClientRect(true).top - 12,
-          textGroup.getBoundingClientRect(true).bottom + 12
+          textGroup.getBoundingClientRect(true).left - 30,
+          textGroup.getBoundingClientRect(true).right + 30,
+          textGroup.getBoundingClientRect(true).top - 10,
+          textGroup.getBoundingClientRect(true).bottom + 10
         );
-
-        rectangle.vertices[1].x =
-          textGroup.getBoundingClientRect(true).right + 10;
-        rectangle.vertices[2].x =
-          textGroup.getBoundingClientRect(true).right + 10;
-
         two.update();
       });
 
@@ -196,37 +171,15 @@ function Button(props) {
         // USE 4 LINES 4 CIRCLES
 
         selector.update(
-          textGroup.getBoundingClientRect(true).left - 42,
-          textGroup.getBoundingClientRect(true).right + 12,
-          textGroup.getBoundingClientRect(true).top - 12,
-          textGroup.getBoundingClientRect(true).bottom + 12
+          textGroup.getBoundingClientRect(true).left - 30,
+          textGroup.getBoundingClientRect(true).right,
+          textGroup.getBoundingClientRect(true).top - 10,
+          textGroup.getBoundingClientRect(true).bottom + 10
         );
         selector.hide();
         two.update();
       });
     });
-
-    // interact(`#${group.id}`).resizable({
-    //   edges: { right: true, left: true },
-
-    //   listeners: {
-    //     move(event) {
-    //       var target = event.target;
-    //       var rect = event.rect;
-
-    //       // update the element's style
-    //       //   resizeRect.width = rect.width;
-    //       rectangle.width = rect.width;
-    //       rectangle.height = rect.height;
-    //       // rectangle.radius = parseInt(rect.width / 2);
-
-    //       two.update();
-    //     },
-    //     end(event) {
-    //       console.log("the end");
-    //     },
-    //   },
-    // });
 
     interact(`#${group.id}`).draggable({
       // enable inertial throwing
@@ -252,9 +205,9 @@ function Button(props) {
             event.clientX
           );
           // alternate -> take event.rect.left for x
-          localStorage.setItem("button_coordX", parseInt(event.pageX));
+          localStorage.setItem("line_coordX", parseInt(event.pageX));
           localStorage.setItem(
-            "button_coordY",
+            "line_coordY",
             parseInt(event.pageY - offsetHeight)
           );
 
@@ -291,18 +244,19 @@ function Button(props) {
   return (
     <React.Fragment>
       <div id="two-button"></div>
+      <button onClick={() => changeSVG()}>change button in text</button>
     </React.Fragment>
   );
 }
 
-Button.propTypes = {
+Link.propTypes = {
   x: PropTypes.string,
   y: PropTypes.string,
 };
 
-Button.defaultProps = {
+Link.defaultProps = {
   x: 100,
   y: 50,
 };
 
-export default Button;
+export default Link;
