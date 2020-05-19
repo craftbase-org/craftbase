@@ -9,7 +9,7 @@ import {
   useDispatch,
   useSelector,
 } from "react-redux";
-import { ReactReduxContext } from "utils/misc";
+import ObjectSelector from "components/utils/objectSelector";
 import { setPeronsalInformation } from "redux/actions/main";
 
 // const useSelector = createSelectorHook(ReactReduxContext);
@@ -26,11 +26,11 @@ function Circle(props) {
   const two = props.twoJSInstance;
 
   let circleInstance = null;
-  let resizeRectInstance = null;
   let groupInstance = null;
+  let selectorInstance = null;
 
   function onBlurHandler(e) {
-    resizeRectInstance.opacity = 0;
+    selectorInstance.hide();
     two.update();
   }
 
@@ -52,31 +52,33 @@ function Circle(props) {
     circleInstance = circle;
 
     console.log("circle", circle.getBoundingClientRect());
-    const calcResizeRectWidth = circle.getBoundingClientRect().width;
-    const calcResizeRectHeight = circle.getBoundingClientRect().height;
-    const resizeRect = two.makeRectangle(
-      0,
-      0,
-      calcResizeRectWidth,
-      calcResizeRectHeight
-    );
-    resizeRect.opacity = 0;
-    resizeRectInstance = resizeRect;
 
-    const group = two.makeGroup(circle, resizeRect);
+    const group = two.makeGroup(circle);
 
     group.translation.x = prevX || 500;
     group.translation.y = prevY || 200;
     groupInstance = group;
-    console.log("BUtton", props.twoJSInstance, resizeRectInstance.width);
+    console.log("BUtton", props.twoJSInstance);
+
+    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, true);
+    selector.create();
+    selectorInstance = selector;
+
+    // Shifting order of objects in group to reflect "z-index alias" mechanism for element
+    group.children.unshift(circle);
+
     two.update();
 
     const getGroupElementFromDOM = document.getElementById(`${group.id}`);
 
     interact(`#${group.id}`).on("click", () => {
       console.log("on click ");
-      resizeRect.opacity = 1;
-      resizeRect.noFill();
+      selector.update(
+        circle.getBoundingClientRect(true).left - 10,
+        circle.getBoundingClientRect(true).right + 10,
+        circle.getBoundingClientRect(true).top - 10,
+        circle.getBoundingClientRect(true).bottom + 10
+      );
       two.update();
     });
 
@@ -88,8 +90,8 @@ function Circle(props) {
 
       listeners: {
         move(event) {
-          var target = event.target;
-          var rect = event.rect;
+          const target = event.target;
+          const rect = event.rect;
 
           // update the element's style
           //   resizeRect.width = rect.width;
@@ -97,11 +99,13 @@ function Circle(props) {
           circle.height = rect.height;
           circle.radius = parseInt(rect.width / 2);
 
-          const calcResizeRectWidth = circle.getBoundingClientRect().width;
-          const calcResizeRectHeight = circle.getBoundingClientRect().height;
+          selector.update(
+            circle.getBoundingClientRect(true).left - 10,
+            circle.getBoundingClientRect(true).right + 10,
+            circle.getBoundingClientRect(true).top - 10,
+            circle.getBoundingClientRect(true).bottom + 10
+          );
 
-          resizeRect.width = calcResizeRectWidth;
-          resizeRect.height = calcResizeRectHeight;
           //   target.style.width = rect.width + "px";
           //   target.style.height = rect.height + "px";
 
@@ -152,9 +156,13 @@ function Circle(props) {
     let isMounted = true;
     return () => {
       console.log("UNMOUNTING", groupInstance);
-      const groupID = document.getElementById(`${groupInstance.id}`);
-      groupID.removeEventListener("blur", onBlurHandler);
-      groupID.removeEventListener("focus", onFocusHandler);
+
+      // if (groupInstance) {
+      //   const groupID = document.getElementById(`${groupInstance.id}`);
+      //   groupID.removeEventListener("blur", onBlurHandler);
+      //   groupID.removeEventListener("focus", onFocusHandler);
+      // }
+
       isMounted = false;
     };
   }, []);

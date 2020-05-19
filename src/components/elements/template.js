@@ -89,8 +89,8 @@ function Button(props) {
 
       listeners: {
         move(event) {
-          var target = event.target;
-          var rect = event.rect;
+          const target = event.target;
+          const rect = event.rect;
 
           // update the element's style
           //   resizeRect.width = rect.width;

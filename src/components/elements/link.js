@@ -92,7 +92,7 @@ function Link(props) {
     selectorInstance = selector;
 
     // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
-    group.children.shift(textGroup);
+
     group.children.unshift(textGroup);
 
     two.update();
@@ -105,7 +105,7 @@ function Link(props) {
       console.log("on click ", text.getBoundingClientRect(true));
       selector.update(
         textGroup.getBoundingClientRect(true).left - 30,
-        textGroup.getBoundingClientRect(true).right,
+        textGroup.getBoundingClientRect(true).right + 10,
         textGroup.getBoundingClientRect(true).top - 10,
         textGroup.getBoundingClientRect(true).bottom + 10
       );
@@ -172,7 +172,7 @@ function Link(props) {
 
         selector.update(
           textGroup.getBoundingClientRect(true).left - 30,
-          textGroup.getBoundingClientRect(true).right,
+          textGroup.getBoundingClientRect(true).right + 10,
           textGroup.getBoundingClientRect(true).top - 10,
           textGroup.getBoundingClientRect(true).bottom + 10
         );
@@ -230,12 +230,12 @@ function Link(props) {
     return () => {
       console.log("UNMOUNTING", groupInstance);
 
-      // In case if group instance is null
-      if (groupInstance) {
-        const groupID = document.getElementById(`${groupInstance.id}`);
-        groupID.removeEventListener("blur", onBlurHandler);
-        groupID.removeEventListener("focus", onFocusHandler);
-      }
+      // // In case if group instance is null
+      // if (groupInstance) {
+      //   const groupID = document.getElementById(`${groupInstance.id}`);
+      //   groupID.removeEventListener("blur", onBlurHandler);
+      //   groupID.removeEventListener("focus", onFocusHandler);
+      // }
 
       isMounted = false;
     };

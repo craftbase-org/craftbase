@@ -101,8 +101,8 @@ function Divider(props) {
           resizeLine.opacity = 1;
         },
         move(event) {
-          var target = event.target;
-          var rect = event.rect;
+          const target = event.target;
+          const rect = event.rect;
           console.log("on resize event", event);
 
           // update the element's style
@@ -162,15 +162,16 @@ function Divider(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     let isMounted = true;
+
     return () => {
       console.log("UNMOUNTING", groupInstance);
 
       // In case if group instance is null
-      if (groupInstance) {
-        const groupID = document.getElementById(`${groupInstance.id}`);
-        groupID.removeEventListener("blur", onBlurHandler);
-        groupID.removeEventListener("focus", onFocusHandler);
-      }
+      // if (groupInstance) {
+      //   const groupID = document.getElementById(`${groupInstance.id}`);
+      //   groupID.removeEventListener("blur", onBlurHandler);
+      //   groupID.removeEventListener("focus", onFocusHandler);
+      // }
 
       isMounted = false;
     };

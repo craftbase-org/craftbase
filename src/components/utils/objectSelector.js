@@ -35,6 +35,9 @@ export default class Selector {
     );
     area.fill = "rgba(0,0,0,0)";
     area.opacity = 0;
+    area.linewidth = 2;
+    area.dashes[0] = 4;
+    // area.curved = true;
     console.log("area", area);
     this.area = area;
 
@@ -65,6 +68,9 @@ export default class Selector {
   hide() {
     this.area.opacity = 0;
     if (this.circleGroup) this.circleGroup.opacity = 0;
+  }
+  getInstance() {
+    return this.area.id;
   }
   update(x1, x2, y1, y2) {
     console.log("on selector update", x1, x2, y1, y2);

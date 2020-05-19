@@ -16,7 +16,7 @@ import { setPeronsalInformation } from "redux/actions/main";
 // const useSelector = createSelectorHook(ReactReduxContext);
 // const useDispatch = createDispatchHook(ReactReduxContext);
 
-function Text(props) {
+function ButtonWithIcon(props) {
   const status = useSelector((state) => state.main.currentStatus);
   const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
   const dispatch = useDispatch();
@@ -34,6 +34,7 @@ function Text(props) {
 
   let groupInstance = null;
   let selectorInstance = null;
+  let externalSVGInstance = null;
 
   function onBlurHandler(e) {
     console.log("on blur handler called");
@@ -50,14 +51,15 @@ function Text(props) {
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
 
-    const prevX = localStorage.getItem("text_coordX");
-    const prevY = localStorage.getItem("text_coordY");
+    const prevX = localStorage.getItem("buttonwithicon_coordX");
+    const prevY = localStorage.getItem("buttonwithicon_coordY");
 
-    const text = two.makeText("Text", 10, 0);
+    const text = two.makeText("Button", 10, 0);
     text.size = "16";
     text.weight = "600";
     text.family = "Ubuntu";
     text.size = 18;
+    text.fill = "#fff";
     // text.baseline = "sub";
     text.alignment = "left";
 
@@ -66,9 +68,15 @@ function Text(props) {
       "text/xml"
     );
     console.log("svgImage", svgImage);
+    const externalSVG = two.interpret(svgImage.firstChild);
+    externalSVG.translation.x = -3;
+    externalSVG.translation.y = -1;
+    externalSVG.scale = 1.2;
+    externalSVG.center();
+    externalSVGInstance = externalSVG;
 
-    let textGroup = two.makeGroup(text);
-    textGroup.fill = "#0052CC";
+    let textGroup = two.makeGroup(externalSVG, text);
+    textGroup.center();
     console.log("textGroup", textGroup, textGroup.id);
 
     const group = two.makeGroup(textGroup);
@@ -79,12 +87,66 @@ function Text(props) {
     groupInstance = group;
     console.log("text bounding initial", text.getBoundingClientRect(true));
 
-    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, true);
+    const selector = new ObjectSelector(two, group, 0, 0, 0, 0);
     selector.create();
     selectorInstance = selector;
 
     // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
-    group.children.shift(textGroup);
+
+    // const points =[
+    //   new Two.Anchor(group.getBoundingClientRect(true).left - 40,group.getBoundingClientRect(true).top - 10,
+    //   0,0,0,0,Two.Commands.move),
+
+    //   new Two.Anchor(group.getBoundingClientRect(true).left - 40,group.getBoundingClientRect(true).top - 10,
+    //   0,0,0,0,Two.Commands.curve),
+
+    //   new Two.Anchor(group.getBoundingClientRect(true).right + 10,
+    //   group.getBoundingClientRect(true).top - 10,
+    //   0,0,0,0,Two.Commands.line),
+
+    //   new Two.Anchor(group.getBoundingClientRect(true).right + 10,
+    //   group.getBoundingClientRect(true).top - 10,
+    //   0,0,0,0,Two.Commands.curve),
+
+    //   new Two.Anchor(group.getBoundingClientRect(true).right + 10,
+    //   group.getBoundingClientRect(true).bottom + 10,
+    //   0,0,0,0,Two.Commands.line),
+
+    //   new Two.Anchor(group.getBoundingClientRect(true).right + 10,
+    //   group.getBoundingClientRect(true).bottom + 10,
+    //   0,0,0,0,Two.Commands.curve),
+
+    //   new Two.Anchor(group.getBoundingClientRect(true).left - 40,
+    //   group.getBoundingClientRect(true).bottom + 10,
+    //   0,0,0,0,Two.Commands.curve),
+
+    //   new Two.Anchor(group.getBoundingClientRect(true).left - 40,
+    //   group.getBoundingClientRect(true).bottom + 10,
+    //   0,0,0,0,Two.Commands.curve),
+
+    // ];
+
+    const rectangle = two.makePath(
+      group.getBoundingClientRect(true).left - 40,
+      group.getBoundingClientRect(true).top - 10,
+
+      group.getBoundingClientRect(true).right + 10,
+      group.getBoundingClientRect(true).top - 10,
+
+      group.getBoundingClientRect(true).right + 10,
+      group.getBoundingClientRect(true).bottom + 10,
+
+      group.getBoundingClientRect(true).left - 40,
+      group.getBoundingClientRect(true).bottom + 10
+    );
+    rectangle.fill = "#0052CC";
+    rectangle.stroke = "#0052CC";
+    rectangle.linewidth = 8;
+    rectangle.join = "round";
+
+    // rectangle.noStroke();
+
+    group.add(rectangle);
     group.children.unshift(textGroup);
 
     two.update();
@@ -96,10 +158,10 @@ function Text(props) {
     interact(`#${group.id}`).on("click", () => {
       console.log("on click ", text.getBoundingClientRect(true));
       selector.update(
-        textGroup.getBoundingClientRect(true).left - 30,
-        textGroup.getBoundingClientRect(true).right + 10,
-        textGroup.getBoundingClientRect(true).top - 10,
-        textGroup.getBoundingClientRect(true).bottom + 10
+        textGroup.getBoundingClientRect(true).left - 50,
+        textGroup.getBoundingClientRect(true).right + 20,
+        textGroup.getBoundingClientRect(true).top - 20,
+        textGroup.getBoundingClientRect(true).bottom + 20
       );
       two.update();
     });
@@ -118,6 +180,7 @@ function Text(props) {
       const topBuffer = 2;
       input.type = "text";
       input.value = text.value;
+      input.style.color = "#fff";
       input.style.fontSize = "18px";
       input.style.position = "absolute";
       input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
@@ -142,11 +205,17 @@ function Text(props) {
         // Synchronously update selector tool's coordinates
         text.value = input.value;
         selector.update(
-          textGroup.getBoundingClientRect(true).left - 30,
-          textGroup.getBoundingClientRect(true).right + 30,
-          textGroup.getBoundingClientRect(true).top - 10,
-          textGroup.getBoundingClientRect(true).bottom + 10
+          textGroup.getBoundingClientRect(true).left - 50,
+          textGroup.getBoundingClientRect(true).right + 20,
+          textGroup.getBoundingClientRect(true).top - 20,
+          textGroup.getBoundingClientRect(true).bottom + 20
         );
+
+        rectangle.vertices[1].x =
+          textGroup.getBoundingClientRect(true).right + 12;
+        rectangle.vertices[2].x =
+          textGroup.getBoundingClientRect(true).right + 12;
+
         two.update();
       });
 
@@ -163,15 +232,37 @@ function Text(props) {
         // USE 4 LINES 4 CIRCLES
 
         selector.update(
-          textGroup.getBoundingClientRect(true).left - 30,
-          textGroup.getBoundingClientRect(true).right + 10,
-          textGroup.getBoundingClientRect(true).top - 10,
-          textGroup.getBoundingClientRect(true).bottom + 10
+          textGroup.getBoundingClientRect(true).left - 50,
+          textGroup.getBoundingClientRect(true).right + 20,
+          textGroup.getBoundingClientRect(true).top - 20,
+          textGroup.getBoundingClientRect(true).bottom + 20
         );
         selector.hide();
         two.update();
       });
     });
+
+    // interact(`#${group.id}`).resizable({
+    //   edges: { right: true, left: true },
+
+    //   listeners: {
+    //     move(event) {
+    //       const target = event.target;
+    //       const rect = event.rect;
+
+    //       // update the element's style
+    //       //   resizeRect.width = rect.width;
+    //       rectangle.width = rect.width;
+    //       rectangle.height = rect.height;
+    //       // rectangle.radius = parseInt(rect.width / 2);
+
+    //       two.update();
+    //     },
+    //     end(event) {
+    //       console.log("the end");
+    //     },
+    //   },
+    // });
 
     interact(`#${group.id}`).draggable({
       // enable inertial throwing
@@ -197,9 +288,9 @@ function Text(props) {
             event.clientX
           );
           // alternate -> take event.rect.left for x
-          localStorage.setItem("text_coordX", parseInt(event.pageX));
+          localStorage.setItem("buttonwithicon_coordX", parseInt(event.pageX));
           localStorage.setItem(
-            "text_coordY",
+            "buttonwithicon_coordY",
             parseInt(event.pageY - offsetHeight)
           );
 
@@ -209,18 +300,19 @@ function Text(props) {
     });
   }
 
+  function changeSVG() {
+    document.getElementById(`${externalSVGInstance.id}`).innerHTML =
+      Icon.SIDEBAR_ICON_RECTANGLE.data;
+
+    two.update();
+  }
+
   // Using unmount phase to remove event listeners
   useEffect(() => {
     let isMounted = true;
+    console.log("MOUNTING");
     return () => {
       console.log("UNMOUNTING", groupInstance);
-
-      // In case if group instance is null
-      // if (groupInstance) {
-      //   const groupID = document.getElementById(`${groupInstance.id}`);
-      //   groupID.removeEventListener("blur", onBlurHandler);
-      //   groupID.removeEventListener("focus", onFocusHandler);
-      // }
 
       isMounted = false;
     };
@@ -228,19 +320,19 @@ function Text(props) {
 
   return (
     <React.Fragment>
-      <div id="two-simple-text"></div>
+      <div id="two-button"></div>
     </React.Fragment>
   );
 }
 
-Text.propTypes = {
+ButtonWithIcon.propTypes = {
   x: PropTypes.string,
   y: PropTypes.string,
 };
 
-Text.defaultProps = {
+ButtonWithIcon.defaultProps = {
   x: 100,
   y: 50,
 };
 
-export default Text;
+export default ButtonWithIcon;

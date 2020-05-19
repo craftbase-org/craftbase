@@ -9,23 +9,23 @@ import {
   useDispatch,
   useSelector,
 } from "react-redux";
-import Icon from "icons/icons";
 import ObjectSelector from "components/utils/objectSelector";
-import { getDiffForTwoValues } from "utils";
 import { setPeronsalInformation } from "redux/actions/main";
 
 // const useSelector = createSelectorHook(ReactReduxContext);
 // const useDispatch = createDispatchHook(ReactReduxContext);
 
-function Avatar(props) {
+function Overlay(props) {
   const status = useSelector((state) => state.main.currentStatus);
   const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
   const dispatch = useDispatch();
-
+  console.log(
+    "useSelector",
+    useSelector((state) => state)
+  );
   const two = props.twoJSInstance;
 
-  let circleInstance = null;
-  let externalSVGInstance = null;
+  let rectangleInstance = null;
   let groupInstance = null;
   let selectorInstance = null;
 
@@ -43,43 +43,30 @@ function Avatar(props) {
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
 
-    const prevX = localStorage.getItem("avatar_coordX");
-    const prevY = localStorage.getItem("avatar_coordY");
+    const prevX = localStorage.getItem("overlay_coordX");
+    const prevY = localStorage.getItem("overlay_coordY");
 
-    const circle = two.makeCircle(0, 0, 40);
-    circle.fill = "#000";
-    circleInstance = circle;
+    const rectangle = two.makeRectangle(0, 0, 210, 110);
+    rectangle.fill = "#6d6d6d";
+    rectangle.opacity = 0.5;
+    rectangle.noStroke();
+    rectangleInstance = rectangle;
 
-    const svgImage = new DOMParser().parseFromString(
-      Icon.ICON_IMAGE_1.data,
-      "text/xml"
-    );
-    console.log("svgImage", svgImage, circle.width / 2);
-    const externalSVG = two.interpret(svgImage.firstChild);
-    // externalSVG.translation.x = -circle.width / 8;
-    // externalSVG.translation.y = -circle.height / 8;
-    externalSVG.scale = 1.5;
-    externalSVG.center();
-    externalSVGInstance = externalSVG;
+    console.log("rectangle", rectangle.getBoundingClientRect());
 
-    const initialScaleCoefficient = parseInt(circle.radius / externalSVG.scale);
+    const group = two.makeGroup(rectangle);
 
-    const circleSvgGroup = two.makeGroup(circle, externalSVG);
-
-    const group = two.makeGroup(circleSvgGroup);
-
-    group.center();
     group.translation.x = prevX || 500;
     group.translation.y = prevY || 200;
     groupInstance = group;
+    console.log("BUtton", props.twoJSInstance);
 
     const selector = new ObjectSelector(two, group, 0, 0, 0, 0, true);
     selector.create();
     selectorInstance = selector;
 
-    group.children.unshift(circleSvgGroup);
+    group.children.unshift(rectangle);
 
-    // console.log("Avatar", props.twoJSInstance);
     two.update();
 
     const getGroupElementFromDOM = document.getElementById(`${group.id}`);
@@ -89,44 +76,41 @@ function Avatar(props) {
     interact(`#${group.id}`).on("click", () => {
       console.log("on click ");
       selector.update(
-        circle.getBoundingClientRect(true).left - 3,
-        circle.getBoundingClientRect(true).right + 3,
-        circle.getBoundingClientRect(true).top - 3,
-        circle.getBoundingClientRect(true).bottom + 3
+        rectangle.getBoundingClientRect(true).left - 10,
+        rectangle.getBoundingClientRect(true).right + 10,
+        rectangle.getBoundingClientRect(true).top - 10,
+        rectangle.getBoundingClientRect(true).bottom + 10
       );
       two.update();
     });
-
-    // Captures double click event for text
-    // and generates temporary textarea support for it
 
     interact(`#${group.id}`).resizable({
       edges: { right: true, left: true, top: true, bottom: true },
 
       listeners: {
         move(event) {
+          const target = event.target;
           const rect = event.rect;
-          const rectRadii = parseInt(rect.width / 2);
 
-          // Prevent the circle radius to be shrinked to less than 10
-          if (rectRadii > 11) {
-            // update the element's style
-            circle.width = rect.width;
-            circle.height = rect.height;
-            circle.radius = parseInt(rect.width / 2);
+          const minRectHeight = parseInt(rect.height / 2);
+          const minRectWidth = parseInt(rect.width / 2);
 
-            // console.log("circle.radius", circle.radius);
-            externalSVG.scale = circle.radius / initialScaleCoefficient;
-            externalSVG.center();
+          if (minRectHeight > 20 && minRectWidth > 20) {
+            rectangle.width = rect.width;
+            rectangle.height = rect.height;
 
             selector.update(
-              circle.getBoundingClientRect(true).left - 3,
-              circle.getBoundingClientRect(true).right + 3,
-              circle.getBoundingClientRect(true).top - 3,
-              circle.getBoundingClientRect(true).bottom + 3
+              rectangle.getBoundingClientRect(true).left - 10,
+              rectangle.getBoundingClientRect(true).right + 10,
+              rectangle.getBoundingClientRect(true).top - 10,
+              rectangle.getBoundingClientRect(true).bottom + 10
             );
           }
 
+          //   target.style.width = rect.width + "px";
+          //   target.style.height = rect.height + "px";
+
+          //   target.textContent = rect.width + "×" + rect.height;
           two.update();
         },
         end(event) {
@@ -157,9 +141,9 @@ function Avatar(props) {
             event.clientX
           );
           // alternate -> take event.rect.left for x
-          localStorage.setItem("avatar_coordX", parseInt(event.pageX));
+          localStorage.setItem("overlay_coordX", parseInt(event.pageX));
           localStorage.setItem(
-            "avatar_coordY",
+            "overlay_coordY",
             parseInt(event.pageY - offsetHeight)
           );
           dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
@@ -174,7 +158,6 @@ function Avatar(props) {
     return () => {
       console.log("UNMOUNTING", groupInstance);
 
-      // // In case if group instance is null
       // if (groupInstance) {
       //   const groupID = document.getElementById(`${groupInstance.id}`);
       //   groupID.removeEventListener("blur", onBlurHandler);
@@ -187,20 +170,11 @@ function Avatar(props) {
 
   return (
     <React.Fragment>
-      <div id="two-button"></div>
-      <button>change button in group</button>
+      <div id="two-overlay"></div>
+
+      {/* <button>change button in group</button> */}
     </React.Fragment>
   );
 }
 
-Avatar.propTypes = {
-  x: PropTypes.string,
-  y: PropTypes.string,
-};
-
-Avatar.defaultProps = {
-  x: 100,
-  y: 50,
-};
-
-export default Avatar;
+export default Overlay;

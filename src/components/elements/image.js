@@ -10,7 +10,7 @@ import {
   useDispatch,
   useSelector,
 } from "react-redux";
-import { ReactReduxContext } from "utils/misc";
+import ObjectSelector from "components/utils/objectSelector";
 import { setPeronsalInformation } from "redux/actions/main";
 
 // const useSelector = createSelectorHook(ReactReduxContext);
@@ -27,11 +27,12 @@ function Image(props) {
   const two = props.twoJSInstance;
 
   let rectangleInstance = null;
-  let resizeRectInstance = null;
+  let externalSVGInstance = null;
   let groupInstance = null;
+  let selectorInstance = null;
 
   function onBlurHandler(e) {
-    resizeRectInstance.opacity = 0;
+    selectorInstance.hide();
     two.update();
   }
 
@@ -44,239 +45,97 @@ function Image(props) {
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
 
-    const prevX = localStorage.getItem("rectangle_coordX");
-    const prevY = localStorage.getItem("rectangle_coordY");
+    const prevX = localStorage.getItem("image_coordX");
+    const prevY = localStorage.getItem("image_coordY");
 
-    const rectangle = two.makeRectangle(0, 0, 210, 210);
-    rectangle.fill = "#EBECF0";
-    rectangle.noStroke();
+    const rectangle = two.makeRectangle(0, 0, 60, 60);
+    rectangle.fill = "#000";
     rectangleInstance = rectangle;
 
-    console.log("rectangle", rectangle.getBoundingClientRect());
-    const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
-    const calcResizeRectHeight = rectangle.getBoundingClientRect().height;
-    const resizeRect = two.makeRectangle(
-      0,
-      0,
-      calcResizeRectWidth,
-      calcResizeRectHeight
-    );
-    resizeRect.opacity = 0;
-    resizeRectInstance = resizeRect;
-
     const svgImage = new DOMParser().parseFromString(
-      Icon.ICON_IMAGE.data,
+      Icon.ICON_IMAGE_1.data,
       "text/xml"
     );
-    console.log("svgImage", externalSVG);
-    var externalSVG = two.interpret(svgImage.firstChild);
-    externalSVG.children[0].fill = "rgba(0,0,0,0.3)";
-    // externalSVG.children[0].stroke = "#EBECF0";
-    externalSVG.translation.x = -(rectangle.width / 6.5);
-    externalSVG.translation.y = -(rectangle.height / 6.5);
+    console.log("svgImage", svgImage, rectangle.width / 2);
+    const externalSVG = two.interpret(svgImage.firstChild);
+    // externalSVG.translation.x = -rectangle.width / 8;
+    // externalSVG.translation.y = -rectangle.height / 8;
+    externalSVG.scale = 1.5;
+    externalSVG.center();
+    externalSVGInstance = externalSVG;
 
-    const group = two.makeGroup(rectangle, resizeRect, externalSVG);
+    const initialScaleCoefficient = parseInt(
+      rectangle.width + rectangle.height / externalSVG.scale
+    );
 
+    const circleSvgGroup = two.makeGroup(rectangle, externalSVG);
+
+    const group = two.makeGroup(circleSvgGroup);
+
+    group.center();
     group.translation.x = prevX || 500;
     group.translation.y = prevY || 200;
-
     groupInstance = group;
-    console.log("BUtton", props.twoJSInstance, rectangle.id);
+
+    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, true);
+    selector.create();
+    selectorInstance = selector;
+
+    group.children.unshift(circleSvgGroup);
+
+    // console.log("Avatar", props.twoJSInstance);
     two.update();
 
     const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-
-    interact(`#${group.id}`).on("click", () => {
-      console.log("on click ");
-      resizeRect.opacity = 1;
-      resizeRect.noFill();
-      two.update();
-    });
-
     getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
     getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
 
-    let initialRectangleWidth = parseInt(rectangle.width);
-    let initialRectangleHeight = parseInt(rectangle.height);
+    interact(`#${group.id}`).on("click", () => {
+      console.log("on click ");
+      selector.update(
+        rectangle.getBoundingClientRect(true).left - 3,
+        rectangle.getBoundingClientRect(true).right + 3,
+        rectangle.getBoundingClientRect(true).top - 3,
+        rectangle.getBoundingClientRect(true).bottom + 3
+      );
+      two.update();
+    });
+
+    // Captures double click event for text
+    // and generates temporary textarea support for it
 
     interact(`#${group.id}`).resizable({
       edges: { right: true, left: true, top: true, bottom: true },
 
       listeners: {
         move(event) {
-          var target = event.target;
-          var rect = event.rect;
+          const rect = event.rect;
+          const minRectHeight = parseInt(rect.height / 2);
+          const minRectWidth = parseInt(rect.width / 2);
 
-          /* Getting transform matrix of svg to manipulate later */
-          let externalSVGMatrix = document
-            .getElementById(`${externalSVG.id}`)
-            .getAttribute("transform");
-          externalSVGMatrix = externalSVGMatrix
-            ? externalSVGMatrix.split("(")[1].split(" ")
-            : "matrix(4,0,0,4,0,0)";
-          let widthOffset = parseFloat(externalSVGMatrix[0]);
+          // Restrict width and height at arbitrary point difference where it would
+          // be unstable for further SVG scaling calculations
+          const minDiff = Math.abs(rect.width - rect.height);
 
-          console.log(
-            "rectangle",
-            rect,
-            externalSVGMatrix,
-            widthOffset // externalSVG.translation
-          );
+          // Prevent the rectangle radius to be shrinked to less than 10
+          if (minRectHeight > 20 && minRectWidth > 20 && minDiff < 100) {
+            // update the element's style
+            rectangle.width = rect.width - 10;
+            rectangle.height = rect.height - 10;
 
-          let oldRectWidth = parseInt(rectangle.width);
-          let oldRectHeight = parseInt(rectangle.height);
-          let newRectWidth = parseInt(rect.width);
-          let newRectHeight = parseInt(rect.height);
+            // console.log("rectangle.radius", rectangle.radius);
+            externalSVG.scale =
+              ((rectangle.width + rectangle.height / 2) /
+                initialScaleCoefficient) *
+              1.5;
+            externalSVG.center();
 
-          let externalSVGBottom = document
-            .getElementById(`${externalSVG.id}`)
-            .getBoundingClientRect().bottom;
-
-          let bottomOffsetRestriction =
-            rect.bottom - externalSVGBottom > newRectHeight / 7;
-
-          console.log(
-            "comparision rects",
-            newRectWidth > oldRectWidth,
-            newRectHeight > oldRectHeight,
-            bottomOffsetRestriction
-          );
-
-          if (
-            bottomOffsetRestriction &&
-            (newRectWidth > oldRectWidth || newRectHeight > oldRectHeight)
-          ) {
-            rectangle.width = newRectWidth;
-            rectangle.height = newRectHeight;
-
-            let avgWidthHeight = parseFloat(
-              (rectangle.height + rectangle.width) / 2
+            selector.update(
+              rectangle.getBoundingClientRect(true).left - 3,
+              rectangle.getBoundingClientRect(true).right + 3,
+              rectangle.getBoundingClientRect(true).top - 3,
+              rectangle.getBoundingClientRect(true).bottom + 3
             );
-            let avgInitialWidthHeight = parseFloat(
-              (initialRectangleHeight + initialRectangleWidth) / 2
-            );
-
-            let rectWidthDiff =
-              parseFloat(avgWidthHeight - avgInitialWidthHeight) * 0.019;
-
-            console.log(
-              "comparision rects 1",
-              rectWidthDiff,
-              avgWidthHeight,
-              avgInitialWidthHeight
-            );
-            document.getElementById(
-              `${externalSVG.id}`
-            ).style.transform = `matrix(${widthOffset + rectWidthDiff},0,0,${
-              widthOffset + rectWidthDiff
-            },${-(rectangle.width / 6.5)},${-(rectangle.height / 6.5)})`;
-            // document.getElementById(`${externalSVG.id}`).style.transform = `matrix(4,0,0,4,0,0)`;
-
-            const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
-            const calcResizeRectHeight = rectangle.getBoundingClientRect()
-              .height;
-
-            resizeRect.width = calcResizeRectWidth;
-            resizeRect.height = calcResizeRectHeight;
-            //   target.style.width = rect.width + "px";
-            //   target.style.height = rect.height + "px";
-
-            //   target.textContent = rect.width + "×" + rect.height;
-          } else if (bottomOffsetRestriction && newRectWidth < oldRectWidth) {
-            rectangle.width = newRectWidth;
-            rectangle.height = newRectHeight;
-
-            let avgWidthHeight = parseFloat(
-              (rectangle.height + rectangle.width) / 2
-            );
-            let avgInitialWidthHeight = parseFloat(
-              (initialRectangleHeight + initialRectangleWidth) / 2
-            );
-
-            let rectWidthDiff =
-              parseFloat(avgWidthHeight - avgInitialWidthHeight) * 0.019;
-
-            console.log(
-              "comparision rects 22",
-              rectWidthDiff,
-              widthOffset + rectWidthDiff
-            );
-            document.getElementById(
-              `${externalSVG.id}`
-            ).style.transform = `matrix(${widthOffset + rectWidthDiff},0,0,${
-              widthOffset + rectWidthDiff
-            },${-(rectangle.width / 6.5)},${-(rectangle.height / 6.5)})`;
-            // document.getElementById(`${externalSVG.id}`).style.transform = `matrix(4,0,0,4,0,0)`;
-
-            const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
-            const calcResizeRectHeight = rectangle.getBoundingClientRect()
-              .height;
-
-            resizeRect.width = calcResizeRectWidth;
-            resizeRect.height = calcResizeRectHeight;
-          } else if (bottomOffsetRestriction && newRectHeight < oldRectHeight) {
-            rectangle.width = newRectWidth;
-            rectangle.height = newRectHeight;
-
-            let avgWidthHeight = parseFloat(
-              (rectangle.height + rectangle.width) / 2
-            );
-            let avgInitialWidthHeight = parseFloat(
-              (initialRectangleHeight + initialRectangleWidth) / 2
-            );
-
-            let rectHeightDiff =
-              parseFloat(avgWidthHeight - avgInitialWidthHeight) * 0.019;
-
-            console.log(
-              "comparision rects 22",
-              rectHeightDiff,
-              widthOffset + rectHeightDiff
-            );
-            document.getElementById(
-              `${externalSVG.id}`
-            ).style.transform = `matrix(${widthOffset + rectHeightDiff},0,0,${
-              widthOffset + rectHeightDiff
-            },${-(rectangle.width / 6.5)},${-(rectangle.height / 6.5)})`;
-            // document.getElementById(`${externalSVG.id}`).style.transform = `matrix(4,0,0,4,0,0)`;
-
-            const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
-            const calcResizeRectHeight = rectangle.getBoundingClientRect()
-              .height;
-
-            resizeRect.width = calcResizeRectWidth;
-            resizeRect.height = calcResizeRectHeight;
-          } else {
-            console.log("comparision rects 4");
-            rectangle.width = newRectWidth;
-            rectangle.height = newRectHeight;
-
-            let avgWidthHeight = parseFloat(
-              (rectangle.height + rectangle.width) / 2
-            );
-            let avgInitialWidthHeight = parseFloat(
-              (initialRectangleHeight + initialRectangleWidth) / 2
-            );
-
-            let rectWidthDiff =
-              parseFloat(avgWidthHeight - avgInitialWidthHeight) * 0.019;
-
-            document.getElementById(
-              `${externalSVG.id}`
-            ).style.transform = `matrix(${widthOffset + rectWidthDiff},0,0,${
-              widthOffset + rectWidthDiff
-            },${-(rectangle.width / 6.5)},${-(rectangle.height / 6.5)})`;
-
-            const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
-            const calcResizeRectHeight = rectangle.getBoundingClientRect()
-              .height;
-
-            resizeRect.width = calcResizeRectWidth;
-            resizeRect.height = calcResizeRectHeight;
-            //   target.style.width = rect.width + "px";
-            //   target.style.height = rect.height + "px";
-
-            //   target.textContent = rect.width + "×" + rect.height;
           }
 
           two.update();
@@ -309,9 +168,9 @@ function Image(props) {
             event.clientX
           );
           // alternate -> take event.rect.left for x
-          localStorage.setItem("rectangle_coordX", parseInt(event.pageX));
+          localStorage.setItem("image_coordX", parseInt(event.pageX));
           localStorage.setItem(
-            "rectangle_coordY",
+            "image_coordY",
             parseInt(event.pageY - offsetHeight)
           );
           dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
@@ -325,9 +184,9 @@ function Image(props) {
     let isMounted = true;
     return () => {
       console.log("UNMOUNTING", groupInstance);
-      const groupID = document.getElementById(`${groupInstance.id}`);
-      groupID.removeEventListener("blur", onBlurHandler);
-      groupID.removeEventListener("focus", onFocusHandler);
+      // const groupID = document.getElementById(`${groupInstance.id}`);
+      // groupID.removeEventListener("blur", onBlurHandler);
+      // groupID.removeEventListener("focus", onFocusHandler);
       isMounted = false;
     };
   }, []);

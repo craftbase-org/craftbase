@@ -7,6 +7,15 @@
   z-index: -1;
 }
 
+#rsz-rect {
+  position: absolute;
+  background: transparent;
+  width: 100px;
+  height: 100px;
+  border: 1px solid #000;
+  opacity: 0;
+}
+
 text,
 g,
 path {
@@ -60,6 +69,7 @@ button:focus {
   font-weight: 600;
   font-size: 16px;
   resize: none;
+  outline: none !important;
 }
 
 .temp-textarea {
@@ -70,6 +80,7 @@ button:focus {
   font-weight: 600;
   font-size: 16px;
   resize: none;
+  outline: none !important;
 }
 
 /* Sidebar css */

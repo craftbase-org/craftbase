@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 import ElementWrapper from "components/elementWrapper";
 import Two from "two.js";
 import Rectangle from "./components/shapes/rect";
-import Button from "./components/elements/button";
 
 import { getElementsData } from "redux/actions/main";
 
@@ -29,14 +28,18 @@ class App extends Component {
     }).appendTo(elem);
 
     const arr = [
-      // { id: 1, name: "text" },
-      // { id: 2, name: "toggle" },
+      { id: 1, name: "buttonwithicon" },
+      { id: 2, name: "toggle" },
       // { id: 3, name: "tooltip" },
       // { id: 4, name: "circle" },
       // { id: 5, name: "image" },
       // { id: 6, name: "rectangle" },
       // { id: 7, name: "divider" },
-      { id: 8, name: "avatar" },
+      // { id: 8, name: "avatar" },
+      // { id: 9, name: "link" },
+      // { id: 10, name: "text" },
+      // { id: 11, name: "overlay" },
+      { id: 12, name: "button" },
     ];
     this.props.getElementsData("CONSTRUCT", arr);
     this.setState({ twoJSInstance: two });
@@ -78,6 +81,7 @@ class App extends Component {
   render() {
     return (
       <React.Fragment>
+        <div id="rsz-rect"></div>
         <div id="main-two-root"></div>
         <Rectangle twoJSInstance={this.state.twoJSInstance} />
         {this.state.twoJSInstance && (
@@ -101,11 +105,11 @@ class App extends Component {
               Add a rectangle
             </button>
             <button
-              id="add"
+              id="add-1-2"
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-              onClick={() => this.addElements("circle")}
+              // onClick={() => this.addElements("circle")}
             >
-              Add a circle
+              Toggle me
             </button>
             <button
               onClick={() => {

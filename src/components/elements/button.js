@@ -32,12 +32,11 @@ function Button(props) {
       (status === "construct" || lastAddedElement.id === props.id)
   );
 
+  let rectangleInstance = null;
   let groupInstance = null;
   let selectorInstance = null;
-  let externalSVGInstance = null;
 
   function onBlurHandler(e) {
-    console.log("on blur handler called");
     selectorInstance.hide();
     two.update();
   }
@@ -54,65 +53,40 @@ function Button(props) {
     const prevX = localStorage.getItem("button_coordX");
     const prevY = localStorage.getItem("button_coordY");
 
+    const rectangle = two.makeRoundedRectangle(0, 0, 140, 45, 5);
+    rectangle.fill = "#0747A6";
+    rectangle.noStroke();
+    rectangleInstance = rectangle;
+
     const text = two.makeText("Button", 10, 0);
     text.size = "16";
+    text.fill = "#fff";
     text.weight = "600";
     text.family = "Ubuntu";
-    text.decoration = "underline";
-    text.size = 18;
-    text.fill = "#fff";
-    // text.baseline = "sub";
-    text.alignment = "left";
 
-    const svgImage = new DOMParser().parseFromString(
-      Icon.ICON_IMAGE_1.data,
-      "text/xml"
-    );
-    console.log("svgImage", svgImage);
-    const externalSVG = two.interpret(svgImage.firstChild);
-    externalSVG.translation.x = -3;
-    externalSVG.translation.y = -1;
-    externalSVG.scale = 1.2;
-    externalSVG.center();
-    externalSVGInstance = externalSVG;
-
-    let textGroup = two.makeGroup(externalSVG, text);
+    const textGroup = two.makeGroup(text);
     textGroup.center();
-    console.log("textGroup", textGroup, textGroup.id);
 
-    const group = two.makeGroup(textGroup);
+    const rectGroup = two.makeGroup(rectangle);
 
-    // group.center();
+    const rectTextGroup = two.makeGroup(rectGroup, textGroup);
+
+    const group = two.makeGroup(rectTextGroup);
+
+    // const calcX = parseInt(prevX) + (parseInt(rectangle.width / 2) - 10);
+    // const calcY = parseInt(prevY) - (parseInt(46) - parseInt(rectangle.height / 2));
+
     group.translation.x = prevX || 500;
     group.translation.y = prevY || 200;
     groupInstance = group;
-    console.log("text bounding initial", text.getBoundingClientRect(true));
 
     const selector = new ObjectSelector(two, group, 0, 0, 0, 0);
     selector.create();
     selectorInstance = selector;
 
-    // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
-
-    const rectangle = two.makePath(
-      group.getBoundingClientRect(true).left - 40,
-      group.getBoundingClientRect(true).top - 10,
-
-      group.getBoundingClientRect(true).right + 10,
-      group.getBoundingClientRect(true).top - 10,
-
-      group.getBoundingClientRect(true).right + 10,
-      group.getBoundingClientRect(true).bottom + 10,
-
-      group.getBoundingClientRect(true).left - 40,
-      group.getBoundingClientRect(true).bottom + 10
-    );
-    rectangle.fill = "#0052CC";
-    rectangle.noStroke();
-
-    group.add(rectangle);
-    group.children.unshift(textGroup);
-
+    group.children.unshift(rectTextGroup);
+    // rectTextGroup.center();
+    console.log("BUtton", props.twoJSInstance);
     two.update();
 
     const getGroupElementFromDOM = document.getElementById(`${group.id}`);
@@ -122,10 +96,10 @@ function Button(props) {
     interact(`#${group.id}`).on("click", () => {
       console.log("on click ", text.getBoundingClientRect(true));
       selector.update(
-        textGroup.getBoundingClientRect(true).left - 42,
-        textGroup.getBoundingClientRect(true).right + 12,
-        textGroup.getBoundingClientRect(true).top - 12,
-        textGroup.getBoundingClientRect(true).bottom + 12
+        rectTextGroup.getBoundingClientRect(true).left - 5,
+        rectTextGroup.getBoundingClientRect(true).right + 5,
+        rectTextGroup.getBoundingClientRect(true).top - 5,
+        rectTextGroup.getBoundingClientRect(true).bottom + 5
       );
       two.update();
     });
@@ -145,11 +119,13 @@ function Button(props) {
       input.type = "text";
       input.value = text.value;
       input.style.color = "#fff";
-      input.style.fontSize = "18px";
+      input.style.fontSize = "16px";
       input.style.position = "absolute";
       input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
       input.style.left = `${getCoordOfBtnText.left}px`;
-      input.style.width = `${textGroup.getBoundingClientRect(true).width}px`;
+      input.style.width = `${
+        rectTextGroup.getBoundingClientRect(true).width
+      }px`;
       input.className = "temp-textarea";
 
       document.getElementById("main-two-root").append(input);
@@ -163,23 +139,20 @@ function Button(props) {
 
       input.addEventListener("input", () => {
         input.style.width = `${
-          textGroup.getBoundingClientRect(true).width + 4
+          rectTextGroup.getBoundingClientRect(true).width + 4
         }px`;
 
         // Synchronously update selector tool's coordinates
         text.value = input.value;
+        input.style.left = `${text.getBoundingClientRect().left}px`;
+        rectangle.width = input.value.length * 14;
+
         selector.update(
-          textGroup.getBoundingClientRect(true).left - 42,
-          textGroup.getBoundingClientRect(true).right + 12,
-          textGroup.getBoundingClientRect(true).top - 12,
-          textGroup.getBoundingClientRect(true).bottom + 12
+          rectTextGroup.getBoundingClientRect(true).left - 5,
+          rectTextGroup.getBoundingClientRect(true).right + 5,
+          rectTextGroup.getBoundingClientRect(true).top - 5,
+          rectTextGroup.getBoundingClientRect(true).bottom + 5
         );
-
-        rectangle.vertices[1].x =
-          textGroup.getBoundingClientRect(true).right + 10;
-        rectangle.vertices[2].x =
-          textGroup.getBoundingClientRect(true).right + 10;
-
         two.update();
       });
 
@@ -187,46 +160,47 @@ function Button(props) {
         twoTextInstance.style.display = "block";
         text.value = input.value;
         input.remove();
-        console.log(
-          "input blur event",
-          textGroup.id,
-          textGroup.getBoundingClientRect()
-        );
 
         // USE 4 LINES 4 CIRCLES
 
         selector.update(
-          textGroup.getBoundingClientRect(true).left - 42,
-          textGroup.getBoundingClientRect(true).right + 12,
-          textGroup.getBoundingClientRect(true).top - 12,
-          textGroup.getBoundingClientRect(true).bottom + 12
+          rectTextGroup.getBoundingClientRect(true).left - 5,
+          rectTextGroup.getBoundingClientRect(true).right + 5,
+          rectTextGroup.getBoundingClientRect(true).top - 5,
+          rectTextGroup.getBoundingClientRect(true).bottom + 5
         );
         selector.hide();
         two.update();
       });
     });
 
-    // interact(`#${group.id}`).resizable({
-    //   edges: { right: true, left: true },
+    interact(`#${group.id}`).resizable({
+      edges: { right: true, left: true },
 
-    //   listeners: {
-    //     move(event) {
-    //       var target = event.target;
-    //       var rect = event.rect;
+      listeners: {
+        move(event) {
+          var target = event.target;
+          var rect = event.rect;
 
-    //       // update the element's style
-    //       //   resizeRect.width = rect.width;
-    //       rectangle.width = rect.width;
-    //       rectangle.height = rect.height;
-    //       // rectangle.radius = parseInt(rect.width / 2);
+          // Restrict width to shrink if it has reached point
+          //  where it's width should be less than or equal to text's
+          if (rect.width > text.getBoundingClientRect().width) {
+            rectangle.width = rect.width;
+            selector.update(
+              rectTextGroup.getBoundingClientRect(true).left - 5,
+              rectTextGroup.getBoundingClientRect(true).right + 5,
+              rectTextGroup.getBoundingClientRect(true).top - 5,
+              rectTextGroup.getBoundingClientRect(true).bottom + 5
+            );
+          }
 
-    //       two.update();
-    //     },
-    //     end(event) {
-    //       console.log("the end");
-    //     },
-    //   },
-    // });
+          two.update();
+        },
+        end(event) {
+          console.log("the end");
+        },
+      },
+    });
 
     interact(`#${group.id}`).draggable({
       // enable inertial throwing
@@ -240,8 +214,6 @@ function Button(props) {
           event.target.style.transform = `translate(${event.pageX}px, ${
             event.pageY - offsetHeight
           }px)`;
-
-          two.update();
         },
         end(event) {
           console.log(
@@ -257,18 +229,10 @@ function Button(props) {
             "button_coordY",
             parseInt(event.pageY - offsetHeight)
           );
-
           dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
         },
       },
     });
-  }
-
-  function changeSVG() {
-    document.getElementById(`${externalSVGInstance.id}`).innerHTML =
-      Icon.SIDEBAR_ICON_RECTANGLE.data;
-
-    two.update();
   }
 
   // Using unmount phase to remove event listeners
@@ -291,6 +255,7 @@ function Button(props) {
   return (
     <React.Fragment>
       <div id="two-button"></div>
+      <button>change button in group</button>
     </React.Fragment>
   );
 }
