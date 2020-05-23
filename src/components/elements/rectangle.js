@@ -60,7 +60,7 @@ function Rectangle(props) {
     groupInstance = group;
     console.log("BUtton", props.twoJSInstance);
 
-    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, true);
+    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
     selector.create();
     selectorInstance = selector;
 

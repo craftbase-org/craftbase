@@ -77,7 +77,7 @@ function Image(props) {
     group.translation.y = prevY || 200;
     groupInstance = group;
 
-    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, true);
+    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
     selector.create();
     selectorInstance = selector;
 

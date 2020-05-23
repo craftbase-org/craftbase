@@ -73,7 +73,7 @@ function TextInput(props) {
     groupInstance = group;
     console.log("text bounding initial", text.getBoundingClientRect(true));
 
-    const selector = new ObjectSelector(two, group, 0, 0, 0, 0);
+    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 2);
     selector.create();
     selectorInstance = selector;
 

@@ -35,7 +35,7 @@ class App extends Component {
       // { id: 5, name: "image" },
       // { id: 6, name: "rectangle" },
       // { id: 7, name: "divider" },
-      // { id: 8, name: "avatar" },
+      { id: 8, name: "avatar" },
       // { id: 9, name: "link" },
       { id: 10, name: "text" },
       // { id: 11, name: "overlay" },
