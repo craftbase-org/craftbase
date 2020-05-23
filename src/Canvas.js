@@ -28,8 +28,8 @@ class App extends Component {
     }).appendTo(elem);
 
     const arr = [
-      { id: 1, name: "buttonwithicon" },
-      { id: 2, name: "toggle" },
+      // { id: 1, name: "buttonwithicon" },
+      // { id: 2, name: "toggle" },
       // { id: 3, name: "tooltip" },
       // { id: 4, name: "circle" },
       // { id: 5, name: "image" },
@@ -37,10 +37,15 @@ class App extends Component {
       // { id: 7, name: "divider" },
       // { id: 8, name: "avatar" },
       // { id: 9, name: "link" },
-      // { id: 10, name: "text" },
+      { id: 10, name: "text" },
       // { id: 11, name: "overlay" },
-      { id: 12, name: "button" },
+      // { id: 12, name: "button" },
+      // { id: 13, name: "checkbox" },
+      // { id: 14, name: "radiobox" },
+      { id: 15, name: "textinput" },
+      { id: 16, name: "dropdown" },
     ];
+
     this.props.getElementsData("CONSTRUCT", arr);
     this.setState({ twoJSInstance: two });
   }

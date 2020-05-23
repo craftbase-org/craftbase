@@ -44,4 +44,14 @@ export default {
     data:
       '<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" viewBox="0 0 340 340"><path d="M 1 1 L 1 1.5 L 1 15 L 15 15 L 15 1 L 1 1 z M 2 2 L 14 2 L 14 9.1640625 L 11.650391 6.2207031 L 9.078125 9.1816406 L 5.9960938 5.1855469 L 2 9.6855469 L 2 2 z M 5.9394531 6.7519531 L 8.4082031 9.9511719 L 8.4042969 9.9550781 L 8.421875 9.9707031 L 11.529297 14 L 2 14 L 2 11.189453 L 5.9394531 6.7519531 z M 11.617188 7.78125 L 14 10.767578 L 14 14 L 12.794922 14 L 9.6992188 9.9863281 L 11.617188 7.78125 z " color="#000" enable-background="accumulate" font-family="sans-serif" font-weight="400" overflow="visible" style="line-height:normal;text-indent:0;text-align:start;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:#000;text-transform:none;block-progression:tb;white-space:normal;isolation:auto;mix-blend-mode:normal;solid-color:#000;solid-opacity:1" fill="#ffffff" class="color000 svgShape"></path></svg>',
   },
+  ICON_CHECKBOX_1: {
+    viewBox: "0 0 16 16",
+    data:
+      '<g xmlns="http://www.w3.org/2000/svg" id="SvgjsG1008" transform="matrix(0.9167,0,0,0.9167,11.995200000000011,11.995200000000011)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><path d="M405.333 64H106.667C83.198 64 64 83.198 64 106.667v298.666C64 428.802 83.198 448 106.667 448h298.666C428.802 448 448 428.802 448 405.333V106.667C448 83.198 428.802 64 405.333 64zm-192 298.667L106.667 256l29.864-29.864 76.802 76.802 162.136-162.136 29.864 29.865-192 192z" fill="#0052cc" class="color000 svgShape"/></svg></g>',
+  },
+  ICON_DROPDOWN_CARET: {
+    viewBox: "0 0 16 16",
+    data:
+      '<g xmlns="http://www.w3.org/2000/svg" id="SvgjsG1008" transform="matrix(0.9167,0,0,0.9167,11.995200000000011,11.995200000000011)"><svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" viewBox="0 0 48 48"><path d="M14 20l10 10 10-10z" fill="#B3BAC5" class="color000 svgShape"/><path fill="none" d="M0 0h48v48h-48z"/></svg></g>',
+  },
 };

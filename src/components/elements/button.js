@@ -54,14 +54,14 @@ function Button(props) {
     const prevY = localStorage.getItem("button_coordY");
 
     const rectangle = two.makeRoundedRectangle(0, 0, 140, 45, 5);
-    rectangle.fill = "#0747A6";
+    rectangle.fill = "#0052CC";
     rectangle.noStroke();
     rectangleInstance = rectangle;
 
     const text = two.makeText("Button", 10, 0);
     text.size = "16";
     text.fill = "#fff";
-    text.weight = "600";
+    text.weight = "400";
     text.family = "Ubuntu";
 
     const textGroup = two.makeGroup(text);
@@ -106,7 +106,7 @@ function Button(props) {
 
     // Captures double click event for text
     // and generates temporary textarea support for it
-    text._renderer.elem.addEventListener("dblclick", () => {
+    text._renderer.elem.addEventListener("click", () => {
       console.log("on click for texy", text.id);
 
       // Hide actual text and replace it with input box
@@ -138,14 +138,23 @@ function Button(props) {
       input.focus();
 
       input.addEventListener("input", () => {
+        let prevTextValue = text.value;
         input.style.width = `${
           rectTextGroup.getBoundingClientRect(true).width + 4
         }px`;
 
         // Synchronously update selector tool's coordinates
         text.value = input.value;
-        input.style.left = `${text.getBoundingClientRect().left}px`;
-        rectangle.width = input.value.length * 14;
+
+        // calculate difference to add to vertex's coordinates
+        const diff = text.value.length - prevTextValue.length;
+
+        if (diff < -2) {
+          rectangle.width = rectangle.width + diff * 8 + 20;
+        } else {
+          rectangle.width =
+            diff < 0 ? rectangle.width + diff * 8 : rectangle.width + diff * 14;
+        }
 
         selector.update(
           rectTextGroup.getBoundingClientRect(true).left - 5,
@@ -154,6 +163,10 @@ function Button(props) {
           rectTextGroup.getBoundingClientRect(true).bottom + 5
         );
         two.update();
+        input.style.left = `${
+          document.getElementById(rectangle.id).getBoundingClientRect().left +
+          20
+        }px`;
       });
 
       input.addEventListener("blur", () => {
@@ -214,6 +227,7 @@ function Button(props) {
           event.target.style.transform = `translate(${event.pageX}px, ${
             event.pageY - offsetHeight
           }px)`;
+          two.update();
         },
         end(event) {
           console.log(

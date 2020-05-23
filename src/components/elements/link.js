@@ -56,7 +56,7 @@ function Link(props) {
 
     const text = two.makeText("Link", 10, 0);
     text.size = "16";
-    text.weight = "600";
+    text.weight = "400";
     text.family = "Ubuntu";
     text.decoration = "underline";
     text.size = 18;

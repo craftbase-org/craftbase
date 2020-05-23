@@ -99,7 +99,7 @@ function Tooltip(props) {
     const text = new Two.Text("Tooltip", 0, 0);
     text.size = "16";
     text.fill = "#fff";
-    text.weight = "600";
+    text.weight = "400";
     text.family = "Ubuntu";
     tooltipText = text;
 

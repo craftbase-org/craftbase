@@ -16,10 +16,11 @@
   opacity: 0;
 }
 
-text,
-g,
-path {
-  // cursor: initial;
+text
+// g
+// path
+{
+  cursor: pointer !important;
 }
 
 button:focus {

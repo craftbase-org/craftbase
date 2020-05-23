@@ -56,7 +56,7 @@ function ButtonWithIcon(props) {
 
     const text = two.makeText("Button", 10, 0);
     text.size = "16";
-    text.weight = "600";
+    text.weight = "400";
     text.family = "Ubuntu";
     text.size = 18;
     text.fill = "#fff";
@@ -168,7 +168,7 @@ function ButtonWithIcon(props) {
 
     // Captures double click event for text
     // and generates temporary textarea support for it
-    text._renderer.elem.addEventListener("dblclick", () => {
+    text._renderer.elem.addEventListener("click", () => {
       console.log("on click for texy", text.id);
 
       // Hide actual text and replace it with input box
@@ -228,7 +228,6 @@ function ButtonWithIcon(props) {
           textGroup.id,
           textGroup.getBoundingClientRect()
         );
-
         // USE 4 LINES 4 CIRCLES
 
         selector.update(
