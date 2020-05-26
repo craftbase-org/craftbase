@@ -56,7 +56,6 @@ function TextInput(props) {
     const text = two.makeText("Text input", -30, 0);
     text.size = "14";
     text.weight = "400";
-    text.family = "Ubuntu";
     text.fill = "#B3BAC5";
     // text.baseline = "sub";
     text.alignment = "left";
@@ -139,7 +138,7 @@ function TextInput(props) {
       input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
       input.style.left = `${getCoordOfBtnText.left}px`;
       input.style.width = `${textGroup.getBoundingClientRect(true).width}px`;
-      input.className = "temp-textarea";
+      input.className = "temp-input-area";
 
       document.getElementById("main-two-root").append(input);
 
@@ -157,17 +156,27 @@ function TextInput(props) {
 
         // Synchronously update selector tool's coordinates
         text.value = input.value;
-        selector.update(
-          textGroup.getBoundingClientRect(true).left - 20,
-          textGroup.getBoundingClientRect(true).right + 90,
-          textGroup.getBoundingClientRect(true).top - 20,
-          textGroup.getBoundingClientRect(true).bottom + 20
+        console.log(
+          "text input",
+          text.getBoundingClientRect(true).width,
+          rectangle.getBoundingClientRect(true).width
         );
 
-        rectangle.vertices[1].x =
-          textGroup.getBoundingClientRect(true).right + 42;
-        rectangle.vertices[2].x =
-          textGroup.getBoundingClientRect(true).right + 42;
+        if (
+          text.getBoundingClientRect(true).width >
+          rectangle.getBoundingClientRect(true).width
+        ) {
+          rectangle.vertices[1].x =
+            textGroup.getBoundingClientRect(true).right - 30;
+          rectangle.vertices[2].x =
+            textGroup.getBoundingClientRect(true).right - 30;
+          selector.update(
+            textGroup.getBoundingClientRect(true).left - 20,
+            textGroup.getBoundingClientRect(true).right + 20,
+            textGroup.getBoundingClientRect(true).top - 20,
+            textGroup.getBoundingClientRect(true).bottom + 20
+          );
+        }
 
         two.update();
       });

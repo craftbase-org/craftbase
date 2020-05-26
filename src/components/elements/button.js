@@ -61,8 +61,7 @@ function Button(props) {
     const text = two.makeText("Button", 10, 0);
     text.size = "16";
     text.fill = "#fff";
-    text.weight = "400";
-    text.family = "Ubuntu";
+    text.weight = "500";
 
     const textGroup = two.makeGroup(text);
     textGroup.center();
@@ -126,7 +125,7 @@ function Button(props) {
       input.style.width = `${
         rectTextGroup.getBoundingClientRect(true).width
       }px`;
-      input.className = "temp-textarea";
+      input.className = "temp-input-area";
 
       document.getElementById("main-two-root").append(input);
 

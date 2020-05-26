@@ -73,7 +73,6 @@ function Checkbox(props) {
     currentCheckboxes.forEach((item, index) => {
       let text = new Two.Text(item.name, 10, index * 30);
       text.alignment = "left";
-      text.family = "Ubuntu";
       text.size = "16";
       text.weight = "400";
       text.baseline = "central";
@@ -138,7 +137,6 @@ function Checkbox(props) {
         checkboxCounter * 30
       );
       text.alignment = "left";
-      text.family = "Ubuntu";
       text.size = "16";
       text.weight = "400";
       text.baseline = "central";
@@ -224,7 +222,7 @@ function Checkbox(props) {
           input.style.width = `${
             checkboxGroup.getBoundingClientRect(true).width
           }px`;
-          input.className = "temp-textarea";
+          input.className = "temp-input-area";
 
           // Appending in space of two's root element
           document.getElementById("main-two-root").append(input);

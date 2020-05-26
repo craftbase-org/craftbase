@@ -21,6 +21,7 @@ text
 // path
 {
   cursor: pointer !important;
+  font-family: "Work Sans", sans-serif;
 }
 
 button:focus {
@@ -62,26 +63,40 @@ button:focus {
   }
 }
 
-.temp-textarea-btn {
+.temp-input-area-btn {
   background: transparent;
   border: none;
   color: #fff;
-  font-family: Ubuntu;
+  font-family: "Work Sans";
   font-weight: 600;
   font-size: 16px;
   resize: none;
   outline: none !important;
 }
 
-.temp-textarea {
+.temp-input-area {
   background: transparent;
   border: none;
   color: #000;
-  font-family: Ubuntu;
+  font-family: "Work Sans";
   font-weight: 600;
   font-size: 16px;
   resize: none;
   outline: none !important;
+  line-height: 1.5rem;
+}
+
+.temp-textarea {
+  background: transparent;
+  border: none;
+  color: #000;
+  font-family: "Work Sans";
+  font-weight: 600;
+  font-size: 16px;
+  resize: none;
+  outline: none !important;
+  line-height: 1.5rem;
+  overflow-y: hidden;
 }
 
 /* Sidebar css */

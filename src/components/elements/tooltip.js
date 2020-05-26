@@ -100,7 +100,6 @@ function Tooltip(props) {
     text.size = "16";
     text.fill = "#fff";
     text.weight = "400";
-    text.family = "Ubuntu";
     tooltipText = text;
 
     const group = two.makeGroup(mainRect, secondaryRect, text);
@@ -146,7 +145,7 @@ function Tooltip(props) {
       input.style.width = `${getCoordOfText.width}px`;
       input.style.height = `${getCoordOfContainer.height}px`;
       input.style.overflow = "hidden";
-      input.className = "temp-textarea";
+      input.className = "temp-input-area";
       initialScrollHeight = 40;
 
       document.getElementById("main-two-root").append(input);

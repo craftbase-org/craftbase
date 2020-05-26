@@ -57,7 +57,7 @@ function ButtonWithIcon(props) {
     const text = two.makeText("Button", 10, 0);
     text.size = "16";
     text.weight = "400";
-    text.family = "Ubuntu";
+    // ;
     text.size = 18;
     text.fill = "#fff";
     // text.baseline = "sub";
@@ -139,8 +139,8 @@ function ButtonWithIcon(props) {
       group.getBoundingClientRect(true).left - 40,
       group.getBoundingClientRect(true).bottom + 10
     );
-    rectangle.fill = "#0052CC";
-    rectangle.stroke = "#0052CC";
+    rectangle.fill = "#36B37E";
+    rectangle.stroke = "#36B37E";
     rectangle.linewidth = 8;
     rectangle.join = "round";
 
@@ -186,7 +186,7 @@ function ButtonWithIcon(props) {
       input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
       input.style.left = `${getCoordOfBtnText.left}px`;
       input.style.width = `${textGroup.getBoundingClientRect(true).width}px`;
-      input.className = "temp-textarea";
+      input.className = "temp-input-area";
 
       document.getElementById("main-two-root").append(input);
 
