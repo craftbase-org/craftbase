@@ -42,7 +42,6 @@ function Avatar(props) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-
     const prevX = localStorage.getItem("avatar_coordX");
     const prevY = localStorage.getItem("avatar_coordY");
 
@@ -56,116 +55,120 @@ function Avatar(props) {
     );
     console.log("svgImage", svgImage, circle.width / 2);
     const externalSVG = two.interpret(svgImage.firstChild);
-    // externalSVG.translation.x = -circle.width / 8;
-    // externalSVG.translation.y = -circle.height / 8;
     externalSVG.scale = 1.5;
     externalSVG.center();
     externalSVGInstance = externalSVG;
 
     const initialScaleCoefficient = parseInt(circle.radius / externalSVG.scale);
-
     const circleSvgGroup = two.makeGroup(circle, externalSVG);
 
-    const group = two.makeGroup(circleSvgGroup);
+    if (props.parentGroup) {
+      /** This element will be rendered and scoped in its parent group */
+      const parentGroup = props.parentGroup;
+      circleSvgGroup.translation.x = props.metaData.x;
 
-    group.center();
-    group.translation.x = prevX || 500;
-    group.translation.y = prevY || 200;
-    groupInstance = group;
-
-    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
-    selector.create();
-    selectorInstance = selector;
-
-    group.children.unshift(circleSvgGroup);
-
-    // console.log("Avatar", props.twoJSInstance);
-    two.update();
-
-    const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-    getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-    getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
-
-    interact(`#${group.id}`).on("click", () => {
-      console.log("on click ");
-      selector.update(
-        circle.getBoundingClientRect(true).left - 3,
-        circle.getBoundingClientRect(true).right + 3,
-        circle.getBoundingClientRect(true).top - 3,
-        circle.getBoundingClientRect(true).bottom + 3
-      );
+      parentGroup.add(circleSvgGroup);
       two.update();
-    });
+    } else {
+      /** This element will render by creating it's own group wrapper */
+      const group = two.makeGroup(circleSvgGroup);
+      group.center();
+      group.translation.x = prevX || 500;
+      group.translation.y = prevY || 200;
+      groupInstance = group;
 
-    // Captures double click event for text
-    // and generates temporary textarea support for it
+      // After creating group, pass it's instance to selector class
+      const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
+      selector.create();
+      selectorInstance = selector;
 
-    interact(`#${group.id}`).resizable({
-      edges: { right: true, left: true, top: true, bottom: true },
+      group.children.unshift(circleSvgGroup);
+      two.update();
 
-      listeners: {
-        move(event) {
-          const rect = event.rect;
-          const rectRadii = parseInt(rect.width / 2);
+      const getGroupElementFromDOM = document.getElementById(`${group.id}`);
+      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
+      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
 
-          // Prevent the circle radius to be shrinked to less than 10
-          if (rectRadii > 11) {
-            // update the element's style
-            circle.width = rect.width;
-            circle.height = rect.height;
-            circle.radius = parseInt(rect.width / 2);
+      interact(`#${group.id}`).on("click", () => {
+        console.log("on click ");
+        selector.update(
+          circle.getBoundingClientRect(true).left - 3,
+          circle.getBoundingClientRect(true).right + 3,
+          circle.getBoundingClientRect(true).top - 3,
+          circle.getBoundingClientRect(true).bottom + 3
+        );
+        two.update();
+      });
 
-            // console.log("circle.radius", circle.radius);
-            externalSVG.scale = circle.radius / initialScaleCoefficient;
-            externalSVG.center();
+      // Apply resizable property to element
+      interact(`#${group.id}`).resizable({
+        edges: { right: true, left: true, top: true, bottom: true },
 
-            selector.update(
-              circle.getBoundingClientRect(true).left - 3,
-              circle.getBoundingClientRect(true).right + 3,
-              circle.getBoundingClientRect(true).top - 3,
-              circle.getBoundingClientRect(true).bottom + 3
+        listeners: {
+          move(event) {
+            const rect = event.rect;
+            const rectRadii = parseInt(rect.width / 2);
+
+            // Prevent the circle radius to be shrinked to less than 10
+            if (rectRadii > 11) {
+              // update the element's style
+              circle.width = rect.width;
+              circle.height = rect.height;
+              circle.radius = parseInt(rect.width / 2);
+
+              // console.log("circle.radius", circle.radius);
+              externalSVG.scale = circle.radius / initialScaleCoefficient;
+              externalSVG.center();
+
+              selector.update(
+                circle.getBoundingClientRect(true).left - 3,
+                circle.getBoundingClientRect(true).right + 3,
+                circle.getBoundingClientRect(true).top - 3,
+                circle.getBoundingClientRect(true).bottom + 3
+              );
+            }
+
+            two.update();
+          },
+          end(event) {
+            console.log("the end");
+          },
+        },
+      });
+
+      // Apply draggable property to element
+      interact(`#${group.id}`).draggable({
+        // enable inertial throwing
+        inertia: false,
+
+        listeners: {
+          start(event) {
+            // console.log(event.type, event.target);
+          },
+          move(event) {
+            event.target.style.transform = `translate(${event.pageX}px, ${
+              event.pageY - offsetHeight
+            }px)`;
+          },
+          end(event) {
+            console.log(
+              "event x",
+              event.target.getBoundingClientRect(),
+              event.rect.left,
+              event.pageX,
+              event.clientX
             );
-          }
-
-          two.update();
+            // alternate -> take event.rect.left for x
+            localStorage.setItem("avatar_coordX", parseInt(event.pageX));
+            localStorage.setItem(
+              "avatar_coordY",
+              parseInt(event.pageY - offsetHeight)
+            );
+            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+          },
         },
-        end(event) {
-          console.log("the end");
-        },
-      },
-    });
-
-    interact(`#${group.id}`).draggable({
-      // enable inertial throwing
-      inertia: false,
-
-      listeners: {
-        start(event) {
-          // console.log(event.type, event.target);
-        },
-        move(event) {
-          event.target.style.transform = `translate(${event.pageX}px, ${
-            event.pageY - offsetHeight
-          }px)`;
-        },
-        end(event) {
-          console.log(
-            "event x",
-            event.target.getBoundingClientRect(),
-            event.rect.left,
-            event.pageX,
-            event.clientX
-          );
-          // alternate -> take event.rect.left for x
-          localStorage.setItem("avatar_coordX", parseInt(event.pageX));
-          localStorage.setItem(
-            "avatar_coordY",
-            parseInt(event.pageY - offsetHeight)
-          );
-          dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
-        },
-      },
-    });
+      });
+    }
   }
 
   // Using unmount phase to remove event listeners

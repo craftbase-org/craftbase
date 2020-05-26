@@ -1,4 +1,4 @@
-import { CONSTRUCT, COMPLETE, ADD_ELEMENT } from "redux/types";
+import { CONSTRUCT, COMPLETE, ADD_ELEMENT, UNGROUP_ELEMENT } from "redux/types";
 
 const initial_state = {
   app: {},
@@ -37,6 +37,31 @@ export default (state = initial_state, action) => {
         ...state,
         currentStatus: "complete",
         elementData: newElementsData,
+        lastAddedElement: action.payload,
+      };
+
+    case UNGROUP_ELEMENT:
+      const groupToBeRemoved = action.payload.data.groupId;
+      const indexOfGroup = state.elementData.findIndex(
+        (x) => x.id === groupToBeRemoved
+      );
+      console.log(
+        "getIndexOf",
+        indexOfGroup,
+        action.payload,
+        state.elementData
+      );
+
+      const extractChildrenElements = [
+        ...state.elementData[indexOfGroup].children,
+      ];
+
+      state.elementData.splice(indexOfGroup, 1);
+
+      return {
+        ...state,
+        currentStatus: "construct",
+        elementData: [...state.elementData, ...extractChildrenElements],
         lastAddedElement: action.payload,
       };
 

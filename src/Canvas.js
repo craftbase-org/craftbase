@@ -28,22 +28,31 @@ class App extends Component {
     }).appendTo(elem);
 
     const arr = [
-      // { id: 1, name: "buttonwithicon" },
+      { id: 1, name: "buttonwithicon" },
       // { id: 2, name: "toggle" },
       // { id: 3, name: "tooltip" },
       // { id: 4, name: "circle" },
       // { id: 5, name: "image" },
-      // { id: 6, name: "rectangle" },
+      { id: 6, name: "rectangle" },
       // { id: 7, name: "divider" },
-      { id: 8, name: "avatar" },
+      // { id: 8, name: "avatar" },
       // { id: 9, name: "link" },
       { id: 10, name: "text" },
       // { id: 11, name: "overlay" },
-      // { id: 12, name: "button" },
+      { id: 12, name: "button" },
       // { id: 13, name: "checkbox" },
       // { id: 14, name: "radiobox" },
       { id: 15, name: "textinput" },
-      { id: 16, name: "dropdown" },
+      // { id: 16, name: "dropdown" },
+      // { id: 17, name: "textarea" },
+      {
+        id: 18,
+        name: "groupobject",
+        children: [
+          { id: 9, name: "link", x: 30 },
+          { id: 8, name: "avatar", x: -30 },
+        ],
+      },
     ];
 
     this.props.getElementsData("CONSTRUCT", arr);
@@ -66,6 +75,7 @@ class App extends Component {
       const Element = ElementWrapper(item.name, {
         twoJSInstance: this.state.twoJSInstance,
         id: item.id,
+        childrenArr: item.children,
       });
       return <Element />;
     });
