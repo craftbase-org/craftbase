@@ -34,7 +34,7 @@ export default class Selector {
 
     let circleGroup = null;
     if (this.showCircles) {
-      console.log("show circles 1", this.showCircles);
+      // console.log("show circles 1", this.showCircles);
       switch (this.showCircles) {
         case 2:
           console.log("falls in case 2");
@@ -113,6 +113,8 @@ export default class Selector {
           const yAxisMidpoint = (y1 + y2) / 2;
           this.circle1.translation.set(x1, yAxisMidpoint);
           this.circle2.translation.set(x2, yAxisMidpoint);
+          this.circle3.opacity = 0;
+          this.circle4.opacity = 0;
           this.circleGroup.opacity = 1;
           break;
         case 4:

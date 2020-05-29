@@ -21,6 +21,7 @@ class App extends Component {
   }
 
   componentDidMount() {
+    console.log("CANVAS CDM");
     const elem = document.getElementById("main-two-root");
     const two = new Two({
       fullscreen: true,
@@ -28,15 +29,15 @@ class App extends Component {
     }).appendTo(elem);
 
     const arr = [
-      { id: 1, name: "buttonwithicon" },
+      // { id: 1, name: "buttonwithicon" },
       // { id: 2, name: "toggle" },
       // { id: 3, name: "tooltip" },
       // { id: 4, name: "circle" },
-      // { id: 5, name: "image" },
-      { id: 6, name: "rectangle" },
+      // { id: 5, name: "imagecard" },
+      // { id: 6, name: "rectangle" },
       // { id: 7, name: "divider" },
-      // { id: 8, name: "avatar" },
-      // { id: 9, name: "link" },
+      { id: 8, name: "avatar" },
+      // { id: 9, name: "linkwithicon" },
       { id: 10, name: "text" },
       // { id: 11, name: "overlay" },
       { id: 12, name: "button" },
@@ -45,18 +46,24 @@ class App extends Component {
       { id: 15, name: "textinput" },
       // { id: 16, name: "dropdown" },
       // { id: 17, name: "textarea" },
-      {
-        id: 18,
-        name: "groupobject",
-        children: [
-          { id: 9, name: "link", x: 30 },
-          { id: 8, name: "avatar", x: -30 },
-        ],
-      },
+      // {
+      //   id: 18,
+      //   name: "groupobject",
+      //   children: [
+      //     { id: 9, name: "link", x: 30 },
+      //     { id: 8, name: "avatar", x: -30 },
+      //   ],
+      // },
     ];
 
     this.props.getElementsData("CONSTRUCT", arr);
     this.setState({ twoJSInstance: two });
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevProps.elementData !== this.props.elementData) {
+      // this.state.twoJSInstance.scene.remove();
+    }
   }
 
   changeInPlan = () => {
@@ -70,6 +77,11 @@ class App extends Component {
   };
 
   renderElements = () => {
+    console.log(
+      "At the time of rendering",
+      this.state.twoJSInstance.scene.children
+    );
+
     const elements = this.props.elementData;
     const renderData = elements.map((item) => {
       const Element = ElementWrapper(item.name, {
@@ -77,7 +89,11 @@ class App extends Component {
         id: item.id,
         childrenArr: item.children,
       });
-      return <Element />;
+      return (
+        <React.Fragment key={item.id}>
+          <Element />
+        </React.Fragment>
+      );
     });
 
     return renderData;
@@ -98,7 +114,6 @@ class App extends Component {
       <React.Fragment>
         <div id="rsz-rect"></div>
         <div id="main-two-root"></div>
-        <Rectangle twoJSInstance={this.state.twoJSInstance} />
         {this.state.twoJSInstance && (
           <React.Fragment>
             {" "}
@@ -114,7 +129,7 @@ class App extends Component {
           </React.Fragment>
         )}
 
-        <div class="controls">
+        <div className="controls">
           <p>
             <button id="add" onClick={() => this.addElements("button", 2)}>
               Add a rectangle

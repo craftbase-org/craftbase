@@ -57,11 +57,14 @@ export default (state = initial_state, action) => {
       ];
 
       state.elementData.splice(indexOfGroup, 1);
-
+      const updatedElementsData = [
+        ...state.elementData,
+        ...extractChildrenElements,
+      ];
       return {
         ...state,
         currentStatus: "construct",
-        elementData: [...state.elementData, ...extractChildrenElements],
+        elementData: updatedElementsData,
         lastAddedElement: action.payload,
       };
 
