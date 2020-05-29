@@ -1,40 +1,18 @@
-import React, { Component, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
-import idx from "idx";
-import Two from "two.js";
 import interact from "interactjs";
-import {
-  createSelectorHook,
-  createDispatchHook,
-  useDispatch,
-  useSelector,
-} from "react-redux";
-import Icon from "icons/icons";
+import { useDispatch, useSelector } from "react-redux";
 import ObjectSelector from "components/utils/objectSelector";
 import { setPeronsalInformation } from "redux/actions/main";
-
-// const useSelector = createSelectorHook(ReactReduxContext);
-// const useDispatch = createDispatchHook(ReactReduxContext);
+import ElementFactory from "factory/text";
 
 function Text(props) {
-  const status = useSelector((state) => state.main.currentStatus);
-  const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
+  const [isRendered, setIsRendered] = useState(false);
+  const [groupInstance, setGroupInstance] = useState(null);
   const dispatch = useDispatch();
-  console.log(
-    "useSelector",
-    useSelector((state) => state)
-  );
   const two = props.twoJSInstance;
-  console.log(
-    "CONDITION",
-    props.id,
-    props.twoJSInstance &&
-      (status === "construct" || lastAddedElement.id === props.id)
-  );
-
-  let rectangleInstance = null;
-  let groupInstance = null;
   let selectorInstance = null;
+  let groupObject = null;
 
   function onBlurHandler(e) {
     selectorInstance.hide();
@@ -42,238 +20,224 @@ function Text(props) {
   }
 
   function onFocusHandler(e) {
-    document.getElementById(`${groupInstance.id}`).style.outline = 0;
+    document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (status === "construct" || lastAddedElement.id === props.id) {
+  if (isRendered === false) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-
     const prevX = localStorage.getItem("text_coordX");
     const prevY = localStorage.getItem("text_coordY");
 
-    const rectangle = two.makeRoundedRectangle(0, 0, 140, 45, 5);
-    rectangle.fill = "rgba(0,0,0,0)";
-    rectangle.noStroke();
-    rectangleInstance = rectangle;
+    // Instantiate factory
+    const elementFactory = new ElementFactory(two, prevX, prevY, {});
+    // Get all instances of every sub child element
+    const {
+      group,
+      rectTextGroup,
+      text,
+      rectangle,
+    } = elementFactory.createElement();
 
-    const text = two.makeText("Button", 10, 0);
-    text.size = "16";
-    text.fill = "#0052CC";
-    text.weight = "400";
-    const textGroup = two.makeGroup(text);
-    textGroup.center();
-
-    const rectGroup = two.makeGroup(rectangle);
-
-    const rectTextGroup = two.makeGroup(rectGroup, textGroup);
-
-    const group = two.makeGroup(rectTextGroup);
-
-    // const calcX = parseInt(prevX) + (parseInt(rectangle.width / 2) - 10);
-    // const calcY = parseInt(prevY) - (parseInt(46) - parseInt(rectangle.height / 2));
-
-    group.translation.x = prevX || 500;
-    group.translation.y = prevY || 200;
-    groupInstance = group;
-
-    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
-    selector.create();
-    selectorInstance = selector;
-
-    group.children.unshift(rectTextGroup);
-    // rectTextGroup.center();
-    console.log("BUtton", props.twoJSInstance);
-    two.update();
-
-    const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-    getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-    getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
-
-    interact(`#${group.id}`).on("click", () => {
-      console.log("on click ", text.getBoundingClientRect(true));
-      selector.update(
-        rectTextGroup.getBoundingClientRect(true).left - 5,
-        rectTextGroup.getBoundingClientRect(true).right + 5,
-        rectTextGroup.getBoundingClientRect(true).top - 5,
-        rectTextGroup.getBoundingClientRect(true).bottom + 5
-      );
+    if (props.parentGroup) {
+      /** This element will be rendered and scoped in its parent group */
+      const parentGroup = props.parentGroup;
+      parentGroup.add(rectTextGroup);
       two.update();
-    });
+    } else {
+      /** This element will render by creating it's own group wrapper */
+      groupObject = group;
+      if (groupInstance === null) setGroupInstance(group);
 
-    // Captures double click event for text
-    // and generates temporary textarea support for it
-    text._renderer.elem.addEventListener("dblclick", () => {
-      console.log("on click for texy", text.id);
+      const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
+      selector.create();
+      selectorInstance = selector;
 
-      // Hide actual text and replace it with input box
-      const twoTextInstance = document.getElementById(`${text.id}`);
-      const getCoordOfBtnText = twoTextInstance.getBoundingClientRect();
-      twoTextInstance.style.display = "none";
+      group.children.unshift(rectTextGroup);
+      two.update();
 
-      const input = document.createElement("input");
-      const topBuffer = 2;
-      input.type = "text";
-      input.value = text.value;
-      input.style.color = "#0052CC";
-      input.style.fontSize = `${text.size}px`;
-      input.style.position = "absolute";
-      input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
-      input.style.left = `${getCoordOfBtnText.left}px`;
-      input.style.width = `${
-        rectTextGroup.getBoundingClientRect(true).width
-      }px`;
-      input.className = "temp-input-area";
+      const getGroupElementFromDOM = document.getElementById(`${group.id}`);
+      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
+      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
 
-      document.getElementById("main-two-root").append(input);
-
-      input.onfocus = function (e) {
-        console.log("on input focus");
-        selector.show();
+      interact(`#${group.id}`).on("click", () => {
+        console.log("on click ", text.getBoundingClientRect(true));
+        selector.update(
+          rectTextGroup.getBoundingClientRect(true).left - 5,
+          rectTextGroup.getBoundingClientRect(true).right + 5,
+          rectTextGroup.getBoundingClientRect(true).top - 5,
+          rectTextGroup.getBoundingClientRect(true).bottom + 5
+        );
         two.update();
-      };
-      input.focus();
+      });
 
-      input.addEventListener("input", () => {
+      // Captures double click event for text
+      // and generates temporary textarea support for it
+      text._renderer.elem.addEventListener("dblclick", () => {
+        console.log("on click for texy", text.id);
+
+        // Hide actual text and replace it with input box
+        const twoTextInstance = document.getElementById(`${text.id}`);
+        const getCoordOfBtnText = twoTextInstance.getBoundingClientRect();
+        twoTextInstance.style.display = "none";
+
+        const input = document.createElement("input");
+        const topBuffer = 2;
+        input.type = "text";
+        input.value = text.value;
+        input.style.color = "#0052CC";
+        input.style.fontSize = `${text.size}px`;
+        input.style.position = "absolute";
+        input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
+        input.style.left = `${getCoordOfBtnText.left}px`;
         input.style.width = `${
-          rectTextGroup.getBoundingClientRect(true).width + 4
+          rectTextGroup.getBoundingClientRect(true).width
         }px`;
+        input.className = "temp-input-area";
 
-        // Synchronously update selector tool's coordinates
-        text.value = input.value;
-        rectangle.width = input.value.length * 14;
+        document.getElementById("main-two-root").append(input);
 
-        selector.update(
-          rectTextGroup.getBoundingClientRect(true).left - 5,
-          rectTextGroup.getBoundingClientRect(true).right + 5,
-          rectTextGroup.getBoundingClientRect(true).top - 5,
-          rectTextGroup.getBoundingClientRect(true).bottom + 5
-        );
-        two.update();
-        input.style.left = `${
-          document.getElementById(rectangle.id).getBoundingClientRect().left +
-          20
-        }px`;
+        input.onfocus = function (e) {
+          console.log("on input focus");
+          selector.show();
+          two.update();
+        };
+        input.focus();
+
+        input.addEventListener("input", () => {
+          input.style.width = `${
+            rectTextGroup.getBoundingClientRect(true).width + 4
+          }px`;
+
+          // Synchronously update selector tool's coordinates
+          text.value = input.value;
+          rectangle.width = input.value.length * 14;
+
+          selector.update(
+            rectTextGroup.getBoundingClientRect(true).left - 5,
+            rectTextGroup.getBoundingClientRect(true).right + 5,
+            rectTextGroup.getBoundingClientRect(true).top - 5,
+            rectTextGroup.getBoundingClientRect(true).bottom + 5
+          );
+          two.update();
+          input.style.left = `${
+            document.getElementById(rectangle.id).getBoundingClientRect().left +
+            20
+          }px`;
+        });
+
+        input.addEventListener("blur", () => {
+          twoTextInstance.style.display = "block";
+          text.value = input.value;
+          input.remove();
+
+          // USE 4 LINES 4 CIRCLES
+
+          selector.update(
+            rectTextGroup.getBoundingClientRect(true).left - 5,
+            rectTextGroup.getBoundingClientRect(true).right + 5,
+            rectTextGroup.getBoundingClientRect(true).top - 5,
+            rectTextGroup.getBoundingClientRect(true).bottom + 5
+          );
+          selector.hide();
+          two.update();
+        });
       });
 
-      input.addEventListener("blur", () => {
-        twoTextInstance.style.display = "block";
-        text.value = input.value;
-        input.remove();
+      interact(`#${group.id}`).resizable({
+        edges: { right: true, left: true, top: true, bottom: true },
 
-        // USE 4 LINES 4 CIRCLES
+        listeners: {
+          move(event) {
+            var target = event.target;
+            var rect = event.rect;
 
-        selector.update(
-          rectTextGroup.getBoundingClientRect(true).left - 5,
-          rectTextGroup.getBoundingClientRect(true).right + 5,
-          rectTextGroup.getBoundingClientRect(true).top - 5,
-          rectTextGroup.getBoundingClientRect(true).bottom + 5
-        );
-        selector.hide();
-        two.update();
+            const rosterSize = rect.width / 6;
+            // Restrict width to shrink if it has reached point
+            //  where it's width should be less than or equal to text's
+            if (rect.width > text.getBoundingClientRect().width) {
+              rectangle.width = rect.width;
+              rectangle.height = rect.height;
+              text.size = rosterSize;
+              selector.update(
+                rectTextGroup.getBoundingClientRect(true).left - 5,
+                rectTextGroup.getBoundingClientRect(true).right + 5,
+                rectTextGroup.getBoundingClientRect(true).top - 5,
+                rectTextGroup.getBoundingClientRect(true).bottom + 5
+              );
+            }
+
+            two.update();
+          },
+          end(event) {
+            console.log("the end");
+          },
+        },
       });
-    });
 
-    interact(`#${group.id}`).resizable({
-      edges: { right: true, left: true, top: true, bottom: true },
+      interact(`#${group.id}`).draggable({
+        // enable inertial throwing
+        inertia: false,
 
-      listeners: {
-        move(event) {
-          var target = event.target;
-          var rect = event.rect;
+        listeners: {
+          start(event) {
+            // console.log(event.type, event.target);
+          },
+          move(event) {
+            event.target.style.transform = `translate(${event.pageX}px, ${
+              event.pageY - offsetHeight
+            }px)`;
 
-          const rosterSize = rect.width / 6;
-          // Restrict width to shrink if it has reached point
-          //  where it's width should be less than or equal to text's
-          if (rect.width > text.getBoundingClientRect().width) {
-            rectangle.width = rect.width;
-            rectangle.height = rect.height;
-            text.size = rosterSize;
-            selector.update(
-              rectTextGroup.getBoundingClientRect(true).left - 5,
-              rectTextGroup.getBoundingClientRect(true).right + 5,
-              rectTextGroup.getBoundingClientRect(true).top - 5,
-              rectTextGroup.getBoundingClientRect(true).bottom + 5
+            two.update();
+          },
+          end(event) {
+            console.log(
+              "event x",
+              event.target.getBoundingClientRect(),
+              event.rect.left,
+              event.pageX,
+              event.clientX
             );
-          }
-
-          two.update();
+            // alternate -> take event.rect.left for x
+            localStorage.setItem("text_coordX", parseInt(event.pageX));
+            localStorage.setItem(
+              "text_coordY",
+              parseInt(event.pageY - offsetHeight)
+            );
+            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+          },
         },
-        end(event) {
-          console.log("the end");
-        },
-      },
-    });
-
-    interact(`#${group.id}`).draggable({
-      // enable inertial throwing
-      inertia: false,
-
-      listeners: {
-        start(event) {
-          // console.log(event.type, event.target);
-        },
-        move(event) {
-          event.target.style.transform = `translate(${event.pageX}px, ${
-            event.pageY - offsetHeight
-          }px)`;
-
-          two.update();
-        },
-        end(event) {
-          console.log(
-            "event x",
-            event.target.getBoundingClientRect(),
-            event.rect.left,
-            event.pageX,
-            event.clientX
-          );
-          // alternate -> take event.rect.left for x
-          localStorage.setItem("text_coordX", parseInt(event.pageX));
-          localStorage.setItem(
-            "text_coordY",
-            parseInt(event.pageY - offsetHeight)
-          );
-          dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
-        },
-      },
-    });
+      });
+    }
+    if (isRendered === false) setIsRendered(true);
   }
 
   // Using unmount phase to remove event listeners
   useEffect(() => {
-    let isMounted = true;
     return () => {
-      console.log("UNMOUNTING", groupInstance);
-
-      // In case if group instance is null
-      if (groupInstance) {
-        const groupID = document.getElementById(`${groupInstance.id}`);
-        groupID.removeEventListener("blur", onBlurHandler);
-        groupID.removeEventListener("focus", onFocusHandler);
-      }
-
-      isMounted = false;
+      console.log("UNMOUNTING in Circle", groupInstance);
+      // clean garbage by removing instance
+      two.remove(groupInstance);
     };
   }, []);
 
   return (
     <React.Fragment>
-      <div id="two-button"></div>
+      <div id="two-text"></div>
       <button>change button in group</button>
     </React.Fragment>
   );
 }
 
-Text.propTypes = {
-  x: PropTypes.string,
-  y: PropTypes.string,
-};
+// Text.propTypes = {
+//   x: PropTypes.string,
+//   y: PropTypes.string,
+// };
 
-Text.defaultProps = {
-  x: 100,
-  y: 50,
-};
+// Text.defaultProps = {
+//   x: 100,
+//   y: 50,
+// };
 
 export default Text;

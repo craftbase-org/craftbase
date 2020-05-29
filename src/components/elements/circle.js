@@ -1,33 +1,20 @@
-import React, { Component, useEffect } from "react";
-import PropTypes from "prop-types";
-import idx from "idx";
-import Two from "two.js";
+import React, { useEffect, useState } from "react";
 import interact from "interactjs";
-import {
-  createSelectorHook,
-  createDispatchHook,
-  useDispatch,
-  useSelector,
-} from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import ObjectSelector from "components/utils/objectSelector";
 import { setPeronsalInformation } from "redux/actions/main";
+import CircleFactory from "factory/circle";
 
 // const useSelector = createSelectorHook(ReactReduxContext);
 // const useDispatch = createDispatchHook(ReactReduxContext);
 
 function Circle(props) {
-  const status = useSelector((state) => state.main.currentStatus);
-  const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
+  const [isRendered, setIsRendered] = useState(false);
+  const [groupInstance, setGroupInstance] = useState(null);
   const dispatch = useDispatch();
-  console.log(
-    "useSelector",
-    useSelector((state) => state)
-  );
   const two = props.twoJSInstance;
-
-  let circleInstance = null;
-  let groupInstance = null;
   let selectorInstance = null;
+  let groupObject = null;
 
   function onBlurHandler(e) {
     selectorInstance.hide();
@@ -35,10 +22,11 @@ function Circle(props) {
   }
 
   function onFocusHandler(e) {
-    document.getElementById(`${groupInstance.id}`).style.outline = 0;
+    console.log("groupInstance", groupObject);
+    document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (status === "construct" || lastAddedElement.id === props.id) {
+  if (isRendered === false) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -46,124 +34,115 @@ function Circle(props) {
     const prevX = localStorage.getItem("Circle_coordX");
     const prevY = localStorage.getItem("Circle_coordY");
 
-    const circle = new Two.Ellipse(0, 0, 70, 70);
-    circle.fill = "#EBECF0";
-    circle.noStroke();
-    circleInstance = circle;
+    // Instantiate factory
+    const elementFactory = new CircleFactory(two, prevX, prevY, {});
+    // Get all instances of every sub child element
+    const { group, circle } = elementFactory.createElement();
 
-    console.log("circle", circle.getBoundingClientRect());
-
-    const group = two.makeGroup(circle);
-
-    group.translation.x = prevX || 500;
-    group.translation.y = prevY || 200;
-    groupInstance = group;
-    console.log("BUtton", props.twoJSInstance);
-
-    const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
-    selector.create();
-    selectorInstance = selector;
-
-    // Shifting order of objects in group to reflect "z-index alias" mechanism for element
-    group.children.unshift(circle);
-
-    two.update();
-
-    const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-
-    interact(`#${group.id}`).on("click", () => {
-      console.log("on click ");
-      selector.update(
-        circle.getBoundingClientRect(true).left - 10,
-        circle.getBoundingClientRect(true).right + 10,
-        circle.getBoundingClientRect(true).top - 10,
-        circle.getBoundingClientRect(true).bottom + 10
-      );
+    if (props.parentGroup) {
+      /** This element will be rendered and scoped in its parent group */
+      const parentGroup = props.parentGroup;
+      parentGroup.add(circle);
       two.update();
-    });
+    } else {
+      /** This element will render by creating it's own group wrapper */
+      groupObject = group;
 
-    getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-    getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      if (groupInstance === null) setGroupInstance(group);
 
-    interact(`#${group.id}`).resizable({
-      edges: { right: true, left: true, top: true, bottom: true },
+      const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
+      selector.create();
+      selectorInstance = selector;
+      two.update();
 
-      listeners: {
-        move(event) {
-          const target = event.target;
-          const rect = event.rect;
+      const getGroupElementFromDOM = document.getElementById(`${group.id}`);
 
-          // update the element's style
-          //   resizeRect.width = rect.width;
-          circle.width = rect.width;
-          circle.height = rect.height;
-          circle.radius = parseInt(rect.width / 2);
+      interact(`#${group.id}`).on("click", () => {
+        console.log("on click ");
+        selector.update(
+          circle.getBoundingClientRect(true).left - 10,
+          circle.getBoundingClientRect(true).right + 10,
+          circle.getBoundingClientRect(true).top - 10,
+          circle.getBoundingClientRect(true).bottom + 10
+        );
+        two.update();
+      });
 
-          selector.update(
-            circle.getBoundingClientRect(true).left - 10,
-            circle.getBoundingClientRect(true).right + 10,
-            circle.getBoundingClientRect(true).top - 10,
-            circle.getBoundingClientRect(true).bottom + 10
-          );
+      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
+      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
 
-          //   target.style.width = rect.width + "px";
-          //   target.style.height = rect.height + "px";
+      // Apply resizable property to element
+      interact(`#${group.id}`).resizable({
+        edges: { right: true, left: true, top: true, bottom: true },
 
-          //   target.textContent = rect.width + "×" + rect.height;
-          two.update();
+        listeners: {
+          move(event) {
+            const target = event.target;
+            const rect = event.rect;
+
+            // update the element's style
+            //   resizeRect.width = rect.width;
+            circle.width = rect.width;
+            circle.height = rect.height;
+            circle.radius = parseInt(rect.width / 2);
+
+            selector.update(
+              circle.getBoundingClientRect(true).left - 10,
+              circle.getBoundingClientRect(true).right + 10,
+              circle.getBoundingClientRect(true).top - 10,
+              circle.getBoundingClientRect(true).bottom + 10
+            );
+
+            two.update();
+          },
+          end(event) {
+            console.log("the end");
+          },
         },
-        end(event) {
-          console.log("the end");
-        },
-      },
-    });
+      });
 
-    interact(`#${group.id}`).draggable({
-      // enable inertial throwing
-      inertia: false,
+      // Apply draggable property to element
+      interact(`#${group.id}`).draggable({
+        // enable inertial throwing
+        inertia: false,
 
-      listeners: {
-        start(event) {
-          // console.log(event.type, event.target);
+        listeners: {
+          start(event) {
+            // console.log(event.type, event.target);
+          },
+          move(event) {
+            event.target.style.transform = `translate(${event.pageX}px, ${
+              event.pageY - offsetHeight
+            }px)`;
+          },
+          end(event) {
+            console.log(
+              "event x",
+              event.target.getBoundingClientRect(),
+              event.rect.left,
+              event.pageX,
+              event.clientX
+            );
+            // alternate -> take event.rect.left for x
+            localStorage.setItem("Circle_coordX", parseInt(event.pageX));
+            localStorage.setItem(
+              "Circle_coordY",
+              parseInt(event.pageY - offsetHeight)
+            );
+            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+          },
         },
-        move(event) {
-          event.target.style.transform = `translate(${event.pageX}px, ${
-            event.pageY - offsetHeight
-          }px)`;
-        },
-        end(event) {
-          console.log(
-            "event x",
-            event.target.getBoundingClientRect(),
-            event.rect.left,
-            event.pageX,
-            event.clientX
-          );
-          // alternate -> take event.rect.left for x
-          localStorage.setItem("Circle_coordX", parseInt(event.pageX));
-          localStorage.setItem(
-            "Circle_coordY",
-            parseInt(event.pageY - offsetHeight)
-          );
-          dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
-        },
-      },
-    });
+      });
+    }
+    if (isRendered === false) setIsRendered(true);
   }
 
   // Using unmount phase to remove event listeners
   useEffect(() => {
-    let isMounted = true;
     return () => {
-      console.log("UNMOUNTING", groupInstance);
-
-      // if (groupInstance) {
-      //   const groupID = document.getElementById(`${groupInstance.id}`);
-      //   groupID.removeEventListener("blur", onBlurHandler);
-      //   groupID.removeEventListener("focus", onFocusHandler);
-      // }
-
-      isMounted = false;
+      console.log("UNMOUNTING in Circle", groupInstance);
+      // clean garbage by removing instance
+      two.remove(groupInstance);
     };
   }, []);
 

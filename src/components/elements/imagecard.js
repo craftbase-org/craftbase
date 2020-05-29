@@ -1,21 +1,20 @@
 import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
 import interact from "interactjs";
 import { useDispatch, useSelector } from "react-redux";
+import ObjectSelector from "components/utils/objectSelector";
 import { setPeronsalInformation } from "redux/actions/main";
-import ElementCreator from "factory/divider";
+import ElementFactory from "factory/imagecard";
 
-function Divider(props) {
+function ImageCard(props) {
   const [isRendered, setIsRendered] = useState(false);
   const [groupInstance, setGroupInstance] = useState(null);
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
   let groupObject = null;
-  let resizeLineInstance = null;
 
   function onBlurHandler(e) {
-    resizeLineInstance.opacity = 0;
+    selectorInstance.hide();
     two.update();
   }
 
@@ -27,42 +26,52 @@ function Divider(props) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-    const prevX = localStorage.getItem("line_coordX");
-    const prevY = localStorage.getItem("line_coordY");
+    const prevX = localStorage.getItem("imagecard_coordX");
+    const prevY = localStorage.getItem("imagecard_coordY");
 
     // Instantiate factory
-    const elementFactory = new ElementCreator(two, prevX, prevY, {});
+    const elementFactory = new ElementFactory(two, prevX, prevY, {});
     // Get all instances of every sub child element
     const {
       group,
-      pointCircle1,
-      pointCircle2,
-      resizeLine,
-      line,
+      circleSvgGroup,
+      externalSVG,
+      rectangle,
     } = elementFactory.createElement();
 
     if (props.parentGroup) {
       /** This element will be rendered and scoped in its parent group */
       const parentGroup = props.parentGroup;
-      parentGroup.add(group);
+      parentGroup.add(circleSvgGroup);
       two.update();
     } else {
       /** This element will render by creating it's own group wrapper */
       groupObject = group;
-      resizeLineInstance = resizeLine;
+
       if (groupInstance === null) setGroupInstance(group);
 
-      console.log("BUtton", props.twoJSInstance);
+      const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
+      selector.create();
+      selectorInstance = selector;
+
+      group.children.unshift(circleSvgGroup);
       two.update();
 
+      const initialScaleCoefficient = parseInt(
+        rectangle.width + rectangle.height / externalSVG.scale
+      );
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
       getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
 
       interact(`#${group.id}`).on("click", () => {
         console.log("on click ");
-        resizeLine.opacity = 1;
-
+        selector.update(
+          rectangle.getBoundingClientRect(true).left - 3,
+          rectangle.getBoundingClientRect(true).right + 3,
+          rectangle.getBoundingClientRect(true).top - 3,
+          rectangle.getBoundingClientRect(true).bottom + 3
+        );
         two.update();
       });
 
@@ -70,30 +79,39 @@ function Divider(props) {
       // and generates temporary textarea support for it
 
       interact(`#${group.id}`).resizable({
-        edges: { right: true, left: true },
+        edges: { right: true, left: true, top: true, bottom: true },
 
         listeners: {
-          start() {
-            resizeLine.opacity = 1;
-          },
           move(event) {
-            const target = event.target;
             const rect = event.rect;
-            console.log("on resize event", event);
+            const minRectHeight = parseInt(rect.height / 2);
+            const minRectWidth = parseInt(rect.width / 2);
 
-            // update the element's style
-            //   resizeLine.width = rect.width;
-            line.vertices[0].x -= event.dx;
-            line.vertices[1].x += event.dx;
-            pointCircle1.translation.x = line.vertices[0].x;
-            pointCircle2.translation.x = line.vertices[1].x;
+            // Restrict width and height at arbitrary point difference where it would
+            // be unstable for further SVG scaling calculations
+            const minDiff = Math.abs(rect.width - rect.height);
 
-            // rectangle.radius = parseInt(rect.width / 2);
+            // Prevent the rectangle radius to be shrinked to less than 10
+            if (minRectHeight > 20 && minRectWidth > 20 && minDiff < 100) {
+              // update the element's style
+              rectangle.width = rect.width - 10;
+              rectangle.height = rect.height - 10;
 
-            //   target.style.width = rect.width + "px";
-            //   target.style.height = rect.height + "px";
+              // console.log("rectangle.radius", rectangle.radius);
+              externalSVG.scale =
+                ((rectangle.width + rectangle.height / 2) /
+                  initialScaleCoefficient) *
+                1.5;
+              externalSVG.center();
 
-            //   target.textContent = rect.width + "×" + rect.height;
+              selector.update(
+                rectangle.getBoundingClientRect(true).left - 3,
+                rectangle.getBoundingClientRect(true).right + 3,
+                rectangle.getBoundingClientRect(true).top - 3,
+                rectangle.getBoundingClientRect(true).bottom + 3
+              );
+            }
+
             two.update();
           },
           end(event) {
@@ -124,9 +142,9 @@ function Divider(props) {
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("line_coordX", parseInt(event.pageX));
+            localStorage.setItem("imagecard_coordX", parseInt(event.pageX));
             localStorage.setItem(
-              "line_coordY",
+              "imagecard_coordY",
               parseInt(event.pageY - offsetHeight)
             );
             dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
@@ -140,7 +158,7 @@ function Divider(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Divider", groupInstance);
+      console.log("UNMOUNTING in ImageCard", groupInstance);
       // clean garbage by removing instance
       two.remove(groupInstance);
     };
@@ -148,20 +166,11 @@ function Divider(props) {
 
   return (
     <React.Fragment>
-      <div id="two-button"></div>
-      <button>change button in group</button>
+      <div id="two-image-card"></div>
+
+      {/* <button>change button in group</button> */}
     </React.Fragment>
   );
 }
 
-Divider.propTypes = {
-  x: PropTypes.string,
-  y: PropTypes.string,
-};
-
-Divider.defaultProps = {
-  x: 100,
-  y: 50,
-};
-
-export default Divider;
+export default ImageCard;

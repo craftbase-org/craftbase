@@ -331,7 +331,7 @@ module.exports = {
         'Roboto',
         '"Helvetica Neue"',
         'Arial',
-        '"Noto Sans"',
+        '"Noto Sans JP"',
         'sans-serif',
         '"Apple Color Emoji"',
         '"Segoe UI Emoji"',

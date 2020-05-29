@@ -111,11 +111,9 @@ function GroupedObjectWrapper(props) {
       dispatch(
         ungroupElements("UNGROUP_ELEMENT", { data: { groupId: props.id } })
       );
+      // two.remove();
     });
 
-    function removeGroup() {
-      group.remove();
-    }
     interact(`#${group.id}`).resizable({
       edges: { right: true, left: true, top: true, bottom: true },
 

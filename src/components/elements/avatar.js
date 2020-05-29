@@ -1,33 +1,17 @@
-import React, { Component, useEffect } from "react";
-import PropTypes from "prop-types";
-import idx from "idx";
-import Two from "two.js";
+import React, { useEffect, useState } from "react";
 import interact from "interactjs";
-import {
-  createSelectorHook,
-  createDispatchHook,
-  useDispatch,
-  useSelector,
-} from "react-redux";
-import Icon from "icons/icons";
+import { useDispatch, useSelector } from "react-redux";
 import ObjectSelector from "components/utils/objectSelector";
-import { getDiffForTwoValues } from "utils";
 import { setPeronsalInformation } from "redux/actions/main";
-
-// const useSelector = createSelectorHook(ReactReduxContext);
-// const useDispatch = createDispatchHook(ReactReduxContext);
+import ElementFactory from "factory/avatar";
 
 function Avatar(props) {
-  const status = useSelector((state) => state.main.currentStatus);
-  const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
+  const [isRendered, setIsRendered] = useState(false);
+  const [groupInstance, setGroupInstance] = useState(null);
   const dispatch = useDispatch();
-
   const two = props.twoJSInstance;
-
-  let circleInstance = null;
-  let externalSVGInstance = null;
-  let groupInstance = null;
   let selectorInstance = null;
+  let groupObject = null;
 
   function onBlurHandler(e) {
     selectorInstance.hide();
@@ -35,32 +19,25 @@ function Avatar(props) {
   }
 
   function onFocusHandler(e) {
-    document.getElementById(`${groupInstance.id}`).style.outline = 0;
+    document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (status === "construct" || lastAddedElement.id === props.id) {
+  if (isRendered === false) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
     const prevX = localStorage.getItem("avatar_coordX");
     const prevY = localStorage.getItem("avatar_coordY");
 
-    const circle = two.makeCircle(0, 0, 40);
-    circle.fill = "#000";
-    circleInstance = circle;
-
-    const svgImage = new DOMParser().parseFromString(
-      Icon.ICON_IMAGE_1.data,
-      "text/xml"
-    );
-    console.log("svgImage", svgImage, circle.width / 2);
-    const externalSVG = two.interpret(svgImage.firstChild);
-    externalSVG.scale = 1.5;
-    externalSVG.center();
-    externalSVGInstance = externalSVG;
-
-    const initialScaleCoefficient = parseInt(circle.radius / externalSVG.scale);
-    const circleSvgGroup = two.makeGroup(circle, externalSVG);
+    // Instantiate factory
+    const elementFactory = new ElementFactory(two, prevX, prevY, {});
+    // Get all instances of every sub child element
+    const {
+      group,
+      circleSvgGroup,
+      circle,
+      externalSVG,
+    } = elementFactory.createElement();
 
     if (props.parentGroup) {
       /** This element will be rendered and scoped in its parent group */
@@ -71,11 +48,9 @@ function Avatar(props) {
       two.update();
     } else {
       /** This element will render by creating it's own group wrapper */
-      const group = two.makeGroup(circleSvgGroup);
-      group.center();
-      group.translation.x = prevX || 500;
-      group.translation.y = prevY || 200;
-      groupInstance = group;
+
+      groupObject = group;
+      if (groupInstance === null) setGroupInstance(group);
 
       // After creating group, pass it's instance to selector class
       const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
@@ -85,6 +60,9 @@ function Avatar(props) {
       group.children.unshift(circleSvgGroup);
       two.update();
 
+      const initialScaleCoefficient = parseInt(
+        circle.radius / externalSVG.scale
+      );
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
       getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
@@ -169,41 +147,34 @@ function Avatar(props) {
         },
       });
     }
+    if (isRendered === false) setIsRendered(true);
   }
 
   // Using unmount phase to remove event listeners
   useEffect(() => {
-    let isMounted = true;
     return () => {
-      console.log("UNMOUNTING", groupInstance);
-
-      // // In case if group instance is null
-      // if (groupInstance) {
-      //   const groupID = document.getElementById(`${groupInstance.id}`);
-      //   groupID.removeEventListener("blur", onBlurHandler);
-      //   groupID.removeEventListener("focus", onFocusHandler);
-      // }
-
-      isMounted = false;
+      console.log("UNMOUNTING in Avatar", groupInstance);
+      // clean garbage by removing instance
+      two.remove(groupInstance);
     };
   }, []);
 
   return (
     <React.Fragment>
-      <div id="two-button"></div>
+      <div id="two-avatar"></div>
       <button>change button in group</button>
     </React.Fragment>
   );
 }
 
-Avatar.propTypes = {
-  x: PropTypes.string,
-  y: PropTypes.string,
-};
+// Avatar.propTypes = {
+//   x: PropTypes.string,
+//   y: PropTypes.string,
+// };
 
-Avatar.defaultProps = {
-  x: 100,
-  y: 50,
-};
+// Avatar.defaultProps = {
+//   x: 100,
+//   y: 50,
+// };
 
 export default Avatar;
