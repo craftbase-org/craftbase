@@ -6,6 +6,9 @@ import { setPeronsalInformation } from "redux/actions/main";
 import ElementFactory from "factory/rectangle";
 
 function Rectangle(props) {
+  const selectedComponents = useSelector(
+    (state) => state.main.selectedComponents
+  );
   const [isRendered, setIsRendered] = useState(false);
   const [groupInstance, setGroupInstance] = useState(null);
   const dispatch = useDispatch();
@@ -49,12 +52,26 @@ function Rectangle(props) {
       selectorInstance = selector;
 
       group.children.unshift(rectangle);
-
       two.update();
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
       getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+
+      // If component is in area of selection frame/tool, programmatically enable it's selector
+      if (selectedComponents.includes(props.id)) {
+        console.log("selectedComponents", selectedComponents);
+
+        // forcefully
+        // document.getElementById(`${group.id}`).focus();
+
+        selector.update(
+          rectangle.getBoundingClientRect(true).left - 10,
+          rectangle.getBoundingClientRect(true).right + 10,
+          rectangle.getBoundingClientRect(true).top - 10,
+          rectangle.getBoundingClientRect(true).bottom + 10
+        );
+      }
 
       interact(`#${group.id}`).on("click", () => {
         console.log("on click ");

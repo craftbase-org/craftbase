@@ -1,10 +1,17 @@
-import { CONSTRUCT, COMPLETE, ADD_ELEMENT, UNGROUP_ELEMENT } from "redux/types";
+import {
+  CONSTRUCT,
+  COMPLETE,
+  ADD_ELEMENT,
+  UNGROUP_ELEMENT,
+  AREA_SELECTION,
+} from "redux/types";
 
 const initial_state = {
   app: {},
   currentStatus: null,
-  elementData: [],
+  componentData: [],
   elementIDs: [],
+  selectedComponents: [],
   lastAddedElement: {},
 };
 
@@ -13,10 +20,16 @@ export default (state = initial_state, action) => {
     case CONSTRUCT:
       const newArr = action.payload.map((item) => item.id);
 
+      const getCoordGraph = {};
+      action.payload.forEach((item) => {
+        getCoordGraph[item.id] = item.data;
+      });
+
       return {
         ...state,
         currentStatus: "construct",
-        elementData: action.payload,
+        getCoordGraph,
+        componentData: action.payload,
         elementIDs: [...state.elementIDs, ...newArr],
       };
 
@@ -31,40 +44,72 @@ export default (state = initial_state, action) => {
         lastAddedElement: {},
       };
 
+    case AREA_SELECTION:
+      const newSelectionFrame = action.payload;
+      let x1Coord = action.payload.left;
+      let x2Coord = action.payload.right;
+      let y1Coord = action.payload.top;
+      let y2Coord = action.payload.bottom;
+
+      const selectedComponentArr = [];
+      const allComponentCoords = Object.values(state.getCoordGraph);
+      console.log("allComponentCoords", allComponentCoords);
+      allComponentCoords.forEach((item, index) => {
+        console.log("item", item);
+        if (item !== undefined) {
+          if (
+            item.x > x1Coord &&
+            item.x < x2Coord &&
+            item.y > y1Coord &&
+            item.y < y2Coord
+          ) {
+            console.log("a match");
+            let idToSelect = parseInt(Object.keys(state.getCoordGraph)[index]);
+            selectedComponentArr.push(idToSelect);
+          }
+        }
+      });
+      return {
+        ...state,
+        componentData: [...state.componentData],
+        selectedComponents: selectedComponentArr,
+      };
+
     case ADD_ELEMENT:
-      const newElementsData = [...state.elementData, action.payload];
+      const newElementsData = [...state.componentData, action.payload];
       return {
         ...state,
         currentStatus: "complete",
-        elementData: newElementsData,
+        componentData: newElementsData,
         lastAddedElement: action.payload,
       };
 
     case UNGROUP_ELEMENT:
       const groupToBeRemoved = action.payload.data.groupId;
-      const indexOfGroup = state.elementData.findIndex(
+      const indexOfGroup = state.componentData.findIndex(
         (x) => x.id === groupToBeRemoved
       );
       console.log(
         "getIndexOf",
         indexOfGroup,
         action.payload,
-        state.elementData
+        state.componentData
       );
 
       const extractChildrenElements = [
-        ...state.elementData[indexOfGroup].children,
+        ...state.componentData[indexOfGroup].children,
       ];
 
-      state.elementData.splice(indexOfGroup, 1);
+      state.componentData.splice(indexOfGroup, 1);
       const updatedElementsData = [
-        ...state.elementData,
+        ...state.componentData,
         ...extractChildrenElements,
       ];
       return {
         ...state,
         currentStatus: "construct",
-        elementData: updatedElementsData,
+
+        componentData: updatedElementsData,
         lastAddedElement: action.payload,
       };
 

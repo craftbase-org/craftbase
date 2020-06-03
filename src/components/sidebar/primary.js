@@ -102,7 +102,7 @@ class Sidebar extends Component {
 
 function mapStateToProps(state) {
   return {
-    elementData: state.main.elementData,
+    componentData: state.main.componentData,
   };
 }
 export default connect(null, {

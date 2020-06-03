@@ -1,10 +1,8 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import ElementWrapper from "components/elementWrapper";
+import ComponentWrapper from "components/elementWrapper";
 import Two from "two.js";
-import Rectangle from "./components/shapes/rect";
-
 import { getElementsData } from "redux/actions/main";
 
 class App extends Component {
@@ -23,6 +21,59 @@ class App extends Component {
   componentDidMount() {
     console.log("CANVAS CDM");
     const elem = document.getElementById("main-two-root");
+
+    // Logic for capturing events in empty space in drawing area
+    document
+      .getElementById("main-two-root")
+      .addEventListener("mousedown", (e) => {
+        console.log("event mouse down main root", e);
+        document.getElementById("main-two-root").focus();
+        if (e.target.tagName == "svg") {
+          const rect = document.getElementById("selector-rect");
+          rect.style.position = "absolute";
+          rect.style.zIndex = "1";
+          rect.style.width = "20px";
+          rect.style.height = "20px";
+          rect.style.border = "0px dashed grey";
+          rect.style.transform = `translateX(${e.x - 10}px) translateY(${
+            e.y - 10
+          }px) `;
+          document.getElementById("main-two-root").blur();
+          rect.setAttribute("draggable", true);
+        }
+      });
+
+    document.getElementById("selector-rect").addEventListener("drag", (e) => {
+      console.log("selector-rect being dragged", e);
+      const rect = document.getElementById("selector-rect");
+      rect.style.zIndex = "1";
+      rect.style.border = "1px dashed grey";
+      rect.style.width = `${Math.abs(e.offsetX)}px`;
+      rect.style.height = `${Math.abs(e.offsetY)}px`;
+      console.log("rect getBoundingClientRect", rect.getBoundingClientRect());
+    });
+
+    document
+      .getElementById("selector-rect")
+      .addEventListener("dragend", (e) => {
+        console.log("selector-rect drag end", e);
+        const rect = document.getElementById("selector-rect");
+        rect.style.zIndex = "-1";
+        rect.style.width = `${Math.abs(e.offsetX)}px`;
+        rect.style.height = `${Math.abs(e.offsetY)}px`;
+        rect.setAttribute("draggable", false);
+        rect.blur();
+        console.log("rect getBoundingClientRect", rect.getBoundingClientRect());
+        this.handleFinalDrag(rect.getBoundingClientRect());
+        // rect.style.width = `${e.offsetX}px`;
+        // rect.style.height = `${e.offsetY}px`;
+        // console.log("rect getBoundingClientRect", rect.getBoundingClientRect());
+      });
+
+    document.getElementById("main-two-root").addEventListener("mouseup", () => {
+      console.log("event mouse up main root");
+    });
+
     const two = new Two({
       fullscreen: true,
       // width: "auto",
@@ -32,18 +83,18 @@ class App extends Component {
       // { id: 1, name: "buttonwithicon" },
       // { id: 2, name: "toggle" },
       // { id: 3, name: "tooltip" },
-      // { id: 4, name: "circle" },
+      { id: 4, name: "circle", data: { x: 467, y: 377 } },
       // { id: 5, name: "imagecard" },
-      // { id: 6, name: "rectangle" },
+      { id: 6, name: "rectangle", data: { x: 265, y: 392 } },
       // { id: 7, name: "divider" },
-      { id: 8, name: "avatar" },
-      // { id: 9, name: "linkwithicon" },
-      { id: 10, name: "text" },
+      // { id: 8, name: "avatar" },
+      { id: 9, name: "linkwithicon" },
+      // { id: 10, name: "text" },
       // { id: 11, name: "overlay" },
-      { id: 12, name: "button" },
+      // { id: 12, name: "button" },
       // { id: 13, name: "checkbox" },
       // { id: 14, name: "radiobox" },
-      { id: 15, name: "textinput" },
+      // { id: 15, name: "textinput" },
       // { id: 16, name: "dropdown" },
       // { id: 17, name: "textarea" },
       // {
@@ -60,8 +111,13 @@ class App extends Component {
     this.setState({ twoJSInstance: two });
   }
 
+  handleFinalDrag = (e) => {
+    console.log("final drag", e);
+    this.props.getElementsData("AREA_SELECTION", e);
+  };
+
   componentDidUpdate(prevProps, prevState) {
-    if (prevProps.elementData !== this.props.elementData) {
+    if (prevProps.componentData !== this.props.componentData) {
       // this.state.twoJSInstance.scene.remove();
     }
   }
@@ -82,16 +138,17 @@ class App extends Component {
       this.state.twoJSInstance.scene.children
     );
 
-    const elements = this.props.elementData;
+    const elements = this.props.componentData;
     const renderData = elements.map((item) => {
-      const Element = ElementWrapper(item.name, {
+      const NewComponent = ComponentWrapper(item.name, {
         twoJSInstance: this.state.twoJSInstance,
         id: item.id,
         childrenArr: item.children,
+        itemData: item,
       });
       return (
         <React.Fragment key={item.id}>
-          <Element />
+          <NewComponent />
         </React.Fragment>
       );
     });
@@ -113,6 +170,7 @@ class App extends Component {
     return (
       <React.Fragment>
         <div id="rsz-rect"></div>
+        <div id="selector-rect"></div>
         <div id="main-two-root"></div>
         {this.state.twoJSInstance && (
           <React.Fragment>
@@ -165,7 +223,7 @@ class App extends Component {
 
 function mapStateToProps(state) {
   return {
-    elementData: state.main.elementData,
+    componentData: state.main.componentData,
   };
 }
 export default connect(mapStateToProps, {

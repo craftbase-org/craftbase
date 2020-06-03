@@ -9,6 +9,9 @@ import CircleFactory from "factory/circle";
 // const useDispatch = createDispatchHook(ReactReduxContext);
 
 function Circle(props) {
+  const selectedComponents = useSelector(
+    (state) => state.main.selectedComponents
+  );
   const [isRendered, setIsRendered] = useState(false);
   const [groupInstance, setGroupInstance] = useState(null);
   const dispatch = useDispatch();
@@ -57,6 +60,24 @@ function Circle(props) {
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
 
+      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
+      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+
+      // If component is in area of selection frame/tool, programmatically enable it's selector
+      if (selectedComponents.includes(props.id)) {
+        console.log("selectedComponents", selectedComponents);
+
+        // forcefully
+        // document.getElementById(`${group.id}`).focus();
+
+        selector.update(
+          circle.getBoundingClientRect(true).left - 10,
+          circle.getBoundingClientRect(true).right + 10,
+          circle.getBoundingClientRect(true).top - 10,
+          circle.getBoundingClientRect(true).bottom + 10
+        );
+      }
+
       interact(`#${group.id}`).on("click", () => {
         console.log("on click ");
         selector.update(
@@ -67,10 +88,6 @@ function Circle(props) {
         );
         two.update();
       });
-
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
-
       // Apply resizable property to element
       interact(`#${group.id}`).resizable({
         edges: { right: true, left: true, top: true, bottom: true },

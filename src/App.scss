@@ -1,9 +1,15 @@
 .App {
   text-align: center;
 }
-
+#main-two-root {
+  z-index: -9;
+}
 #main-two-root svg {
   background: #f4f5f7;
+  z-index: -1;
+}
+
+#selector-rect {
   z-index: -1;
 }
 
@@ -22,6 +28,10 @@ text
 {
   cursor: pointer !important;
   font-family: "Noto Sans JP", sans-serif;
+}
+
+g {
+  z-index: 1;
 }
 
 button:focus {
