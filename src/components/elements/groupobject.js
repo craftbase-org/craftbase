@@ -1,14 +1,6 @@
-import React, { Component, useEffect, useState } from "react";
-import PropTypes from "prop-types";
-import idx from "idx";
-import Two from "two.js";
+import React, { useEffect, useState } from "react";
 import interact from "interactjs";
-import {
-  createSelectorHook,
-  createDispatchHook,
-  useDispatch,
-  useSelector,
-} from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import ObjectSelector from "components/utils/objectSelector";
 import { setPeronsalInformation, ungroupElements } from "redux/actions/main";
 

@@ -1,16 +1,8 @@
-import React, { Component, useEffect } from "react";
+import React, { useEffect } from "react";
 import PropTypes from "prop-types";
-import idx from "idx";
 import Two from "two.js";
 import interact from "interactjs";
-import {
-  createSelectorHook,
-  createDispatchHook,
-  useDispatch,
-  useSelector,
-} from "react-redux";
-import Icon from "icons/icons";
-import { ReactReduxContext } from "utils/misc";
+import { useDispatch, useSelector } from "react-redux";
 import { setPeronsalInformation } from "redux/actions/main";
 
 // const useSelector = createSelectorHook(ReactReduxContext);

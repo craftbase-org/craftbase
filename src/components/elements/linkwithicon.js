@@ -4,6 +4,7 @@ import interact from "interactjs";
 import { useDispatch, useSelector } from "react-redux";
 import ObjectSelector from "components/utils/objectSelector";
 import { setPeronsalInformation } from "redux/actions/main";
+import getEditComponents from "components/utils/editWrapper";
 import ElementFactory from "factory/linkwithicon";
 
 function LinkWithIcon(props) {
@@ -52,8 +53,7 @@ function LinkWithIcon(props) {
       groupObject = group;
       if (groupInstance === null) setGroupInstance(group);
 
-      const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
-      selector.create();
+      const { selector, toolbar } = getEditComponents(two, group, 4);
       selectorInstance = selector;
 
       // Shifting order of objects in group to reflect "z-index alias" mechanism for text box

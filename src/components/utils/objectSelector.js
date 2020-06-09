@@ -20,16 +20,16 @@ export default class Selector {
   }
   create() {
     const { x1, x2, y1, y2 } = this.vertices;
-    console.log("vertices", this.two, x1, x2, y1, y2);
+    // console.log("vertices", this.two, x1, x2, y1, y2);
 
     const area = this.two.makePath(x1, y1, x2, y1, x2, y2, x1, y2);
     area.fill = "rgba(0,0,0,0)";
-    area.opacity = 0;
+    area.opacity = 1;
     area.linewidth = 1;
     // area.dashes[0] = 4;
     area.stroke = "#505F79";
     // area.curved = true;
-    console.log("area", area);
+    // console.log("area", area);
     this.area = area;
 
     let circleGroup = null;
@@ -37,7 +37,7 @@ export default class Selector {
       // console.log("show circles 1", this.showCircles);
       switch (this.showCircles) {
         case 2:
-          console.log("falls in case 2");
+          // console.log("falls in case 2");
           const yAxisMidpoint = (y1 + y2) / 2;
           const circleLeft = this.two.makeCircle(x1, yAxisMidpoint, 3);
           const circleRight = this.two.makeCircle(x2, yAxisMidpoint, 3);
@@ -47,7 +47,7 @@ export default class Selector {
           this.circle3 = null;
           this.circle4 = null;
           circleGroup = this.two.makeGroup(circleLeft, circleRight);
-          circleGroup.opacity = 0;
+          // circleGroup.opacity = 0;
           this.circleGroup = circleGroup;
 
         case 4:
@@ -71,22 +71,21 @@ export default class Selector {
     }
 
     const areaGroup = this.two.makeGroup(area, circleGroup);
+    this.areaGroup = areaGroup;
     this.group.add(areaGroup);
     // this.two.udpate();
   }
 
   show() {
-    this.area.opacity = 1;
-    if (this.circleGroup) this.circleGroup.opacity = 1;
+    this.areaGroup.opacity = 1;
   }
 
   hide() {
-    this.area.opacity = 0;
-    if (this.circleGroup) this.circleGroup.opacity = 0;
+    this.areaGroup.opacity = 0;
   }
 
   getInstance() {
-    return this.area.id;
+    return this.areaGroup.id;
   }
 
   update(x1, x2, y1, y2) {
@@ -107,28 +106,25 @@ export default class Selector {
     ];
 
     if (this.showCircles) {
-      console.log("show circles 2", this.showCircles);
+      this.circleGroup.opacity = 1;
+      // console.log("show circles 2", this.showCircles);
       switch (this.showCircles) {
         case 2:
           const yAxisMidpoint = (y1 + y2) / 2;
           this.circle1.translation.set(x1, yAxisMidpoint);
           this.circle2.translation.set(x2, yAxisMidpoint);
-          this.circle3.opacity = 0;
-          this.circle4.opacity = 0;
-          this.circleGroup.opacity = 1;
           break;
         case 4:
           this.circle1.translation.set(x1, y1);
           this.circle2.translation.set(x2, y1);
           this.circle3.translation.set(x2, y2);
           this.circle4.translation.set(x1, y2);
-          this.circleGroup.opacity = 1;
           break;
         default:
           break;
       }
     }
 
-    this.area.opacity = 1;
+    this.areaGroup.opacity = 1;
   }
 }

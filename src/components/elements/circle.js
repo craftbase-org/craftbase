@@ -3,6 +3,7 @@ import interact from "interactjs";
 import { useDispatch, useSelector } from "react-redux";
 import ObjectSelector from "components/utils/objectSelector";
 import { setPeronsalInformation } from "redux/actions/main";
+import getEditComponents from "components/utils/editWrapper";
 import CircleFactory from "factory/circle";
 
 // const useSelector = createSelectorHook(ReactReduxContext);
@@ -17,10 +18,49 @@ function Circle(props) {
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
+  let toolbarInstance = null;
   let groupObject = null;
 
   function onBlurHandler(e) {
-    selectorInstance.hide();
+    console.log("on blur handler", e);
+
+    // Callback for add and remove event listener for floating toolbar
+    const blurListenerCB = (e) => {
+      console.log("on blur toolbar", selectorInstance, e);
+      if (
+        e.relatedTarget &&
+        e.relatedTarget.dataset.parent &&
+        e.relatedTarget.dataset.parent === "floating-toolbar"
+      ) {
+        // no action required
+      } else {
+        selectorInstance.hide();
+
+        // passing same callback to event listener in wrapper class
+        toolbarInstance.forceHide(blurListenerCB);
+      }
+    };
+
+    // e.relatedTarget acts as main floating toolbar
+    if (e.relatedTarget) {
+      if (
+        e.relatedTarget.id === "floating-toolbar" ||
+        (e.relatedTarget.dataset.parent &&
+          e.relatedTarget.dataset.parent === "floating-toolbar")
+      ) {
+        document
+          .getElementById("floating-toolbar")
+          .addEventListener("blur", blurListenerCB);
+      } else {
+        console.log("not a related target");
+        selectorInstance.hide();
+        toolbarInstance.forceHide(blurListenerCB);
+      }
+    } else {
+      selectorInstance.hide();
+      toolbarInstance.forceHide(blurListenerCB);
+    }
+
     two.update();
   }
 
@@ -53,9 +93,11 @@ function Circle(props) {
 
       if (groupInstance === null) setGroupInstance(group);
 
-      const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
-      selector.create();
+      const { selector, toolbar } = getEditComponents(two, group, 4);
       selectorInstance = selector;
+      toolbarInstance = toolbar;
+
+      group.children.unshift(circle);
       two.update();
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
@@ -87,6 +129,12 @@ function Circle(props) {
           circle.getBoundingClientRect(true).bottom + 10
         );
         two.update();
+
+        toolbar.show();
+        toolbar.shift(
+          getGroupElementFromDOM.getBoundingClientRect().left,
+          getGroupElementFromDOM.getBoundingClientRect().top
+        );
       });
       // Apply resizable property to element
       interact(`#${group.id}`).resizable({
@@ -94,6 +142,7 @@ function Circle(props) {
 
         listeners: {
           move(event) {
+            toolbar.hide();
             const target = event.target;
             const rect = event.rect;
 
@@ -113,6 +162,7 @@ function Circle(props) {
             two.update();
           },
           end(event) {
+            toolbar.show();
             console.log("the end");
           },
         },
@@ -128,6 +178,7 @@ function Circle(props) {
             // console.log(event.type, event.target);
           },
           move(event) {
+            toolbar.hide();
             event.target.style.transform = `translate(${event.pageX}px, ${
               event.pageY - offsetHeight
             }px)`;

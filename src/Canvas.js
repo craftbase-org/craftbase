@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 
 import ComponentWrapper from "components/elementWrapper";
+import Toolbar from "components/floatingToolbar";
 import Two from "two.js";
 import { getElementsData } from "redux/actions/main";
 
@@ -171,6 +172,7 @@ class App extends Component {
       <React.Fragment>
         <div id="rsz-rect"></div>
         <div id="selector-rect"></div>
+
         <div id="main-two-root"></div>
         {this.state.twoJSInstance && (
           <React.Fragment>
@@ -186,12 +188,13 @@ class App extends Component {
             /> */}
           </React.Fragment>
         )}
-
-        <div className="controls">
+        <Toolbar />
+        {/* <div className="controls">
           <p>
             <button id="add" onClick={() => this.addElements("button", 2)}>
               Add a rectangle
             </button>
+
             <button
               id="add-1-2"
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
@@ -215,7 +218,7 @@ class App extends Component {
               Get all elements data{" "}
             </button>
           </p>
-        </div>
+        </div> */}
       </React.Fragment>
     );
   }
