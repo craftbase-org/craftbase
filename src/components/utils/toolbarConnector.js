@@ -36,26 +36,25 @@ export default class ToolBar {
   }
   create() {
     // create bare bones for toolbar
-
-    this.toolBarDOM.style.left = "500px";
-    this.toolBarDOM.style.top = "300px";
+    // this.toolBarDOM.style.left = "500px";
+    // this.toolBarDOM.style.top = "300px";
   }
   hide() {
-    this.toolBarDOM.hidden = true;
+    // this.toolBarDOM.hidden = true;
   }
   forceHide(callback) {
-    this.toolBarDOM.hidden = true;
-    this.toolBarDOM.removeEventListener("blur", callback);
+    // this.toolBarDOM.hidden = true;
+    // this.toolBarDOM.removeEventListener("blur", callback);
   }
   show() {
-    this.toolBarDOM.style.visibility = "visible";
-    console.log("on show toolbar connector");
-    this.toolBarDOM.hidden = false;
+    // this.toolBarDOM.style.visibility = "visible";
+    // console.log("on show toolbar connector");
+    // this.toolBarDOM.hidden = false;
   }
   shift(pageX, pageY) {
-    this.toolBarDOM.style.left = `${pageX}px`;
-    this.toolBarDOM.style.top = `${
-      pageY - this.toolBarDOM.getBoundingClientRect().height
-    }px`;
+    // this.toolBarDOM.style.left = `${pageX}px`;
+    // this.toolBarDOM.style.top = `${
+    //   pageY - this.toolBarDOM.getBoundingClientRect().height
+    // }px`;
   }
 }

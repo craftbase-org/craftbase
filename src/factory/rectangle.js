@@ -12,6 +12,8 @@ export default class RectangleFactory extends Main {
     const rectangle = two.makeRectangle(0, 0, 210, 110);
     rectangle.fill = "#EBECF0";
     rectangle.noStroke();
+    // dashed dotted
+    // rectangle.dashes[0] = 0;
 
     console.log("rectangle", rectangle.getBoundingClientRect());
 

@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Fragment } from "react";
 import interact from "interactjs";
 import { useDispatch, useSelector } from "react-redux";
 import ObjectSelector from "components/utils/objectSelector";
 import { setPeronsalInformation, ungroupElements } from "redux/actions/main";
-
+import Loadable from "react-loadable";
+import Loader from "components/utils/loader";
 import ElementWrapper from "components/elementWrapper";
 // const useSelector = createSelectorHook(ReactReduxContext);
 // const useDispatch = createDispatchHook(ReactReduxContext);
 
 function GroupedObjectWrapper(props) {
-  const [parentGroupState, setParentGroupState] = useState(null);
   const status = useSelector((state) => state.main.currentStatus);
   const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
   const dispatch = useDispatch();
@@ -32,7 +32,7 @@ function GroupedObjectWrapper(props) {
     document.getElementById(`${groupInstance.id}`).style.outline = 0;
   }
 
-  if (status === "construct" || lastAddedElement.id === props.id) {
+  useEffect(() => {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -41,21 +41,46 @@ function GroupedObjectWrapper(props) {
     const prevY = localStorage.getItem("groupobject_coordY");
 
     // Dummying group's layout by empty rectangle's shape implementation
-    const rectangle = two.makeRectangle(0, 0, 210, 110);
+    const rectangle = two.makeRectangle(
+      0,
+      0,
+      props.itemData.width,
+      props.itemData.height
+    );
     rectangle.fill = "rgba(0,0,0,0)";
     rectangle.noStroke();
     rectangleInstance = rectangle;
 
-    console.log("rectangle", rectangle.getBoundingClientRect());
+    console.log("rectangle", rectangle.getBoundingClientRect(), props);
 
-    const group = two.makeGroup();
-    group.translation.x = prevX || 350;
-    group.translation.y = prevY || 200;
-    groupInstance = group;
+    const group = two.makeGroup(rectangle);
+    // // Iterate over group children
+    // props.childrenArr.forEach((item, index) => {
+    //   // Create factory for that each component
 
-    if (parentGroupState === null) {
-      setParentGroupState(group);
+    // });
+
+    for (let index = 0; index < props.childrenArr.length; index++) {
+      const item = props.childrenArr[index];
+      console.log("item in childrenArr", item);
+      import(`factory/${item.name}`).then((component) => {
+        console.log("component", component);
+        const componentFactory = new component.default(two, item.x, item.y, {});
+        const factoryObject = componentFactory.createElement();
+        const coreObject = factoryObject[item.name];
+        console.log("coreObject", coreObject);
+        // set component's coordinates
+        coreObject.translation.x = item.x;
+        coreObject.translation.y = item.y;
+        group.add(coreObject);
+        group.children.unshift(coreObject);
+        two.update();
+      });
     }
+
+    group.translation.x = props.itemData.x;
+    group.translation.y = props.itemData.y;
+    groupInstance = group;
 
     console.log("Grouped Objects Wrapper", props.twoJSInstance);
 
@@ -166,35 +191,17 @@ function GroupedObjectWrapper(props) {
         },
       },
     });
-  }
 
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
-    let isMounted = true;
-    console.log("Setting parent group state", parentGroupState);
-  }, [parentGroupState]);
-
-  const renderElements = () => {
-    console.log("props.childrenArr", props.childrenArr);
-    const elements = props.childrenArr;
-    const renderData = elements.map((item) => {
-      const Element = ElementWrapper(item.name, {
-        twoJSInstance: two,
-        id: item.id,
-        parentGroup: parentGroupState,
-        metaData: item,
-      });
-      return <Element />;
-    });
-
-    return renderData;
-  };
+    return () => {
+      two.remove(group);
+    };
+  }, []);
 
   return (
     <React.Fragment>
-      <div id="two-grouped-object-wrapper">
+      {/* <div id="two-grouped-object-wrapper">
         {parentGroupState && renderElements()}
-      </div>
+      </div> */}
       {/* <button>change button in group</button> */}
     </React.Fragment>
   );

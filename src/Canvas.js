@@ -84,9 +84,9 @@ class App extends Component {
       // { id: 1, name: "buttonwithicon" },
       // { id: 2, name: "toggle" },
       // { id: 3, name: "tooltip" },
-      { id: 4, name: "circle", data: { x: 467, y: 377 } },
+      { id: 4, name: "circle", data: { x: 272, y: 707, name: "circle" } },
       // { id: 5, name: "imagecard" },
-      { id: 6, name: "rectangle", data: { x: 265, y: 392 } },
+      { id: 6, name: "rectangle", data: { x: 290, y: 430, name: "rectangle" } },
       // { id: 7, name: "divider" },
       // { id: 8, name: "avatar" },
       { id: 9, name: "linkwithicon" },
@@ -102,7 +102,7 @@ class App extends Component {
       //   id: 18,
       //   name: "groupobject",
       //   children: [
-      //     { id: 9, name: "link", x: 30 },
+      //     { id: 9, name: "linkwithicon", x: 30 },
       //     { id: 8, name: "avatar", x: -30 },
       //   ],
       // },
@@ -188,7 +188,7 @@ class App extends Component {
             /> */}
           </React.Fragment>
         )}
-        <Toolbar />
+        {/* <Toolbar /> */}
         {/* <div className="controls">
           <p>
             <button id="add" onClick={() => this.addElements("button", 2)}>

@@ -4,18 +4,19 @@ import { useDispatch, useSelector } from "react-redux";
 import getEditComponents from "components/utils/editWrapper";
 import { setPeronsalInformation } from "redux/actions/main";
 import ElementFactory from "factory/rectangle";
+import Toolbar from "components/floatingToolbar";
 import idx from "idx";
+import { useImmer } from "use-immer";
 
 function Rectangle(props) {
   const selectedComponents = useSelector(
     (state) => state.main.selectedComponents
   );
-  const [isRendered, setIsRendered] = useState(false);
-  const [groupInstance, setGroupInstance] = useState(null);
+  const [toolbar, setToolbar] = useState(false);
+  const [internalState, setInternalState] = useImmer({});
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
-  let toolbarInstance = null;
   let groupObject = null;
 
   function onBlurHandler(e) {
@@ -30,13 +31,10 @@ function Rectangle(props) {
         // no action required
       } else {
         selectorInstance.hide();
-
-        // passing same callback to event listener in wrapper class
-        toolbarInstance.forceHide(blurListenerCB);
+        // setToolbar(false);
       }
     };
 
-    // e.relatedTarget acts as main floating toolbar
     if (
       idx(e, (_) => _.relatedTarget.id) === "floating-toolbar" ||
       idx(e, (_) => _.relatedTarget.dataset.parent) === "floating-toolbar"
@@ -47,7 +45,7 @@ function Rectangle(props) {
     } else {
       console.log("not a related target");
       selectorInstance.hide();
-      toolbarInstance.forceHide(blurListenerCB);
+      // setToolbar(false);
     }
 
     two.update();
@@ -57,7 +55,8 @@ function Rectangle(props) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (isRendered === false) {
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -77,14 +76,19 @@ function Rectangle(props) {
     } else {
       /** This element will render by creating it's own group wrapper */
       groupObject = group;
-      if (groupInstance === null) setGroupInstance(group);
 
-      const { selector, toolbar } = getEditComponents(two, group, 4);
+      const { selector } = getEditComponents(two, group, 4);
       selectorInstance = selector;
-      toolbarInstance = toolbar;
-
       group.children.unshift(rectangle);
       two.update();
+
+      setInternalState((draft) => {
+        draft.element = {
+          [rectangle.id]: rectangle,
+          [group.id]: group,
+          // [selector.id]: selector,
+        };
+      });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
@@ -93,9 +97,6 @@ function Rectangle(props) {
       // If component is in area of selection frame/tool, programmatically enable it's selector
       if (selectedComponents.includes(props.id)) {
         console.log("selectedComponents", selectedComponents);
-
-        // forcefully
-        // document.getElementById(`${group.id}`).focus();
 
         selector.update(
           rectangle.getBoundingClientRect(true).left - 10,
@@ -115,11 +116,7 @@ function Rectangle(props) {
         );
         two.update();
 
-        toolbar.show();
-        toolbar.shift(
-          getGroupElementFromDOM.getBoundingClientRect().left,
-          getGroupElementFromDOM.getBoundingClientRect().top
-        );
+        setToolbar(true);
       });
 
       interact(`#${group.id}`).resizable({
@@ -127,7 +124,6 @@ function Rectangle(props) {
 
         listeners: {
           move(event) {
-            toolbar.hide();
             const target = event.target;
             const rect = event.rect;
 
@@ -149,7 +145,6 @@ function Rectangle(props) {
             two.update();
           },
           end(event) {
-            toolbar.show();
             console.log("the end");
           },
         },
@@ -164,7 +159,6 @@ function Rectangle(props) {
             // console.log(event.type, event.target);
           },
           move(event) {
-            toolbar.hide();
             event.target.style.transform = `translate(${event.pageX}px, ${
               event.pageY - offsetHeight
             }px)`;
@@ -188,23 +182,31 @@ function Rectangle(props) {
         },
       });
     }
-    if (isRendered === false) setIsRendered(true);
-  }
 
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Rectangle", groupInstance);
+      console.log("UNMOUNTING in Rectangle", group);
       // clean garbage by removing instance
-      two.remove(groupInstance);
+      two.remove(group);
     };
   }, []);
+
+  function closeToolbar() {
+    setToolbar(false);
+  }
 
   return (
     <React.Fragment>
       <div id="two-rectangle"></div>
-
+      {toolbar && <button> Rectangles </button>}
       {/* <button>change button in group</button> */}
+      {toolbar && (
+        <Toolbar
+          toggle={toolbar}
+          componentState={internalState}
+          closeToolbar={closeToolbar}
+        />
+      )}
+      {/* <Toolbar toggle={toolbar} /> */}
     </React.Fragment>
   );
 }

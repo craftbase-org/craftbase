@@ -146,12 +146,7 @@ function Divider(props) {
     };
   }, []);
 
-  return (
-    <React.Fragment>
-      <div id="two-button"></div>
-      <button>change button in group</button>
-    </React.Fragment>
-  );
+  return <React.Fragment></React.Fragment>;
 }
 
 Divider.propTypes = {

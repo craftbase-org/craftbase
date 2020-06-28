@@ -9,17 +9,17 @@
   z-index: -1;
 }
 
-#floating-toolbar {
-  position: absolute;
-  width: 340px;
-  height: 40px;
-  background: #091e42;
-  visibility: hidden;
-  border-radius: 10px;
-  z-index: 99999;
-  cursor: pointer;
-  outline: none;
-}
+// #floating-toolbar {
+//   position: absolute;
+//   width: 340px;
+//   height: 40px;
+//   background: #091e42;
+//   visibility: hidden;
+//   border-radius: 10px;
+//   z-index: 99999;
+//   cursor: pointer;
+//   outline: none;
+// }
 
 #selector-rect {
   z-index: -1;
@@ -234,4 +234,46 @@ button:focus {
   .pos-left-#{$size} {
     left: #{$size}px;
   }
+}
+
+.caret-icon::before {
+  content: "";
+  position: absolute;
+  background-color: #0052cc;
+  width: 3px;
+  height: 9px;
+  transform: translate(2px, 0) rotate(45deg);
+}
+.caret-icon::after {
+  content: "";
+  position: absolute;
+  background-color: #0052cc;
+  width: 3px;
+  height: 9px;
+  transform: translate(2px, 0) rotate(-45deg);
+}
+
+/** COMMON CSS CLASSES **/
+.transform-rotate-90 {
+  transform: rotate(90deg);
+}
+
+.transform-rotate-45 {
+  transform: rotate(45deg);
+}
+
+.transform-rotate-135 {
+  transform: rotate(135deg);
+}
+
+.transform-rotate-180 {
+  transform: rotate(180deg);
+}
+
+.border-radius-50 {
+  border-radius: 50%;
+}
+
+.border-6 {
+  border-width: 6px;
 }

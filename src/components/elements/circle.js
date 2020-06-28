@@ -5,7 +5,7 @@ import ObjectSelector from "components/utils/objectSelector";
 import { setPeronsalInformation } from "redux/actions/main";
 import getEditComponents from "components/utils/editWrapper";
 import CircleFactory from "factory/circle";
-
+import Toolbar from "components/floatingToolbar";
 // const useSelector = createSelectorHook(ReactReduxContext);
 // const useDispatch = createDispatchHook(ReactReduxContext);
 
@@ -84,7 +84,10 @@ function Circle(props) {
 
     if (props.parentGroup) {
       /** This element will be rendered and scoped in its parent group */
+      console.log("properties of circle", props);
       const parentGroup = props.parentGroup;
+      circle.translation.x = props.properties.x;
+      circle.translation.y = props.properties.y;
       parentGroup.add(circle);
       two.update();
     } else {
@@ -217,7 +220,7 @@ function Circle(props) {
   return (
     <React.Fragment>
       <div id="two-Circle"></div>
-
+      {/* {isRendered ? <Toolbar toggle={toolbar} /> : <Toolbar toggle={false} />} */}
       {/* <button>change button in group</button> */}
     </React.Fragment>
   );

@@ -13,7 +13,8 @@ export const properties = {
   alignment: "alignment",
   borderColor: "border_color",
   borderWidth: "border_width",
-  linkUrl: "link_url",
+  borderStyle: "border_style",
+  underline: "underline",
   opacity: "opacity",
 };
 
@@ -73,4 +74,14 @@ export const allColorShades = [
   "#5E6C84",
   "#7A869A",
   "#97A0AF",
+];
+
+export const essentialShades = [
+  "#FF5630",
+  "#FFAB00",
+  "#36B37E",
+  "#00B8D9",
+  "#0065FF",
+  "#6554C0",
+  "#42526E",
 ];
