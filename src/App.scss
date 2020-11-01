@@ -39,7 +39,7 @@ text
 // path
 {
   cursor: pointer !important;
-  font-family: "Noto Sans JP", sans-serif;
+  font-family: 'Noto Sans JP', sans-serif;
 }
 
 g {
@@ -89,7 +89,7 @@ button:focus {
   background: transparent;
   border: none;
   color: #fff;
-  font-family: "Noto Sans JP";
+  font-family: 'Noto Sans JP';
   font-weight: 600;
   font-size: 16px;
   resize: none;
@@ -100,7 +100,7 @@ button:focus {
   background: transparent;
   border: none;
   color: #000;
-  font-family: "Noto Sans JP";
+  font-family: 'Noto Sans JP';
   font-weight: 600;
   font-size: 16px;
   resize: none;
@@ -112,7 +112,7 @@ button:focus {
   background: transparent;
   border: none;
   color: #000;
-  font-family: "Noto Sans JP";
+  font-family: 'Noto Sans JP';
   font-weight: 600;
   font-size: 16px;
   resize: none;
@@ -125,21 +125,21 @@ button:focus {
 
 .sidebar-container {
   z-index: 1;
-  width: 100px;
+  width: 100%;
   -ms-flex: 0 100px;
   -webkit-box-flex: 0;
   -moz-box-flex: 0;
   -ms-box-flex: 0;
   box-flex: 0;
   position: fixed;
-  height: 100%;
+  height: 10%;
   -webkit-transition: all 500ms;
   -moz-transition: all 500ms;
   -o-transition: all 500ms;
   transition: all 500ms;
 
   .icon-elements:hover::after {
-    content: "Elements";
+    content: 'Elements';
     width: 90px;
     position: absolute;
     top: 4px;
@@ -155,7 +155,7 @@ button:focus {
     font-size: 0.9rem;
   }
   .icon-elements:hover::before {
-    content: " ";
+    content: ' ';
     position: absolute;
     top: 14px;
     left: 51px;
@@ -174,7 +174,7 @@ button:focus {
 
   .icon-shape:hover::after {
     @extend .icon-elements:hover::after;
-    content: "Shapes";
+    content: 'Shapes';
   }
   .icon-shape:hover::before {
     @extend .icon-elements:hover::before;
@@ -182,7 +182,7 @@ button:focus {
 
   .icon-frame:hover::after {
     @extend .icon-elements:hover::after;
-    content: "Frames";
+    content: 'Frames';
   }
   .icon-frame:hover::before {
     @extend .icon-elements:hover::before;
@@ -190,7 +190,7 @@ button:focus {
 
   .icon-text:hover::after {
     @extend .icon-elements:hover::after;
-    content: "Add Text";
+    content: 'Add Text';
   }
   .icon-text:hover::before {
     @extend .icon-elements:hover::before;
@@ -198,7 +198,7 @@ button:focus {
 
   .icon-pencil:hover::after {
     @extend .icon-elements:hover::after;
-    content: "Draw";
+    content: 'Draw';
   }
   .icon-pencil:hover::before {
     @extend .icon-elements:hover::before;
@@ -206,7 +206,7 @@ button:focus {
 }
 
 .secondary-sidebar-content::before {
-  content: " ";
+  content: ' ';
   position: absolute;
   top: 9px;
   left: -5px;
@@ -237,7 +237,7 @@ button:focus {
 }
 
 .caret-icon::before {
-  content: "";
+  content: '';
   position: absolute;
   background-color: #0052cc;
   width: 3px;
@@ -245,7 +245,7 @@ button:focus {
   transform: translate(2px, 0) rotate(45deg);
 }
 .caret-icon::after {
-  content: "";
+  content: '';
   position: absolute;
   background-color: #0052cc;
   width: 3px;

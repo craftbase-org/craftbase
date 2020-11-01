@@ -1,46 +1,50 @@
-import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
-import Two from "two.js";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import Icon from "icons/icons";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation } from "redux/actions/main";
+import React, { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
+import Two from 'two.js';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import { useImmer } from 'use-immer';
+
+import { elementOnBlurHandler } from 'utils/misc';
+import getEditComponents from 'components/utils/editWrapper';
+import Toolbar from 'components/floatingToolbar';
+import Icon from 'icons/icons';
+import ObjectSelector from 'components/utils/objectSelector';
+import { setPeronsalInformation } from 'store/actions/main';
 
 function Checkbox(props) {
-  const [isRendered, setIsRendered] = useState(false);
-  const [groupInstance, setGroupInstance] = useState(null);
+  const [showToolbar, toggleToolbar] = useState(false);
+  const [internalState, setInternalState] = useImmer({});
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log("on blur handler called");
-    selectorInstance.hide();
-    two.update();
+    elementOnBlurHandler(e, selectorInstance, two);
   }
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (isRendered === false) {
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
     const offsetHeight = 0;
     let checkboxCounter = 2;
 
-    const prevX = localStorage.getItem("checkbox_coordX");
-    const prevY = localStorage.getItem("checkbox_coordY");
+    const prevX = localStorage.getItem('checkbox_coordX');
+    const prevY = localStorage.getItem('checkbox_coordY');
 
     const currentCheckboxes = [
-      { name: "checkbox 1", checked: false },
-      { name: "checkbox 2", checked: true },
-      { name: "checkbox 3", checked: false },
+      { name: 'checkbox 1', checked: false },
+      { name: 'checkbox 2', checked: true },
+      { name: 'checkbox 3', checked: false },
     ];
 
     const svgImage = new DOMParser().parseFromString(
       Icon.ICON_CHECKBOX_1.data,
-      "text/xml"
+      'text/xml'
     );
 
     const textMap = {};
@@ -52,15 +56,15 @@ function Checkbox(props) {
     currentCheckboxes.forEach((item, index) => {
       // construct text part of the checkbox
       let text = new Two.Text(item.name, 10, index * 30);
-      text.alignment = "left";
-      text.size = "16";
-      text.weight = "400";
-      text.baseline = "central";
+      text.alignment = 'left';
+      text.size = '16';
+      text.weight = '400';
+      text.baseline = 'central';
 
       // construct external sqaure shape part of the checkbox
       // Subtracted to some value to have rect positioned in aligned manner
       let rect = two.makeRectangle(-10, index * 30, 15, 15);
-      rect.stroke = "#B3BAC5";
+      rect.stroke = '#B3BAC5';
 
       // construct tick mark part of the checkbox by attaching custom
       // svg of tick mark
@@ -103,21 +107,40 @@ function Checkbox(props) {
       group.translation.x = prevX || 500;
       group.translation.y = prevY || 200;
       groupObject = group;
-      if (groupInstance === null) setGroupInstance(group);
 
       // console.log("text bounding initial", group.id, checkboxGroup.id);
 
-      const selector = new ObjectSelector(two, group, 0, 0, 0, 0);
-      selector.create();
+      const { selector } = getEditComponents(two, group, 4);
       selectorInstance = selector;
 
       // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
       group.children.unshift(checkboxGroup);
       two.update();
 
+      setInternalState((draft) => {
+        draft.element = {
+          [checkboxGroup.id]: checkboxGroup,
+          [group.id]: group,
+          // [selector.id]: selector,
+        };
+        draft.group = {
+          id: group.id,
+          data: group,
+        };
+        draft.shape = {
+          data: {},
+        };
+        draft.text = {
+          data: {},
+        };
+        draft.icon = {
+          data: {},
+        };
+      });
+
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
       const addCheckboxClickHandler = (index, initialLoad) => {
         // console.log("add checkbox listener");
@@ -129,15 +152,15 @@ function Checkbox(props) {
           10,
           checkboxCounter * 30
         );
-        text.alignment = "left";
-        text.size = "16";
-        text.weight = "400";
-        text.baseline = "central";
+        text.alignment = 'left';
+        text.size = '16';
+        text.weight = '400';
+        text.baseline = 'central';
 
         // construct external sqaure shape part of the checkbox
         // Subtracted to some value to have rect positioned in aligned manner
         let rect = two.makeRectangle(-10, checkboxCounter * 30, 15, 15);
-        rect.stroke = "#B3BAC5";
+        rect.stroke = '#B3BAC5';
 
         // construct tick mark part of the checkbox by attaching custom
         // svg of tick mark
@@ -164,7 +187,7 @@ function Checkbox(props) {
         attachEventToCheckboxes();
       };
 
-      interact(`#${group.id}`).on("click", () => {
+      interact(`#${group.id}`).on('click', () => {
         selector.update(
           checkboxGroup.getBoundingClientRect(true).left - 10,
           checkboxGroup.getBoundingClientRect(true).right + 10,
@@ -173,10 +196,11 @@ function Checkbox(props) {
         );
 
         document
-          .getElementById("checkbox-add")
-          .addEventListener("click", addCheckboxClickHandler);
+          .getElementById('checkbox-add')
+          .addEventListener('click', addCheckboxClickHandler);
 
         two.update();
+        toggleToolbar(true);
       });
 
       // Store the ids of all checkbox elements
@@ -196,35 +220,35 @@ function Checkbox(props) {
             const getCoordOfBtnText = document
               .getElementById(`${text.id}`)
               .getBoundingClientRect();
-            twoTextInstance.style.display = "none";
+            twoTextInstance.style.display = 'none';
 
-            const input = document.createElement("input");
+            const input = document.createElement('input');
             const topBuffer = 2;
-            input.type = "text";
+            input.type = 'text';
             input.value = text.value;
-            input.style.fontSize = "16px";
-            input.style.fontWeight = "400";
-            input.style.position = "absolute";
+            input.style.fontSize = '16px';
+            input.style.fontWeight = '400';
+            input.style.position = 'absolute';
             input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
             input.style.left = `${getCoordOfBtnText.left}px`;
             input.style.width = `${
               checkboxGroup.getBoundingClientRect(true).width
             }px`;
-            input.className = "temp-input-area";
+            input.className = 'temp-input-area';
 
             // Appending in space of two's root element
-            document.getElementById("main-two-root").append(input);
+            document.getElementById('main-two-root').append(input);
 
             // Declaratively set focus for input box
             input.onfocus = function (e) {
-              console.log("on input focus");
+              console.log('on input focus');
               selector.show();
               two.update();
             };
             input.focus();
 
             // Handle input event for input box
-            input.addEventListener("input", () => {
+            input.addEventListener('input', () => {
               input.style.width = `${
                 checkboxGroup.getBoundingClientRect(true).width + 4
               }px`;
@@ -241,8 +265,8 @@ function Checkbox(props) {
             });
 
             // Handle Input box blur event
-            input.addEventListener("blur", () => {
-              twoTextInstance.style.display = "block";
+            input.addEventListener('blur', () => {
+              twoTextInstance.style.display = 'block';
               text.value = input.value;
               input.remove();
 
@@ -261,7 +285,7 @@ function Checkbox(props) {
             checkboxTextArr.push(text.id);
             document
               .getElementById(text.id)
-              .addEventListener("click", dblClickHandler);
+              .addEventListener('click', dblClickHandler);
           }
 
           /* On click event handling portion for rect (checkbox)*/
@@ -283,14 +307,14 @@ function Checkbox(props) {
             checkboxRectArr.push(rect.id);
             document
               .getElementById(rect.id)
-              .addEventListener("click", checkboxClickHandler);
+              .addEventListener('click', checkboxClickHandler);
           }
 
           if (!checkboxSvgArr.includes(svg.id)) {
             checkboxSvgArr.push(svg.id);
             document
               .getElementById(svg.id)
-              .addEventListener("click", checkboxClickHandler);
+              .addEventListener('click', checkboxClickHandler);
           }
         }
       }
@@ -313,39 +337,55 @@ function Checkbox(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("checkbox_coordX", parseInt(event.pageX));
+            localStorage.setItem('checkbox_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "checkbox_coordY",
+              'checkbox_coordY',
               parseInt(event.pageY - offsetHeight)
             );
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
     }
-    if (isRendered === false) setIsRendered(true);
-  }
 
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Check box", groupInstance);
+      console.log('UNMOUNTING in Check box', checkboxGroup);
       // clean garbage by removing instance
-      two.remove(groupInstance);
+      two.remove(checkboxGroup);
     };
   }, []);
+
+  function closeToolbar() {
+    toggleToolbar(false);
+  }
 
   return (
     <React.Fragment>
       <div id="two-checkbox"></div>
-      <button id="checkbox-add">add checkbox</button>
+      <button
+        id="checkbox-add"
+        className="absolute right-0"
+        style={{ top: '190px' }}
+      >
+        add checkbox
+      </button>
+      {showToolbar ? (
+        <Toolbar
+          toggle={showToolbar}
+          componentState={internalState}
+          closeToolbar={closeToolbar}
+          updateComponent={() => {
+            two.update();
+          }}
+        />
+      ) : null}
     </React.Fragment>
   );
 }

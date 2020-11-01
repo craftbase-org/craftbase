@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation } from "redux/actions/main";
-import getEditComponents from "components/utils/editWrapper";
-import ElementFactory from "factory/linkwithicon";
+import React, { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import ObjectSelector from 'components/utils/objectSelector';
+import { setPeronsalInformation } from 'store/actions/main';
+import getEditComponents from 'components/utils/editWrapper';
+import ElementFactory from 'factory/linkwithicon';
 
 function LinkWithIcon(props) {
   const [isRendered, setIsRendered] = useState(false);
@@ -16,7 +16,7 @@ function LinkWithIcon(props) {
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log("on blur handler called");
+    console.log('on blur handler called');
     selectorInstance.hide();
     two.update();
   }
@@ -29,8 +29,8 @@ function LinkWithIcon(props) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-    const prevX = localStorage.getItem("linkwithicon_coordX");
-    const prevY = localStorage.getItem("linkwithicon_coordY");
+    const prevX = localStorage.getItem('linkwithicon_coordX');
+    const prevY = localStorage.getItem('linkwithicon_coordY');
 
     // Instantiate factory
     const elementFactory = new ElementFactory(two, prevX, prevY, {});
@@ -61,11 +61,11 @@ function LinkWithIcon(props) {
       two.update();
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
-      interact(`#${group.id}`).on("click", () => {
-        console.log("on click ", text.getBoundingClientRect(true));
+      interact(`#${group.id}`).on('click', () => {
+        console.log('on click ', text.getBoundingClientRect(true));
         selector.update(
           textGroup.getBoundingClientRect(true).left - 30,
           textGroup.getBoundingClientRect(true).right + 10,
@@ -77,35 +77,35 @@ function LinkWithIcon(props) {
 
       // Captures double click event for text
       // and generates temporary textarea support for it
-      text._renderer.elem.addEventListener("dblclick", () => {
-        console.log("on click for texy", text.id);
+      text._renderer.elem.addEventListener('dblclick', () => {
+        console.log('on click for texy', text.id);
 
         // Hide actual text and replace it with input box
         const twoTextInstance = document.getElementById(`${text.id}`);
         const getCoordOfBtnText = twoTextInstance.getBoundingClientRect();
-        twoTextInstance.style.display = "none";
+        twoTextInstance.style.display = 'none';
 
-        const input = document.createElement("input");
+        const input = document.createElement('input');
         const topBuffer = 2;
-        input.type = "text";
+        input.type = 'text';
         input.value = text.value;
-        input.style.fontSize = "18px";
-        input.style.position = "absolute";
+        input.style.fontSize = '18px';
+        input.style.position = 'absolute';
         input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
         input.style.left = `${getCoordOfBtnText.left}px`;
         input.style.width = `${textGroup.getBoundingClientRect(true).width}px`;
-        input.className = "temp-input-area";
+        input.className = 'temp-input-area';
 
-        document.getElementById("main-two-root").append(input);
+        document.getElementById('main-two-root').append(input);
 
         input.onfocus = function (e) {
-          console.log("on input focus");
+          console.log('on input focus');
           selector.show();
           two.update();
         };
         input.focus();
 
-        input.addEventListener("input", () => {
+        input.addEventListener('input', () => {
           input.style.width = `${
             textGroup.getBoundingClientRect(true).width + 4
           }px`;
@@ -121,12 +121,12 @@ function LinkWithIcon(props) {
           two.update();
         });
 
-        input.addEventListener("blur", () => {
-          twoTextInstance.style.display = "block";
+        input.addEventListener('blur', () => {
+          twoTextInstance.style.display = 'block';
           text.value = input.value;
           input.remove();
           console.log(
-            "input blur event",
+            'input blur event',
             textGroup.id,
             textGroup.getBoundingClientRect()
           );
@@ -162,20 +162,20 @@ function LinkWithIcon(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("linkwithicon_coordX", parseInt(event.pageX));
+            localStorage.setItem('linkwithicon_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "linkwithicon_coordY",
+              'linkwithicon_coordY',
               parseInt(event.pageY - offsetHeight)
             );
 
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
@@ -193,7 +193,7 @@ function LinkWithIcon(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Link with icon", groupInstance);
+      console.log('UNMOUNTING in Link with icon', groupInstance);
       // clean garbage by removing instance
       two.remove(groupInstance);
     };

@@ -1,14 +1,14 @@
-import React, { Component } from "react";
-import "./App.scss";
-import Dashboard from "./Dashboard";
+import React, { Component } from 'react';
+import './App.scss';
+import Dashboard from './Dashboard';
 
-import reducers from "redux/reducers";
-import logger from "redux-logger";
-import reduxThunk from "redux-thunk";
-import { Provider } from "react-redux";
-import { createStore, applyMiddleware } from "redux";
-import { ReactReduxContext } from "utils/misc";
-import "./styles/main.css";
+import reducers from 'store/reducers';
+import logger from 'redux-logger';
+import reduxThunk from 'redux-thunk';
+import { Provider } from 'react-redux';
+import { createStore, applyMiddleware } from 'redux';
+
+import './styles/main.css';
 
 const createStoreWithMiddleware = applyMiddleware(
   reduxThunk,

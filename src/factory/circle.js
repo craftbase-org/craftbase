@@ -1,4 +1,4 @@
-import Main from "./main";
+import Main from './main';
 
 export default class CircleFactory extends Main {
   createElement() {
@@ -9,7 +9,7 @@ export default class CircleFactory extends Main {
 
     // Implement core element
     const circle = two.makeEllipse(0, 0, 70, 70);
-    circle.fill = fill ? fill : "#EBECF0";
+    circle.fill = fill ? fill : 'red';
     circle.noStroke();
     this.circle = circle;
 

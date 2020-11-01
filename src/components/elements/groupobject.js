@@ -1,20 +1,18 @@
-import React, { useEffect, useState, Fragment } from "react";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation, ungroupElements } from "redux/actions/main";
-import Loadable from "react-loadable";
-import Loader from "components/utils/loader";
-import ElementWrapper from "components/elementWrapper";
-// const useSelector = createSelectorHook(ReactReduxContext);
-// const useDispatch = createDispatchHook(ReactReduxContext);
+import React, { useEffect, useState, Fragment } from 'react';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import ObjectSelector from 'components/utils/objectSelector';
+import { setPeronsalInformation, ungroupElements } from 'store/actions/main';
+import Loadable from 'react-loadable';
+import Loader from 'components/utils/loader';
+import ElementWrapper from 'components/elementWrapper';
 
 function GroupedObjectWrapper(props) {
   const status = useSelector((state) => state.main.currentStatus);
   const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
   const dispatch = useDispatch();
   console.log(
-    "useSelector",
+    'useSelector',
     useSelector((state) => state)
   );
   const two = props.twoJSInstance;
@@ -37,8 +35,8 @@ function GroupedObjectWrapper(props) {
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
 
-    const prevX = localStorage.getItem("groupobject_coordX");
-    const prevY = localStorage.getItem("groupobject_coordY");
+    const prevX = localStorage.getItem('groupobject_coordX');
+    const prevY = localStorage.getItem('groupobject_coordY');
 
     // Dummying group's layout by empty rectangle's shape implementation
     const rectangle = two.makeRectangle(
@@ -47,11 +45,11 @@ function GroupedObjectWrapper(props) {
       props.itemData.width,
       props.itemData.height
     );
-    rectangle.fill = "rgba(0,0,0,0)";
+    rectangle.fill = 'rgba(0,0,0,0)';
     rectangle.noStroke();
     rectangleInstance = rectangle;
 
-    console.log("rectangle", rectangle.getBoundingClientRect(), props);
+    console.log('rectangle', rectangle.getBoundingClientRect(), props);
 
     const group = two.makeGroup(rectangle);
     // // Iterate over group children
@@ -62,13 +60,13 @@ function GroupedObjectWrapper(props) {
 
     for (let index = 0; index < props.childrenArr.length; index++) {
       const item = props.childrenArr[index];
-      console.log("item in childrenArr", item);
+      console.log('item in childrenArr', item);
       import(`factory/${item.name}`).then((component) => {
-        console.log("component", component);
+        console.log('component', component);
         const componentFactory = new component.default(two, item.x, item.y, {});
         const factoryObject = componentFactory.createElement();
         const coreObject = factoryObject[item.name];
-        console.log("coreObject", coreObject);
+        console.log('coreObject', coreObject);
         // set component's coordinates
         coreObject.translation.x = item.x;
         coreObject.translation.y = item.y;
@@ -82,7 +80,7 @@ function GroupedObjectWrapper(props) {
     group.translation.y = props.itemData.y;
     groupInstance = group;
 
-    console.log("Grouped Objects Wrapper", props.twoJSInstance);
+    console.log('Grouped Objects Wrapper', props.twoJSInstance);
 
     const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
     selector.create();
@@ -91,11 +89,11 @@ function GroupedObjectWrapper(props) {
     two.update();
 
     const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-    getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-    getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+    getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+    getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
-    interact(`#${group.id}`).on("click", () => {
-      console.log("on click ");
+    interact(`#${group.id}`).on('click', () => {
+      console.log('on click ');
       selector.update(
         rectangle.getBoundingClientRect(true).left - 10,
         rectangle.getBoundingClientRect(true).right + 10,
@@ -105,7 +103,7 @@ function GroupedObjectWrapper(props) {
       two.update();
     });
 
-    group._renderer.elem.addEventListener("dblclick", () => {
+    group._renderer.elem.addEventListener('dblclick', () => {
       // console.log("group dblclick handler", group.children[1].id);
 
       // loop through all children of group
@@ -114,7 +112,7 @@ function GroupedObjectWrapper(props) {
         const childDOMNode = document.getElementById(
           group.children[index + 1].id
         );
-        console.log("childDOMNode", childDOMNode);
+        console.log('childDOMNode', childDOMNode);
         localStorage.setItem(
           `${child.name}_coordX`,
           childDOMNode.getBoundingClientRect().x
@@ -126,7 +124,7 @@ function GroupedObjectWrapper(props) {
       });
       group.opacity = 0;
       dispatch(
-        ungroupElements("UNGROUP_ELEMENT", { data: { groupId: props.id } })
+        ungroupElements('UNGROUP_ELEMENT', { data: { groupId: props.id } })
       );
       // two.remove();
     });
@@ -156,7 +154,7 @@ function GroupedObjectWrapper(props) {
           two.update();
         },
         end(event) {
-          console.log("the end");
+          console.log('the end');
         },
       },
     });
@@ -176,18 +174,18 @@ function GroupedObjectWrapper(props) {
         },
         end(event) {
           console.log(
-            "event x",
+            'event x',
             event.target.getBoundingClientRect(),
             event.pageX,
             event.clientX
           );
           // alternate -> take event.rect.left for x
-          localStorage.setItem("groupobject_coordX", parseInt(event.pageX));
+          localStorage.setItem('groupobject_coordX', parseInt(event.pageX));
           localStorage.setItem(
-            "groupobject_coordY",
+            'groupobject_coordY',
             parseInt(event.pageY - offsetHeight)
           );
-          dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+          dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
         },
       },
     });

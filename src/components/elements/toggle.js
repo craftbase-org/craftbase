@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation } from "redux/actions/main";
-import ElementCreator from "factory/toggle";
+import React, { useEffect, useState } from 'react';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import ObjectSelector from 'components/utils/objectSelector';
+import { setPeronsalInformation } from 'store/actions/main';
+import ElementCreator from 'factory/toggle';
 
 function Toggle(props) {
   const [isRendered, setIsRendered] = useState(false);
@@ -14,7 +14,7 @@ function Toggle(props) {
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log("on blur handler called");
+    console.log('on blur handler called');
     selectorInstance.hide();
     two.update();
   }
@@ -27,8 +27,8 @@ function Toggle(props) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-    const prevX = localStorage.getItem("toggle_coordX");
-    const prevY = localStorage.getItem("toggle_coordY");
+    const prevX = localStorage.getItem('toggle_coordX');
+    const prevY = localStorage.getItem('toggle_coordY');
 
     const elementFactory = new ElementCreator(two, prevX, prevY, {});
     const {
@@ -56,21 +56,21 @@ function Toggle(props) {
       two.update();
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
       // Does capture event of toggle me button rendered prior to this element rendering
-      document.getElementById("add-1-2").addEventListener("click", () => {
-        console.log("on click captured");
+      document.getElementById('add-1-2').addEventListener('click', () => {
+        console.log('on click captured');
         let toggleCircle = circle;
         let toggleRect = rect;
         const calcCirclePointX = parseInt(toggleRect.width / 4);
         toggleCircle.translation.x = parseInt(-calcCirclePointX);
-        toggleRect.fill = "#ccc";
+        toggleRect.fill = '#ccc';
         two.update();
       });
 
-      interact(`#${group.id}`).on("click", () => {
+      interact(`#${group.id}`).on('click', () => {
         selector.update(
           rectCircleGroup.getBoundingClientRect(true).left - 4,
           rectCircleGroup.getBoundingClientRect(true).right + 4,
@@ -96,20 +96,20 @@ function Toggle(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("toggle_coordX", parseInt(event.pageX));
+            localStorage.setItem('toggle_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "toggle_coordY",
+              'toggle_coordY',
               parseInt(event.pageY - offsetHeight)
             );
 
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
@@ -121,7 +121,7 @@ function Toggle(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Toggle", groupInstance);
+      console.log('UNMOUNTING in Toggle', groupInstance);
       // clean garbage by removing instance
       two.remove(groupInstance);
     };

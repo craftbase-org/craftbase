@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation } from "redux/actions/main";
-import ElementFactory from "factory/text";
+import React, { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import ObjectSelector from 'components/utils/objectSelector';
+import { setPeronsalInformation } from 'store/actions/main';
+import ElementFactory from 'factory/text';
 
 function Text(props) {
   const [isRendered, setIsRendered] = useState(false);
@@ -27,8 +27,8 @@ function Text(props) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-    const prevX = localStorage.getItem("text_coordX");
-    const prevY = localStorage.getItem("text_coordY");
+    const prevX = localStorage.getItem('text_coordX');
+    const prevY = localStorage.getItem('text_coordY');
 
     // Instantiate factory
     const elementFactory = new ElementFactory(two, prevX, prevY, {});
@@ -58,11 +58,11 @@ function Text(props) {
       two.update();
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
-      interact(`#${group.id}`).on("click", () => {
-        console.log("on click ", text.getBoundingClientRect(true));
+      interact(`#${group.id}`).on('click', () => {
+        console.log('on click ', text.getBoundingClientRect(true));
         selector.update(
           rectTextGroup.getBoundingClientRect(true).left - 5,
           rectTextGroup.getBoundingClientRect(true).right + 5,
@@ -74,38 +74,38 @@ function Text(props) {
 
       // Captures double click event for text
       // and generates temporary textarea support for it
-      text._renderer.elem.addEventListener("dblclick", () => {
-        console.log("on click for texy", text.id);
+      text._renderer.elem.addEventListener('dblclick', () => {
+        console.log('on click for texy', text.id);
 
         // Hide actual text and replace it with input box
         const twoTextInstance = document.getElementById(`${text.id}`);
         const getCoordOfBtnText = twoTextInstance.getBoundingClientRect();
-        twoTextInstance.style.display = "none";
+        twoTextInstance.style.display = 'none';
 
-        const input = document.createElement("input");
+        const input = document.createElement('input');
         const topBuffer = 2;
-        input.type = "text";
+        input.type = 'text';
         input.value = text.value;
-        input.style.color = "#0052CC";
+        input.style.color = '#0052CC';
         input.style.fontSize = `${text.size}px`;
-        input.style.position = "absolute";
+        input.style.position = 'absolute';
         input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
         input.style.left = `${getCoordOfBtnText.left}px`;
         input.style.width = `${
           rectTextGroup.getBoundingClientRect(true).width
         }px`;
-        input.className = "temp-input-area";
+        input.className = 'temp-input-area';
 
-        document.getElementById("main-two-root").append(input);
+        document.getElementById('main-two-root').append(input);
 
         input.onfocus = function (e) {
-          console.log("on input focus");
+          console.log('on input focus');
           selector.show();
           two.update();
         };
         input.focus();
 
-        input.addEventListener("input", () => {
+        input.addEventListener('input', () => {
           input.style.width = `${
             rectTextGroup.getBoundingClientRect(true).width + 4
           }px`;
@@ -127,8 +127,8 @@ function Text(props) {
           }px`;
         });
 
-        input.addEventListener("blur", () => {
-          twoTextInstance.style.display = "block";
+        input.addEventListener('blur', () => {
+          twoTextInstance.style.display = 'block';
           text.value = input.value;
           input.remove();
 
@@ -171,7 +171,7 @@ function Text(props) {
             two.update();
           },
           end(event) {
-            console.log("the end");
+            console.log('the end');
           },
         },
       });
@@ -193,19 +193,19 @@ function Text(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("text_coordX", parseInt(event.pageX));
+            localStorage.setItem('text_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "text_coordY",
+              'text_coordY',
               parseInt(event.pageY - offsetHeight)
             );
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
@@ -216,7 +216,7 @@ function Text(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Circle", groupInstance);
+      console.log('UNMOUNTING in Circle', groupInstance);
       // clean garbage by removing instance
       two.remove(groupInstance);
     };

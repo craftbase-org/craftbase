@@ -4,8 +4,15 @@ import {
   ADD_ELEMENT,
   UNGROUP_ELEMENT,
   AREA_SELECTION,
-} from "redux/types";
-import produce from "immer";
+  UPDATE_ELEMENT_DATA,
+} from '../types';
+import produce from 'immer';
+
+const initialBoardData = [
+  { id: 4, name: 'circle', data: { x: 272, y: 707, name: 'circle' } },
+  { id: 6, name: 'rectangle', data: { x: 290, y: 430, name: 'rectangle' } },
+  { id: 9, name: 'linkwithicon' },
+];
 
 const initial_state = {
   app: {},
@@ -15,6 +22,7 @@ const initial_state = {
   selectedComponents: [],
   lastAddedElement: {},
   getCoordGraph: {},
+  boardData: [...initialBoardData],
 };
 
 export default (state = initial_state, action) =>
@@ -30,7 +38,7 @@ export default (state = initial_state, action) =>
 
         return {
           ...state,
-          currentStatus: "construct",
+          currentStatus: 'construct',
           getCoordGraph,
           componentData: action.payload,
           elementIDs: [...state.elementIDs, ...newArr],
@@ -42,10 +50,18 @@ export default (state = initial_state, action) =>
         newItems.push(elementId);
         return {
           ...state,
-          currentStatus: "complete",
+          currentStatus: 'complete',
           elementIDs: newItems,
           lastAddedElement: {},
         };
+
+      case UPDATE_ELEMENT_DATA:
+        console.log('action.payload', action.payload.data);
+        let findId = state.boardData.findIndex(
+          (x) => x.id === action.payload?.data?.id
+        );
+        console.log('update element data', findId);
+        break;
 
       case AREA_SELECTION:
         let x1Coord = action.payload.left;
@@ -53,8 +69,8 @@ export default (state = initial_state, action) =>
         let y1Coord = action.payload.top;
         let y2Coord = action.payload.bottom;
 
-        localStorage.setItem("groupobject_coordX", parseInt(action.payload.x));
-        localStorage.setItem("groupobject_coordY", parseInt(action.payload.y));
+        localStorage.setItem('groupobject_coordX', parseInt(action.payload.x));
+        localStorage.setItem('groupobject_coordY', parseInt(action.payload.y));
 
         let xMid =
           parseInt(action.payload.left) + parseInt(action.payload.width / 2);
@@ -65,9 +81,9 @@ export default (state = initial_state, action) =>
         const newChildren = [];
         const selectedComponentArr = [];
         const allComponentCoords = Object.values(draft.getCoordGraph);
-        console.log("allComponentCoords", xMid, yMid, state.getCoordGraph);
+        console.log('allComponentCoords', xMid, yMid, state.getCoordGraph);
         allComponentCoords.forEach((item, index) => {
-          console.log("item", item);
+          console.log('item', item);
           if (item !== undefined) {
             if (
               item.x > x1Coord &&
@@ -75,7 +91,7 @@ export default (state = initial_state, action) =>
               item.y > y1Coord &&
               item.y < y2Coord
             ) {
-              console.log("a match");
+              console.log('a match');
               let idToSelect = parseInt(
                 Object.keys(draft.getCoordGraph)[index]
               );
@@ -90,7 +106,7 @@ export default (state = initial_state, action) =>
               let relativeX = item.x - xMid;
               let relativeY = item.y - yMid;
               console.log(
-                "relativeX relativeY",
+                'relativeX relativeY',
                 relativeX,
                 relativeY,
                 indexOfComponentArr
@@ -107,7 +123,7 @@ export default (state = initial_state, action) =>
         });
 
         newGroup.id = Math.floor(Math.random() * 9000) + 1000;
-        newGroup.name = "groupobject";
+        newGroup.name = 'groupobject';
         newGroup.width = action.payload.width;
         newGroup.height = action.payload.height;
 
@@ -133,7 +149,7 @@ export default (state = initial_state, action) =>
         const newElementsData = [...state.componentData, action.payload];
         return {
           ...state,
-          currentStatus: "complete",
+          currentStatus: 'complete',
           componentData: newElementsData,
           lastAddedElement: action.payload,
         };
@@ -144,7 +160,7 @@ export default (state = initial_state, action) =>
           (x) => x.id === groupToBeRemoved
         );
         console.log(
-          "getIndexOf",
+          'getIndexOf',
           indexOfGroup,
           action.payload,
           state.componentData
@@ -161,7 +177,7 @@ export default (state = initial_state, action) =>
         ];
         return {
           ...state,
-          currentStatus: "construct",
+          currentStatus: 'construct',
 
           componentData: updatedElementsData,
           lastAddedElement: action.payload,

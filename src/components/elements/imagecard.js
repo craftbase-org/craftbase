@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation } from "redux/actions/main";
-import ElementFactory from "factory/imagecard";
+import React, { useEffect, useState } from 'react';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import ObjectSelector from 'components/utils/objectSelector';
+import { setPeronsalInformation } from 'store/actions/main';
+import ElementFactory from 'factory/imagecard';
 
 function ImageCard(props) {
   const [isRendered, setIsRendered] = useState(false);
@@ -26,8 +26,8 @@ function ImageCard(props) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-    const prevX = localStorage.getItem("imagecard_coordX");
-    const prevY = localStorage.getItem("imagecard_coordY");
+    const prevX = localStorage.getItem('imagecard_coordX');
+    const prevY = localStorage.getItem('imagecard_coordY');
 
     // Instantiate factory
     const elementFactory = new ElementFactory(two, prevX, prevY, {});
@@ -61,11 +61,11 @@ function ImageCard(props) {
         rectangle.width + rectangle.height / externalSVG.scale
       );
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
-      interact(`#${group.id}`).on("click", () => {
-        console.log("on click ");
+      interact(`#${group.id}`).on('click', () => {
+        console.log('on click ');
         selector.update(
           rectangle.getBoundingClientRect(true).left - 3,
           rectangle.getBoundingClientRect(true).right + 3,
@@ -115,7 +115,7 @@ function ImageCard(props) {
             two.update();
           },
           end(event) {
-            console.log("the end");
+            console.log('the end');
           },
         },
       });
@@ -135,19 +135,19 @@ function ImageCard(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("imagecard_coordX", parseInt(event.pageX));
+            localStorage.setItem('imagecard_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "imagecard_coordY",
+              'imagecard_coordY',
               parseInt(event.pageY - offsetHeight)
             );
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
@@ -158,7 +158,7 @@ function ImageCard(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in ImageCard", groupInstance);
+      console.log('UNMOUNTING in ImageCard', groupInstance);
       // clean garbage by removing instance
       two.remove(groupInstance);
     };

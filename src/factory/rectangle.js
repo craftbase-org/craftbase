@@ -1,4 +1,4 @@
-import Main from "./main";
+import Main from './main';
 
 export default class RectangleFactory extends Main {
   createElement() {
@@ -10,12 +10,12 @@ export default class RectangleFactory extends Main {
     // Implement core element
 
     const rectangle = two.makeRectangle(0, 0, 210, 110);
-    rectangle.fill = "#EBECF0";
+    rectangle.fill = '#FFBDAD';
     rectangle.noStroke();
     // dashed dotted
     // rectangle.dashes[0] = 0;
 
-    console.log("rectangle", rectangle.getBoundingClientRect());
+    console.log('rectangle', rectangle.getBoundingClientRect());
 
     const group = two.makeGroup(rectangle);
 

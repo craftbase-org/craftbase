@@ -1,5 +1,5 @@
-import Icon from "icons/icons";
-import Main from "./main";
+import Icon from 'icons/icons';
+import Main from './main';
 
 export default class ButtonWithIconFactory extends Main {
   createElement() {
@@ -10,19 +10,19 @@ export default class ButtonWithIconFactory extends Main {
 
     // Implement core element
 
-    const text = two.makeText("Button", 10, 0);
-    text.size = "16";
-    text.weight = "400";
+    const text = two.makeText('Button', 10, 0);
+    text.size = '16';
+    text.weight = '400';
     // ;
     text.size = 18;
-    text.fill = "#fff";
+    text.fill = '#fff';
     // text.baseline = "sub";
-    text.alignment = "left";
+    text.alignment = 'left';
 
     // Implement custom svg
     const svgImage = new DOMParser().parseFromString(
       Icon.ICON_IMAGE_1.data,
-      "text/xml"
+      'text/xml'
     );
     // console.log("svgImage", svgImage);
     const externalSVG = two.interpret(svgImage.firstChild);
@@ -55,10 +55,10 @@ export default class ButtonWithIconFactory extends Main {
       group.getBoundingClientRect(true).left - 40,
       group.getBoundingClientRect(true).bottom + 10
     );
-    rectangle.fill = "#36B37E";
-    rectangle.stroke = "#36B37E";
+    rectangle.fill = '#36B37E';
+    rectangle.stroke = '#36B37E';
     rectangle.linewidth = 8;
-    rectangle.join = "round";
+    rectangle.join = 'round';
 
     const rectTextGroup = two.makeGroup(rectangle, textGroup);
     // rectangle.noStroke();

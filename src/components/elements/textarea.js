@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation } from "redux/actions/main";
-import ElementFactory from "factory/textarea";
+import React, { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import ObjectSelector from 'components/utils/objectSelector';
+import { setPeronsalInformation } from 'store/actions/main';
+import ElementFactory from 'factory/textarea';
 
 function Textarea(props) {
   const [isRendered, setIsRendered] = useState(false);
@@ -15,7 +15,7 @@ function Textarea(props) {
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log("on blur handler called");
+    console.log('on blur handler called');
     selectorInstance.hide();
     two.update();
   }
@@ -28,8 +28,8 @@ function Textarea(props) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-    const prevX = localStorage.getItem("textarea_coordX");
-    const prevY = localStorage.getItem("textarea_coordY");
+    const prevX = localStorage.getItem('textarea_coordX');
+    const prevY = localStorage.getItem('textarea_coordY');
 
     // Instantiate factory
     const elementFactory = new ElementFactory(two, prevX, prevY, {});
@@ -59,11 +59,11 @@ function Textarea(props) {
       two.update();
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
-      interact(`#${group.id}`).on("click", () => {
-        console.log("on click ", text.getBoundingClientRect(true));
+      interact(`#${group.id}`).on('click', () => {
+        console.log('on click ', text.getBoundingClientRect(true));
         selector.update(
           rectangle.getBoundingClientRect(true).left - 7,
           rectangle.getBoundingClientRect(true).right + 7,
@@ -83,46 +83,46 @@ function Textarea(props) {
 
       const addTextLine = () => {
         const newText = text.clone();
-        newText.text = "d";
+        newText.text = 'd';
         prevText = newText;
       };
 
       // Captures double click event for text
       // and generates temporary textarea support for it
-      text._renderer.elem.addEventListener("click", () => {
-        console.log("on click for texy", text.id);
+      text._renderer.elem.addEventListener('click', () => {
+        console.log('on click for texy', text.id);
 
         // Hide actual text and replace it with input box
         const twoTextInstance = document.getElementById(`${text.id}`);
         const getCoordOfBtnText = twoTextInstance.getBoundingClientRect();
-        twoTextInstance.style.display = "none";
+        twoTextInstance.style.display = 'none';
 
-        const input = document.createElement("textarea");
+        const input = document.createElement('textarea');
         const topBuffer = 2;
 
         input.value = text.value;
         input.style.color = text.fill;
         input.style.fontSize = `${text.size}px`;
-        input.style.position = "absolute";
+        input.style.position = 'absolute';
         input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
         input.style.left = `${getCoordOfBtnText.left}px`;
         input.style.width = `${rectangle.getBoundingClientRect(true).width}px`;
-        input.style.height = "3vh";
-        input.className = "temp-textarea";
+        input.style.height = '3vh';
+        input.className = 'temp-textarea';
 
-        document.getElementById("main-two-root").append(input);
+        document.getElementById('main-two-root').append(input);
 
         input.onfocus = function (e) {
-          console.log("on input focus");
+          console.log('on input focus');
           initialScrollHeight = input.scrollHeight;
           selector.show();
           two.update();
         };
         input.focus();
 
-        input.addEventListener("input", () => {
+        input.addEventListener('input', () => {
           console.log(
-            "char length ",
+            'char length ',
             input.getBoundingClientRect().width,
             rectangle.getBoundingClientRect().width,
             input.scrollHeight,
@@ -138,7 +138,7 @@ function Textarea(props) {
               initialScrollHeight = input.scrollHeight;
               // input.style.height = `${3 * breakPointIndices.length}vh`;
               console.log(
-                "Trigger New Line",
+                'Trigger New Line',
                 input.scrollHeight,
                 breakPointIndices,
                 input.style.height
@@ -152,7 +152,7 @@ function Textarea(props) {
                 rectangle.getBoundingClientRect(true).top - 7,
                 rectangle.getBoundingClientRect(true).bottom + 7
               );
-              twoTextInstance.style.display = "block";
+              twoTextInstance.style.display = 'block';
             }
           }
 
@@ -207,7 +207,7 @@ function Textarea(props) {
           move(event) {
             const target = event.target;
             const rect = event.rect;
-            console.log("rect", rect, rectangle.getBoundingClientRect());
+            console.log('rect', rect, rectangle.getBoundingClientRect());
             const prevXCoordInSpace = rectangle.getBoundingClientRect().right;
             const diff = rect.right - prevXCoordInSpace;
 
@@ -227,7 +227,7 @@ function Textarea(props) {
             two.update();
           },
           end(event) {
-            console.log("the end");
+            console.log('the end');
           },
         },
       });
@@ -249,20 +249,20 @@ function Textarea(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("textarea_coordX", parseInt(event.pageX));
+            localStorage.setItem('textarea_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "textarea_coordY",
+              'textarea_coordY',
               parseInt(event.pageY - offsetHeight)
             );
 
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
@@ -273,7 +273,7 @@ function Textarea(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Circle", groupInstance);
+      console.log('UNMOUNTING in Circle', groupInstance);
       // clean garbage by removing instance
       two.remove(groupInstance);
     };

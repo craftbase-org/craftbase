@@ -1,28 +1,25 @@
-import React, { useState } from "react";
-import PropTypes from "prop-types";
-import idx from "idx";
-import Two from "two.js";
-import interact from "interactjs";
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
+import idx from 'idx';
+import Two from 'two.js';
+import interact from 'interactjs';
 import {
   createSelectorHook,
   createDispatchHook,
   useDispatch,
   useSelector,
-} from "react-redux";
-import { getFourthValue } from "utils";
-import { setPeronsalInformation } from "redux/actions/main";
-
-// const useSelector = createSelectorHook(ReactReduxContext);
-// const useDispatch = createDispatchHook(ReactReduxContext);
+} from 'react-redux';
+import { getFourthValue } from 'utils';
+import { setPeronsalInformation } from 'store/actions/main';
 
 function Tooltip(props) {
-  const [direction, setArrowDirection] = useState("bottom");
+  const [direction, setArrowDirection] = useState('bottom');
 
   const status = useSelector((state) => state.main.currentStatus);
   const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
   const dispatch = useDispatch();
   console.log(
-    "useSelector",
+    'useSelector',
     useSelector((state) => state)
   );
   const two = props.twoJSInstance;
@@ -41,18 +38,18 @@ function Tooltip(props) {
 
   if (
     props.twoJSInstance &&
-    (status === "construct" || lastAddedElement.id === props.id)
+    (status === 'construct' || lastAddedElement.id === props.id)
   ) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
 
-    const prevX = localStorage.getItem("Tooltip_coordX");
-    const prevY = localStorage.getItem("Tooltip_coordY");
+    const prevX = localStorage.getItem('Tooltip_coordX');
+    const prevY = localStorage.getItem('Tooltip_coordY');
 
     // Main container rectangle for tooltip
     const mainRect = two.makeRectangle(0, 0, 90, 45);
-    mainRect.fill = "#505F79";
+    mainRect.fill = '#505F79';
     mainRect.noStroke();
     tooltipMainRect = mainRect;
 
@@ -91,15 +88,15 @@ function Tooltip(props) {
       14
     );
 
-    secondaryRect.fill = "#505F79";
+    secondaryRect.fill = '#505F79';
     secondaryRect.noStroke();
     secondaryRect.rotation = 0.8;
     tooltipSecRect = secondaryRect;
 
-    const text = new Two.Text("Tooltip", 0, 0);
-    text.size = "16";
-    text.fill = "#fff";
-    text.weight = "400";
+    const text = new Two.Text('Tooltip', 0, 0);
+    text.size = '16';
+    text.fill = '#fff';
+    text.weight = '400';
     tooltipText = text;
 
     const group = two.makeGroup(mainRect, secondaryRect, text);
@@ -109,14 +106,14 @@ function Tooltip(props) {
     // group.center();
     group.translation.x = prevX || 500;
     group.translation.y = prevY || 200;
-    console.log("Tooltip", props.twoJSInstance);
+    console.log('Tooltip', props.twoJSInstance);
     two.update();
 
-    text._renderer.elem.addEventListener("dblclick", () => {
+    text._renderer.elem.addEventListener('dblclick', () => {
       let inputCharCounter = 0;
       let initialScrollHeight = 0;
-      console.log("on click for texy", text.id, text.width);
-      const input = document.createElement("textarea");
+      console.log('on click for texy', text.id, text.width);
+      const input = document.createElement('textarea');
       //   input.rows = "text";
       input.value = text.value;
       const twoTextInstance = document.getElementById(`${text.id}`);
@@ -131,27 +128,27 @@ function Tooltip(props) {
         parseInt(getCoordOfContainer.height / 6);
 
       console.log(
-        "getCoordOfContainer",
+        'getCoordOfContainer',
         getCoordOfContainer,
         CoordXForInput,
         CoordYForInput
       );
 
-      twoTextInstance.style.display = "none";
+      twoTextInstance.style.display = 'none';
 
-      input.style.position = "absolute";
+      input.style.position = 'absolute';
       input.style.top = `${CoordYForInput}px`;
       input.style.left = `${CoordXForInput}px`;
       input.style.width = `${getCoordOfText.width}px`;
       input.style.height = `${getCoordOfContainer.height}px`;
-      input.style.overflow = "hidden";
-      input.className = "temp-input-area";
+      input.style.overflow = 'hidden';
+      input.className = 'temp-input-area';
       initialScrollHeight = 40;
 
-      document.getElementById("main-two-root").append(input);
+      document.getElementById('main-two-root').append(input);
       input.focus();
 
-      input.addEventListener("input", () => {
+      input.addEventListener('input', () => {
         inputCharCounter = inputCharCounter + 1;
         if (inputCharCounter > 0) {
           onTextInputChange(input, initialScrollHeight);
@@ -161,9 +158,9 @@ function Tooltip(props) {
         }
       });
 
-      input.addEventListener("blur", () => {
-        console.log("on blur", input.value);
-        twoTextInstance.style.display = "block";
+      input.addEventListener('blur', () => {
+        console.log('on blur', input.value);
+        twoTextInstance.style.display = 'block';
         input.remove();
         text.value = input.value;
         two.update();
@@ -185,19 +182,19 @@ function Tooltip(props) {
         },
         end(event) {
           console.log(
-            "event x",
+            'event x',
             event.target.getBoundingClientRect(),
             event.rect.left,
             event.pageX,
             event.clientX
           );
           // alternate -> take event.rect.left for x
-          localStorage.setItem("Tooltip_coordX", parseInt(event.pageX));
+          localStorage.setItem('Tooltip_coordX', parseInt(event.pageX));
           localStorage.setItem(
-            "Tooltip_coordY",
+            'Tooltip_coordY',
             parseInt(event.pageY - offsetHeight)
           );
-          dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+          dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
         },
       },
     });
@@ -205,7 +202,7 @@ function Tooltip(props) {
 
   function onTextInputChange(input, initialScrollHeight) {
     console.log(
-      "initialScrollHeight",
+      'initialScrollHeight',
       tooltipText,
       initialScrollHeight,
       input.scrollHeight
@@ -257,7 +254,7 @@ function Tooltip(props) {
       <div id="two-Tooltip"></div>
       <button
         onClick={() => {
-          onTooltipChange("right");
+          onTooltipChange('right');
         }}
       >
         Tooltip toggle arrow

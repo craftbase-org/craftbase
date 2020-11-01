@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import Icon from "icons/icons";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation } from "redux/actions/main";
-import ElementFactory from "factory/dropdown";
+import React, { useEffect, useState } from 'react';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import Icon from 'icons/icons';
+import ObjectSelector from 'components/utils/objectSelector';
+import { setPeronsalInformation } from 'store/actions/main';
+import ElementFactory from 'factory/dropdown';
 
 function Dropdown(props) {
   const [isRendered, setIsRendered] = useState(false);
@@ -15,7 +15,7 @@ function Dropdown(props) {
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log("on blur handler called");
+    console.log('on blur handler called');
     selectorInstance.hide();
     two.update();
   }
@@ -28,21 +28,21 @@ function Dropdown(props) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-    const prevX = localStorage.getItem("dropdown_coordX");
-    const prevY = localStorage.getItem("dropdown_coordY");
+    const prevX = localStorage.getItem('dropdown_coordX');
+    const prevY = localStorage.getItem('dropdown_coordY');
 
-    const text = two.makeText("Select dropdown", -30, 0);
-    text.size = "14";
-    text.weight = "400";
+    const text = two.makeText('Select dropdown', -30, 0);
+    text.size = '14';
+    text.weight = '400';
     // text.fill = "#B3BAC5";
     // text.baseline = "sub";
-    text.alignment = "left";
+    text.alignment = 'left';
 
     const svgImage = new DOMParser().parseFromString(
       Icon.ICON_DROPDOWN_CARET.data,
-      "text/xml"
+      'text/xml'
     );
-    console.log("svgImage", svgImage);
+    console.log('svgImage', svgImage);
     const externalSVG = two.interpret(svgImage.firstChild.firstChild);
 
     // externalSVG.translation.y = -1;
@@ -52,7 +52,7 @@ function Dropdown(props) {
 
     let textGroup = two.makeGroup(text, externalSVG);
     textGroup.center();
-    console.log("textGroup", textGroup, textGroup.id);
+    console.log('textGroup', textGroup, textGroup.id);
 
     const group = two.makeGroup(textGroup);
 
@@ -60,7 +60,7 @@ function Dropdown(props) {
     group.translation.x = prevX || 500;
     group.translation.y = prevY || 200;
     groupObject = group;
-    console.log("text bounding initial", text.getBoundingClientRect(true));
+    console.log('text bounding initial', text.getBoundingClientRect(true));
 
     const selector = new ObjectSelector(two, group, 0, 0, 0, 0);
     selector.create();
@@ -82,10 +82,10 @@ function Dropdown(props) {
       group.getBoundingClientRect(true).bottom - 5
     );
 
-    rectangle.fill = "#fff";
-    rectangle.stroke = "#B3BAC5";
+    rectangle.fill = '#fff';
+    rectangle.stroke = '#B3BAC5';
     rectangle.linewidth = 1;
-    rectangle.join = "round";
+    rectangle.join = 'round';
 
     // Structure for add option element
     const addOptionRect = two.makeRectangle(
@@ -94,15 +94,15 @@ function Dropdown(props) {
       80,
       30
     );
-    addOptionRect.fill = "#42526E";
+    addOptionRect.fill = '#42526E';
     addOptionRect.noStroke();
     const addOptionText = two.makeText(
-      "Add option",
+      'Add option',
       rectangle.getBoundingClientRect(true).left + 100,
       50
     );
-    addOptionText.fill = "#fff";
-    addOptionText.weight = "600";
+    addOptionText.fill = '#fff';
+    addOptionText.weight = '600';
     const addOptionGroup = two.makeGroup(addOptionRect, addOptionText);
     addOptionGroup.opacity = 0;
     // rectangle.noStroke();
@@ -125,11 +125,11 @@ function Dropdown(props) {
       two.update();
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
-      interact(`#${group.id}`).on("click", () => {
-        console.log("on click ", text.getBoundingClientRect(true));
+      interact(`#${group.id}`).on('click', () => {
+        console.log('on click ', text.getBoundingClientRect(true));
         selector.update(
           rectangle.getBoundingClientRect(true).left - 7,
           rectangle.getBoundingClientRect(true).right + 7,
@@ -181,36 +181,36 @@ function Dropdown(props) {
 
       // Captures double click event for text
       // and generates temporary textarea support for it
-      text._renderer.elem.addEventListener("click", () => {
-        console.log("on click for texy", text.id);
+      text._renderer.elem.addEventListener('click', () => {
+        console.log('on click for texy', text.id);
 
         // Hide actual text and replace it with input box
         const twoTextInstance = document.getElementById(`${text.id}`);
         const getCoordOfBtnText = twoTextInstance.getBoundingClientRect();
-        twoTextInstance.style.display = "none";
+        twoTextInstance.style.display = 'none';
 
-        const input = document.createElement("input");
+        const input = document.createElement('input');
         const topBuffer = 2;
-        input.type = "text";
+        input.type = 'text';
         input.value = text.value;
         input.style.color = text.fill;
         input.style.fontSize = `${text.size}px`;
-        input.style.position = "absolute";
+        input.style.position = 'absolute';
         input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
         input.style.left = `${getCoordOfBtnText.left}px`;
         input.style.width = `${textGroup.getBoundingClientRect(true).width}px`;
-        input.className = "temp-input-area";
+        input.className = 'temp-input-area';
 
-        document.getElementById("main-two-root").append(input);
+        document.getElementById('main-two-root').append(input);
 
         input.onfocus = function (e) {
-          console.log("on input focus");
+          console.log('on input focus');
           selector.show();
           two.update();
         };
         input.focus();
 
-        input.addEventListener("input", () => {
+        input.addEventListener('input', () => {
           input.style.width = `${
             textGroup.getBoundingClientRect(true).width + 4
           }px`;
@@ -237,12 +237,12 @@ function Dropdown(props) {
           two.update();
         });
 
-        input.addEventListener("blur", () => {
-          twoTextInstance.style.display = "block";
+        input.addEventListener('blur', () => {
+          twoTextInstance.style.display = 'block';
           text.value = input.value;
           input.remove();
           console.log(
-            "input blur event",
+            'input blur event',
             textGroup.id,
             textGroup.getBoundingClientRect()
           );
@@ -270,7 +270,7 @@ function Dropdown(props) {
           move(event) {
             const target = event.target;
             const rect = event.rect;
-            console.log("rect", rect, rectangle.getBoundingClientRect());
+            console.log('rect', rect, rectangle.getBoundingClientRect());
             const prevXCoordInSpace = rectangle.getBoundingClientRect().right;
             const diff = rect.right - prevXCoordInSpace;
             // update the element's style
@@ -299,7 +299,7 @@ function Dropdown(props) {
             two.update();
           },
           end(event) {
-            console.log("the end");
+            console.log('the end');
           },
         },
       });
@@ -321,20 +321,20 @@ function Dropdown(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("dropdown_coordX", parseInt(event.pageX));
+            localStorage.setItem('dropdown_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "dropdown_coordY",
+              'dropdown_coordY',
               parseInt(event.pageY - offsetHeight)
             );
 
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
@@ -352,7 +352,7 @@ function Dropdown(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Dropdown", groupInstance);
+      console.log('UNMOUNTING in Dropdown', groupInstance);
       // clean garbage by removing instance
       two.remove(groupInstance);
     };

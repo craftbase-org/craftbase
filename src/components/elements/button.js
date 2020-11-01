@@ -1,34 +1,39 @@
-import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation } from "redux/actions/main";
-import ElementFactory from "factory/button";
+import React, { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import { useImmer } from 'use-immer';
+
+import { elementOnBlurHandler } from 'utils/misc';
+import getEditComponents from 'components/utils/editWrapper';
+import Toolbar from 'components/floatingToolbar';
+
+import { setPeronsalInformation } from 'store/actions/main';
+import ElementFactory from 'factory/button';
 
 function Button(props) {
-  const [isRendered, setIsRendered] = useState(false);
-  const [groupInstance, setGroupInstance] = useState(null);
+  const [showToolbar, toggleToolbar] = useState(false);
+  const [internalState, setInternalState] = useImmer({});
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
   let groupObject = null;
 
   function onBlurHandler(e) {
-    selectorInstance.hide();
-    two.update();
+    elementOnBlurHandler(e, selectorInstance, two);
   }
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (isRendered === false) {
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-    const prevX = localStorage.getItem("button_coordX");
-    const prevY = localStorage.getItem("button_coordY");
+    const prevX = localStorage.getItem('button_coordX');
+    const prevY = localStorage.getItem('button_coordY');
 
     // Instantiate factory
     const elementFactory = new ElementFactory(two, prevX, prevY, {});
@@ -48,21 +53,44 @@ function Button(props) {
     } else {
       /** This element will render by creating it's own group wrapper */
       groupObject = group;
-      if (groupInstance === null) setGroupInstance(group);
 
-      const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 2);
-      selector.create();
+      const { selector } = getEditComponents(two, group, 2);
       selectorInstance = selector;
 
       group.children.unshift(rectTextGroup);
       two.update();
 
-      const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      // replace shape and shape id here
+      setInternalState((draft) => {
+        draft.element = {
+          [rectTextGroup.id]: rectTextGroup,
+          [group.id]: group,
+          // [selector.id]: selector,
+        };
+        draft.group = {
+          id: group.id,
+          data: group,
+        };
+        draft.shape = {
+          type: 'button',
+          id: rectTextGroup.id,
+          data: rectTextGroup,
+        };
+        draft.text = {
+          id: text.id,
+          data: text,
+        };
+        draft.icon = {
+          data: {},
+        };
+      });
 
-      interact(`#${group.id}`).on("click", () => {
-        console.log("on click ", text.getBoundingClientRect(true));
+      const getGroupElementFromDOM = document.getElementById(`${group.id}`);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
+
+      interact(`#${group.id}`).on('click', () => {
+        console.log('on click ', text.getBoundingClientRect(true));
         selector.update(
           rectTextGroup.getBoundingClientRect(true).left - 5,
           rectTextGroup.getBoundingClientRect(true).right + 5,
@@ -70,42 +98,43 @@ function Button(props) {
           rectTextGroup.getBoundingClientRect(true).bottom + 5
         );
         two.update();
+        toggleToolbar(true);
       });
 
       // Captures double click event for text
       // and generates temporary textarea support for it
-      text._renderer.elem.addEventListener("click", () => {
-        console.log("on click for texy", text.id);
+      text._renderer.elem.addEventListener('click', () => {
+        console.log('on click for texy', text.id);
 
         // Hide actual text and replace it with input box
         const twoTextInstance = document.getElementById(`${text.id}`);
         const getCoordOfBtnText = twoTextInstance.getBoundingClientRect();
-        twoTextInstance.style.display = "none";
+        twoTextInstance.style.display = 'none';
 
-        const input = document.createElement("input");
+        const input = document.createElement('input');
         const topBuffer = 2;
-        input.type = "text";
+        input.type = 'text';
         input.value = text.value;
-        input.style.color = "#fff";
-        input.style.fontSize = "16px";
-        input.style.position = "absolute";
+        input.style.color = '#fff';
+        input.style.fontSize = '16px';
+        input.style.position = 'absolute';
         input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
         input.style.left = `${getCoordOfBtnText.left}px`;
         input.style.width = `${
           rectTextGroup.getBoundingClientRect(true).width
         }px`;
-        input.className = "temp-input-area";
+        input.className = 'temp-input-area';
 
-        document.getElementById("main-two-root").append(input);
+        document.getElementById('main-two-root').append(input);
 
         input.onfocus = function (e) {
-          console.log("on input focus");
+          console.log('on input focus');
           selector.show();
           two.update();
         };
         input.focus();
 
-        input.addEventListener("input", () => {
+        input.addEventListener('input', () => {
           let prevTextValue = text.value;
           input.style.width = `${
             rectTextGroup.getBoundingClientRect(true).width + 4
@@ -139,8 +168,8 @@ function Button(props) {
           }px`;
         });
 
-        input.addEventListener("blur", () => {
-          twoTextInstance.style.display = "block";
+        input.addEventListener('blur', () => {
+          twoTextInstance.style.display = 'block';
           text.value = input.value;
           input.remove();
 
@@ -180,7 +209,7 @@ function Button(props) {
             two.update();
           },
           end(event) {
-            console.log("the end");
+            console.log('the end');
           },
         },
       });
@@ -201,40 +230,48 @@ function Button(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("button_coordX", parseInt(event.pageX));
+            localStorage.setItem('button_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "button_coordY",
+              'button_coordY',
               parseInt(event.pageY - offsetHeight)
             );
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
     }
 
-    if (isRendered === false) setIsRendered(true);
-  }
-
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Button", groupInstance);
+      console.log('UNMOUNTING in Button', group);
       // clean garbage by removing instance
-      two.remove(groupInstance);
+      two.remove(group);
     };
   }, []);
+
+  function closeToolbar() {
+    toggleToolbar(false);
+  }
 
   return (
     <React.Fragment>
       <div id="two-button"></div>
-      <button>change button in group</button>
+      {showToolbar ? (
+        <Toolbar
+          toggle={showToolbar}
+          componentState={internalState}
+          closeToolbar={closeToolbar}
+          updateComponent={() => {
+            two.update();
+          }}
+        />
+      ) : null}
     </React.Fragment>
   );
 }

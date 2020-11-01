@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import { setPeronsalInformation } from "redux/actions/main";
-import ElementCreator from "factory/divider";
+import React, { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import { setPeronsalInformation } from 'store/actions/main';
+import ElementCreator from 'factory/divider';
 
 function Divider(props) {
   const [isRendered, setIsRendered] = useState(false);
@@ -27,8 +27,8 @@ function Divider(props) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-    const prevX = localStorage.getItem("line_coordX");
-    const prevY = localStorage.getItem("line_coordY");
+    const prevX = localStorage.getItem('line_coordX');
+    const prevY = localStorage.getItem('line_coordY');
 
     // Instantiate factory
     const elementFactory = new ElementCreator(two, prevX, prevY, {});
@@ -52,15 +52,15 @@ function Divider(props) {
       resizeLineInstance = resizeLine;
       if (groupInstance === null) setGroupInstance(group);
 
-      console.log("BUtton", props.twoJSInstance);
+      console.log('BUtton', props.twoJSInstance);
       two.update();
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
-      interact(`#${group.id}`).on("click", () => {
-        console.log("on click ");
+      interact(`#${group.id}`).on('click', () => {
+        console.log('on click ');
         resizeLine.opacity = 1;
 
         two.update();
@@ -79,7 +79,7 @@ function Divider(props) {
           move(event) {
             const target = event.target;
             const rect = event.rect;
-            console.log("on resize event", event);
+            console.log('on resize event', event);
 
             // update the element's style
             //   resizeLine.width = rect.width;
@@ -97,7 +97,7 @@ function Divider(props) {
             two.update();
           },
           end(event) {
-            console.log("the end");
+            console.log('the end');
           },
         },
       });
@@ -117,19 +117,19 @@ function Divider(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("line_coordX", parseInt(event.pageX));
+            localStorage.setItem('line_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "line_coordY",
+              'line_coordY',
               parseInt(event.pageY - offsetHeight)
             );
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
@@ -140,7 +140,7 @@ function Divider(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Divider", groupInstance);
+      console.log('UNMOUNTING in Divider', groupInstance);
       // clean garbage by removing instance
       two.remove(groupInstance);
     };

@@ -1,15 +1,14 @@
-import React, { Fragment, useState } from "react";
-import ColorPicker from "components/utils/colorPicker";
-import BorderStyleBox from "components/utils/borderStyleBox";
-import OpacitySlider from "components/utils/opacitySlider";
-import FontSizeSlider from "components/utils/fontSizeSlider";
-import styled, { css } from "styled-components";
-import { properties } from "utils/constants";
-import idx from "idx";
-import { motion, AnimatePresence } from "framer-motion";
-import Icon from "icons/icon";
-import { useImmer } from "use-immer";
-import { useEffect } from "react";
+import React, { Fragment, useEffect } from 'react';
+import ColorPicker from 'components/utils/colorPicker';
+import BorderStyleBox from 'components/utils/borderStyleBox';
+import OpacitySlider from 'components/utils/opacitySlider';
+import FontSizeSlider from 'components/utils/fontSizeSlider';
+import styled, { css } from 'styled-components';
+import { properties } from 'utils/constants';
+import idx from 'idx';
+import { motion, AnimatePresence } from 'framer-motion';
+import Icon from 'icons/icon';
+import { useImmer } from 'use-immer';
 
 const ToolbarContainer = styled(motion.div)`
   height: 100vh;
@@ -17,7 +16,7 @@ const ToolbarContainer = styled(motion.div)`
   z-index: 1;
   position: fixed;
   overflow: auto;
-  right: 0;
+  left: 0;
   outline: none;
   top: 0;
   background: rgba(255, 255, 255, 0.5);
@@ -27,15 +26,6 @@ const ToolbarContainer = styled(motion.div)`
   align-items: center;
   transition: transform 0.3s;
   box-shadow: 2px 68px 10px rgba(194, 206, 219, 0.68);
-
-  ${(props) =>
-    props.toggleToolbar
-      ? css`
-          transform: translateX(0%);
-        `
-      : css`
-          transform: translateX(100%);
-        `}
 `;
 
 const FontWeightBtn = styled.button`
@@ -116,7 +106,7 @@ const Accordion = ({
             animate="open"
             exit="collapsed"
             variants={{
-              open: { opacity: 1, height: "auto" },
+              open: { opacity: 1, height: 'auto' },
               collapsed: { opacity: 0, height: 0 },
             }}
             transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
@@ -130,44 +120,93 @@ const Accordion = ({
 };
 
 const Toolbar = (props) => {
-  const { toggle, componentState, closeToolbar } = props;
-  console.log("Toolbar props", props);
+  const { toggle, componentState, closeToolbar, updateComponent } = props;
+  console.log('Toolbar props', props);
 
-  const [colorsAccordion, toggleColorsAccordion] = useState(false);
-  const [fontAccordion, toggleFontAccordion] = useState(false);
-  const [borderAccordion, toggleBorderAccordion] = useState(false);
-  const [opacityAccordion, toggleOpacityAccordion] = useState(false);
-  const [iconAccordion, setIconAccordion] = useState(false);
+  const [state, setState] = useImmer({
+    colorsAccordion: false,
+    fontAccordion: false,
+    borderAccordion: false,
+    opacityAccordion: false,
+    iconAccordion: false,
+    colorBg: '#000',
+    colorIcon: '#fff',
+    colorText: '#fff',
+    fontSize: 18,
+    fontWeight: 400,
+    borderColor: '#000',
+    hasUnderline: false,
+    opacity: 0.4,
+  });
 
-  const [colorBg, setColorBg] = useState("#000");
-  const [colorText, setColorText] = useState("#fff");
-  const [fontSize, setFontSize] = useState(18);
-  const [fontWeight, setFontWeight] = useState(400);
-  const [borderColor, setBorderColor] = useState("#000");
-  const [hasUnderline, setUnderline] = useState(false);
-  const [opacity, setOpacity] = useState(0.4);
+  useEffect(() => {
+    setState((draft) => {
+      draft.colorBg = componentState?.shape?.data?.fill;
+    });
+  });
 
   const allowedProperties = [
     {
       key: properties.colorBg,
-      title: "Color",
-      accordion: colorsAccordion,
-      toggleAccordion: toggleColorsAccordion,
+      title: 'Color',
+      accordion: state.colorsAccordion,
+      toggleAccordion: () =>
+        setState((draft) => {
+          draft.colorsAccordion = !state.colorsAccordion;
+        }),
       content: () => (
         <Fragment>
           <ColorPicker
             title="Background"
-            currentColor={colorBg}
+            currentColor={state.colorBg}
             onChangeComplete={(color) => {
-              setColorBg(color);
+              setState((draft) => {
+                draft.colorBg = color;
+              });
+
+              // Shape's color overlaps all property so update necessary
+              // secondary element's fill property from the existing state
+              if (componentState.shape?.data?.fill)
+                componentState.shape.data.fill = color;
+
+              if (componentState?.icon?.data?.fill)
+                componentState.icon.data.fill = state.colorIcon;
+
+              if (componentState?.text?.data?.fill)
+                componentState.text.data.fill = state.colorText;
+
+              updateComponent && updateComponent();
+            }}
+          />
+          <hr className="my-4" />
+          {/** Icon color picker */}
+          <ColorPicker
+            title="Icon"
+            currentColor={state.colorIcon}
+            onChangeComplete={(color) => {
+              setState((draft) => {
+                draft.colorIcon = color;
+              });
+
+              if (componentState?.icon?.data?.fill)
+                componentState.icon.data.fill = color;
+
+              updateComponent && updateComponent();
             }}
           />
           <hr className="my-4" />
           <ColorPicker
             title="Text"
-            currentColor={colorText}
+            currentColor={state.colorText}
             onChangeComplete={(color) => {
-              setColorText(color);
+              setState((draft) => {
+                draft.colorText = color;
+              });
+
+              if (componentState?.text?.data?.fill)
+                componentState.text.data.fill = color;
+
+              updateComponent && updateComponent();
             }}
           />
         </Fragment>
@@ -176,16 +215,21 @@ const Toolbar = (props) => {
     },
     {
       key: properties.fontSize,
-      title: "Font ",
-      accordion: fontAccordion,
-      toggleAccordion: toggleFontAccordion,
+      title: 'Font ',
+      accordion: state.fontAccordion,
+      toggleAccordion: () =>
+        setState((draft) => {
+          draft.fontAccordion = !state.fontAccordion;
+        }),
       content: () => (
         <Fragment>
           <FontSizeSlider
             title="Size"
-            currentFontSize={fontSize}
+            currentFontSize={state.fontSize}
             onChangeComplete={(arr) => {
-              setFontSize(arr[0]);
+              setState((draft) => {
+                draft.fontSize = arr[0];
+              });
             }}
           />
           <hr className="my-4 mt-12" />
@@ -193,20 +237,28 @@ const Toolbar = (props) => {
             <div className="p-1 text-left">Style</div>
             <div className="py-3 px-1 text-left">
               <FontWeightBtn
-                className="hover:bg-blues-b50 hover:text-blues-b400 transition duration-100"
-                fontWeight={fontWeight}
+                className="hover:bg-blues-b400 hover:text-white transition duration-100"
+                fontWeight={state.fontWeight}
                 onClick={() => {
-                  if (fontWeight !== 600) setFontWeight(600);
-                  else setFontWeight(400);
+                  if (state.fontWeight !== 600)
+                    setState((draft) => {
+                      draft.fontWeight = 600;
+                    });
+                  else
+                    setState((draft) => {
+                      draft.fontWeight = 400;
+                    });
                 }}
               >
                 B
               </FontWeightBtn>
               <TextUnderlineBtn
                 className="ml-2 hover:bg-blues-b50 hover:text-blues-b400 transition duration-100"
-                hasUnderline={hasUnderline}
+                hasUnderline={state.hasUnderline}
                 onClick={() => {
-                  setUnderline(!hasUnderline);
+                  setState((draft) => {
+                    draft.hasUnderline = !state.hasUnderline;
+                  });
                 }}
               >
                 U
@@ -219,14 +271,19 @@ const Toolbar = (props) => {
     },
     {
       key: properties.borderColor,
-      title: "Border",
-      accordion: borderAccordion,
-      toggleAccordion: toggleBorderAccordion,
+      title: 'Border',
+      accordion: state.borderAccordion,
+      toggleAccordion: () =>
+        setState((draft) => {
+          draft.borderAccordion = !state.borderAccordion;
+        }),
       content: () => (
         <BorderStyleBox
-          currentColor={borderColor}
+          currentColor={state.borderColor}
           onChangeComplete={(color) => {
-            setBorderColor(color);
+            setState((draft) => {
+              state.borderColor = color;
+            });
           }}
         />
       ),
@@ -235,15 +292,20 @@ const Toolbar = (props) => {
 
     {
       key: properties.opacity,
-      title: "Opacity",
-      accordion: opacityAccordion,
-      toggleAccordion: toggleOpacityAccordion,
+      title: 'Opacity',
+      accordion: state.opacityAccordion,
+      toggleAccordion: () =>
+        setState((draft) => {
+          draft.opacityAccordion = !state.opacityAccordion;
+        }),
       content: () => (
         <OpacitySlider
           title="Opacity"
-          currentOpacity={opacity}
+          currentOpacity={state.opacity}
           onChangeComplete={(arr) => {
-            setOpacity(arr[0]);
+            setState((draft) => {
+              draft.opacity = arr[0];
+            });
           }}
         />
       ),
@@ -252,24 +314,19 @@ const Toolbar = (props) => {
   ];
 
   const variants = {
-    open: { x: "0%" },
-    closed: { x: "100%" },
+    open: { x: '-100%' },
+    closed: { x: '0%' },
   };
 
   const globalMouseUpEventHanlder = (e) => {
     const nativeMouseClientX = e.clientX;
     const elementIds = Object.keys(idx(componentState, (_) => _.element));
     const toolbarCoordinate = document
-      .getElementById("floating-toolbar")
+      .getElementById('floating-toolbar')
       .getBoundingClientRect();
-    console.log(
-      "mouse up event listener in TOOLBAR",
-      e,
-      elementIds.includes(e.target.id),
-      nativeMouseClientX >= toolbarCoordinate.x
-    );
 
-    if (nativeMouseClientX < toolbarCoordinate.x) {
+    // Checks for blur event by comparing x coords of toolbar and user mouse click event
+    if (nativeMouseClientX > toolbarCoordinate.x + toolbarCoordinate.width) {
       if (!elementIds.includes(e.target.id)) {
         closeToolbar();
       }
@@ -278,9 +335,9 @@ const Toolbar = (props) => {
   };
 
   useEffect(() => {
-    window.addEventListener("mouseup", globalMouseUpEventHanlder);
+    window.addEventListener('mouseup', globalMouseUpEventHanlder);
     return () => {
-      window.removeEventListener("mouseup", globalMouseUpEventHanlder);
+      window.removeEventListener('mouseup', globalMouseUpEventHanlder);
     };
   }, []);
 
@@ -289,11 +346,10 @@ const Toolbar = (props) => {
       <ToolbarContainer
         key="flo-toolbar"
         data-parent="floating-toolbar"
-        initial="closed"
-        animate={"open"}
+        initial="open"
+        animate="closed"
         transition={{ duration: 0.01 }}
         variants={variants}
-        exit={{ translateX: "100%" }}
         toggleToolbar={toggle}
         id="floating-toolbar"
         // tabIndex="1"

@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
-import Two from "two.js";
-import interact from "interactjs";
-import { useDispatch } from "react-redux";
-import Icon from "icons/icons";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation } from "redux/actions/main";
+import React, { useEffect, useState } from 'react';
+import Two from 'two.js';
+import interact from 'interactjs';
+import { useDispatch } from 'react-redux';
+import Icon from 'icons/icons';
+import ObjectSelector from 'components/utils/objectSelector';
+import { setPeronsalInformation } from 'store/actions/main';
 
 function RadioBox(props) {
   const [isRendered, setIsRendered] = useState(false);
@@ -15,7 +15,7 @@ function RadioBox(props) {
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log("on blur handler called");
+    console.log('on blur handler called');
     selectorInstance.hide();
     two.update();
   }
@@ -29,18 +29,18 @@ function RadioBox(props) {
     let checkboxCounter = 2;
     let selectedRadioControl = null;
 
-    const prevX = localStorage.getItem("radiobox_coordX");
-    const prevY = localStorage.getItem("radiobox_coordY");
+    const prevX = localStorage.getItem('radiobox_coordX');
+    const prevY = localStorage.getItem('radiobox_coordY');
 
     const currentCheckboxes = [
-      { name: "radio 1", checked: false },
-      { name: "radio 2", checked: true },
-      { name: "radio 3", checked: false },
+      { name: 'radio 1', checked: false },
+      { name: 'radio 2', checked: true },
+      { name: 'radio 3', checked: false },
     ];
 
     const svgImage = new DOMParser().parseFromString(
       Icon.ICON_CHECKBOX_1.data,
-      "text/xml"
+      'text/xml'
     );
 
     const textMap = {};
@@ -52,19 +52,19 @@ function RadioBox(props) {
     currentCheckboxes.forEach((item, index) => {
       // text part of the radio control
       let text = new Two.Text(item.name, 10, index * 30);
-      text.alignment = "left";
-      text.size = "16";
-      text.weight = "400";
-      text.baseline = "central";
+      text.alignment = 'left';
+      text.size = '16';
+      text.weight = '400';
+      text.baseline = 'central';
 
       // external circle part of the radio control
       // Subtracted to some value to have rect positioned in aligned manner
       let externalCircle = two.makeCircle(-10, index * 30, 8);
-      externalCircle.stroke = "#B3BAC5";
+      externalCircle.stroke = '#B3BAC5';
 
       // internal circle part of the radio control
       let innerCircle = two.makeCircle(-10, index * 30, 5);
-      innerCircle.fill = "#0052CC";
+      innerCircle.fill = '#0052CC';
       innerCircle.noStroke();
       innerCircle.opacity = 0;
 
@@ -109,11 +109,11 @@ function RadioBox(props) {
       two.update();
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
       const addRadioControlHandler = (index, initialLoad) => {
-        console.log("add checkbox listener");
+        console.log('add checkbox listener');
         checkboxCounter = checkboxCounter + 1;
 
         let text = new Two.Text(
@@ -121,18 +121,18 @@ function RadioBox(props) {
           10,
           checkboxCounter * 30
         );
-        text.alignment = "left";
-        text.size = "16";
-        text.weight = "400";
-        text.baseline = "central";
+        text.alignment = 'left';
+        text.size = '16';
+        text.weight = '400';
+        text.baseline = 'central';
 
         // outer circle on radio control
         let externalCircle = two.makeCircle(-10, checkboxCounter * 30, 8);
-        externalCircle.stroke = "#B3BAC5";
+        externalCircle.stroke = '#B3BAC5';
 
         // attaching actual radio circle to outer circle
         let innerCircle = two.makeCircle(-10, checkboxCounter * 30, 5);
-        innerCircle.fill = "#0052CC";
+        innerCircle.fill = '#0052CC';
         innerCircle.noStroke();
 
         innerCircle.opacity = 0;
@@ -153,7 +153,7 @@ function RadioBox(props) {
         attachEventToRadioControl();
       };
 
-      interact(`#${group.id}`).on("click", () => {
+      interact(`#${group.id}`).on('click', () => {
         //   console.log("on click ", text.getBoundingClientRect(true));
 
         selector.update(
@@ -164,8 +164,8 @@ function RadioBox(props) {
         );
 
         document
-          .getElementById("radiobox-add")
-          .addEventListener("click", addRadioControlHandler);
+          .getElementById('radiobox-add')
+          .addEventListener('click', addRadioControlHandler);
 
         two.update();
       });
@@ -194,35 +194,35 @@ function RadioBox(props) {
             const getCoordOfBtnText = document
               .getElementById(`${text.id}`)
               .getBoundingClientRect();
-            twoTextInstance.style.display = "none";
+            twoTextInstance.style.display = 'none';
 
-            const input = document.createElement("input");
+            const input = document.createElement('input');
             const topBuffer = 2;
-            input.type = "text";
+            input.type = 'text';
             input.value = text.value;
-            input.style.fontSize = "16px";
-            input.style.fontWeight = "400";
-            input.style.position = "absolute";
+            input.style.fontSize = '16px';
+            input.style.fontWeight = '400';
+            input.style.position = 'absolute';
             input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
             input.style.left = `${getCoordOfBtnText.left}px`;
             input.style.width = `${
               radioboxGroup.getBoundingClientRect(true).width
             }px`;
-            input.className = "temp-input-area";
+            input.className = 'temp-input-area';
 
             // Appending in space of two's root element
-            document.getElementById("main-two-root").append(input);
+            document.getElementById('main-two-root').append(input);
 
             // Declaratively set focus for input box
             input.onfocus = function (e) {
-              console.log("on input focus");
+              console.log('on input focus');
               selector.show();
               two.update();
             };
             input.focus();
 
             // Handle input event for input box
-            input.addEventListener("input", () => {
+            input.addEventListener('input', () => {
               input.style.width = `${
                 radioboxGroup.getBoundingClientRect(true).width + 4
               }px`;
@@ -239,12 +239,12 @@ function RadioBox(props) {
             });
 
             // Handle Input box blur event
-            input.addEventListener("blur", () => {
-              twoTextInstance.style.display = "block";
+            input.addEventListener('blur', () => {
+              twoTextInstance.style.display = 'block';
               text.value = input.value;
               input.remove();
               console.log(
-                "input blur event",
+                'input blur event',
                 radioboxGroup.id,
                 radioboxGroup.getBoundingClientRect()
               );
@@ -264,7 +264,7 @@ function RadioBox(props) {
             radioTextArr.push(text.id);
             document
               .getElementById(text.id)
-              .addEventListener("click", dblClickHandler);
+              .addEventListener('click', dblClickHandler);
           }
 
           /* On click event handling portion for rect (checkbox)*/
@@ -272,7 +272,7 @@ function RadioBox(props) {
           let svg = Object.values(iconMap)[index];
 
           const radioControlClickHandler = () => {
-            console.log("rect click handler", svg.opacity);
+            console.log('rect click handler', svg.opacity);
             selectedRadioControl.opacity = 0;
             selectedRadioControl = svg;
             selectedRadioControl.opacity = 1;
@@ -285,14 +285,14 @@ function RadioBox(props) {
             radioExtCircleArr.push(rect.id);
             document
               .getElementById(rect.id)
-              .addEventListener("click", radioControlClickHandler);
+              .addEventListener('click', radioControlClickHandler);
           }
 
           if (!radioIntCircleArr.includes(svg.id)) {
             radioIntCircleArr.push(svg.id);
             document
               .getElementById(svg.id)
-              .addEventListener("click", radioControlClickHandler);
+              .addEventListener('click', radioControlClickHandler);
           }
         }
       }
@@ -313,20 +313,20 @@ function RadioBox(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("radiobox_coordX", parseInt(event.pageX));
+            localStorage.setItem('radiobox_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "radiobox_coordY",
+              'radiobox_coordY',
               parseInt(event.pageY - offsetHeight)
             );
             two.update();
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
@@ -337,7 +337,7 @@ function RadioBox(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Radio box", groupInstance);
+      console.log('UNMOUNTING in Radio box', groupInstance);
       // clean garbage by removing instance
       two.remove(groupInstance);
     };

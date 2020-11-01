@@ -1,9 +1,9 @@
-import React, { Component } from "react";
-import { connect } from "react-redux";
+import React, { Component } from 'react';
+import { connect } from 'react-redux';
 
-import SecondarySidebar from "./secondary";
-import Icon from "icons/icon";
-import { addElement } from "redux/actions/main";
+import SecondarySidebar from './secondary';
+import Icon from 'icons/icon';
+import { addElement } from 'store/actions/main';
 
 class Sidebar extends Component {
   constructor(props) {
@@ -14,14 +14,14 @@ class Sidebar extends Component {
     };
   }
   handleMenuClick = (menu) => {
-    console.log("Yo dawg");
+    console.log('Yo dawg');
     this.setState({ selectedItem: menu, toggleSecondaryMenu: true });
   };
 
   addElementToScene = (result) => {
     let id = Math.floor(Math.random() * 9000) + 1000;
     let newElement = { id, name: result };
-    this.props.addElement("ADD_ELEMENT", newElement);
+    this.props.addElement('ADD_ELEMENT', newElement);
   };
 
   handleOnBlurSecSidebar = (result) => {
@@ -31,26 +31,26 @@ class Sidebar extends Component {
 
   render() {
     return (
-      <div className="flex items-center sidebar-container ">
-        {" "}
-        <div className="px-2 py-2 mx-4 bg-white shadow-2xl">
+      <div className="sidebar-container flex items-center justify-center ">
+        {' '}
+        <div className="flex items-center justify-center w-64 px-2 py-2 mx-4 bg-white shadow-xl">
           <div className="relative transition-shadow transition-transform transition-all">
             <button
               className={`${
-                this.state.selectedItem === "elements" ? "" : "icon-elements"
+                this.state.selectedItem === 'elements' ? '' : 'icon-elements'
               }  hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-              onClick={() => this.handleMenuClick("elements")}
+              onClick={() => this.handleMenuClick('elements')}
             >
               <Icon icon="SIDEBAR_ICON_ELEMENTS" />
             </button>
           </div>
           <div className="relative">
-            {" "}
+            {' '}
             <button
               className={`${
-                this.state.selectedItem === "shapes" ? "" : "icon-shape"
+                this.state.selectedItem === 'shapes' ? '' : 'icon-shape'
               }  hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-              onClick={() => this.handleMenuClick("shapes")}
+              onClick={() => this.handleMenuClick('shapes')}
             >
               <Icon icon="SIDEBAR_ICON_POLYGON" />
             </button>
@@ -58,7 +58,7 @@ class Sidebar extends Component {
           <div className="relative">
             <button
               className={`${
-                this.state.selectedItem === "frames" ? "" : "icon-frame"
+                this.state.selectedItem === 'frames' ? '' : 'icon-frame'
               }  hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
               onClick={this.handleMenuClick}
             >
@@ -68,7 +68,7 @@ class Sidebar extends Component {
           <div className="relative">
             <button
               className={`${
-                this.state.selectedItem === "text" ? "" : "icon-text"
+                this.state.selectedItem === 'text' ? '' : 'icon-text'
               }  hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
               onClick={this.handleMenuClick}
             >
@@ -76,10 +76,10 @@ class Sidebar extends Component {
             </button>
           </div>
           <div className="relative">
-            {" "}
+            {' '}
             <button
               className={`${
-                this.state.selectedItem === "draw" ? "" : "icon-pencil"
+                this.state.selectedItem === 'draw' ? '' : 'icon-pencil'
               }  hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
               onClick={this.handleMenuClick}
             >

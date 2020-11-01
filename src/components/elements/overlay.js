@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
-import interact from "interactjs";
-import { useDispatch, useSelector } from "react-redux";
-import ObjectSelector from "components/utils/objectSelector";
-import { setPeronsalInformation } from "redux/actions/main";
-import ElementFactory from "factory/overlay";
+import React, { useEffect, useState } from 'react';
+import interact from 'interactjs';
+import { useDispatch, useSelector } from 'react-redux';
+import ObjectSelector from 'components/utils/objectSelector';
+import { setPeronsalInformation } from 'store/actions/main';
+import ElementFactory from 'factory/overlay';
 
 function Overlay(props) {
   const [isRendered, setIsRendered] = useState(false);
@@ -26,8 +26,8 @@ function Overlay(props) {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
-    const prevX = localStorage.getItem("overlay_coordX");
-    const prevY = localStorage.getItem("overlay_coordY");
+    const prevX = localStorage.getItem('overlay_coordX');
+    const prevY = localStorage.getItem('overlay_coordY');
 
     // Instantiate factory
     const elementFactory = new ElementFactory(two, prevX, prevY, {});
@@ -52,11 +52,11 @@ function Overlay(props) {
       two.update();
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-      getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-      getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+      getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
+      getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
-      interact(`#${group.id}`).on("click", () => {
-        console.log("on click ");
+      interact(`#${group.id}`).on('click', () => {
+        console.log('on click ');
         selector.update(
           rectangle.getBoundingClientRect(true).left - 10,
           rectangle.getBoundingClientRect(true).right + 10,
@@ -96,7 +96,7 @@ function Overlay(props) {
             two.update();
           },
           end(event) {
-            console.log("the end");
+            console.log('the end');
           },
         },
       });
@@ -116,19 +116,19 @@ function Overlay(props) {
           },
           end(event) {
             console.log(
-              "event x",
+              'event x',
               event.target.getBoundingClientRect(),
               event.rect.left,
               event.pageX,
               event.clientX
             );
             // alternate -> take event.rect.left for x
-            localStorage.setItem("overlay_coordX", parseInt(event.pageX));
+            localStorage.setItem('overlay_coordX', parseInt(event.pageX));
             localStorage.setItem(
-              "overlay_coordY",
+              'overlay_coordY',
               parseInt(event.pageY - offsetHeight)
             );
-            dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
+            dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
           },
         },
       });
@@ -139,7 +139,7 @@ function Overlay(props) {
   // Using unmount phase to remove event listeners
   useEffect(() => {
     return () => {
-      console.log("UNMOUNTING in Overlay", groupInstance);
+      console.log('UNMOUNTING in Overlay', groupInstance);
       // clean garbage by removing instance
       two.remove(groupInstance);
     };
