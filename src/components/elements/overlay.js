@@ -1,28 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import interact from 'interactjs';
 import { useDispatch, useSelector } from 'react-redux';
-import ObjectSelector from 'components/utils/objectSelector';
+import { useImmer } from 'use-immer';
+
+import { elementOnBlurHandler } from 'utils/misc';
+import getEditComponents from 'components/utils/editWrapper';
+import Toolbar from 'components/floatingToolbar';
 import { setPeronsalInformation } from 'store/actions/main';
 import ElementFactory from 'factory/overlay';
 
 function Overlay(props) {
-  const [isRendered, setIsRendered] = useState(false);
-  const [groupInstance, setGroupInstance] = useState(null);
+  const [showToolbar, toggleToolbar] = useState(false);
+  const [internalState, setInternalState] = useImmer({});
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
   let groupObject = null;
 
   function onBlurHandler(e) {
-    selectorInstance.hide();
-    two.update();
+    elementOnBlurHandler(e, selectorInstance, two);
   }
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (isRendered === false) {
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -42,14 +46,34 @@ function Overlay(props) {
     } else {
       /** This element will render by creating it's own group wrapper */
       groupObject = group;
-      if (groupInstance === null) setGroupInstance(group);
 
-      const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4);
-      selector.create();
+      const { selector } = getEditComponents(two, group, 4);
       selectorInstance = selector;
 
       group.children.unshift(rectangle);
       two.update();
+
+      setInternalState((draft) => {
+        draft.element = {
+          [rectangle.id]: rectangle,
+          [group.id]: group,
+          // [selector.id]: selector,
+        };
+        draft.group = {
+          id: group.id,
+          data: group,
+        };
+        draft.shape = {
+          id: rectangle.id,
+          data: rectangle,
+        };
+        draft.text = {
+          data: {},
+        };
+        draft.icon = {
+          data: {},
+        };
+      });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
@@ -64,6 +88,7 @@ function Overlay(props) {
           rectangle.getBoundingClientRect(true).bottom + 10
         );
         two.update();
+        toggleToolbar(true);
       });
 
       interact(`#${group.id}`).resizable({
@@ -133,22 +158,31 @@ function Overlay(props) {
         },
       });
     }
-    if (isRendered === false) setIsRendered(true);
-  }
 
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
     return () => {
-      console.log('UNMOUNTING in Overlay', groupInstance);
+      console.log('UNMOUNTING in Overlay', group);
       // clean garbage by removing instance
-      two.remove(groupInstance);
+      two.remove(group);
     };
   }, []);
+
+  function closeToolbar() {
+    toggleToolbar(false);
+  }
 
   return (
     <React.Fragment>
       <div id="two-overlay"></div>
-
+      {showToolbar ? (
+        <Toolbar
+          toggle={showToolbar}
+          componentState={internalState}
+          closeToolbar={closeToolbar}
+          updateComponent={() => {
+            two.update();
+          }}
+        />
+      ) : null}
       {/* <button>change button in group</button> */}
     </React.Fragment>
   );

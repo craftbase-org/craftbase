@@ -1,29 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import interact from 'interactjs';
 import { useDispatch, useSelector } from 'react-redux';
-import ObjectSelector from 'components/utils/objectSelector';
+import { useImmer } from 'use-immer';
+
+import { elementOnBlurHandler } from 'utils/misc';
+import getEditComponents from 'components/utils/editWrapper';
+import Toolbar from 'components/floatingToolbar';
 import { setPeronsalInformation } from 'store/actions/main';
 import ElementCreator from 'factory/toggle';
 
 function Toggle(props) {
-  const [isRendered, setIsRendered] = useState(false);
-  const [groupInstance, setGroupInstance] = useState(null);
+  const [showToolbar, toggleToolbar] = useState(false);
+  const [internalState, setInternalState] = useImmer({});
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log('on blur handler called');
-    selectorInstance.hide();
-    two.update();
+    elementOnBlurHandler(e, selectorInstance, two);
   }
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (isRendered === false) {
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -46,14 +49,35 @@ function Toggle(props) {
     } else {
       /** This element will render by creating it's own group wrapper */
       groupObject = group;
-      if (groupInstance === null) setGroupInstance(group);
-
-      const selector = new ObjectSelector(two, group, 0, 0, 0, 0);
-      selector.create();
+      const { selector } = getEditComponents(two, group, 4);
       selectorInstance = selector;
 
       group.children.unshift(rectCircleGroup);
       two.update();
+
+      setInternalState((draft) => {
+        draft.element = {
+          [rect.id]: rect,
+          [group.id]: group,
+          [rectCircleGroup.id]: rectCircleGroup,
+          // [selector.id]: selector,
+        };
+        draft.group = {
+          id: group.id,
+          data: group,
+        };
+        draft.shape = {
+          id: rectCircleGroup.id,
+          data: rectCircleGroup,
+        };
+        draft.text = {
+          data: {},
+        };
+        draft.icon = {
+          id: circle.id,
+          data: circle,
+        };
+      });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
@@ -78,6 +102,7 @@ function Toggle(props) {
           rectCircleGroup.getBoundingClientRect(true).bottom + 4
         );
         two.update();
+        toggleToolbar(true);
       });
 
       // Apply draggable property to element
@@ -115,23 +140,38 @@ function Toggle(props) {
       });
     }
 
-    if (isRendered === false) setIsRendered(true);
-  }
-
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
     return () => {
-      console.log('UNMOUNTING in Toggle', groupInstance);
+      console.log('UNMOUNTING in Toggle', group);
       // clean garbage by removing instance
-      two.remove(groupInstance);
+      two.remove(group);
     };
   }, []);
+
+  function closeToolbar() {
+    toggleToolbar(false);
+  }
 
   return (
     <React.Fragment>
       <div id="two-toggle"></div>
 
-      <button id="btn-toggle-1">Toggle btn</button>
+      <button
+        id="add-1-2"
+        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        // onClick={() => this.addElements("circle")}
+      >
+        Toggle me
+      </button>
+      {showToolbar ? (
+        <Toolbar
+          toggle={showToolbar}
+          componentState={internalState}
+          closeToolbar={closeToolbar}
+          updateComponent={() => {
+            two.update();
+          }}
+        />
+      ) : null}
       {/* <button>change button in group</button> */}
     </React.Fragment>
   );

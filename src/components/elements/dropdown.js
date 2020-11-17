@@ -1,30 +1,41 @@
 import React, { useEffect, useState } from 'react';
 import interact from 'interactjs';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
+import { useImmer } from 'use-immer';
+
+import { elementOnBlurHandler } from 'utils/misc';
+import getEditComponents from 'components/utils/editWrapper';
+import Toolbar from 'components/floatingToolbar';
 import Icon from 'icons/icons';
 import ObjectSelector from 'components/utils/objectSelector';
 import { setPeronsalInformation } from 'store/actions/main';
-import ElementFactory from 'factory/dropdown';
 
 function Dropdown(props) {
-  const [isRendered, setIsRendered] = useState(false);
-  const [groupInstance, setGroupInstance] = useState(null);
+  const [showToolbar, toggleToolbar] = useState(false);
+  const [internalState, setInternalState] = useImmer({});
+
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log('on blur handler called');
-    selectorInstance.hide();
-    two.update();
+    elementOnBlurHandler(e, selectorInstance, two);
   }
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (isRendered === false) {
+  // function changeSVG() {
+  //   document.getElementById(`${externalSVGInstance.id}`).innerHTML =
+  //     Icon.SIDEBAR_ICON_RECTANGLE.data;
+
+  //   two.update();
+  // }
+
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -43,6 +54,7 @@ function Dropdown(props) {
       'text/xml'
     );
     console.log('svgImage', svgImage);
+
     const externalSVG = two.interpret(svgImage.firstChild.firstChild);
 
     // externalSVG.translation.y = -1;
@@ -61,10 +73,6 @@ function Dropdown(props) {
     group.translation.y = prevY || 200;
     groupObject = group;
     console.log('text bounding initial', text.getBoundingClientRect(true));
-
-    const selector = new ObjectSelector(two, group, 0, 0, 0, 0);
-    selector.create();
-    selectorInstance = selector;
 
     // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
 
@@ -122,7 +130,34 @@ function Dropdown(props) {
     } else {
       /** This element will render by creating it's own group wrapper */
 
+      const { selector } = getEditComponents(two, group, 4);
+      selectorInstance = selector;
+
       two.update();
+
+      setInternalState((draft) => {
+        draft.element = {
+          [rectangle.id]: rectangle,
+          [textGroup.id]: textGroup,
+          [group.id]: group,
+          // [selector.id]: selector,
+        };
+        draft.group = {
+          id: group.id,
+          data: group,
+        };
+        draft.shape = {
+          id: rectangle.id,
+          data: rectangle,
+        };
+        draft.text = {
+          id: text.id,
+          data: text,
+        };
+        draft.icon = {
+          data: {},
+        };
+      });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
@@ -137,47 +172,8 @@ function Dropdown(props) {
           rectangle.getBoundingClientRect(true).bottom + 7
         );
         two.update();
+        toggleToolbar(true);
       });
-
-      /* Add option logic unfinished */
-      // let optionBoxCounter = 0;
-      // addOptionText._renderer.elem.addEventListener("click", () => {
-      //   optionBoxCounter = optionBoxCounter + 1;
-
-      //   const newOptionRect = two.makePath(
-      //     group.getBoundingClientRect(true).left + 3,
-      //     group.getBoundingClientRect(true).top + 10,
-
-      //     group.getBoundingClientRect(true).right,
-      //     group.getBoundingClientRect(true).top + 10,
-
-      //     group.getBoundingClientRect(true).right,
-      //     group.getBoundingClientRect(true).bottom - 50,
-
-      //     group.getBoundingClientRect(true).left + 3,
-      //     group.getBoundingClientRect(true).bottom - 50
-      //   );
-
-      //   newOptionRect.fill = "#fff";
-      //   newOptionRect.stroke = "#B3BAC5";
-      //   newOptionRect.linewidth = 1;
-      //   newOptionRect.join = "round";
-
-      //   const newOptionText = two.makeText(`Option ${optionBoxCounter}`, -30, 0);
-      //   newOptionText.size = "14";
-      //   newOptionText.weight = "400";
-      //   newOption;
-      //   // text.fill = "#B3BAC5";
-      //   // text.baseline = "sub";
-      //   newOptionText.alignment = "left";
-
-      //   const newOptionGroup = two.makeGroup(newOptionRect, newOptionText);
-      //   newOptionGroup.translation.set(0, 50);
-
-      //   group.add(newOptionGroup);
-      //   addOptionGroup.translation.y = addOptionText.translation.y + 10;
-      //   two.update();
-      // });
 
       // Captures double click event for text
       // and generates temporary textarea support for it
@@ -339,28 +335,31 @@ function Dropdown(props) {
         },
       });
     }
-    if (isRendered === false) setIsRendered(true);
-  }
 
-  // function changeSVG() {
-  //   document.getElementById(`${externalSVGInstance.id}`).innerHTML =
-  //     Icon.SIDEBAR_ICON_RECTANGLE.data;
-
-  //   two.update();
-  // }
-
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
     return () => {
-      console.log('UNMOUNTING in Dropdown', groupInstance);
+      console.log('UNMOUNTING in Dropdown', groupObject);
       // clean garbage by removing instance
-      two.remove(groupInstance);
+      two.remove(groupObject);
     };
   }, []);
+
+  function closeToolbar() {
+    toggleToolbar(false);
+  }
 
   return (
     <React.Fragment>
       <div id="two-dropdown"></div>
+      {showToolbar ? (
+        <Toolbar
+          toggle={showToolbar}
+          componentState={internalState}
+          closeToolbar={closeToolbar}
+          updateComponent={() => {
+            two.update();
+          }}
+        />
+      ) : null}
     </React.Fragment>
   );
 }

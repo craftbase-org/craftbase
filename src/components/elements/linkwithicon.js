@@ -2,30 +2,39 @@ import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import interact from 'interactjs';
 import { useDispatch, useSelector } from 'react-redux';
-import ObjectSelector from 'components/utils/objectSelector';
+import { useImmer } from 'use-immer';
+
+import { elementOnBlurHandler } from 'utils/misc';
+import Toolbar from 'components/floatingToolbar';
 import { setPeronsalInformation } from 'store/actions/main';
 import getEditComponents from 'components/utils/editWrapper';
 import ElementFactory from 'factory/linkwithicon';
 
 function LinkWithIcon(props) {
-  const [isRendered, setIsRendered] = useState(false);
-  const [groupInstance, setGroupInstance] = useState(null);
+  const [showToolbar, toggleToolbar] = useState(false);
+  const [internalState, setInternalState] = useImmer({});
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log('on blur handler called');
-    selectorInstance.hide();
-    two.update();
+    elementOnBlurHandler(e, selectorInstance, two);
   }
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (isRendered === false) {
+  // function changeSVG() {
+  //   document.getElementById(`${externalSVGInstance.id}`).innerHTML =
+  //     Icon.SIDEBAR_ICON_RECTANGLE.data;
+
+  //   two.update();
+  // }
+
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -51,7 +60,6 @@ function LinkWithIcon(props) {
     } else {
       /** This element will render by creating it's own group wrapper */
       groupObject = group;
-      if (groupInstance === null) setGroupInstance(group);
 
       const { selector, toolbar } = getEditComponents(two, group, 4);
       selectorInstance = selector;
@@ -59,6 +67,30 @@ function LinkWithIcon(props) {
       // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
       group.children.unshift(textGroup);
       two.update();
+
+      setInternalState((draft) => {
+        draft.element = {
+          [textGroup.id]: textGroup,
+          [group.id]: group,
+          // [selector.id]: selector,
+        };
+        draft.group = {
+          id: group.id,
+          data: group,
+        };
+        draft.shape = {
+          id: textGroup.id,
+          data: textGroup,
+        };
+        draft.text = {
+          id: text.id,
+          data: text,
+        };
+        draft.icon = {
+          id: externalSVG.id,
+          data: externalSVG,
+        };
+      });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
@@ -73,6 +105,7 @@ function LinkWithIcon(props) {
           textGroup.getBoundingClientRect(true).bottom + 10
         );
         two.update();
+        toggleToolbar(true);
       });
 
       // Captures double click event for text
@@ -180,28 +213,31 @@ function LinkWithIcon(props) {
         },
       });
     }
-    if (isRendered === false) setIsRendered(true);
-  }
 
-  // function changeSVG() {
-  //   document.getElementById(`${externalSVGInstance.id}`).innerHTML =
-  //     Icon.SIDEBAR_ICON_RECTANGLE.data;
-
-  //   two.update();
-  // }
-
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
     return () => {
-      console.log('UNMOUNTING in Link with icon', groupInstance);
+      console.log('UNMOUNTING in Link with icon', group);
       // clean garbage by removing instance
-      two.remove(groupInstance);
+      two.remove(group);
     };
   }, []);
+
+  function closeToolbar() {
+    toggleToolbar(false);
+  }
 
   return (
     <React.Fragment>
       <div id="two-button"></div>
+      {showToolbar ? (
+        <Toolbar
+          toggle={showToolbar}
+          componentState={internalState}
+          closeToolbar={closeToolbar}
+          updateComponent={() => {
+            two.update();
+          }}
+        />
+      ) : null}
       {/* <button onClick={() => changeSVG()}>change button in text</button> */}
     </React.Fragment>
   );

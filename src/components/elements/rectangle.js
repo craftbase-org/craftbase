@@ -72,6 +72,12 @@ function Rectangle(props) {
           id: rectangle.id,
           data: rectangle,
         };
+        draft.text = {
+          data: {},
+        };
+        draft.icon = {
+          data: {},
+        };
       });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);

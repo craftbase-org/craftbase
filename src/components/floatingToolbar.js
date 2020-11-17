@@ -143,7 +143,7 @@ const Toolbar = (props) => {
     setState((draft) => {
       draft.colorBg = componentState?.shape?.data?.fill;
     });
-  });
+  }, []);
 
   const allowedProperties = [
     {

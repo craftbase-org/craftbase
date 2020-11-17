@@ -2,12 +2,17 @@ import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import interact from 'interactjs';
 import { useDispatch, useSelector } from 'react-redux';
+import { useImmer } from 'use-immer';
+
+import { elementOnBlurHandler } from 'utils/misc';
+import getEditComponents from 'components/utils/editWrapper';
+import Toolbar from 'components/floatingToolbar';
 import { setPeronsalInformation } from 'store/actions/main';
 import ElementCreator from 'factory/divider';
 
 function Divider(props) {
-  const [isRendered, setIsRendered] = useState(false);
-  const [groupInstance, setGroupInstance] = useState(null);
+  const [showToolbar, toggleToolbar] = useState(false);
+  const [internalState, setInternalState] = useImmer({});
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
@@ -15,15 +20,15 @@ function Divider(props) {
   let resizeLineInstance = null;
 
   function onBlurHandler(e) {
-    resizeLineInstance.opacity = 0;
-    two.update();
+    elementOnBlurHandler(e, selectorInstance, two);
   }
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (isRendered === false) {
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -50,10 +55,32 @@ function Divider(props) {
       /** This element will render by creating it's own group wrapper */
       groupObject = group;
       resizeLineInstance = resizeLine;
-      if (groupInstance === null) setGroupInstance(group);
+      const { selector } = getEditComponents(two, group, 4);
+      selectorInstance = selector;
 
       console.log('BUtton', props.twoJSInstance);
       two.update();
+
+      setInternalState((draft) => {
+        draft.element = {
+          [group.id]: group,
+          [line.id]: line,
+        };
+        draft.group = {
+          id: group.id,
+          data: group,
+        };
+        draft.shape = {
+          id: line.id,
+          data: line,
+        };
+        draft.text = {
+          data: {},
+        };
+        draft.icon = {
+          data: {},
+        };
+      });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
@@ -64,6 +91,7 @@ function Divider(props) {
         resizeLine.opacity = 1;
 
         two.update();
+        toggleToolbar(true);
       });
 
       // Captures double click event for text
@@ -134,19 +162,32 @@ function Divider(props) {
         },
       });
     }
-    if (isRendered === false) setIsRendered(true);
-  }
 
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
     return () => {
-      console.log('UNMOUNTING in Divider', groupInstance);
+      console.log('UNMOUNTING in Divider', group);
       // clean garbage by removing instance
-      two.remove(groupInstance);
+      two.remove(group);
     };
   }, []);
 
-  return <React.Fragment></React.Fragment>;
+  function closeToolbar() {
+    toggleToolbar(false);
+  }
+
+  return (
+    <React.Fragment>
+      {showToolbar ? (
+        <Toolbar
+          toggle={showToolbar}
+          componentState={internalState}
+          closeToolbar={closeToolbar}
+          updateComponent={() => {
+            two.update();
+          }}
+        />
+      ) : null}
+    </React.Fragment>
+  );
 }
 
 Divider.propTypes = {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import Two from 'two.js';
 import interact from 'interactjs';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { useImmer } from 'use-immer';
 
 import { elementOnBlurHandler } from 'utils/misc';

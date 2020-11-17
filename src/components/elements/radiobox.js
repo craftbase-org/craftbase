@@ -2,29 +2,33 @@ import React, { useEffect, useState } from 'react';
 import Two from 'two.js';
 import interact from 'interactjs';
 import { useDispatch } from 'react-redux';
+import { useImmer } from 'use-immer';
+
+import { elementOnBlurHandler } from 'utils/misc';
+import getEditComponents from 'components/utils/editWrapper';
+import Toolbar from 'components/floatingToolbar';
 import Icon from 'icons/icons';
 import ObjectSelector from 'components/utils/objectSelector';
 import { setPeronsalInformation } from 'store/actions/main';
 
 function RadioBox(props) {
-  const [isRendered, setIsRendered] = useState(false);
-  const [groupInstance, setGroupInstance] = useState(null);
+  const [showToolbar, toggleToolbar] = useState(false);
+  const [internalState, setInternalState] = useImmer({});
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log('on blur handler called');
-    selectorInstance.hide();
-    two.update();
+    elementOnBlurHandler(e, selectorInstance, two);
   }
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (isRendered === false) {
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
     const offsetHeight = 0;
     let checkboxCounter = 2;
     let selectedRadioControl = null;
@@ -97,8 +101,6 @@ function RadioBox(props) {
       group.translation.x = prevX || 500;
       group.translation.y = prevY || 200;
       groupObject = group;
-      // console.log("text bounding initial", group.id, radioboxGroup.id);
-      if (groupInstance === null) setGroupInstance(group);
 
       const selector = new ObjectSelector(two, group, 0, 0, 0, 0);
       selector.create();
@@ -107,6 +109,28 @@ function RadioBox(props) {
       // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
       group.children.unshift(radioboxGroup);
       two.update();
+
+      setInternalState((draft) => {
+        draft.element = {
+          [radioboxGroup.id]: radioboxGroup,
+          [group.id]: group,
+          // [selector.id]: selector,
+        };
+        draft.group = {
+          id: group.id,
+          data: group,
+        };
+        draft.shape = {
+          id: radioboxGroup.id,
+          data: radioboxGroup,
+        };
+        draft.text = {
+          data: {},
+        };
+        draft.icon = {
+          data: {},
+        };
+      });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
@@ -168,6 +192,7 @@ function RadioBox(props) {
           .addEventListener('click', addRadioControlHandler);
 
         two.update();
+        toggleToolbar(true);
       });
 
       // Store the ids of all checkbox elements
@@ -331,22 +356,32 @@ function RadioBox(props) {
         },
       });
     }
-    if (isRendered === false) setIsRendered(true);
-  }
 
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
     return () => {
-      console.log('UNMOUNTING in Radio box', groupInstance);
+      console.log('UNMOUNTING in Radio box', groupObject);
       // clean garbage by removing instance
-      two.remove(groupInstance);
+      two.remove(groupObject);
     };
   }, []);
+
+  function closeToolbar() {
+    toggleToolbar(false);
+  }
 
   return (
     <React.Fragment>
       <div id="two-radiobox"></div>
       <button id="radiobox-add">add radiocontrol</button>
+      {showToolbar ? (
+        <Toolbar
+          toggle={showToolbar}
+          componentState={internalState}
+          closeToolbar={closeToolbar}
+          updateComponent={() => {
+            two.update();
+          }}
+        />
+      ) : null}
     </React.Fragment>
   );
 }

@@ -2,29 +2,32 @@ import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import interact from 'interactjs';
 import { useDispatch, useSelector } from 'react-redux';
-import ObjectSelector from 'components/utils/objectSelector';
+import { useImmer } from 'use-immer';
+
+import { elementOnBlurHandler } from 'utils/misc';
+import getEditComponents from 'components/utils/editWrapper';
+import Toolbar from 'components/floatingToolbar';
 import { setPeronsalInformation } from 'store/actions/main';
 import ElementFactory from 'factory/textarea';
 
 function Textarea(props) {
-  const [isRendered, setIsRendered] = useState(false);
-  const [groupInstance, setGroupInstance] = useState(null);
+  const [showToolbar, toggleToolbar] = useState(false);
+  const [internalState, setInternalState] = useImmer({});
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
   let groupObject = null;
 
   function onBlurHandler(e) {
-    console.log('on blur handler called');
-    selectorInstance.hide();
-    two.update();
+    elementOnBlurHandler(e, selectorInstance, two);
   }
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
   }
 
-  if (isRendered === false) {
+  // Using unmount phase to remove event listeners
+  useEffect(() => {
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -49,14 +52,35 @@ function Textarea(props) {
     } else {
       /** This element will render by creating it's own group wrapper */
       groupObject = group;
-      if (groupInstance === null) setGroupInstance(group);
 
-      const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 2);
-      selector.create();
+      const { selector } = getEditComponents(two, group, 4);
       selectorInstance = selector;
 
       group.children.unshift(textGroup);
       two.update();
+
+      setInternalState((draft) => {
+        draft.element = {
+          [textGroup.id]: textGroup,
+          [group.id]: group,
+          // [selector.id]: selector,
+        };
+        draft.group = {
+          id: group.id,
+          data: group,
+        };
+        draft.shape = {
+          id: rectangle.id,
+          data: rectangle,
+        };
+        draft.text = {
+          id: text.id,
+          data: text,
+        };
+        draft.icon = {
+          data: {},
+        };
+      });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
       getGroupElementFromDOM.addEventListener('focus', onFocusHandler);
@@ -71,6 +95,7 @@ function Textarea(props) {
           rectangle.getBoundingClientRect(true).bottom + 7
         );
         two.update();
+        toggleToolbar(true);
       });
 
       // Set specifically to be used later for arranging texts in multiline manner
@@ -158,46 +183,8 @@ function Textarea(props) {
 
           // Synchronously update selector tool's coordinates
           text.value = input.value;
-
-          // selector.update(
-          //   textGroup.getBoundingClientRect(true).left - 20,
-          //   textGroup.getBoundingClientRect(true).right + 90,
-          //   textGroup.getBoundingClientRect(true).top - 20,
-          //   textGroup.getBoundingClientRect(true).bottom + 20
-          // );
-
-          // rectangle.vertices[1].x =
-          //   textGroup.getBoundingClientRect(true).right + 42;
-          // rectangle.vertices[2].x =
-          //   textGroup.getBoundingClientRect(true).right + 42;
-
           two.update();
         });
-
-        // input.addEventListener("blur", () => {
-        //   twoTextInstance.style.display = "block";
-        //   text.value = input.value;
-
-        //   // Calculate new text lines if needed
-        //   breakPointIndices.forEach((point, index) => {});
-
-        //   input.remove();
-        //   console.log(
-        //     "input blur event",
-        //     textGroup.id,
-        //     textGroup.getBoundingClientRect()
-        //   );
-        //   // USE 4 LINES 4 CIRCLES
-
-        //   // selector.update(
-        //   //   textGroup.getBoundingClientRect(true).left - 20,
-        //   //   textGroup.getBoundingClientRect(true).right + 80,
-        //   //   textGroup.getBoundingClientRect(true).top - 20,
-        //   //   textGroup.getBoundingClientRect(true).bottom + 20
-        //   // );
-        //   selector.hide();
-        //   two.update();
-        // });
       });
 
       interact(`#${group.id}`).resizable({
@@ -267,21 +254,30 @@ function Textarea(props) {
         },
       });
     }
-    if (isRendered === false) setIsRendered(true);
-  }
 
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
     return () => {
-      console.log('UNMOUNTING in Circle', groupInstance);
+      console.log('UNMOUNTING in Circle', group);
       // clean garbage by removing instance
-      two.remove(groupInstance);
+      two.remove(group);
     };
   }, []);
 
+  function closeToolbar() {
+    toggleToolbar(false);
+  }
+
   return (
     <React.Fragment>
-      <div id="two-textarea"></div>
+      {showToolbar ? (
+        <Toolbar
+          toggle={showToolbar}
+          componentState={internalState}
+          closeToolbar={closeToolbar}
+          updateComponent={() => {
+            two.update();
+          }}
+        />
+      ) : null}
     </React.Fragment>
   );
 }
