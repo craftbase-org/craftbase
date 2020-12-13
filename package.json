@@ -11,7 +11,7 @@
     "idx": "^2.5.6",
     "immer": "^7.0.1",
     "interactjs": "^1.9.8",
-    "node-sass": "^4.13.1",
+    "node-sass": "^4.14.1",
     "prop-types": "^15.7.2",
     "react": "^16.13.0",
     "react-dom": "^16.13.0",
@@ -25,7 +25,7 @@
     "redux-logger": "^3.0.6",
     "redux-thunk": "^2.3.0",
     "styled-components": "^5.1.1",
-    "tailwindcss": "^1.2.0",
+    "tailwindcss": "^1.4.6",
     "two.js": "^0.7.0-stable.1",
     "use-immer": "^0.4.0"
   },
