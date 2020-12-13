@@ -10,10 +10,14 @@ import Toolbar from 'components/floatingToolbar';
 import Icon from 'icons/icons';
 import ObjectSelector from 'components/utils/objectSelector';
 import { setPeronsalInformation } from 'store/actions/main';
+import AddIcon from 'assets/add.svg';
 
 function RadioBox(props) {
   const [showToolbar, toggleToolbar] = useState(false);
-  const [internalState, setInternalState] = useImmer({});
+  const [internalState, setInternalState] = useImmer({
+    mainElement: null,
+    hidebtn: false,
+  });
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
@@ -25,6 +29,16 @@ function RadioBox(props) {
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
+  }
+
+  // this updates checkbox state via passed checkboxgrp instance
+  function updateRadioBoxState(radioboxGroup) {
+    setInternalState((draft) => {
+      draft.element = {
+        ...internalState.element,
+        [radioboxGroup.id]: radioboxGroup,
+      };
+    });
   }
 
   // Using unmount phase to remove event listeners
@@ -130,6 +144,7 @@ function RadioBox(props) {
         draft.icon = {
           data: {},
         };
+        draft.mainElement = group;
       });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
@@ -174,26 +189,26 @@ function RadioBox(props) {
         radioboxGroup.add(group);
         two.update();
 
+        updateRadioBoxState(radioboxGroup);
         attachEventToRadioControl();
       };
 
       interact(`#${group.id}`).on('click', () => {
-        //   console.log("on click ", text.getBoundingClientRect(true));
-
         selector.update(
           radioboxGroup.getBoundingClientRect(true).left - 10,
           radioboxGroup.getBoundingClientRect(true).right + 10,
           radioboxGroup.getBoundingClientRect(true).top - 10,
           radioboxGroup.getBoundingClientRect(true).bottom + 10
         );
-
-        document
-          .getElementById('radiobox-add')
-          .addEventListener('click', addRadioControlHandler);
-
         two.update();
         toggleToolbar(true);
       });
+
+      // add event listener on outer html tree to handle respective event
+      // this event handler is for adding radiobox
+      document
+        .getElementById('radiobox-add')
+        .addEventListener('click', addRadioControlHandler);
 
       // Store the ids of all checkbox elements
       let radioTextArr = [];
@@ -329,7 +344,9 @@ function RadioBox(props) {
 
         listeners: {
           start(event) {
-            // console.log(event.type, event.target);
+            setInternalState((draft) => {
+              draft.hidebtn = true;
+            });
           },
           move(event) {
             event.target.style.transform = `translate(${event.pageX}px, ${
@@ -350,8 +367,15 @@ function RadioBox(props) {
               'radiobox_coordY',
               parseInt(event.pageY - offsetHeight)
             );
+            group.translation.x = event.pageX;
+            group.translation.y = event.pageY;
             two.update();
             dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
+
+            updateRadioBoxState(radioboxGroup);
+            setInternalState((draft) => {
+              draft.hidebtn = false;
+            });
           },
         },
       });
@@ -368,10 +392,35 @@ function RadioBox(props) {
     toggleToolbar(false);
   }
 
+  const mainElementRect = internalState?.mainElement?.getBoundingClientRect();
+  const getWidthOfElement =
+    internalState?.mainElement?.getBoundingClientRect()?.width || 20;
+
   return (
     <React.Fragment>
       <div id="two-radiobox"></div>
-      <button id="radiobox-add">add radiocontrol</button>
+      <a
+        id="radiobox-add"
+        className={`absolute ${
+          internalState.hidebtn ? 'opacity-0' : 'opacity-100'
+        }`}
+        style={{
+          top: mainElementRect?.bottom
+            ? `${mainElementRect?.bottom + 15}px`
+            : '191px',
+          left: mainElementRect?.left
+            ? `${mainElementRect?.left + getWidthOfElement / 2 - 10}px`
+            : '200px',
+        }}
+        href=""
+        onClick={(e) => {
+          e.preventDefault();
+          console.log('on btn click');
+        }}
+      >
+        <img src={AddIcon} width="30" height="30" />
+      </a>
+
       {showToolbar ? (
         <Toolbar
           toggle={showToolbar}

@@ -11,10 +11,14 @@ import Toolbar from 'components/floatingToolbar';
 import Icon from 'icons/icons';
 import ObjectSelector from 'components/utils/objectSelector';
 import { setPeronsalInformation } from 'store/actions/main';
+import AddIcon from 'assets/add.svg';
 
 function Checkbox(props) {
   const [showToolbar, toggleToolbar] = useState(false);
-  const [internalState, setInternalState] = useImmer({});
+  const [internalState, setInternalState] = useImmer({
+    mainElement: null,
+    hidebtn: false,
+  });
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
@@ -26,6 +30,16 @@ function Checkbox(props) {
 
   function onFocusHandler(e) {
     document.getElementById(`${groupObject.id}`).style.outline = 0;
+  }
+
+  // this updates checkbox state via passed checkboxgrp instance
+  function updateCheckboxState(checkboxGroup) {
+    setInternalState((draft) => {
+      draft.element = {
+        ...internalState.element,
+        [checkboxGroup.id]: checkboxGroup,
+      };
+    });
   }
 
   // Using unmount phase to remove event listeners
@@ -136,6 +150,7 @@ function Checkbox(props) {
         draft.icon = {
           data: {},
         };
+        draft.mainElement = group;
       });
 
       const getGroupElementFromDOM = document.getElementById(`${group.id}`);
@@ -184,6 +199,7 @@ function Checkbox(props) {
         checkboxGroup.add(group);
         two.update();
 
+        updateCheckboxState(checkboxGroup);
         attachEventToCheckboxes();
       };
 
@@ -194,14 +210,15 @@ function Checkbox(props) {
           checkboxGroup.getBoundingClientRect(true).top - 10,
           checkboxGroup.getBoundingClientRect(true).bottom + 10
         );
-
-        document
-          .getElementById('checkbox-add')
-          .addEventListener('click', addCheckboxClickHandler);
-
         two.update();
         toggleToolbar(true);
       });
+
+      // add event listener on outer html tree to handle respective event
+      // this event handler is for adding checkbox
+      document
+        .getElementById('checkbox-add')
+        .addEventListener('click', addCheckboxClickHandler);
 
       // Store the ids of all checkbox elements
       let checkboxTextArr = [];
@@ -326,6 +343,9 @@ function Checkbox(props) {
 
         listeners: {
           start(event) {
+            setInternalState((draft) => {
+              draft.hidebtn = true;
+            });
             // console.log(event.type, event.target);
           },
           move(event) {
@@ -349,7 +369,16 @@ function Checkbox(props) {
               'checkbox_coordY',
               parseInt(event.pageY - offsetHeight)
             );
+
+            group.translation.x = event.pageX;
+            group.translation.y = event.pageY;
+            two.update();
             dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
+
+            updateCheckboxState(checkboxGroup);
+            setInternalState((draft) => {
+              draft.hidebtn = false;
+            });
           },
         },
       });
@@ -366,16 +395,35 @@ function Checkbox(props) {
     toggleToolbar(false);
   }
 
+  const mainElementRect = internalState?.mainElement?.getBoundingClientRect();
+  const getWidthOfElement =
+    internalState?.mainElement?.getBoundingClientRect()?.width || 20;
+
   return (
     <React.Fragment>
       <div id="two-checkbox"></div>
-      <button
+      <a
         id="checkbox-add"
-        className="absolute right-0"
-        style={{ top: '190px' }}
+        className={`absolute ${
+          internalState.hidebtn ? 'opacity-0' : 'opacity-100'
+        }`}
+        style={{
+          top: mainElementRect?.bottom
+            ? `${mainElementRect?.bottom + 15}px`
+            : '191px',
+          left: mainElementRect?.left
+            ? `${mainElementRect?.left + getWidthOfElement / 2 - 10}px`
+            : '200px',
+        }}
+        href=""
+        onClick={(e) => {
+          e.preventDefault();
+          console.log('on btn click');
+        }}
       >
-        add checkbox
-      </button>
+        <img src={AddIcon} width="30" height="30" />
+      </a>
+
       {showToolbar ? (
         <Toolbar
           toggle={showToolbar}
