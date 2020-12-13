@@ -105,23 +105,18 @@ function Divider(props) {
             resizeLine.opacity = 1;
           },
           move(event) {
-            const target = event.target;
-            const rect = event.rect;
-            console.log('on resize event', event);
+            console.log('on resize event', event.edges);
 
-            // update the element's style
-            //   resizeLine.width = rect.width;
-            line.vertices[0].x -= event.dx;
-            line.vertices[1].x += event.dx;
-            pointCircle1.translation.x = line.vertices[0].x;
-            pointCircle2.translation.x = line.vertices[1].x;
+            // Check for which edge has been selected for resizing
+            if (event.edges.left) {
+              line.vertices[0].x += event.dx;
+              pointCircle1.translation.x = line.vertices[0].x;
+            } else if (event.edges.right) {
+              // line.vertices[0].x += event.dx;
+              line.vertices[1].x += event.dx;
+              pointCircle2.translation.x = line.vertices[1].x;
+            }
 
-            // rectangle.radius = parseInt(rect.width / 2);
-
-            //   target.style.width = rect.width + "px";
-            //   target.style.height = rect.height + "px";
-
-            //   target.textContent = rect.width + "×" + rect.height;
             two.update();
           },
           end(event) {
