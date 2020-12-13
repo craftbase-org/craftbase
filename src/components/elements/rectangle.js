@@ -183,7 +183,7 @@ function Rectangle(props) {
             dispatch(
               setPeronsalInformation(UPDATE_ELEMENT_DATA, {
                 data: {
-                  id: rectangle.id,
+                  id: props.id,
                   property: 'x',
                   value: group.translation.x,
                 },
@@ -192,7 +192,7 @@ function Rectangle(props) {
             dispatch(
               setPeronsalInformation(UPDATE_ELEMENT_DATA, {
                 data: {
-                  id: rectangle.id,
+                  id: props.id,
                   property: 'y',
                   value: group.translation.y,
                 },

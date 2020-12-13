@@ -30,7 +30,7 @@ export default (state = initial_state, action) =>
     switch (action.type) {
       case CONSTRUCT:
         const newArr = action.payload.map((item) => item.id);
-
+        console.log('action.payload construct', action.payload);
         const getCoordGraph = {};
         action.payload.forEach((item) => {
           getCoordGraph[item.id] = item.data;
@@ -81,17 +81,28 @@ export default (state = initial_state, action) =>
         const newChildren = [];
         const selectedComponentArr = [];
         const allComponentCoords = Object.values(draft.getCoordGraph);
-        console.log('allComponentCoords', xMid, yMid, state.getCoordGraph);
+        console.log(
+          'area_selection allComponentCoords',
+          xMid,
+          yMid,
+          state.getCoordGraph
+        );
+
         allComponentCoords.forEach((item, index) => {
           console.log('item', item);
+          console.log('area_selection item.x', item?.x, ' x1Coord ', x1Coord);
+          console.log('area_selection item.x', item?.x, ' x2Coord ', x2Coord);
+          console.log('area_selection item.y', item?.y, ' y1Coord ', y1Coord);
+          console.log('area_selection item.y', item?.y, ' y1Coord ', y2Coord);
           if (item !== undefined) {
+            console.log('area_selection item', item);
             if (
               item.x > x1Coord &&
               item.x < x2Coord &&
               item.y > y1Coord &&
               item.y < y2Coord
             ) {
-              console.log('a match');
+              console.log('area_selection a match');
               let idToSelect = parseInt(
                 Object.keys(draft.getCoordGraph)[index]
               );
@@ -122,6 +133,7 @@ export default (state = initial_state, action) =>
           }
         });
 
+        console.log('area_selection newChildren', newChildren);
         newGroup.id = Math.floor(Math.random() * 9000) + 1000;
         newGroup.name = 'groupobject';
         newGroup.width = action.payload.width;
