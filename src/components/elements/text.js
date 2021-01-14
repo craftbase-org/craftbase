@@ -12,7 +12,7 @@ import ElementFactory from 'factory/text';
 
 function Text(props) {
   const [showToolbar, toggleToolbar] = useState(false);
-  const [internalState, setInternalState] = useImmer({});
+  const [internalState, setInternalState] = useImmer({ textFontSize: 16 });
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
   let selectorInstance = null;
@@ -28,6 +28,9 @@ function Text(props) {
 
   // Using unmount phase to remove event listeners
   useEffect(() => {
+    let textFontSize = 16;
+    let textValue = 'This is HTML gregre reyreyyre yryeyer';
+    let itemData = props?.itemData;
     // Calculate x and y through dividing width and height by 2 or vice versa
     // if x and y are given then multiply width and height into 2
     const offsetHeight = 0;
@@ -37,12 +40,10 @@ function Text(props) {
     // Instantiate factory
     const elementFactory = new ElementFactory(two, prevX, prevY, {});
     // Get all instances of every sub child element
-    const {
-      group,
-      rectTextGroup,
-      text,
-      rectangle,
-    } = elementFactory.createElement();
+    const { group, rectTextGroup, rectangle } = elementFactory.createElement();
+
+    // the custom foreign object hook
+    const svgElem = rectTextGroup._renderer.elem;
 
     if (props.parentGroup) {
       /** This element will be rendered and scoped in its parent group */
@@ -74,10 +75,10 @@ function Text(props) {
           id: rectangle.id,
           data: rectangle,
         };
-        draft.text = {
-          id: text.id,
-          data: text,
-        };
+        // draft.text = {
+        //   id: text.id,
+        //   data: text,
+        // };
         draft.icon = {
           data: {},
         };
@@ -88,7 +89,13 @@ function Text(props) {
       getGroupElementFromDOM.addEventListener('blur', onBlurHandler);
 
       interact(`#${group.id}`).on('click', () => {
-        console.log('on click ', text.getBoundingClientRect(true));
+        console.log(
+          'group id rectText id rect id',
+          group.id,
+          rectTextGroup.id,
+          rectangle.id,
+          rectTextGroup.getBoundingClientRect(true)
+        );
         selector.update(
           rectTextGroup.getBoundingClientRect(true).left - 5,
           rectTextGroup.getBoundingClientRect(true).right + 5,
@@ -101,20 +108,26 @@ function Text(props) {
 
       // Captures double click event for text
       // and generates temporary textarea support for it
-      text._renderer.elem.addEventListener('dblclick', () => {
-        console.log('on click for texy', text.id);
+      rectTextGroup._renderer.elem.addEventListener('dblclick', () => {
+        // console.log('on click for texy', text.id);
 
         // Hide actual text and replace it with input box
-        const twoTextInstance = document.getElementById(`${text.id}`);
+        const twoTextInstance = document.getElementById(`${group.id}`);
         const getCoordOfBtnText = twoTextInstance.getBoundingClientRect();
         twoTextInstance.style.display = 'none';
 
-        const input = document.createElement('input');
+        const input = document.createElement('textarea');
         const topBuffer = 2;
-        input.type = 'text';
-        input.value = text.value;
-        input.style.color = '#0052CC';
-        input.style.fontSize = `${text.size}px`;
+        const randomNumber = Math.floor(Math.random() * 90 + 10);
+        input.id = `two-temp-input-area-${randomNumber}`;
+        input.value = props?.itemData?.text || textValue;
+        input.rows = 3;
+        input.style.border = '1px solid #000';
+        input.style.padding = '6px';
+        input.style.color = props?.itemData?.color
+          ? props?.itemData?.color
+          : '#000';
+        input.style.fontSize = `${props?.itemData?.fontSize}px`;
         input.style.position = 'absolute';
         input.style.top = `${getCoordOfBtnText.top - topBuffer}px`;
         input.style.left = `${getCoordOfBtnText.left}px`;
@@ -132,43 +145,45 @@ function Text(props) {
         };
         input.focus();
 
-        input.addEventListener('input', () => {
-          input.style.width = `${
-            rectTextGroup.getBoundingClientRect(true).width + 4
-          }px`;
+        input.addEventListener('input', (event) => {});
 
-          // Synchronously update selector tool's coordinates
-          text.value = input.value;
-          rectangle.width = input.value.length * 14;
-
-          selector.update(
-            rectTextGroup.getBoundingClientRect(true).left - 5,
-            rectTextGroup.getBoundingClientRect(true).right + 5,
-            rectTextGroup.getBoundingClientRect(true).top - 5,
-            rectTextGroup.getBoundingClientRect(true).bottom + 5
+        input.addEventListener('a', () => {
+          console.log(
+            'at blur text',
+            input.value,
+            input.rows,
+            input.scrollHeight,
+            document.getElementById(input.id).getBoundingClientRect()
           );
-          two.update();
-          input.style.left = `${
-            document.getElementById(rectangle.id).getBoundingClientRect().left +
-            20
-          }px`;
-        });
 
-        input.addEventListener('blur', () => {
           twoTextInstance.style.display = 'block';
-          text.value = input.value;
-          input.remove();
+
+          textValue = input.value;
 
           // USE 4 LINES 4 CIRCLES
-
-          selector.update(
-            rectTextGroup.getBoundingClientRect(true).left - 5,
-            rectTextGroup.getBoundingClientRect(true).right + 5,
-            rectTextGroup.getBoundingClientRect(true).top - 5,
-            rectTextGroup.getBoundingClientRect(true).bottom + 5
-          );
+          //   selector.update(
+          //     rectTextGroup.getBoundingClientRect(true).left - 5,
+          //     rectTextGroup.getBoundingClientRect(true).right + 5,
+          //     rectTextGroup.getBoundingClientRect(true).top - 5,
+          //     rectTextGroup.getBoundingClientRect(true).bottom + 5
+          //   );
           selector.hide();
+
+          rectTextGroup.height = input.scrollHeight;
+          rectangle.height = input.scrollHeight;
           two.update();
+          console.log('rectangle.height', rectangle.height, input.scrollHeight);
+          svgElem.innerHTML = `
+          <foreignObject x=${
+            rectTextGroup.getBoundingClientRect(true).left
+          } y=${rectTextGroup.getBoundingClientRect(true).top} width=${
+            rectangle.width
+          } height=${rectangle.height}>
+              <div style="font-size:${textFontSize + 'px'}">${textValue}</div>
+          </foreignObject>
+          `;
+          two.update();
+          input.remove();
         });
       });
 
@@ -177,25 +192,68 @@ function Text(props) {
 
         listeners: {
           move(event) {
-            var target = event.target;
-            var rect = event.rect;
+            let target = event.target;
+            let rect = event.rect;
 
-            const rosterSize = rect.width / 6;
-            // Restrict width to shrink if it has reached point
-            //  where it's width should be less than or equal to text's
-            if (rect.width > text.getBoundingClientRect().width) {
+            if (
+              rect.width < rectTextGroup.getBoundingClientRect(true).width ||
+              rect.height < rectTextGroup.getBoundingClientRect(true).height
+            ) {
+              console.log('new rect width low', props.itemData.data.fontSize);
+
               rectangle.width = rect.width;
               rectangle.height = rect.height;
-              text.size = rosterSize;
               selector.update(
                 rectTextGroup.getBoundingClientRect(true).left - 5,
                 rectTextGroup.getBoundingClientRect(true).right + 5,
                 rectTextGroup.getBoundingClientRect(true).top - 5,
                 rectTextGroup.getBoundingClientRect(true).bottom + 5
               );
+
+              svgElem.innerHTML = `
+      <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
+                rectTextGroup.getBoundingClientRect(true).top
+              } width=${rectangle.width} height=${rectangle.height}>
+          <div style="font-size:${textFontSize + 'px'}">${textValue}</div>
+      </foreignObject>
+      `;
+            } else if (
+              rect.width > rectTextGroup.getBoundingClientRect(true).width ||
+              rect.height > rectTextGroup.getBoundingClientRect(true).height
+            ) {
+              rectangle.width = rect.width;
+              rectangle.height = rect.height;
+              selector.update(
+                rectTextGroup.getBoundingClientRect(true).left - 5,
+                rectTextGroup.getBoundingClientRect(true).right + 5,
+                rectTextGroup.getBoundingClientRect(true).top - 5,
+                rectTextGroup.getBoundingClientRect(true).bottom + 5
+              );
+
+              svgElem.innerHTML = `
+        <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
+                rectTextGroup.getBoundingClientRect(true).top
+              } width=${rectangle.width} height=${rectangle.height}>
+            <div style="font-size:${textFontSize + 'px'}">${textValue}</div>
+        </foreignObject>
+        `;
+              console.log('new rect width high');
             }
 
             two.update();
+            // Restrict width to shrink if it has reached point
+            //  where it's width should be less than or equal to text's
+            // if (rect.width > text.getBoundingClientRect().width) {
+            //   rectangle.width = rect.width;
+            //   rectangle.height = rect.height;
+            //   text.size = rosterSize;
+            //   selector.update(
+            //     rectTextGroup.getBoundingClientRect(true).left - 5,
+            //     rectTextGroup.getBoundingClientRect(true).right + 5,
+            //     rectTextGroup.getBoundingClientRect(true).top - 5,
+            //     rectTextGroup.getBoundingClientRect(true).bottom + 5
+            //   );
+            // }
           },
           end(event) {
             console.log('the end');

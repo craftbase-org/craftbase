@@ -114,7 +114,11 @@ function Rectangle(props) {
         edges: { right: true, left: true, top: true, bottom: true },
 
         listeners: {
+          start(event) {
+            console.log('rect event start', event.pageX);
+          },
           move(event) {
+            console.log('rect event move', event.pageX);
             const target = event.target;
             const rect = event.rect;
 
@@ -122,6 +126,8 @@ function Rectangle(props) {
             const minRectWidth = parseInt(rect.width / 2);
 
             if (minRectHeight > 20 && minRectWidth > 20) {
+              // only update rectangle width and height if criteria matches
+              // criteria: to not allow less than "10px" of width or height while resizing
               rectangle.width = rect.width;
               rectangle.height = rect.height;
 
@@ -136,6 +142,7 @@ function Rectangle(props) {
             two.update();
           },
           end(event) {
+            console.log('rect event end', event.pageX);
             console.log('the end');
           },
         },

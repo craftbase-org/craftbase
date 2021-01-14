@@ -10,7 +10,7 @@ export default class RectangleFactory extends Main {
     // Implement core element
 
     const rectangle = two.makeRectangle(0, 0, 210, 110);
-    rectangle.fill = '#FFBDAD';
+    rectangle.fill = '#36B37E';
     rectangle.noStroke();
     // dashed dotted
     // rectangle.dashes[0] = 0;

@@ -17,7 +17,7 @@ function Checkbox(props) {
   const [showToolbar, toggleToolbar] = useState(false);
   const [internalState, setInternalState] = useImmer({
     mainElement: null,
-    hidebtn: false,
+    hidebtn: true,
   });
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
@@ -26,6 +26,11 @@ function Checkbox(props) {
 
   function onBlurHandler(e) {
     elementOnBlurHandler(e, selectorInstance, two);
+
+    // hides add btn on blur
+    if (e?.relatedTarget?.id !== 'checkbox-add') {
+      toggleAddBtn(true);
+    }
   }
 
   function onFocusHandler(e) {
@@ -39,6 +44,12 @@ function Checkbox(props) {
         ...internalState.element,
         [checkboxGroup.id]: checkboxGroup,
       };
+    });
+  }
+
+  function toggleAddBtn(flag) {
+    setInternalState((draft) => {
+      draft.hidebtn = flag;
     });
   }
 
@@ -97,7 +108,6 @@ function Checkbox(props) {
 
       // construct group to combine all parts into one
       let group = two.makeGroup(rect, externalSVG, text);
-
       // group.children.unshift(externalSVG);
 
       textMap[`checkbox${index}`] = text;
@@ -130,6 +140,12 @@ function Checkbox(props) {
       // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
       group.children.unshift(checkboxGroup);
       two.update();
+
+      const style = document.createElement('style');
+      style.type = 'text/css';
+      style.innerHTML = `#${checkboxGroup.id} path { cursor:pointer !important }`;
+
+      document.getElementsByTagName('head')[0].appendChild(style);
 
       setInternalState((draft) => {
         draft.element = {
@@ -211,6 +227,7 @@ function Checkbox(props) {
           checkboxGroup.getBoundingClientRect(true).bottom + 10
         );
         two.update();
+        toggleAddBtn(false);
         toggleToolbar(true);
       });
 
@@ -282,7 +299,8 @@ function Checkbox(props) {
             });
 
             // Handle Input box blur event
-            input.addEventListener('blur', () => {
+            input.addEventListener('blur', (e) => {
+              console.log('BLUR E', e);
               twoTextInstance.style.display = 'block';
               text.value = input.value;
               input.remove();
@@ -294,6 +312,11 @@ function Checkbox(props) {
                 checkboxGroup.getBoundingClientRect(true).bottom + 10
               );
               selector.hide();
+              //patch
+              if (e?.relatedTarget?.id !== 'checkbox-add') {
+                toggleAddBtn(true);
+              }
+
               two.update();
             });
           };
@@ -343,9 +366,7 @@ function Checkbox(props) {
 
         listeners: {
           start(event) {
-            setInternalState((draft) => {
-              draft.hidebtn = true;
-            });
+            toggleAddBtn(true);
             // console.log(event.type, event.target);
           },
           move(event) {
@@ -376,9 +397,7 @@ function Checkbox(props) {
             dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
 
             updateCheckboxState(checkboxGroup);
-            setInternalState((draft) => {
-              draft.hidebtn = false;
-            });
+            toggleAddBtn(true);
           },
         },
       });
@@ -404,9 +423,7 @@ function Checkbox(props) {
       <div id="two-checkbox"></div>
       <a
         id="checkbox-add"
-        className={`absolute ${
-          internalState.hidebtn ? 'opacity-0' : 'opacity-100'
-        }`}
+        className={`absolute`}
         style={{
           top: mainElementRect?.bottom
             ? `${mainElementRect?.bottom + 15}px`
@@ -414,6 +431,7 @@ function Checkbox(props) {
           left: mainElementRect?.left
             ? `${mainElementRect?.left + getWidthOfElement / 2 - 10}px`
             : '200px',
+          visibility: internalState.hidebtn ? 'hidden' : 'visible',
         }}
         href=""
         onClick={(e) => {

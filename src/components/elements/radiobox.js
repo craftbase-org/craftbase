@@ -16,7 +16,7 @@ function RadioBox(props) {
   const [showToolbar, toggleToolbar] = useState(false);
   const [internalState, setInternalState] = useImmer({
     mainElement: null,
-    hidebtn: false,
+    hidebtn: true,
   });
   const dispatch = useDispatch();
   const two = props.twoJSInstance;
@@ -25,6 +25,11 @@ function RadioBox(props) {
 
   function onBlurHandler(e) {
     elementOnBlurHandler(e, selectorInstance, two);
+
+    // also hide add btn
+    if (e?.relatedTarget?.id !== 'checkbox-add') {
+      toggleAddBtn(true);
+    }
   }
 
   function onFocusHandler(e) {
@@ -38,6 +43,12 @@ function RadioBox(props) {
         ...internalState.element,
         [radioboxGroup.id]: radioboxGroup,
       };
+    });
+  }
+
+  function toggleAddBtn(flag) {
+    setInternalState((draft) => {
+      draft.hidebtn = flag;
     });
   }
 
@@ -124,6 +135,12 @@ function RadioBox(props) {
       group.children.unshift(radioboxGroup);
       two.update();
 
+      const style = document.createElement('style');
+      style.type = 'text/css';
+      style.innerHTML = `#${radioboxGroup.id} path { cursor:pointer !important }`;
+
+      document.getElementsByTagName('head')[0].appendChild(style);
+
       setInternalState((draft) => {
         draft.element = {
           [radioboxGroup.id]: radioboxGroup,
@@ -201,6 +218,11 @@ function RadioBox(props) {
           radioboxGroup.getBoundingClientRect(true).bottom + 10
         );
         two.update();
+
+        // unhide toggle add btn
+        toggleAddBtn(false);
+
+        // show toolbar
         toggleToolbar(true);
       });
 
@@ -279,7 +301,7 @@ function RadioBox(props) {
             });
 
             // Handle Input box blur event
-            input.addEventListener('blur', () => {
+            input.addEventListener('blur', (e) => {
               twoTextInstance.style.display = 'block';
               text.value = input.value;
               input.remove();
@@ -296,6 +318,11 @@ function RadioBox(props) {
                 radioboxGroup.getBoundingClientRect(true).bottom + 10
               );
               selector.hide();
+
+              //  patch
+              if (e?.relatedTarget?.id !== 'checkbox-add') {
+                toggleAddBtn(true);
+              }
               two.update();
             });
           };
@@ -344,9 +371,7 @@ function RadioBox(props) {
 
         listeners: {
           start(event) {
-            setInternalState((draft) => {
-              draft.hidebtn = true;
-            });
+            toggleAddBtn(true);
           },
           move(event) {
             event.target.style.transform = `translate(${event.pageX}px, ${
@@ -373,9 +398,7 @@ function RadioBox(props) {
             dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
 
             updateRadioBoxState(radioboxGroup);
-            setInternalState((draft) => {
-              draft.hidebtn = false;
-            });
+            toggleAddBtn(false);
           },
         },
       });
