@@ -7,7 +7,8 @@ export default class TextFactory extends Main {
     const prevY = this.y;
     const { fill } = this.properties;
 
-    const rectangle = two.makeRoundedRectangle(0, 0, 140, 45, 5);
+    // pass width and height here for transparent rectangle container
+    const rectangle = two.makeRoundedRectangle(0, 0, 330, 45, 5);
     rectangle.fill = 'rgba(0,0,0,0)';
     rectangle.noStroke();
 
@@ -26,7 +27,7 @@ export default class TextFactory extends Main {
     svgElem.innerHTML = `
     <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
       rectTextGroup.getBoundingClientRect(true).top
-    } width=${140} height=${50}>
+    } width=${rectangle.width} height=${50}>
         <div>This is HTML gregre reyreyyre yryeyer</div>
     </foreignObject>
     `;

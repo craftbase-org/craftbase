@@ -147,7 +147,7 @@ function Text(props) {
 
         input.addEventListener('input', (event) => {});
 
-        input.addEventListener('a', () => {
+        input.addEventListener('blur', () => {
           console.log(
             'at blur text',
             input.value,
@@ -256,7 +256,7 @@ function Text(props) {
             // }
           },
           end(event) {
-            console.log('the end');
+            console.log('the end', event);
           },
         },
       });
