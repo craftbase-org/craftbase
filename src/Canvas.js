@@ -91,27 +91,27 @@ class App extends Component {
         }).appendTo(elem)
 
         const arr = [
-            //   { id: 1, name: 'buttonwithicon' },
+            //   { id: 1, name: 'buttonWithIcon' },
 
             //   { id: 3, name: 'tooltip' },
-            //   { id: 4, name: 'circle', data: { x: 272, y: 707, name: 'circle' } },
-            //   { id: 5, name: 'imagecard' },
+            // { id: 4, name: 'circle', data: { x: 272, y: 707, name: 'circle' } },
+            // { id: 5, name: 'imageCard' },
             {
                 id: 6,
                 name: 'rectangle',
                 data: { x: 290, y: 430, name: 'rectangle' },
             },
             { id: 2, name: 'toggle', data: {} },
-            //   { id: 7, name: 'divider' },
+            { id: 7, name: 'divider' },
             //   { id: 8, name: 'avatar' },
-            //   { id: 9, name: 'linkwithicon' },
+            { id: 9, name: 'linkWithIcon' },
             { id: 10, name: 'text', data: { fontSize: '16' } },
-            //   { id: 11, name: 'overlay' },
+            { id: 11, name: 'overlay' },
             { id: 12, name: 'button' },
-            //   { id: 13, name: 'checkbox' },
-            //   { id: 14, name: 'radiobox' },
+            // { id: 13, name: 'checkbox' },
+            // { id: 14, name: 'radiobox' },
             //   { id: 15, name: 'textinput' },
-            //   { id: 16, name: 'dropdown' },
+            // { id: 16, name: 'dropdown' },
             // { id: 17, name: 'textarea' },
             // {
             //   id: 18,

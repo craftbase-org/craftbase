@@ -176,13 +176,13 @@ function Toggle(props) {
         <React.Fragment>
             <div id="two-toggle"></div>
 
-            <button
+            {/* <button
                 id="add-1-2"
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                 // onClick={() => this.addElements("circle")}
             >
                 Toggle me
-            </button>
+            </button> */}
             {showToolbar ? (
                 <Toolbar
                     toggle={showToolbar}

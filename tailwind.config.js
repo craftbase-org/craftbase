@@ -1,99 +1,103 @@
 module.exports = {
-  theme: {
-    screens: {
-      sm: "640px",
-      md: "768px",
-      lg: "1024px",
-      xl: "1280px",
+    purge: ['./src/**/*.js'],
+    future: {
+        removeDeprecatedGapUtilities: true,
     },
-
-    fontFamily: {
-      display: ["Gilroy", "sans-serif"],
-      body: ["Graphik", "sans-serif"],
-    },
-    borderWidth: {
-      default: "1px",
-      "0": "0",
-      "2": "2px",
-      "4": "4px",
-    },
-    extend: {
-      colors: {
-        cyan: "#9cdbff",
-        reds: {
-          r500: "#BF2600",
-          r400: "#DE350B",
-          r300: "#FF5630",
-          r200: "#FF7452",
-          r100: "#FF8F73",
-          r75: "#FFBDAD",
-          r50: "#FFEBE6",
-        },
-        yellows: {
-          y500: "#FF8B00",
-          y400: "#FF991F",
-          y300: "#FFAB00",
-          y200: "#FFC400",
-          y100: "#FFE380",
-          y75: "#FFF0B3",
-          y50: "#FFFAE6",
-        },
-        greens: {
-          g500: "#006644",
-          g400: "#00875A",
-          g300: "#36B37E",
-          g200: "#57D9A3",
-          g100: "#79F2C0",
-          g75: "#ABF5D1",
-          g50: "#E3FCEF",
-        },
-        teals: {
-          t500: "#008DA6",
-          t400: "#00A3BF",
-          t300: "#00B8D9",
-          t200: "#00C7E6",
-          t100: "#79E2F2",
-          t75: "#B3F5FF",
-          t50: "#E6FCFF",
-        },
-        blues: {
-          b500: "#0747A6",
-          b400: "#0052CC",
-          b300: "#0065FF",
-          b200: "#2684FF",
-          b100: "#4C9AFF",
-          b75: "#B3D4FF",
-          b50: "#DEEBFF",
-        },
-        purples: {
-          p500: "#403294",
-          p400: "#5243AA",
-          p300: "#6554C0",
-          p200: "#8777D9",
-          p100: "#998DD9",
-          p75: "#C0B6F2",
-          p50: "#EAE6FF",
+    theme: {
+        screens: {
+            sm: '640px',
+            md: '768px',
+            lg: '1024px',
+            xl: '1280px',
         },
 
-        neutrals: {
-          n900: "#091E42",
-          n700: "#253858",
-          n500: "#42526E",
-          n300: "#5E6C84",
-          n100: "#7A869A",
-          n80: "#97A0AF",
-          n60: "#B3BAC5",
-          n40: "#DFE1E6",
-          n20: "#F4F5F7",
+        fontFamily: {
+            display: ['Gilroy', 'sans-serif'],
+            body: ['Graphik', 'sans-serif'],
         },
-      },
-      spacing: {
-        "96": "24rem",
-        "128": "32rem",
-      },
+        borderWidth: {
+            default: '1px',
+            0: '0',
+            2: '2px',
+            4: '4px',
+        },
+        extend: {
+            colors: {
+                cyan: '#9cdbff',
+                reds: {
+                    r500: '#BF2600',
+                    r400: '#DE350B',
+                    r300: '#FF5630',
+                    r200: '#FF7452',
+                    r100: '#FF8F73',
+                    r75: '#FFBDAD',
+                    r50: '#FFEBE6',
+                },
+                yellows: {
+                    y500: '#FF8B00',
+                    y400: '#FF991F',
+                    y300: '#FFAB00',
+                    y200: '#FFC400',
+                    y100: '#FFE380',
+                    y75: '#FFF0B3',
+                    y50: '#FFFAE6',
+                },
+                greens: {
+                    g500: '#006644',
+                    g400: '#00875A',
+                    g300: '#36B37E',
+                    g200: '#57D9A3',
+                    g100: '#79F2C0',
+                    g75: '#ABF5D1',
+                    g50: '#E3FCEF',
+                },
+                teals: {
+                    t500: '#008DA6',
+                    t400: '#00A3BF',
+                    t300: '#00B8D9',
+                    t200: '#00C7E6',
+                    t100: '#79E2F2',
+                    t75: '#B3F5FF',
+                    t50: '#E6FCFF',
+                },
+                blues: {
+                    b500: '#0747A6',
+                    b400: '#0052CC',
+                    b300: '#0065FF',
+                    b200: '#2684FF',
+                    b100: '#4C9AFF',
+                    b75: '#B3D4FF',
+                    b50: '#DEEBFF',
+                },
+                purples: {
+                    p500: '#403294',
+                    p400: '#5243AA',
+                    p300: '#6554C0',
+                    p200: '#8777D9',
+                    p100: '#998DD9',
+                    p75: '#C0B6F2',
+                    p50: '#EAE6FF',
+                },
+
+                neutrals: {
+                    n900: '#091E42',
+                    n700: '#253858',
+                    n500: '#42526E',
+                    n300: '#5E6C84',
+                    n100: '#7A869A',
+                    n80: '#97A0AF',
+                    n60: '#B3BAC5',
+                    n40: '#DFE1E6',
+                    n20: '#F4F5F7',
+                },
+            },
+            spacing: {
+                96: '24rem',
+                128: '32rem',
+            },
+        },
     },
-  },
-};
+}
 
 /*
 
