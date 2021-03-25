@@ -1,11 +1,12 @@
 import React from 'react'
 import Loadable from 'react-loadable'
+
 import Loader from 'components/utils/loader'
 
-const ElementWrapper = (element, data) => {
+const ElementWrapper = (elementName, data) => {
     // const ElementName = element.toLowerCase();
     const ElementToRender = Loadable({
-        loader: () => import(`components/elements/${element}`),
+        loader: () => import(`components/elements/${elementName}`),
         loading: Loader,
     })
 

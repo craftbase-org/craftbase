@@ -4,13 +4,19 @@ import { connect } from 'react-redux'
 import ComponentWrapper from 'components/elementWrapper'
 import Toolbar from 'components/floatingToolbar'
 import Two from 'two.js'
-import { getElementsData } from 'store/actions/main'
+import Zui from 'two.js/extras/zui'
+import panzoom from 'panzoom'
 
-class App extends Component {
+import { getElementsData } from 'store/actions/main'
+import Zoomer from 'components/utils/zoomer'
+import ZUI from 'two.js/extras/zui'
+
+class CanvasContainer extends Component {
     constructor(props) {
         super(props)
         this.state = {
             twoJSInstance: null,
+            PanZoomInstance: null,
             elements: [
                 { id: 1, name: 'rect' },
                 // { id: 2, name: "Circle" }
@@ -20,97 +26,272 @@ class App extends Component {
     }
 
     componentDidMount() {
-        console.log('CANVAS CDM')
+        console.log('CANVAS CDM', this.props.selectCursorMode)
         const elem = document.getElementById('main-two-root')
 
         // Logic for capturing events in empty space in drawing area
-        document
-            .getElementById('main-two-root')
-            .addEventListener('mousedown', (e) => {
-                console.log('event mouse down main root', e)
-                document.getElementById('main-two-root').focus()
-                if (e.target.tagName == 'svg') {
-                    const rect = document.getElementById('selector-rect')
-                    rect.style.position = 'absolute'
-                    rect.style.zIndex = '1'
-                    rect.style.width = '20px'
-                    rect.style.height = '20px'
-                    rect.style.border = '0px dashed grey'
-                    rect.style.transform = `translateX(${
-                        e.x - 10
-                    }px) translateY(${e.y - 10}px) `
-                    document.getElementById('main-two-root').blur()
-                    rect.setAttribute('draggable', true)
-                }
-            })
+        // document
+        //     .getElementById('main-two-root')
+        //     .addEventListener('mousedown', (e) => {
+        //         console.log(
+        //             'cDU',
+        //             this.state.twoJSInstance,
+        //             document.getElementById('two-0')
+        //         )
 
-        document
-            .getElementById('selector-rect')
-            .addEventListener('drag', (e) => {
-                console.log('selector-rect being dragged', e)
-                const rect = document.getElementById('selector-rect')
-                rect.style.zIndex = '1'
-                rect.style.border = '1px dashed grey'
-                rect.style.width = `${Math.abs(e.offsetX)}px`
-                rect.style.height = `${Math.abs(e.offsetY)}px`
-                console.log(
-                    'rect getBoundingClientRect',
-                    rect.getBoundingClientRect()
-                )
-            })
+        //         console.log('event mouse down main root', e, e.target.tagName)
+        //         document.getElementById('main-two-root').focus()
+        //         if (e.target.tagName == 'svg') {
+        //             const rect = document.getElementById('selector-rect')
+        //             rect.style.position = 'absolute'
+        //             rect.style.zIndex = '1'
+        //             rect.style.width = '20px'
+        //             rect.style.height = '20px'
+        //             rect.style.border = '0px dashed grey'
+        //             rect.style.transform = `translateX(${
+        //                 e.x - 10
+        //             }px) translateY(${e.y - 10}px) `
+        //             document.getElementById('main-two-root').blur()
+        //             rect.setAttribute('draggable', true)
+        //         }
+        //     })
 
-        document
-            .getElementById('selector-rect')
-            .addEventListener('dragend', (e) => {
-                console.log('selector-rect drag end', e)
-                const rect = document.getElementById('selector-rect')
-                rect.style.zIndex = '-1'
-                rect.style.width = `${Math.abs(e.offsetX)}px`
-                rect.style.height = `${Math.abs(e.offsetY)}px`
-                rect.setAttribute('draggable', false)
-                rect.blur()
-                console.log(
-                    'rect getBoundingClientRect',
-                    rect.getBoundingClientRect()
-                )
-                this.handleFinalDrag(rect.getBoundingClientRect())
-                // rect.style.width = `${e.offsetX}px`;
-                // rect.style.height = `${e.offsetY}px`;
-                // console.log("rect getBoundingClientRect", rect.getBoundingClientRect());
-            })
+        // document
+        //     .getElementById('selector-rect')
+        //     .addEventListener('drag', this.handleSelectorRectDrag)
 
-        document
-            .getElementById('main-two-root')
-            .addEventListener('mouseup', () => {
-                console.log('event mouse up main root')
-            })
+        // document
+        //     .getElementById('selector-rect')
+        //     .addEventListener('dragend', this.handleSelectorRectDragEnd)
+
+        // document
+        //     .getElementById('main-two-root')
+        //     .addEventListener('mouseup', () => {
+        //         console.log('event mouse up main root')
+        //     })
 
         const two = new Two({
             fullscreen: true,
             // width: "auto",
         }).appendTo(elem)
+        two.update()
+
+        // const elementToPan = document.getElementById(two.scene.id)
+        // const PanZoomInstance = panzoom(elementToPan)
+
+        // const thisRef = this
+        // PanZoomInstance.pause()
+        // PanZoomInstance.on('panstart', function (e) {
+        //     console.log(
+        //         'Fired when pan is just started ',
+        //         e,
+        //         thisRef.props.selectCursorMode
+        //     )
+
+        //     // Note: e === instance.
+        // })
+
+        // PanZoomInstance.on('pan', function (e) {
+        //     console.log('Fired when the `element` is being panned', e)
+        // })
+
+        // PanZoomInstance.on('panend', function (e) {
+        //     console.log('Fired when pan ended', e)
+        // })
+
+        // PanZoomInstance.on('zoom', function (e) {
+        //     console.log('Fired when `element` is zoomed', e)
+        // })
+
+        // PanZoomInstance.on('zoomend', function (e) {
+        //     console.log('Fired when zoom animation ended', e)
+        // })
+
+        // PanZoomInstance.on('transform', function (e) {
+        //     // This event will be called along with events above.
+        //     console.log('Fired when any transformation has happened', e)
+        // })
+
+        // Panzoom(document.getElementById('two-0'))
+        console.log('two', document.getElementById(two.scene.id))
+        let thisRef = this
+        // two.scene.translation.x = -50
+        addZUI()
+        function addZUI() {
+            // zuifn()
+
+            let domElement = two.renderer.domElement
+            // console.log('two.renderer.domElement', two.renderer)
+            let zui = new ZUI(two.scene, domElement)
+
+            let mouse = new Two.Vector()
+            let touches = {}
+            let distance = 0
+            zui.addLimits(0.06, 8)
+
+            domElement.addEventListener('mousedown', mousedown, false)
+            domElement.addEventListener('mousewheel', mousewheel, false)
+            domElement.addEventListener('wheel', mousewheel, false)
+
+            domElement.addEventListener('touchstart', touchstart, false)
+            domElement.addEventListener('touchmove', touchmove, false)
+            domElement.addEventListener('touchend', touchend, false)
+            domElement.addEventListener('touchcancel', touchend, false)
+
+            function mousedown(e) {
+                console.log(
+                    'e in ZUI mouse down',
+                    // e,
+                    // two.scene.scale,
+                    thisRef.props,
+                    two.scene.translation,
+                    two.scene.children[0].translation
+                )
+                if (!thisRef.props.selectCursorMode) {
+                    if (
+                        e.target.tagName === 'svg' &&
+                        e.target.lastChild.id === two.scene.id
+                    ) {
+                        mouse.x = e.clientX
+                        mouse.y = e.clientY
+                        window.addEventListener('mousemove', mousemove, false)
+                        window.addEventListener('mouseup', mouseup, false)
+                        two.update()
+                    } else {
+                    }
+                }
+            }
+
+            function mousemove(e) {
+                var dx = e.clientX - mouse.x
+                var dy = e.clientY - mouse.y
+                zui.translateSurface(dx, dy)
+                mouse.set(e.clientX, e.clientY)
+                two.update()
+            }
+
+            function mouseup(e) {
+                console.log('e in ZUI mouse up', e)
+                window.removeEventListener('mousemove', mousemove, false)
+                window.removeEventListener('mouseup', mouseup, false)
+            }
+
+            function mousewheel(e) {
+                var dy = (e.wheelDeltaY || -e.deltaY) / 1000
+                zui.zoomBy(dy, e.clientX, e.clientY)
+                two.update()
+            }
+
+            function touchstart(e) {
+                console.log('e in ZUI touch start', e)
+                switch (e.touches.length) {
+                    case 2:
+                        pinchstart(e)
+                        break
+                    case 1:
+                        panstart(e)
+                        break
+                }
+            }
+
+            function touchmove(e) {
+                switch (e.touches.length) {
+                    case 2:
+                        pinchmove(e)
+                        break
+                    case 1:
+                        panmove(e)
+                        break
+                }
+            }
+
+            function touchend(e) {
+                touches = {}
+                var touch = e.touches[0]
+                if (touch) {
+                    // Pass through for panning after pinching
+                    mouse.x = touch.clientX
+                    mouse.y = touch.clientY
+                }
+                two.update()
+            }
+
+            function panstart(e) {
+                var touch = e.touches[0]
+                mouse.x = touch.clientX
+                mouse.y = touch.clientY
+                two.update()
+            }
+
+            function panmove(e) {
+                var touch = e.touches[0]
+                var dx = touch.clientX - mouse.x
+                var dy = touch.clientY - mouse.y
+                zui.translateSurface(dx, dy)
+                mouse.set(touch.clientX, touch.clientY)
+                two.update()
+            }
+
+            function pinchstart(e) {
+                for (var i = 0; i < e.touches.length; i++) {
+                    var touch = e.touches[i]
+                    touches[touch.identifier] = touch
+                }
+                var a = touches[0]
+                var b = touches[1]
+                var dx = b.clientX - a.clientX
+                var dy = b.clientY - a.clientY
+                distance = Math.sqrt(dx * dx + dy * dy)
+                mouse.x = dx / 2 + a.clientX
+                mouse.y = dy / 2 + a.clientY
+                two.update()
+            }
+
+            function pinchmove(e) {
+                for (var i = 0; i < e.touches.length; i++) {
+                    var touch = e.touches[i]
+                    touches[touch.identifier] = touch
+                }
+                var a = touches[0]
+                var b = touches[1]
+                var dx = b.clientX - a.clientX
+                var dy = b.clientY - a.clientY
+                var d = Math.sqrt(dx * dx + dy * dy)
+                var delta = d - distance
+                zui.zoomBy(delta / 250, mouse.x, mouse.y)
+                distance = d
+                two.update()
+            }
+        }
 
         const arr = [
-            //   { id: 1, name: 'buttonWithIcon' },
-
+            // { id: 1, name: 'buttonWithIcon' },
             //   { id: 3, name: 'tooltip' },
-            // { id: 4, name: 'circle', data: { x: 272, y: 707, name: 'circle' } },
+            {
+                id: 4,
+                name: 'circle',
+                data: {
+                    x: 272,
+                    y: 707,
+                    name: 'circle',
+                },
+            },
             // { id: 5, name: 'imageCard' },
             {
                 id: 6,
                 name: 'rectangle',
                 data: { x: 290, y: 430, name: 'rectangle' },
             },
-            { id: 2, name: 'toggle', data: {} },
-            { id: 7, name: 'divider' },
-            //   { id: 8, name: 'avatar' },
-            { id: 9, name: 'linkWithIcon' },
-            { id: 10, name: 'text', data: { fontSize: '16' } },
-            { id: 11, name: 'overlay' },
-            { id: 12, name: 'button' },
+            // { id: 2, name: 'toggle', data: {} },
+            // { id: 7, name: 'divider' },
+            // { id: 8, name: 'avatar' },
+            // { id: 9, name: 'linkWithIcon' },
+            // { id: 10, name: 'text', data: { fontSize: '16' } },
+            // { id: 11, name: 'overlay' },
+            // { id: 12, name: 'button' },
             // { id: 13, name: 'checkbox' },
             // { id: 14, name: 'radiobox' },
-            //   { id: 15, name: 'textinput' },
+            // { id: 15, name: 'textinput' },
             // { id: 16, name: 'dropdown' },
             // { id: 17, name: 'textarea' },
             // {
@@ -127,15 +308,58 @@ class App extends Component {
         this.setState({ twoJSInstance: two })
     }
 
+    componentDidUpdate(prevProps, prevState) {
+        console.log(
+            'when this.props changes',
+            this.state.twoJSInstance?.scene?.translation,
+            // this.state.PanZoomInstance,
+            document.getElementById('two-0').getBoundingClientRect().x,
+            this.state.twoJSInstance?.translation?.x
+        )
+
+        // if (
+        //     this.state.PanZoomInstance !== null &&
+        //     this.props.selectCursorMode === true
+        // ) {
+        //     this.state.PanZoomInstance.pause()
+        // } else {
+        //     this.state.PanZoomInstance.resume()
+        // }
+    }
+
+    // handleSelectorRectInitialization = () => {
+
+    // }
+
+    handleSelectorRectDrag = (e) => {
+        console.log(
+            'selector-rect being dragged',
+            e,
+            this.props.selectCursorMode
+        )
+        // const rect = document.getElementById('selector-rect')
+        // rect.style.zIndex = '1'
+        // rect.style.border = '1px dashed grey'
+        // rect.style.width = `${Math.abs(e.offsetX)}px`
+        // rect.style.height = `${Math.abs(e.offsetY)}px`
+        // console.log('rect getBoundingClientRect', rect.getBoundingClientRect())
+    }
+
+    handleSelectorRectDragEnd = (e) => {
+        console.log('selector-rect drag end', e)
+        // const rect = document.getElementById('selector-rect')
+        // rect.style.zIndex = '-1'
+        // rect.style.width = `${Math.abs(e.offsetX)}px`
+        // rect.style.height = `${Math.abs(e.offsetY)}px`
+        // rect.setAttribute('draggable', false)
+        // rect.blur()
+        // console.log('rect getBoundingClientRect', rect.getBoundingClientRect())
+        // this.handleFinalDrag(rect.getBoundingClientRect())
+    }
+
     handleFinalDrag = (e) => {
         console.log('final drag', e)
         this.props.getElementsData('AREA_SELECTION', e)
-    }
-
-    componentDidUpdate(prevProps, prevState) {
-        if (prevProps.componentData !== this.props.componentData) {
-            // this.state.twoJSInstance.scene.remove();
-        }
     }
 
     renderElements = () => {
@@ -151,6 +375,7 @@ class App extends Component {
                 id: item.id,
                 childrenArr: item.children,
                 itemData: item,
+                selectCursorMode: this.props.selectCursorMode,
             })
             return (
                 <React.Fragment key={item.id}>
@@ -177,21 +402,11 @@ class App extends Component {
             <React.Fragment>
                 <div id="rsz-rect"></div>
                 <div id="selector-rect"></div>
+                <div id="pan-dragger"></div>
 
                 <div id="main-two-root"></div>
                 {this.state.twoJSInstance && (
-                    <React.Fragment>
-                        {' '}
-                        {this.renderElements()}
-                        {/* <Rectangle twoJSInstance={this.state.twoJSInstance} /> */}
-                        {/* <Button
-              updateParent={() => {
-                console.log("update parent");
-                this.setState({ lastAddedElement: null });
-              }}
-              twoJSInstance={this.state.twoJSInstance}
-            /> */}
-                    </React.Fragment>
+                    <React.Fragment>{this.renderElements()}</React.Fragment>
                 )}
                 {/* <Toolbar /> */}
                 {/* <div className="controls">
@@ -224,6 +439,7 @@ class App extends Component {
             </button>
           </p>
         </div> */}
+                <Zoomer sceneInstance={this.state.twoJSInstance} />
             </React.Fragment>
         )
     }
@@ -236,4 +452,4 @@ function mapStateToProps(state) {
 }
 export default connect(mapStateToProps, {
     getElementsData,
-})(App)
+})(CanvasContainer)
