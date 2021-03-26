@@ -220,6 +220,14 @@ function Circle(props) {
 
                 function mouseup(e) {
                     console.log('mouse event circle 3', e)
+
+                    // setting final data into LS cache
+                    localStorage.setItem('Circle_coordX', parseInt(e.clientX))
+                    localStorage.setItem(
+                        'Circle_coordY',
+                        parseInt(e.clientY - offsetHeight)
+                    )
+
                     window.removeEventListener('mousemove', mousemove, false)
                     window.removeEventListener('mouseup', mouseup, false)
                     two.update()
@@ -230,87 +238,6 @@ function Circle(props) {
                     zui.zoomBy(dy, e.clientX, e.clientY)
                     two.update()
                 }
-
-                // function touchstart(e) {
-                //     console.log('e in ZUI touch start', e)
-                //     switch (e.touches.length) {
-                //         case 2:
-                //             pinchstart(e)
-                //             break
-                //         case 1:
-                //             panstart(e)
-                //             break
-                //     }
-                // }
-
-                // function touchmove(e) {
-                //     switch (e.touches.length) {
-                //         case 2:
-                //             pinchmove(e)
-                //             break
-                //         case 1:
-                //             panmove(e)
-                //             break
-                //     }
-                // }
-
-                // function touchend(e) {
-                //     touches = {}
-                //     var touch = e.touches[0]
-                //     if (touch) {
-                //         // Pass through for panning after pinching
-                //         mouse.x = touch.clientX
-                //         mouse.y = touch.clientY
-                //     }
-                //     two.update()
-                // }
-
-                // function panstart(e) {
-                //     var touch = e.touches[0]
-                //     mouse.x = touch.clientX
-                //     mouse.y = touch.clientY
-                //     two.update()
-                // }
-
-                // function panmove(e) {
-                //     var touch = e.touches[0]
-                //     var dx = touch.clientX - mouse.x
-                //     var dy = touch.clientY - mouse.y
-                //     zui.translateSurface(dx, dy)
-                //     mouse.set(touch.clientX, touch.clientY)
-                //     two.update()
-                // }
-
-                // function pinchstart(e) {
-                //     for (var i = 0; i < e.touches.length; i++) {
-                //         var touch = e.touches[i]
-                //         touches[touch.identifier] = touch
-                //     }
-                //     var a = touches[0]
-                //     var b = touches[1]
-                //     var dx = b.clientX - a.clientX
-                //     var dy = b.clientY - a.clientY
-                //     distance = Math.sqrt(dx * dx + dy * dy)
-                //     mouse.x = dx / 2 + a.clientX
-                //     mouse.y = dy / 2 + a.clientY
-                //     two.update()
-                // }
-
-                // function pinchmove(e) {
-                //     for (var i = 0; i < e.touches.length; i++) {
-                //         var touch = e.touches[i]
-                //         touches[touch.identifier] = touch
-                //     }
-                //     var a = touches[0]
-                //     var b = touches[1]
-                //     var dx = b.clientX - a.clientX
-                //     var dy = b.clientY - a.clientY
-                //     var d = Math.sqrt(dx * dx + dy * dy)
-                //     var delta = d - distance
-                //     zui.zoomBy(delta / 250, mouse.x, mouse.y)
-                //     distance = d
-                //     two.update()
-                // }
             }
 
             // Apply draggable property to element
