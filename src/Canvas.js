@@ -163,8 +163,8 @@ class CanvasContainer extends Component {
             }
 
             function mousemove(e) {
-                var dx = e.clientX - mouse.x
-                var dy = e.clientY - mouse.y
+                let dx = e.clientX - mouse.x
+                let dy = e.clientY - mouse.y
                 zui.translateSurface(dx, dy)
                 mouse.set(e.clientX, e.clientY)
                 two.update()
@@ -177,7 +177,7 @@ class CanvasContainer extends Component {
             }
 
             function mousewheel(e) {
-                var dy = (e.wheelDeltaY || -e.deltaY) / 1000
+                let dy = (e.wheelDeltaY || -e.deltaY) / 1000
                 zui.zoomBy(dy, e.clientX, e.clientY)
                 two.update()
             }
@@ -207,7 +207,7 @@ class CanvasContainer extends Component {
 
             function touchend(e) {
                 touches = {}
-                var touch = e.touches[0]
+                let touch = e.touches[0]
                 if (touch) {
                     // Pass through for panning after pinching
                     mouse.x = touch.clientX
@@ -217,30 +217,30 @@ class CanvasContainer extends Component {
             }
 
             function panstart(e) {
-                var touch = e.touches[0]
+                let touch = e.touches[0]
                 mouse.x = touch.clientX
                 mouse.y = touch.clientY
                 two.update()
             }
 
             function panmove(e) {
-                var touch = e.touches[0]
-                var dx = touch.clientX - mouse.x
-                var dy = touch.clientY - mouse.y
+                let touch = e.touches[0]
+                let dx = touch.clientX - mouse.x
+                let dy = touch.clientY - mouse.y
                 zui.translateSurface(dx, dy)
                 mouse.set(touch.clientX, touch.clientY)
                 two.update()
             }
 
             function pinchstart(e) {
-                for (var i = 0; i < e.touches.length; i++) {
-                    var touch = e.touches[i]
+                for (let i = 0; i < e.touches.length; i++) {
+                    let touch = e.touches[i]
                     touches[touch.identifier] = touch
                 }
-                var a = touches[0]
-                var b = touches[1]
-                var dx = b.clientX - a.clientX
-                var dy = b.clientY - a.clientY
+                let a = touches[0]
+                let b = touches[1]
+                let dx = b.clientX - a.clientX
+                let dy = b.clientY - a.clientY
                 distance = Math.sqrt(dx * dx + dy * dy)
                 mouse.x = dx / 2 + a.clientX
                 mouse.y = dy / 2 + a.clientY
@@ -248,16 +248,16 @@ class CanvasContainer extends Component {
             }
 
             function pinchmove(e) {
-                for (var i = 0; i < e.touches.length; i++) {
-                    var touch = e.touches[i]
+                for (let i = 0; i < e.touches.length; i++) {
+                    let touch = e.touches[i]
                     touches[touch.identifier] = touch
                 }
-                var a = touches[0]
-                var b = touches[1]
-                var dx = b.clientX - a.clientX
-                var dy = b.clientY - a.clientY
-                var d = Math.sqrt(dx * dx + dy * dy)
-                var delta = d - distance
+                let a = touches[0]
+                let b = touches[1]
+                let dx = b.clientX - a.clientX
+                let dy = b.clientY - a.clientY
+                let d = Math.sqrt(dx * dx + dy * dy)
+                let delta = d - distance
                 zui.zoomBy(delta / 250, mouse.x, mouse.y)
                 distance = d
                 two.update()

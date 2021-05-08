@@ -2,12 +2,10 @@ import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
 import { useDispatch, useSelector } from 'react-redux'
 import { useImmer } from 'use-immer'
-import Two from 'two.js'
-import Zui from 'two.js/extras/zui'
-import ZUI from 'two.js/extras/zui'
-import Panzoom from 'panzoom'
+
 // import Panzoom from '@panzoom/panzoom'
 
+import handleDrag from 'components/utils/dragger'
 import { elementOnBlurHandler } from 'utils/misc'
 import { setPeronsalInformation } from 'store/actions/main'
 import getEditComponents from 'components/utils/editWrapper'
@@ -114,6 +112,7 @@ function Circle(props) {
                 )
             }
 
+            const { mousemove, mouseup } = handleDrag(two, group)
             interact(`#${group.id}`).on('click', () => {
                 // two.scene.scale = 1
                 console.log(
@@ -136,9 +135,20 @@ function Circle(props) {
                 edges: { right: true, left: true, top: true, bottom: true },
 
                 listeners: {
+                    start(event) {
+                        console.log('start resize event', event)
+                        window.removeEventListener(
+                            'mousemove',
+                            mousemove,
+                            false
+                        )
+                        window.removeEventListener('mouseup', mouseup, false)
+                    },
                     move(event) {
+                        console.log('on resize event', event)
                         const target = event.target
                         const rect = event.rect
+                        event.stopPropagation()
 
                         // update the element's style
                         //   resizeRect.width = rect.width;
@@ -160,85 +170,6 @@ function Circle(props) {
                     },
                 },
             })
-
-            let thisRef = this
-            addZUI()
-            function addZUI() {
-                console.log('group scene', group, two.scene)
-                // zuifn()
-
-                let domElement = group._renderer.elem
-                let zui = new ZUI(group, domElement)
-
-                let mouse = new Two.Vector(
-                    group.translation.x,
-                    group.translation.y
-                )
-                let touches = {}
-                let distance = 0
-                two.update()
-                // zui.addLimits(0.06, 8)
-                console.log('mouse vector', mouse)
-                domElement.addEventListener('mousedown', mousedown, false)
-                domElement.addEventListener('mousewheel', mousewheel, false)
-                domElement.addEventListener('wheel', mousewheel, false)
-
-                // domElement.addEventListener('touchstart', touchstart, false)
-                // domElement.addEventListener('touchmove', touchmove, false)
-                // domElement.addEventListener('touchend', touchend, false)
-                // domElement.addEventListener('touchcancel', touchend, false)
-
-                function mousedown(e) {
-                    console.log(
-                        'mouse event circle 1',
-                        e,
-                        mouse,
-                        group.translation
-                    )
-                    mouse.x = e.clientX
-                    mouse.y = e.clientY
-                    window.addEventListener('mousemove', mousemove, false)
-                    window.addEventListener('mouseup', mouseup, false)
-                }
-
-                function mousemove(e) {
-                    let dx = e.clientX - mouse.x
-                    let dy = e.clientY - mouse.y
-                    console.log(
-                        'mouse event circle 2',
-                        e,
-                        mouse,
-                        group.translation,
-                        dx,
-                        dy
-                    )
-                    zui.translateSurface(dx, dy)
-                    mouse.set(e.clientX, e.clientY)
-                    group.translation.set(e.clientX, e.clientY)
-                    two.update()
-                }
-
-                function mouseup(e) {
-                    console.log('mouse event circle 3', e)
-
-                    // setting final data into LS cache
-                    localStorage.setItem('Circle_coordX', parseInt(e.clientX))
-                    localStorage.setItem(
-                        'Circle_coordY',
-                        parseInt(e.clientY - offsetHeight)
-                    )
-
-                    window.removeEventListener('mousemove', mousemove, false)
-                    window.removeEventListener('mouseup', mouseup, false)
-                    two.update()
-                }
-
-                function mousewheel(e) {
-                    let dy = (e.wheelDeltaY || -e.deltaY) / 1000
-                    zui.zoomBy(dy, e.clientX, e.clientY)
-                    two.update()
-                }
-            }
 
             // Apply draggable property to element
             // interact(`#${group.id}`).draggable({
