@@ -3,7 +3,7 @@ import ZUI from 'two.js/extras/zui'
 
 import { offsetHeight } from 'constants/misc'
 
-function handleDrag(twoJSInstance, group) {
+function handleDrag(twoJSInstance, group, el) {
     console.log('group scene', group, twoJSInstance.scene)
     // zuifn()
 
@@ -47,11 +47,8 @@ function handleDrag(twoJSInstance, group) {
         console.log('mouse event circle 3', e)
 
         // setting final data into LS cache
-        localStorage.setItem('Circle_coordX', parseInt(e.clientX))
-        localStorage.setItem(
-            'Circle_coordY',
-            parseInt(e.clientY - offsetHeight)
-        )
+        localStorage.setItem(`${el}_coordX`, parseInt(e.clientX))
+        localStorage.setItem(`${el}_coordY`, parseInt(e.clientY - offsetHeight))
 
         window.removeEventListener('mousemove', mousemove, false)
         window.removeEventListener('mouseup', mouseup, false)
