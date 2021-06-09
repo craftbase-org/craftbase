@@ -10,6 +10,7 @@ import {
     useSelector,
 } from 'react-redux'
 import { getFourthValue } from 'utils'
+import handleDrag from 'components/utils/dragger'
 import { setPeronsalInformation } from 'store/actions/main'
 
 function Tooltip(props) {
@@ -166,41 +167,41 @@ function Tooltip(props) {
                 two.update()
             })
         })
+        const { mousemove, mouseup } = handleDrag(two, group, 'Tooltip')
+        // interact(`#${group.id}`).draggable({
+        //     // enable inertial throwing
+        //     inertia: false,
 
-        interact(`#${group.id}`).draggable({
-            // enable inertial throwing
-            inertia: false,
-
-            listeners: {
-                start(event) {
-                    // console.log(event.type, event.target);
-                },
-                move(event) {
-                    event.target.style.transform = `translate(${
-                        event.pageX
-                    }px, ${event.pageY - offsetHeight}px)`
-                },
-                end(event) {
-                    console.log(
-                        'event x',
-                        event.target.getBoundingClientRect(),
-                        event.rect.left,
-                        event.pageX,
-                        event.clientX
-                    )
-                    // alternate -> take event.rect.left for x
-                    localStorage.setItem(
-                        'Tooltip_coordX',
-                        parseInt(event.pageX)
-                    )
-                    localStorage.setItem(
-                        'Tooltip_coordY',
-                        parseInt(event.pageY - offsetHeight)
-                    )
-                    dispatch(setPeronsalInformation('COMPLETE', { data: {} }))
-                },
-            },
-        })
+        //     listeners: {
+        //         start(event) {
+        //             // console.log(event.type, event.target);
+        //         },
+        //         move(event) {
+        //             event.target.style.transform = `translate(${
+        //                 event.pageX
+        //             }px, ${event.pageY - offsetHeight}px)`
+        //         },
+        //         end(event) {
+        //             console.log(
+        //                 'event x',
+        //                 event.target.getBoundingClientRect(),
+        //                 event.rect.left,
+        //                 event.pageX,
+        //                 event.clientX
+        //             )
+        //             // alternate -> take event.rect.left for x
+        //             localStorage.setItem(
+        //                 'Tooltip_coordX',
+        //                 parseInt(event.pageX)
+        //             )
+        //             localStorage.setItem(
+        //                 'Tooltip_coordY',
+        //                 parseInt(event.pageY - offsetHeight)
+        //             )
+        //             dispatch(setPeronsalInformation('COMPLETE', { data: {} }))
+        //         },
+        //     },
+        // })
     }
 
     function onTextInputChange(input, initialScrollHeight) {

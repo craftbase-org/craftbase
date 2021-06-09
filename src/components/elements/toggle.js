@@ -6,6 +6,7 @@ import { useImmer } from 'use-immer'
 import { elementOnBlurHandler } from 'utils/misc'
 import { color_blue } from 'utils/constants'
 import getEditComponents from 'components/utils/editWrapper'
+import handleDrag from 'components/utils/dragger'
 import Toolbar from 'components/floatingToolbar'
 import { setPeronsalInformation } from 'store/actions/main'
 import ElementCreator from 'factory/toggle'
@@ -38,12 +39,8 @@ function Toggle(props) {
         const prevY = localStorage.getItem('toggle_coordY')
 
         const elementFactory = new ElementCreator(two, prevX, prevY, {})
-        const {
-            group,
-            circle,
-            rectCircleGroup,
-            rect,
-        } = elementFactory.createElement()
+        const { group, circle, rectCircleGroup, rect } =
+            elementFactory.createElement()
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
@@ -89,8 +86,20 @@ function Toggle(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
+            const toggleActiveFlagTrue = () => {
+                if (isDragActive === false) isDragActive = true
+            }
+
+            const { mousemove, mouseup } = handleDrag(
+                two,
+                group,
+                'toggle',
+                toggleActiveFlagTrue
+            )
+
             // Does capture event of toggle me button rendered prior to this element rendering
             document.getElementById(group.id).addEventListener('click', (e) => {
+                console.log('mouse event toggle ')
                 if (isDragActive) {
                     isDragActive = false
                 } else {
@@ -122,43 +131,43 @@ function Toggle(props) {
             })
 
             // Apply draggable property to element
-            interact(`#${group.id}`).draggable({
-                // enable inertial throwing
-                inertia: false,
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
 
-                listeners: {
-                    start(event) {
-                        // console.log(event.type, event.target);
-                    },
-                    move(event) {
-                        event.target.style.transform = `translate(${
-                            event.pageX
-                        }px, ${event.pageY - offsetHeight}px)`
-                    },
-                    end(event) {
-                        console.log(
-                            'event x',
-                            event.target.getBoundingClientRect(),
-                            event.rect.left,
-                            event.pageX,
-                            event.clientX
-                        )
-                        // alternate -> take event.rect.left for x
-                        localStorage.setItem(
-                            'toggle_coordX',
-                            parseInt(event.pageX)
-                        )
-                        localStorage.setItem(
-                            'toggle_coordY',
-                            parseInt(event.pageY - offsetHeight)
-                        )
-                        isDragActive = true
-                        dispatch(
-                            setPeronsalInformation('COMPLETE', { data: {} })
-                        )
-                    },
-                },
-            })
+            //     listeners: {
+            //         start(event) {
+            //             // console.log(event.type, event.target);
+            //         },
+            //         move(event) {
+            //             event.target.style.transform = `translate(${
+            //                 event.pageX
+            //             }px, ${event.pageY - offsetHeight}px)`
+            //         },
+            //         end(event) {
+            //             console.log(
+            //                 'event x',
+            //                 event.target.getBoundingClientRect(),
+            //                 event.rect.left,
+            //                 event.pageX,
+            //                 event.clientX
+            //             )
+            //             // alternate -> take event.rect.left for x
+            //             localStorage.setItem(
+            //                 'toggle_coordX',
+            //                 parseInt(event.pageX)
+            //             )
+            //             localStorage.setItem(
+            //                 'toggle_coordY',
+            //                 parseInt(event.pageY - offsetHeight)
+            //             )
+            //             isDragActive = true
+            //             dispatch(
+            //                 setPeronsalInformation('COMPLETE', { data: {} })
+            //             )
+            //         },
+            //     },
+            // })
         }
 
         return () => {

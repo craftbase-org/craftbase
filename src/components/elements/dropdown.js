@@ -5,6 +5,7 @@ import { useImmer } from 'use-immer'
 
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
+import handleDrag from 'components/utils/dragger'
 import Toolbar from 'components/floatingToolbar'
 import Icon from 'icons/icons'
 import ObjectSelector from 'components/utils/objectSelector'
@@ -165,6 +166,8 @@ function Dropdown(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
+            const { mousemove, mouseup } = handleDrag(two, group, 'dropdown')
+
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ', text.getBoundingClientRect(true))
                 selector.update(
@@ -184,7 +187,8 @@ function Dropdown(props) {
 
                 // Hide actual text and replace it with input box
                 const twoTextInstance = document.getElementById(`${text.id}`)
-                const getCoordOfBtnText = twoTextInstance.getBoundingClientRect()
+                const getCoordOfBtnText =
+                    twoTextInstance.getBoundingClientRect()
                 twoTextInstance.style.display = 'none'
 
                 const input = document.createElement('input')
@@ -267,6 +271,14 @@ function Dropdown(props) {
                 edges: { right: true, left: true },
 
                 listeners: {
+                    start() {
+                        window.removeEventListener(
+                            'mousemove',
+                            mousemove,
+                            false
+                        )
+                        window.removeEventListener('mouseup', mouseup, false)
+                    },
                     move(event) {
                         const target = event.target
                         const rect = event.rect
@@ -275,8 +287,8 @@ function Dropdown(props) {
                             rect,
                             rectangle.getBoundingClientRect()
                         )
-                        const prevXCoordInSpace = rectangle.getBoundingClientRect()
-                            .right
+                        const prevXCoordInSpace =
+                            rectangle.getBoundingClientRect().right
                         const diff = rect.right - prevXCoordInSpace
                         // update the element's style
                         //   resizeRect.width = rect.width;
@@ -312,45 +324,45 @@ function Dropdown(props) {
                 },
             })
 
-            interact(`#${group.id}`).draggable({
-                // enable inertial throwing
-                inertia: false,
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
 
-                listeners: {
-                    start(event) {
-                        // console.log(event.type, event.target);
-                    },
-                    move(event) {
-                        event.target.style.transform = `translate(${
-                            event.pageX
-                        }px, ${event.pageY - offsetHeight}px)`
+            //     listeners: {
+            //         start(event) {
+            //             // console.log(event.type, event.target);
+            //         },
+            //         move(event) {
+            //             event.target.style.transform = `translate(${
+            //                 event.pageX
+            //             }px, ${event.pageY - offsetHeight}px)`
 
-                        two.update()
-                    },
-                    end(event) {
-                        console.log(
-                            'event x',
-                            event.target.getBoundingClientRect(),
-                            event.rect.left,
-                            event.pageX,
-                            event.clientX
-                        )
-                        // alternate -> take event.rect.left for x
-                        localStorage.setItem(
-                            'dropdown_coordX',
-                            parseInt(event.pageX)
-                        )
-                        localStorage.setItem(
-                            'dropdown_coordY',
-                            parseInt(event.pageY - offsetHeight)
-                        )
+            //             two.update()
+            //         },
+            //         end(event) {
+            //             console.log(
+            //                 'event x',
+            //                 event.target.getBoundingClientRect(),
+            //                 event.rect.left,
+            //                 event.pageX,
+            //                 event.clientX
+            //             )
+            //             // alternate -> take event.rect.left for x
+            //             localStorage.setItem(
+            //                 'dropdown_coordX',
+            //                 parseInt(event.pageX)
+            //             )
+            //             localStorage.setItem(
+            //                 'dropdown_coordY',
+            //                 parseInt(event.pageY - offsetHeight)
+            //             )
 
-                        dispatch(
-                            setPeronsalInformation('COMPLETE', { data: {} })
-                        )
-                    },
-                },
-            })
+            //             dispatch(
+            //                 setPeronsalInformation('COMPLETE', { data: {} })
+            //             )
+            //         },
+            //     },
+            // })
         }
 
         return () => {

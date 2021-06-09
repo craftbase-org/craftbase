@@ -112,7 +112,8 @@ function Circle(props) {
                 )
             }
 
-            const { mousemove, mouseup } = handleDrag(two, group)
+            const { mousemove, mouseup } = handleDrag(two, group, 'Circle')
+
             interact(`#${group.id}`).on('click', () => {
                 // two.scene.scale = 1
                 console.log(

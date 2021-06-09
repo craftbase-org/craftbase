@@ -4,7 +4,10 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useImmer } from 'use-immer'
 
 import { elementOnBlurHandler } from 'utils/misc'
+
 import getEditComponents from 'components/utils/editWrapper'
+import handleDrag from 'components/utils/dragger'
+
 import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/avatar'
 import Toolbar from 'components/floatingToolbar'
@@ -38,12 +41,8 @@ function Avatar(props) {
         // Instantiate factory
         const elementFactory = new ElementFactory(two, prevX, prevY, {})
         // Get all instances of every sub child element
-        const {
-            group,
-            circleSvgGroup,
-            circle,
-            externalSVG,
-        } = elementFactory.createElement()
+        const { group, circleSvgGroup, circle, externalSVG } =
+            elementFactory.createElement()
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
@@ -91,6 +90,8 @@ function Avatar(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
+            const { mousemove, mouseup } = handleDrag(two, group, 'avatar')
+
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ')
                 selector.update(
@@ -108,6 +109,14 @@ function Avatar(props) {
                 edges: { right: true, left: true, top: true, bottom: true },
 
                 listeners: {
+                    start() {
+                        window.removeEventListener(
+                            'mousemove',
+                            mousemove,
+                            false
+                        )
+                        window.removeEventListener('mouseup', mouseup, false)
+                    },
                     move(event) {
                         const rect = event.rect
                         const rectRadii = parseInt(rect.width / 2)
@@ -141,51 +150,51 @@ function Avatar(props) {
             })
 
             // Apply draggable property to element
-            interact(`#${group.id}`).draggable({
-                // enable inertial throwing
-                inertia: false,
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
 
-                listeners: {
-                    start(event) {
-                        // console.log(event.type, event.target);
-                    },
-                    move(event) {
-                        if (props.selectCursorMode) {
-                            event.target.style.transform = `translate(${
-                                event.pageX
-                            }px, ${event.pageY - offsetHeight}px)`
-                        } else {
-                            const newSceneX = two.scene.translation.x
-                            const newSceneY = two.scene.translation.y
-                            event.target.style.transform = `translate(${
-                                event.pageX - newSceneX
-                            }px, ${event.pageY - offsetHeight - newSceneY}px)`
-                        }
-                    },
-                    end(event) {
-                        console.log(
-                            'event x',
-                            event.target.getBoundingClientRect(),
-                            event.rect.left,
-                            event.pageX,
-                            event.clientX
-                        )
-                        // alternate -> take event.rect.left for x
-                        localStorage.setItem(
-                            'avatar_coordX',
-                            parseInt(event.pageX)
-                        )
+            //     listeners: {
+            //         start(event) {
+            //             // console.log(event.type, event.target);
+            //         },
+            //         move(event) {
+            //             if (props.selectCursorMode) {
+            //                 event.target.style.transform = `translate(${
+            //                     event.pageX
+            //                 }px, ${event.pageY - offsetHeight}px)`
+            //             } else {
+            //                 const newSceneX = two.scene.translation.x
+            //                 const newSceneY = two.scene.translation.y
+            //                 event.target.style.transform = `translate(${
+            //                     event.pageX - newSceneX
+            //                 }px, ${event.pageY - offsetHeight - newSceneY}px)`
+            //             }
+            //         },
+            //         end(event) {
+            //             console.log(
+            //                 'event x',
+            //                 event.target.getBoundingClientRect(),
+            //                 event.rect.left,
+            //                 event.pageX,
+            //                 event.clientX
+            //             )
+            //             // alternate -> take event.rect.left for x
+            //             localStorage.setItem(
+            //                 'avatar_coordX',
+            //                 parseInt(event.pageX)
+            //             )
 
-                        localStorage.setItem(
-                            'avatar_coordY',
-                            parseInt(event.pageY - offsetHeight)
-                        )
-                        dispatch(
-                            setPeronsalInformation('COMPLETE', { data: {} })
-                        )
-                    },
-                },
-            })
+            //             localStorage.setItem(
+            //                 'avatar_coordY',
+            //                 parseInt(event.pageY - offsetHeight)
+            //             )
+            //             dispatch(
+            //                 setPeronsalInformation('COMPLETE', { data: {} })
+            //             )
+            //         },
+            //     },
+            // })
         }
 
         return () => {

@@ -6,6 +6,7 @@ import Panzoom from 'panzoom'
 import { useDispatch, useSelector } from 'react-redux'
 
 import getEditComponents from 'components/utils/editWrapper'
+import handleDrag from 'components/utils/dragger'
 import { setPeronsalInformation } from 'store/actions/main'
 import { UPDATE_ELEMENT_DATA } from 'store/types'
 import ElementFactory from 'factory/rectangle'
@@ -99,6 +100,8 @@ function Rectangle(props) {
                 )
             }
 
+            const { mousemove, mouseup } = handleDrag(two, group, 'rectangle')
+
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ')
                 selector.update(
@@ -117,8 +120,13 @@ function Rectangle(props) {
                 edges: { right: true, left: true, top: true, bottom: true },
 
                 listeners: {
-                    start(event) {
-                        console.log('rect event start', event.pageX)
+                    start() {
+                        window.removeEventListener(
+                            'mousemove',
+                            mousemove,
+                            false
+                        )
+                        window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
                         console.log('rect event move', event.pageX)
@@ -154,68 +162,68 @@ function Rectangle(props) {
             })
 
             // DRAG SHAPE LOGIC
-            interact(`#${group.id}`).draggable({
-                // enable inertial throwing
-                inertia: false,
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
 
-                listeners: {
-                    start(event) {
-                        // console.log(event.type, event.target);
-                    },
-                    move(event) {
-                        event.target.style.transform = `translate(${
-                            event.pageX
-                        }px, ${event.pageY - offsetHeight}px)`
-                    },
-                    end(event) {
-                        console.log(
-                            'event x',
-                            event.target.getBoundingClientRect(),
-                            event.rect.left,
-                            event.pageX,
-                            event.clientX
-                        )
-                        // alternate -> take event.rect.left for x
-                        localStorage.setItem(
-                            'rectangle_coordX',
-                            parseInt(event.pageX)
-                        )
-                        localStorage.setItem(
-                            'rectangle_coordY',
-                            parseInt(event.pageY - offsetHeight)
-                        )
-                        group.translation.x = event.pageX
-                        two.update()
-                        dispatch(
-                            setPeronsalInformation('COMPLETE', {
-                                data: {},
-                                shapeObj: { rectangle },
-                                fill: rectangle.fill,
-                                translationX: group.translation.x,
-                                translationY: group.translation.y,
-                            })
-                        )
-                        dispatch(
-                            setPeronsalInformation(UPDATE_ELEMENT_DATA, {
-                                data: {
-                                    id: props.id,
-                                    property: 'x',
-                                    value: group.translation.x,
-                                },
-                            })
-                        )
-                        dispatch(
-                            setPeronsalInformation(UPDATE_ELEMENT_DATA, {
-                                data: {
-                                    id: props.id,
-                                    property: 'y',
-                                    value: group.translation.y,
-                                },
-                            })
-                        )
-                    },
-                },
-            })
+            //     listeners: {
+            //         start(event) {
+            //             // console.log(event.type, event.target);
+            //         },
+            //         move(event) {
+            //             event.target.style.transform = `translate(${
+            //                 event.pageX
+            //             }px, ${event.pageY - offsetHeight}px)`
+            //         },
+            //         end(event) {
+            //             console.log(
+            //                 'event x',
+            //                 event.target.getBoundingClientRect(),
+            //                 event.rect.left,
+            //                 event.pageX,
+            //                 event.clientX
+            //             )
+            //             // alternate -> take event.rect.left for x
+            //             localStorage.setItem(
+            //                 'rectangle_coordX',
+            //                 parseInt(event.pageX)
+            //             )
+            //             localStorage.setItem(
+            //                 'rectangle_coordY',
+            //                 parseInt(event.pageY - offsetHeight)
+            //             )
+            //             group.translation.x = event.pageX
+            //             two.update()
+            //             dispatch(
+            //                 setPeronsalInformation('COMPLETE', {
+            //                     data: {},
+            //                     shapeObj: { rectangle },
+            //                     fill: rectangle.fill,
+            //                     translationX: group.translation.x,
+            //                     translationY: group.translation.y,
+            //                 })
+            //             )
+            //             dispatch(
+            //                 setPeronsalInformation(UPDATE_ELEMENT_DATA, {
+            //                     data: {
+            //                         id: props.id,
+            //                         property: 'x',
+            //                         value: group.translation.x,
+            //                     },
+            //                 })
+            //             )
+            //             dispatch(
+            //                 setPeronsalInformation(UPDATE_ELEMENT_DATA, {
+            //                     data: {
+            //                         id: props.id,
+            //                         property: 'y',
+            //                         value: group.translation.y,
+            //                     },
+            //                 })
+            //             )
+            //         },
+            //     },
+            // })
         }
 
         return () => {

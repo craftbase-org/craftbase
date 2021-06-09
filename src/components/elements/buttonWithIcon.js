@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useImmer } from 'use-immer'
 
 import { elementOnBlurHandler } from 'utils/misc'
+import handleDrag from 'components/utils/dragger'
 import getEditComponents from 'components/utils/editWrapper'
 import Toolbar from 'components/floatingToolbar'
 import { setPeronsalInformation } from 'store/actions/main'
@@ -96,6 +97,12 @@ function ButtonWithIcon(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
+            const { mousemove, mouseup } = handleDrag(
+                two,
+                group,
+                'buttonwithicon'
+            )
+
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ', text.getBoundingClientRect(true))
                 selector.update(
@@ -115,7 +122,8 @@ function ButtonWithIcon(props) {
 
                 // Hide actual text and replace it with input box
                 const twoTextInstance = document.getElementById(`${text.id}`)
-                const getCoordOfBtnText = twoTextInstance.getBoundingClientRect()
+                const getCoordOfBtnText =
+                    twoTextInstance.getBoundingClientRect()
                 twoTextInstance.style.display = 'none'
 
                 const input = document.createElement('input')
@@ -208,45 +216,45 @@ function ButtonWithIcon(props) {
             // });
 
             // Attach draggable property to element
-            interact(`#${group.id}`).draggable({
-                // enable inertial throwing
-                inertia: false,
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
 
-                listeners: {
-                    start(event) {
-                        // console.log(event.type, event.target);
-                    },
-                    move(event) {
-                        event.target.style.transform = `translate(${
-                            event.pageX
-                        }px, ${event.pageY - offsetHeight}px)`
+            //     listeners: {
+            //         start(event) {
+            //             // console.log(event.type, event.target);
+            //         },
+            //         move(event) {
+            //             event.target.style.transform = `translate(${
+            //                 event.pageX
+            //             }px, ${event.pageY - offsetHeight}px)`
 
-                        two.update()
-                    },
-                    end(event) {
-                        console.log(
-                            'event x',
-                            event.target.getBoundingClientRect(),
-                            event.rect.left,
-                            event.pageX,
-                            event.clientX
-                        )
-                        // alternate -> take event.rect.left for x
-                        localStorage.setItem(
-                            'buttonwithicon_coordX',
-                            parseInt(event.pageX)
-                        )
-                        localStorage.setItem(
-                            'buttonwithicon_coordY',
-                            parseInt(event.pageY - offsetHeight)
-                        )
+            //             two.update()
+            //         },
+            //         end(event) {
+            //             console.log(
+            //                 'event x',
+            //                 event.target.getBoundingClientRect(),
+            //                 event.rect.left,
+            //                 event.pageX,
+            //                 event.clientX
+            //             )
+            //             // alternate -> take event.rect.left for x
+            //             localStorage.setItem(
+            //                 'buttonwithicon_coordX',
+            //                 parseInt(event.pageX)
+            //             )
+            //             localStorage.setItem(
+            //                 'buttonwithicon_coordY',
+            //                 parseInt(event.pageY - offsetHeight)
+            //             )
 
-                        dispatch(
-                            setPeronsalInformation('COMPLETE', { data: {} })
-                        )
-                    },
-                },
-            })
+            //             dispatch(
+            //                 setPeronsalInformation('COMPLETE', { data: {} })
+            //             )
+            //         },
+            //     },
+            // })
         }
 
         return () => {
