@@ -141,6 +141,13 @@ function Checkbox(props) {
             group.children.unshift(checkboxGroup)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'checkbox_coord')
+
             const style = document.createElement('style')
             style.type = 'text/css'
             style.innerHTML = `#${checkboxGroup.id} path { cursor:pointer !important }`
@@ -379,52 +386,52 @@ function Checkbox(props) {
             }
             attachEventToCheckboxes()
 
-            interact(`#${group.id}`).draggable({
-                // enable inertial throwing
-                inertia: false,
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
 
-                listeners: {
-                    start(event) {
-                        toggleAddBtn(true)
-                        // console.log(event.type, event.target);
-                    },
-                    move(event) {
-                        event.target.style.transform = `translate(${
-                            event.pageX
-                        }px, ${event.pageY - offsetHeight}px)`
+            //     listeners: {
+            //         start(event) {
+            //             toggleAddBtn(true)
+            //             // console.log(event.type, event.target);
+            //         },
+            //         move(event) {
+            //             event.target.style.transform = `translate(${
+            //                 event.pageX
+            //             }px, ${event.pageY - offsetHeight}px)`
 
-                        two.update()
-                    },
-                    end(event) {
-                        console.log(
-                            'event x',
-                            event.target.getBoundingClientRect(),
-                            event.rect.left,
-                            event.pageX,
-                            event.clientX
-                        )
-                        // alternate -> take event.rect.left for x
-                        localStorage.setItem(
-                            'checkbox_coordX',
-                            parseInt(event.pageX)
-                        )
-                        localStorage.setItem(
-                            'checkbox_coordY',
-                            parseInt(event.pageY - offsetHeight)
-                        )
+            //             two.update()
+            //         },
+            //         end(event) {
+            //             console.log(
+            //                 'event x',
+            //                 event.target.getBoundingClientRect(),
+            //                 event.rect.left,
+            //                 event.pageX,
+            //                 event.clientX
+            //             )
+            //             // alternate -> take event.rect.left for x
+            //             localStorage.setItem(
+            //                 'checkbox_coordX',
+            //                 parseInt(event.pageX)
+            //             )
+            //             localStorage.setItem(
+            //                 'checkbox_coordY',
+            //                 parseInt(event.pageY - offsetHeight)
+            //             )
 
-                        group.translation.x = event.pageX
-                        group.translation.y = event.pageY
-                        two.update()
-                        dispatch(
-                            setPeronsalInformation('COMPLETE', { data: {} })
-                        )
+            //             group.translation.x = event.pageX
+            //             group.translation.y = event.pageY
+            //             two.update()
+            //             dispatch(
+            //                 setPeronsalInformation('COMPLETE', { data: {} })
+            //             )
 
-                        updateCheckboxState(checkboxGroup)
-                        toggleAddBtn(true)
-                    },
-                },
-            })
+            //             updateCheckboxState(checkboxGroup)
+            //             toggleAddBtn(true)
+            //         },
+            //     },
+            // })
         }
 
         return () => {

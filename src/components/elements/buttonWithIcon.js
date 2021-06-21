@@ -66,6 +66,13 @@ function ButtonWithIcon(props) {
             group.children.unshift(textGroup)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'buttonwithicon_coord')
+
             // reference all instances in state
             setInternalState((draft) => {
                 draft.element = {
@@ -96,12 +103,6 @@ function ButtonWithIcon(props) {
             )
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
-
-            const { mousemove, mouseup } = handleDrag(
-                two,
-                group,
-                'buttonwithicon'
-            )
 
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ', text.getBoundingClientRect(true))

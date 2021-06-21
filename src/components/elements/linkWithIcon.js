@@ -65,6 +65,13 @@ function LinkWithIcon(props) {
             group.children.unshift(textGroup)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'linkwithicon_coord')
+
             setInternalState((draft) => {
                 draft.element = {
                     [textGroup.id]: textGroup,
@@ -95,11 +102,11 @@ function LinkWithIcon(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            const { mousemove, mouseup } = handleDrag(
-                two,
-                group,
-                'linkwithicon'
-            )
+            // const { mousemove, mouseup } = handleDrag(
+            //     two,
+            //     group,
+            //     'linkwithicon'
+            // )
 
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ', text.getBoundingClientRect(true))

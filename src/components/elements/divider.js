@@ -57,6 +57,13 @@ function Divider(props) {
             console.log('BUtton', props.twoJSInstance)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'line_coord')
+
             setInternalState((draft) => {
                 draft.element = {
                     [group.id]: group,
@@ -84,7 +91,7 @@ function Divider(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            const { mousemove, mouseup } = handleDrag(two, group, 'line')
+            // const { mousemove, mouseup } = handleDrag(two, group, 'line')
 
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ')
@@ -103,12 +110,16 @@ function Divider(props) {
                 listeners: {
                     start() {
                         resizeLine.opacity = 1
-                        window.removeEventListener(
-                            'mousemove',
-                            mousemove,
-                            false
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
                         )
-                        window.removeEventListener('mouseup', mouseup, false)
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
                         console.log('on resize event', event.edges)
@@ -127,6 +138,7 @@ function Divider(props) {
                     },
                     end(event) {
                         console.log('the end')
+                        getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
             })

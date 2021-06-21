@@ -55,6 +55,13 @@ function ImageCard(props) {
             group.children.unshift(circleSvgGroup)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'imagecard_coord')
+
             setInternalState((draft) => {
                 draft.element = {
                     [circleSvgGroup.id]: circleSvgGroup,
@@ -87,7 +94,7 @@ function ImageCard(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            const { mousemove, mouseup } = handleDrag(two, group, 'imagecard')
+            // const { mousemove, mouseup } = handleDrag(two, group, 'imagecard')
 
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ')
@@ -109,12 +116,16 @@ function ImageCard(props) {
 
                 listeners: {
                     start() {
-                        window.removeEventListener(
-                            'mousemove',
-                            mousemove,
-                            false
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
                         )
-                        window.removeEventListener('mouseup', mouseup, false)
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
                         const rect = event.rect
@@ -154,6 +165,7 @@ function ImageCard(props) {
                     },
                     end(event) {
                         console.log('the end')
+                        getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
             })

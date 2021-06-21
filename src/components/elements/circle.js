@@ -63,6 +63,13 @@ function Circle(props) {
             selectorInstance = selector
             group.children.unshift(circle)
             two.update()
+
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'Circle_coord')
             // console.log('two circle', group.id)
             const initialSceneCoords = document
                 .getElementById(two.scene.id)
@@ -112,16 +119,11 @@ function Circle(props) {
                 )
             }
 
-            const { mousemove, mouseup } = handleDrag(two, group, 'Circle')
+            // const { mousemove, mouseup } = handleDrag(two, group, 'Circle')
 
             interact(`#${group.id}`).on('click', () => {
                 // two.scene.scale = 1
-                console.log(
-                    'on click circle',
-                    circle.getBoundingClientRect(true),
-                    circle.getBoundingClientRect(),
-                    getGroupElementFromDOM.getBoundingClientRect()
-                )
+                console.log('on click circle', group)
                 selector.update(
                     circle.getBoundingClientRect(true).left - 10,
                     circle.getBoundingClientRect(true).right + 10,
@@ -138,12 +140,16 @@ function Circle(props) {
                 listeners: {
                     start(event) {
                         console.log('start resize event', event)
-                        window.removeEventListener(
-                            'mousemove',
-                            mousemove,
-                            false
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
                         )
-                        window.removeEventListener('mouseup', mouseup, false)
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
                         console.log('on resize event', event)
@@ -168,6 +174,7 @@ function Circle(props) {
                     },
                     end(event) {
                         console.log('the end')
+                        getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
             })

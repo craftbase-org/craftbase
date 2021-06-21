@@ -56,6 +56,13 @@ function Toggle(props) {
             group.children.unshift(rectCircleGroup)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'toggle_coord')
+
             setInternalState((draft) => {
                 draft.element = {
                     [rect.id]: rect,
@@ -90,12 +97,12 @@ function Toggle(props) {
                 if (isDragActive === false) isDragActive = true
             }
 
-            const { mousemove, mouseup } = handleDrag(
-                two,
-                group,
-                'toggle',
-                toggleActiveFlagTrue
-            )
+            // const { mousemove, mouseup } = handleDrag(
+            //     two,
+            //     group,
+            //     'toggle',
+            //     toggleActiveFlagTrue
+            // )
 
             // Does capture event of toggle me button rendered prior to this element rendering
             document.getElementById(group.id).addEventListener('click', (e) => {

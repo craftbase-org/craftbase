@@ -136,6 +136,13 @@ function Dropdown(props) {
 
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'dropdown_coord')
+
             setInternalState((draft) => {
                 draft.element = {
                     [rectangle.id]: rectangle,
@@ -166,7 +173,7 @@ function Dropdown(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            const { mousemove, mouseup } = handleDrag(two, group, 'dropdown')
+            // const { mousemove, mouseup } = handleDrag(two, group, 'dropdown')
 
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ', text.getBoundingClientRect(true))
@@ -272,12 +279,16 @@ function Dropdown(props) {
 
                 listeners: {
                     start() {
-                        window.removeEventListener(
-                            'mousemove',
-                            mousemove,
-                            false
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
                         )
-                        window.removeEventListener('mouseup', mouseup, false)
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
                         const target = event.target
@@ -320,6 +331,7 @@ function Dropdown(props) {
                     },
                     end(event) {
                         console.log('the end')
+                        getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
             })

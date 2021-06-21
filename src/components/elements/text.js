@@ -62,6 +62,13 @@ function Text(props) {
             group.children.unshift(rectTextGroup)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'text_coord')
+
             setInternalState((draft) => {
                 draft.element = {
                     [rectTextGroup.id]: rectTextGroup,
@@ -92,7 +99,7 @@ function Text(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            const { mousemove, mouseup } = handleDrag(two, group, 'text')
+            // const { mousemove, mouseup } = handleDrag(two, group, 'text')
 
             interact(`#${group.id}`).on('click', () => {
                 console.log(
@@ -205,12 +212,16 @@ function Text(props) {
 
                 listeners: {
                     start() {
-                        window.removeEventListener(
-                            'mousemove',
-                            mousemove,
-                            false
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
                         )
-                        window.removeEventListener('mouseup', mouseup, false)
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
                         let target = event.target
@@ -298,6 +309,7 @@ function Text(props) {
                         // }
                     },
                     end(event) {
+                        getGroupElementFromDOM.removeAttribute('data-resize')
                         console.log('the end', event)
                     },
                 },

@@ -26,6 +26,10 @@ class CanvasContainer extends Component {
     }
 
     componentDidMount() {
+        // setting pan displacement values to initial
+        localStorage.setItem('displacement_x', 0)
+        localStorage.setItem('displacement_y', 0)
+
         console.log('CANVAS CDM', this.props.selectCursorMode)
         const elem = document.getElementById('main-two-root')
 
@@ -113,20 +117,20 @@ class CanvasContainer extends Component {
         // })
 
         // Panzoom(document.getElementById('two-0'))
-        console.log('two', document.getElementById(two.scene.id))
+        console.log('two', two.scene)
         let thisRef = this
         // two.scene.translation.x = -50
         addZUI()
+
         function addZUI() {
-            // zuifn()
+            var shape = null
+            var domElement = two.renderer.domElement
+            var zui = new ZUI(two.scene, domElement)
+            var mouse = new Two.Vector()
+            var touches = {}
+            var distance = 0
+            var dragging = false
 
-            let domElement = two.renderer.domElement
-            // console.log('two.renderer.domElement', two.renderer)
-            let zui = new ZUI(two.scene, domElement)
-
-            let mouse = new Two.Vector()
-            let touches = {}
-            let distance = 0
             zui.addLimits(0.06, 8)
 
             domElement.addEventListener('mousedown', mousedown, false)
@@ -139,51 +143,107 @@ class CanvasContainer extends Component {
             domElement.addEventListener('touchcancel', touchend, false)
 
             function mousedown(e) {
-                console.log(
-                    'e in ZUI mouse down',
-                    // e,
-                    // two.scene.scale,
-                    thisRef.props,
-                    two.scene.translation,
-                    two.scene.children[0].translation
-                )
-                if (!thisRef.props.selectCursorMode) {
-                    if (
-                        e.target.tagName === 'svg' &&
-                        e.target.lastChild.id === two.scene.id
-                    ) {
-                        mouse.x = e.clientX
-                        mouse.y = e.clientY
-                        window.addEventListener('mousemove', mousemove, false)
-                        window.addEventListener('mouseup', mouseup, false)
-                        two.update()
-                    } else {
-                    }
-                }
-            }
+                mouse.x = e.clientX
+                mouse.y = e.clientY
 
-            function mousemove(e) {
-                let dx = e.clientX - mouse.x
-                let dy = e.clientY - mouse.y
-                zui.translateSurface(dx, dy)
-                mouse.set(e.clientX, e.clientY)
+                e.path.forEach((item, index) => {
+                    if (
+                        item?.classList?.value &&
+                        item?.classList?.value.includes('dragger-picker') &&
+                        item.tagName === 'g'
+                    ) {
+                        console.log('iterating through path', item.id)
+                        console.log(
+                            'two scene children',
+                            two.scene.children,
+                            two.scene.children.find(
+                                (child) => child.id === item.id
+                            )
+                        )
+                        shape = two.scene.children.find(
+                            (child) => child.id === item.id
+                        )
+                    }
+                })
+
+                if (shape === null) {
+                    shape = two.scene
+                }
+
+                console.log('shape in mousedown', mouse, rect)
+                var rect = document
+                    .getElementById(shape.id)
+                    .getBoundingClientRect()
+                dragging =
+                    mouse.x > rect.left &&
+                    mouse.x < rect.right &&
+                    mouse.y > rect.top &&
+                    mouse.y < rect.bottom
+
+                window.addEventListener('mousemove', mousemove, false)
+                window.addEventListener('mouseup', mouseup, false)
                 two.update()
             }
 
+            function mousemove(e) {
+                var dx = e.clientX - mouse.x
+                var dy = e.clientY - mouse.y
+                console.log('shape in mousemove', e)
+
+                if (
+                    document
+                        .getElementById(shape.id)
+                        .hasAttribute('data-resize')
+                ) {
+                    window.removeEventListener('mousemove', mousemove, false)
+                    window.removeEventListener('mouseup', mouseup, false)
+                } else {
+                    console.log('inside mousemove', dragging)
+                    if (dragging) {
+                        shape.position.x += dx / zui.scale
+                        shape.position.y += dy / zui.scale
+                    } else {
+                        zui.translateSurface(dx, dy)
+                    }
+                    mouse.set(e.clientX, e.clientY)
+                    two.update()
+                }
+            }
+
             function mouseup(e) {
-                console.log('e in ZUI mouse up', e)
+                console.log(
+                    'e in ZUI mouse up',
+                    e,
+                    two.scene.translation,
+                    zui.scale,
+                    two.scene.scale,
+                    shape.getBoundingClientRect(),
+                    shape.getBoundingClientRect(true),
+                    shape.translation
+                )
+                const getCoordLabel = document
+                    .getElementById(shape.id)
+                    .getAttribute('data-label')
+                localStorage.setItem(
+                    `${getCoordLabel + 'X'}`,
+                    shape.translation.x
+                )
+                localStorage.setItem(
+                    `${getCoordLabel + 'Y'}`,
+                    shape.translation.y
+                )
                 window.removeEventListener('mousemove', mousemove, false)
                 window.removeEventListener('mouseup', mouseup, false)
+                two.update()
             }
 
             function mousewheel(e) {
-                let dy = (e.wheelDeltaY || -e.deltaY) / 1000
+                var dy = (e.wheelDeltaY || -e.deltaY) / 1000
                 zui.zoomBy(dy, e.clientX, e.clientY)
                 two.update()
             }
 
             function touchstart(e) {
-                console.log('e in ZUI touch start', e)
                 switch (e.touches.length) {
                     case 2:
                         pinchstart(e)
@@ -207,66 +267,63 @@ class CanvasContainer extends Component {
 
             function touchend(e) {
                 touches = {}
-                let touch = e.touches[0]
+                var touch = e.touches[0]
                 if (touch) {
                     // Pass through for panning after pinching
                     mouse.x = touch.clientX
                     mouse.y = touch.clientY
                 }
-                two.update()
             }
 
             function panstart(e) {
-                let touch = e.touches[0]
+                var touch = e.touches[0]
                 mouse.x = touch.clientX
                 mouse.y = touch.clientY
                 two.update()
             }
 
             function panmove(e) {
-                let touch = e.touches[0]
-                let dx = touch.clientX - mouse.x
-                let dy = touch.clientY - mouse.y
+                var touch = e.touches[0]
+                var dx = touch.clientX - mouse.x
+                var dy = touch.clientY - mouse.y
                 zui.translateSurface(dx, dy)
                 mouse.set(touch.clientX, touch.clientY)
                 two.update()
             }
 
             function pinchstart(e) {
-                for (let i = 0; i < e.touches.length; i++) {
-                    let touch = e.touches[i]
+                for (var i = 0; i < e.touches.length; i++) {
+                    var touch = e.touches[i]
                     touches[touch.identifier] = touch
                 }
-                let a = touches[0]
-                let b = touches[1]
-                let dx = b.clientX - a.clientX
-                let dy = b.clientY - a.clientY
+                var a = touches[0]
+                var b = touches[1]
+                var dx = b.clientX - a.clientX
+                var dy = b.clientY - a.clientY
                 distance = Math.sqrt(dx * dx + dy * dy)
                 mouse.x = dx / 2 + a.clientX
                 mouse.y = dy / 2 + a.clientY
-                two.update()
             }
 
             function pinchmove(e) {
-                for (let i = 0; i < e.touches.length; i++) {
-                    let touch = e.touches[i]
+                for (var i = 0; i < e.touches.length; i++) {
+                    var touch = e.touches[i]
                     touches[touch.identifier] = touch
                 }
-                let a = touches[0]
-                let b = touches[1]
-                let dx = b.clientX - a.clientX
-                let dy = b.clientY - a.clientY
-                let d = Math.sqrt(dx * dx + dy * dy)
-                let delta = d - distance
+                var a = touches[0]
+                var b = touches[1]
+                var dx = b.clientX - a.clientX
+                var dy = b.clientY - a.clientY
+                var d = Math.sqrt(dx * dx + dy * dy)
+                var delta = d - distance
                 zui.zoomBy(delta / 250, mouse.x, mouse.y)
                 distance = d
-                two.update()
             }
         }
 
         const arr = [
             // { id: 1, name: 'buttonWithIcon' },
-            //   { id: 3, name: 'tooltip' },
+            { id: 3, name: 'tooltip' },
             {
                 id: 4,
                 name: 'circle',
@@ -277,12 +334,12 @@ class CanvasContainer extends Component {
                 },
             },
             // { id: 5, name: 'imageCard' },
-            {
-                id: 6,
-                name: 'rectangle',
-                data: { x: 290, y: 430, name: 'rectangle' },
-            },
-            // { id: 2, name: 'toggle', data: {} },
+            // {
+            //     id: 6,
+            //     name: 'rectangle',
+            //     data: { x: 290, y: 430, name: 'rectangle' },
+            // },
+            { id: 2, name: 'toggle', data: {} },
             // { id: 7, name: 'divider' },
             // { id: 8, name: 'avatar' },
             // { id: 9, name: 'linkWithIcon' },
@@ -295,12 +352,12 @@ class CanvasContainer extends Component {
             // { id: 16, name: 'dropdown' },
             // { id: 17, name: 'textarea' },
             // {
-            //   id: 18,
-            //   name: "groupobject",
-            //   children: [
-            //     { id: 9, name: "linkwithicon", x: 30 },
-            //     { id: 8, name: "avatar", x: -30 },
-            //   ],
+            //     id: 18,
+            //     name: 'groupobject',
+            //     children: [
+            //         { id: 8, name: 'avatar', x: -30, y: 2 },
+            //         { id: 9, name: 'linkwithicon', x: 30, y: 2 },
+            //     ],
             // },
         ]
 

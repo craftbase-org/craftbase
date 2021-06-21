@@ -135,6 +135,13 @@ function RadioBox(props) {
             group.children.unshift(radioboxGroup)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'radiobox_coord')
+
             const style = document.createElement('style')
             style.type = 'text/css'
             style.innerHTML = `#${radioboxGroup.id} path { cursor:pointer !important }`
@@ -388,48 +395,48 @@ function RadioBox(props) {
             }
             attachEventToRadioControl()
 
-            interact(`#${group.id}`).draggable({
-                // enable inertial throwing
-                inertia: false,
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
 
-                listeners: {
-                    start(event) {
-                        toggleAddBtn(true)
-                    },
-                    move(event) {
-                        event.target.style.transform = `translate(${
-                            event.pageX
-                        }px, ${event.pageY - offsetHeight}px)`
-                    },
-                    end(event) {
-                        console.log(
-                            'event x',
-                            event.target.getBoundingClientRect(),
-                            event.rect.left,
-                            event.pageX,
-                            event.clientX
-                        )
-                        // alternate -> take event.rect.left for x
-                        localStorage.setItem(
-                            'radiobox_coordX',
-                            parseInt(event.pageX)
-                        )
-                        localStorage.setItem(
-                            'radiobox_coordY',
-                            parseInt(event.pageY - offsetHeight)
-                        )
-                        group.translation.x = event.pageX
-                        group.translation.y = event.pageY
-                        two.update()
-                        dispatch(
-                            setPeronsalInformation('COMPLETE', { data: {} })
-                        )
+            //     listeners: {
+            //         start(event) {
+            //             toggleAddBtn(true)
+            //         },
+            //         move(event) {
+            //             event.target.style.transform = `translate(${
+            //                 event.pageX
+            //             }px, ${event.pageY - offsetHeight}px)`
+            //         },
+            //         end(event) {
+            //             console.log(
+            //                 'event x',
+            //                 event.target.getBoundingClientRect(),
+            //                 event.rect.left,
+            //                 event.pageX,
+            //                 event.clientX
+            //             )
+            //             // alternate -> take event.rect.left for x
+            //             localStorage.setItem(
+            //                 'radiobox_coordX',
+            //                 parseInt(event.pageX)
+            //             )
+            //             localStorage.setItem(
+            //                 'radiobox_coordY',
+            //                 parseInt(event.pageY - offsetHeight)
+            //             )
+            //             group.translation.x = event.pageX
+            //             group.translation.y = event.pageY
+            //             two.update()
+            //             dispatch(
+            //                 setPeronsalInformation('COMPLETE', { data: {} })
+            //             )
 
-                        updateRadioBoxState(radioboxGroup)
-                        toggleAddBtn(false)
-                    },
-                },
-            })
+            //             updateRadioBoxState(radioboxGroup)
+            //             toggleAddBtn(false)
+            //         },
+            //     },
+            // })
         }
 
         return () => {

@@ -59,6 +59,13 @@ function Rectangle(props) {
             group.children.unshift(rectangle)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'rectangle_coord')
+
             setInternalState((draft) => {
                 draft.element = {
                     [rectangle.id]: rectangle,
@@ -100,7 +107,7 @@ function Rectangle(props) {
                 )
             }
 
-            const { mousemove, mouseup } = handleDrag(two, group, 'rectangle')
+            // const { mousemove, mouseup } = handleDrag(two, group, 'rectangle')
 
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ')
@@ -121,12 +128,16 @@ function Rectangle(props) {
 
                 listeners: {
                     start() {
-                        window.removeEventListener(
-                            'mousemove',
-                            mousemove,
-                            false
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
                         )
-                        window.removeEventListener('mouseup', mouseup, false)
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
                         console.log('rect event move', event.pageX)
@@ -155,6 +166,7 @@ function Rectangle(props) {
                         two.update()
                     },
                     end(event) {
+                        getGroupElementFromDOM.removeAttribute('data-resize')
                         console.log('rect event end', event.pageX)
                         console.log('the end')
                     },

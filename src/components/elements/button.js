@@ -57,6 +57,13 @@ function Button(props) {
             group.children.unshift(rectTextGroup)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'button_coord')
+
             // replace shape and shape id here
             setInternalState((draft) => {
                 draft.element = {
@@ -88,7 +95,8 @@ function Button(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            const { mousemove, mouseup } = handleDrag(two, group, 'button')
+            // const { mousemove, mouseup } = handleDrag(two, group, 'button')
+
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ', text.getBoundingClientRect(true))
                 selector.update(
@@ -193,12 +201,16 @@ function Button(props) {
 
                 listeners: {
                     start() {
-                        window.removeEventListener(
-                            'mousemove',
-                            mousemove,
-                            false
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
                         )
-                        window.removeEventListener('mouseup', mouseup, false)
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
                     },
 
                     move(event) {
@@ -225,6 +237,7 @@ function Button(props) {
                     },
                     end(event) {
                         console.log('the end')
+                        getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
             })

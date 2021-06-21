@@ -54,6 +54,13 @@ function Overlay(props) {
             group.children.unshift(rectangle)
             two.update()
 
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'overlay_coord')
+
             setInternalState((draft) => {
                 draft.element = {
                     [rectangle.id]: rectangle,
@@ -82,7 +89,7 @@ function Overlay(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            const { mousemove, mouseup } = handleDrag(two, group, 'overlay')
+            // const { mousemove, mouseup } = handleDrag(two, group, 'overlay')
 
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ')
@@ -101,12 +108,16 @@ function Overlay(props) {
 
                 listeners: {
                     start() {
-                        window.removeEventListener(
-                            'mousemove',
-                            mousemove,
-                            false
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
                         )
-                        window.removeEventListener('mouseup', mouseup, false)
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
                         const target = event.target
@@ -136,6 +147,7 @@ function Overlay(props) {
                         two.update()
                     },
                     end(event) {
+                        getGroupElementFromDOM.removeAttribute('data-resize')
                         console.log('the end')
                     },
                 },

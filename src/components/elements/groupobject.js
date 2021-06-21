@@ -40,10 +40,10 @@ function GroupedObjectWrapper(props) {
 
         // Dummying group's layout by empty rectangle's shape implementation
         const rectangle = two.makeRectangle(
-            0,
-            0,
-            props.itemData.width,
-            props.itemData.height
+            parseInt(prevX),
+            parseInt(prevY),
+            props.itemData.width || 0,
+            props.itemData.height || 0
         )
         rectangle.fill = 'rgba(0,0,0,0)'
         rectangle.noStroke()
@@ -52,6 +52,9 @@ function GroupedObjectWrapper(props) {
         console.log('rectangle', rectangle.getBoundingClientRect(), props)
 
         const group = two.makeGroup(rectangle)
+        group.translation.x = parseInt(prevX) || 500
+        group.translation.y = parseInt(prevY) || 200
+        two.update()
         // // Iterate over group children
         // props.childrenArr.forEach((item, index) => {
         //   // Create factory for that each component
@@ -70,8 +73,8 @@ function GroupedObjectWrapper(props) {
                     {}
                 )
                 const factoryObject = componentFactory.createElement()
-                const coreObject = factoryObject[item.name]
-                console.log('coreObject', coreObject)
+                const coreObject = factoryObject.group
+                console.log('factoryObject', factoryObject)
                 // set component's coordinates
                 coreObject.translation.x = item.x
                 coreObject.translation.y = item.y
@@ -81,8 +84,6 @@ function GroupedObjectWrapper(props) {
             })
         }
 
-        group.translation.x = props.itemData.x
-        group.translation.y = props.itemData.y
         groupInstance = group
 
         console.log('Grouped Objects Wrapper', props.twoJSInstance)
@@ -92,6 +93,13 @@ function GroupedObjectWrapper(props) {
         selectorInstance = selector
 
         two.update()
+
+        document
+            .getElementById(group.id)
+            .setAttribute('class', 'dragger-picker')
+        document
+            .getElementById(group.id)
+            .setAttribute('data-label', 'groupobject_coord')
 
         const getGroupElementFromDOM = document.getElementById(`${group.id}`)
         getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
@@ -140,6 +148,9 @@ function GroupedObjectWrapper(props) {
             edges: { right: true, left: true, top: true, bottom: true },
 
             listeners: {
+                start(event) {
+                    getGroupElementFromDOM.setAttribute('data-resize', 'true')
+                },
                 move(event) {
                     const target = event.target
                     const rect = event.rect
@@ -162,43 +173,44 @@ function GroupedObjectWrapper(props) {
                 },
                 end(event) {
                     console.log('the end')
+                    getGroupElementFromDOM.removeAttribute('data-resize')
                 },
             },
         })
 
-        interact(`#${group.id}`).draggable({
-            // enable inertial throwing
-            inertia: false,
+        // interact(`#${group.id}`).draggable({
+        //     // enable inertial throwing
+        //     inertia: false,
 
-            listeners: {
-                start(event) {
-                    // console.log(event.type, event.target);
-                },
-                move(event) {
-                    event.target.style.transform = `translate(${
-                        event.pageX
-                    }px, ${event.pageY - offsetHeight}px)`
-                },
-                end(event) {
-                    console.log(
-                        'event x',
-                        event.target.getBoundingClientRect(),
-                        event.pageX,
-                        event.clientX
-                    )
-                    // alternate -> take event.rect.left for x
-                    localStorage.setItem(
-                        'groupobject_coordX',
-                        parseInt(event.pageX)
-                    )
-                    localStorage.setItem(
-                        'groupobject_coordY',
-                        parseInt(event.pageY - offsetHeight)
-                    )
-                    dispatch(setPeronsalInformation('COMPLETE', { data: {} }))
-                },
-            },
-        })
+        //     listeners: {
+        //         start(event) {
+        //             // console.log(event.type, event.target);
+        //         },
+        //         move(event) {
+        //             event.target.style.transform = `translate(${
+        //                 event.pageX
+        //             }px, ${event.pageY - offsetHeight}px)`
+        //         },
+        //         end(event) {
+        //             console.log(
+        //                 'event x',
+        //                 event.target.getBoundingClientRect(),
+        //                 event.pageX,
+        //                 event.clientX
+        //             )
+        //             // alternate -> take event.rect.left for x
+        //             localStorage.setItem(
+        //                 'groupobject_coordX',
+        //                 parseInt(event.pageX)
+        //             )
+        //             localStorage.setItem(
+        //                 'groupobject_coordY',
+        //                 parseInt(event.pageY - offsetHeight)
+        //             )
+        //             dispatch(setPeronsalInformation('COMPLETE', { data: {} }))
+        //         },
+        //     },
+        // })
 
         return () => {
             two.remove(group)

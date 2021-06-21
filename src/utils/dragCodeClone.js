@@ -150,3 +150,166 @@ function addZUI() {
         distance = d
     }
 }
+
+/// old canvas zui fn
+function addZUI() {
+    console.log('in zui', two)
+    // zuifn()
+
+    let domElement = two.renderer.domElement
+    // console.log('two.renderer.domElement', two.renderer)
+    let zui = new ZUI(two.scene, domElement)
+
+    let mouse = new Two.Vector()
+    let touches = {}
+    let distance = 0
+    zui.addLimits(0.06, 8)
+
+    domElement.addEventListener('mousedown', mousedown, false)
+    domElement.addEventListener('mousewheel', mousewheel, false)
+    domElement.addEventListener('wheel', mousewheel, false)
+
+    domElement.addEventListener('touchstart', touchstart, false)
+    domElement.addEventListener('touchmove', touchmove, false)
+    domElement.addEventListener('touchend', touchend, false)
+    domElement.addEventListener('touchcancel', touchend, false)
+
+    function mousedown(e) {
+        console.log(
+            'e in ZUI mouse down',
+            e,
+            e.path
+            // two.scene.scale,
+            // thisRef.props,
+            // two.scene.translation
+            // two.scene.children[0].translation
+        )
+
+        e.path.forEach((item, index) => {
+            if (
+                item?.classList?.value &&
+                item?.classList?.value === 'dragger-picker' &&
+                item.tagName === 'g'
+            ) {
+                console.log('iterating through path', item.id)
+            }
+        })
+
+        if (!thisRef.props.selectCursorMode) {
+            if (
+                e.target.tagName === 'svg' &&
+                e.target.lastChild.id === two.scene.id
+            ) {
+                mouse.x = e.clientX
+                mouse.y = e.clientY
+                window.addEventListener('mousemove', mousemove, false)
+                window.addEventListener('mouseup', mouseup, false)
+                two.update()
+            } else {
+            }
+        }
+    }
+
+    function mousemove(e) {
+        let dx = e.clientX - mouse.x
+        let dy = e.clientY - mouse.y
+        zui.translateSurface(dx, dy)
+        mouse.set(e.clientX, e.clientY)
+        two.update()
+    }
+
+    function mouseup(e) {
+        console.log('e in ZUI mouse up', e, two.scene.translation)
+        localStorage.setItem('displacement_x', two.scene.translation.x)
+        localStorage.setItem('displacement_y', two.scene.translation.y)
+        window.removeEventListener('mousemove', mousemove, false)
+        window.removeEventListener('mouseup', mouseup, false)
+    }
+
+    function mousewheel(e) {
+        let dy = (e.wheelDeltaY || -e.deltaY) / 1000
+        zui.zoomBy(dy, e.clientX, e.clientY)
+        two.update()
+    }
+
+    function touchstart(e) {
+        console.log('e in ZUI touch start', e)
+        switch (e.touches.length) {
+            case 2:
+                pinchstart(e)
+                break
+            case 1:
+                panstart(e)
+                break
+        }
+    }
+
+    function touchmove(e) {
+        switch (e.touches.length) {
+            case 2:
+                pinchmove(e)
+                break
+            case 1:
+                panmove(e)
+                break
+        }
+    }
+
+    function touchend(e) {
+        touches = {}
+        let touch = e.touches[0]
+        if (touch) {
+            // Pass through for panning after pinching
+            mouse.x = touch.clientX
+            mouse.y = touch.clientY
+        }
+        two.update()
+    }
+
+    function panstart(e) {
+        let touch = e.touches[0]
+        mouse.x = touch.clientX
+        mouse.y = touch.clientY
+        two.update()
+    }
+
+    function panmove(e) {
+        let touch = e.touches[0]
+        let dx = touch.clientX - mouse.x
+        let dy = touch.clientY - mouse.y
+        zui.translateSurface(dx, dy)
+        mouse.set(touch.clientX, touch.clientY)
+        two.update()
+    }
+
+    function pinchstart(e) {
+        for (let i = 0; i < e.touches.length; i++) {
+            let touch = e.touches[i]
+            touches[touch.identifier] = touch
+        }
+        let a = touches[0]
+        let b = touches[1]
+        let dx = b.clientX - a.clientX
+        let dy = b.clientY - a.clientY
+        distance = Math.sqrt(dx * dx + dy * dy)
+        mouse.x = dx / 2 + a.clientX
+        mouse.y = dy / 2 + a.clientY
+        two.update()
+    }
+
+    function pinchmove(e) {
+        for (let i = 0; i < e.touches.length; i++) {
+            let touch = e.touches[i]
+            touches[touch.identifier] = touch
+        }
+        let a = touches[0]
+        let b = touches[1]
+        let dx = b.clientX - a.clientX
+        let dy = b.clientY - a.clientY
+        let d = Math.sqrt(dx * dx + dy * dy)
+        let delta = d - distance
+        zui.zoomBy(delta / 250, mouse.x, mouse.y)
+        distance = d
+        two.update()
+    }
+}

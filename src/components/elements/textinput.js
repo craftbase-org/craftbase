@@ -56,6 +56,14 @@ function TextInput(props) {
             // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
             group.children.unshift(textGroup)
             two.update()
+
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'textinput_coord')
+
             setInternalState((draft) => {
                 draft.element = {
                     [rectangle.id]: rectangle,
@@ -86,7 +94,7 @@ function TextInput(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            const { mousemove, mouseup } = handleDrag(two, group, 'textinput')
+            // const { mousemove, mouseup } = handleDrag(two, group, 'textinput')
 
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ', text.getBoundingClientRect(true))
@@ -193,12 +201,16 @@ function TextInput(props) {
 
                 listeners: {
                     start() {
-                        window.removeEventListener(
-                            'mousemove',
-                            mousemove,
-                            false
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
                         )
-                        window.removeEventListener('mouseup', mouseup, false)
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
                         const target = event.target
@@ -231,6 +243,7 @@ function TextInput(props) {
                     },
                     end(event) {
                         console.log('the end')
+                        getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
             })

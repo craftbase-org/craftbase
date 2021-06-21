@@ -110,6 +110,13 @@ function Tooltip(props) {
         console.log('Tooltip', props.twoJSInstance)
         two.update()
 
+        document
+            .getElementById(group.id)
+            .setAttribute('class', 'dragger-picker')
+        document
+            .getElementById(group.id)
+            .setAttribute('data-label', 'Tooltip_coord')
+
         text._renderer.elem.addEventListener('dblclick', () => {
             let inputCharCounter = 0
             let initialScrollHeight = 0
@@ -167,7 +174,7 @@ function Tooltip(props) {
                 two.update()
             })
         })
-        const { mousemove, mouseup } = handleDrag(two, group, 'Tooltip')
+        // const { mousemove, mouseup } = handleDrag(two, group, 'Tooltip')
         // interact(`#${group.id}`).draggable({
         //     // enable inertial throwing
         //     inertia: false,
