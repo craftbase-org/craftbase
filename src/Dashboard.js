@@ -6,23 +6,24 @@ class Dashboard extends Component {
     constructor(props) {
         super(props)
         this.state = {
-            selectCursorMode: true,
+            selectPanMode: false,
         }
     }
 
     changeSelectMode = () => {
-        console.log('on change select mode', this.state.selectCursorMode)
-        this.setState({ selectCursorMode: !this.state.selectCursorMode })
+        console.log('on change select mode', this.state.selectPanMode)
+
+        this.setState({ selectPanMode: !this.state.selectPanMode })
     }
 
     render() {
         return (
             <div>
                 <Sidebar
-                    selectCursorMode={this.state.selectCursorMode}
+                    selectCursorMode={this.state.selectPanMode}
                     changeSelectMode={this.changeSelectMode}
                 />
-                <Canvas selectCursorMode={this.state.selectCursorMode} />
+                <Canvas selectPanMode={this.state.selectPanMode} />
             </div>
         )
     }

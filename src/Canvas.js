@@ -21,6 +21,7 @@ class CanvasContainer extends Component {
                 { id: 1, name: 'rect' },
                 // { id: 2, name: "Circle" }
             ],
+            selectorRectEventRemoveTrigger: false,
             lastAddedElement: {},
         }
     }
@@ -30,49 +31,24 @@ class CanvasContainer extends Component {
         localStorage.setItem('displacement_x', 0)
         localStorage.setItem('displacement_y', 0)
 
-        console.log('CANVAS CDM', this.props.selectCursorMode)
+        console.log('CANVAS CDM', this.props.selectPanMode)
         const elem = document.getElementById('main-two-root')
 
         // Logic for capturing events in empty space in drawing area
-        // document
-        //     .getElementById('main-two-root')
-        //     .addEventListener('mousedown', (e) => {
-        //         console.log(
-        //             'cDU',
-        //             this.state.twoJSInstance,
-        //             document.getElementById('two-0')
-        //         )
+        document
+            .getElementById('main-two-root')
+            .addEventListener(
+                'mousedown',
+                this.handleSelectorRectInitialization
+            )
 
-        //         console.log('event mouse down main root', e, e.target.tagName)
-        //         document.getElementById('main-two-root').focus()
-        //         if (e.target.tagName == 'svg') {
-        //             const rect = document.getElementById('selector-rect')
-        //             rect.style.position = 'absolute'
-        //             rect.style.zIndex = '1'
-        //             rect.style.width = '20px'
-        //             rect.style.height = '20px'
-        //             rect.style.border = '0px dashed grey'
-        //             rect.style.transform = `translateX(${
-        //                 e.x - 10
-        //             }px) translateY(${e.y - 10}px) `
-        //             document.getElementById('main-two-root').blur()
-        //             rect.setAttribute('draggable', true)
-        //         }
-        //     })
+        document
+            .getElementById('selector-rect')
+            .addEventListener('drag', this.handleSelectorRectDrag)
 
-        // document
-        //     .getElementById('selector-rect')
-        //     .addEventListener('drag', this.handleSelectorRectDrag)
-
-        // document
-        //     .getElementById('selector-rect')
-        //     .addEventListener('dragend', this.handleSelectorRectDragEnd)
-
-        // document
-        //     .getElementById('main-two-root')
-        //     .addEventListener('mouseup', () => {
-        //         console.log('event mouse up main root')
-        //     })
+        document
+            .getElementById('selector-rect')
+            .addEventListener('dragend', this.handleSelectorRectDragEnd)
 
         const two = new Two({
             fullscreen: true,
@@ -80,43 +56,6 @@ class CanvasContainer extends Component {
         }).appendTo(elem)
         two.update()
 
-        // const elementToPan = document.getElementById(two.scene.id)
-        // const PanZoomInstance = panzoom(elementToPan)
-
-        // const thisRef = this
-        // PanZoomInstance.pause()
-        // PanZoomInstance.on('panstart', function (e) {
-        //     console.log(
-        //         'Fired when pan is just started ',
-        //         e,
-        //         thisRef.props.selectCursorMode
-        //     )
-
-        //     // Note: e === instance.
-        // })
-
-        // PanZoomInstance.on('pan', function (e) {
-        //     console.log('Fired when the `element` is being panned', e)
-        // })
-
-        // PanZoomInstance.on('panend', function (e) {
-        //     console.log('Fired when pan ended', e)
-        // })
-
-        // PanZoomInstance.on('zoom', function (e) {
-        //     console.log('Fired when `element` is zoomed', e)
-        // })
-
-        // PanZoomInstance.on('zoomend', function (e) {
-        //     console.log('Fired when zoom animation ended', e)
-        // })
-
-        // PanZoomInstance.on('transform', function (e) {
-        //     // This event will be called along with events above.
-        //     console.log('Fired when any transformation has happened', e)
-        // })
-
-        // Panzoom(document.getElementById('two-0'))
         console.log('two', two.scene)
         let thisRef = this
         // two.scene.translation.x = -50
@@ -173,7 +112,7 @@ class CanvasContainer extends Component {
                 let rect = document
                     .getElementById(shape.id)
                     .getBoundingClientRect()
-                console.log('shape in mousedown', mouse, rect)
+                console.log('shape in mousedown', mouse, rect, shape.id)
                 dragging =
                     mouse.x > rect.left &&
                     mouse.x < rect.right &&
@@ -188,13 +127,19 @@ class CanvasContainer extends Component {
             function mousemove(e) {
                 let dx = e.clientX - mouse.x
                 let dy = e.clientY - mouse.y
-                console.log('shape in mousemove', e)
+                console.log(
+                    'shape in mousemove',
+                    e,
+                    thisRef.props.selectPanMode
+                )
 
                 if (
                     document
                         .getElementById(shape.id)
-                        .hasAttribute('data-resize')
+                        .hasAttribute('data-resize') ||
+                    !thisRef.props.selectPanMode
                 ) {
+                    console.log('has pan')
                     window.removeEventListener('mousemove', mousemove, false)
                     window.removeEventListener('mouseup', mouseup, false)
                 } else {
@@ -366,52 +311,80 @@ class CanvasContainer extends Component {
     }
 
     componentDidUpdate(prevProps, prevState) {
-        console.log(
-            'when this.props changes',
-            this.state.twoJSInstance?.scene?.translation,
-            // this.state.PanZoomInstance,
-            document.getElementById('two-0').getBoundingClientRect().x,
-            this.state.twoJSInstance?.translation?.x
-        )
+        console.log('when this.props changes', this.props.selectPanMode)
+        if (this.props.selectPanMode === false) {
+            document
+                .getElementById('main-two-root')
+                .addEventListener(
+                    'mousedown',
+                    this.handleSelectorRectInitialization
+                )
 
-        // if (
-        //     this.state.PanZoomInstance !== null &&
-        //     this.props.selectCursorMode === true
-        // ) {
-        //     this.state.PanZoomInstance.pause()
-        // } else {
-        //     this.state.PanZoomInstance.resume()
-        // }
+            document
+                .getElementById('selector-rect')
+                .addEventListener('drag', this.handleSelectorRectDrag)
+
+            document
+                .getElementById('selector-rect')
+                .addEventListener('dragend', this.handleSelectorRectDragEnd)
+        }
     }
 
-    // handleSelectorRectInitialization = () => {
+    handleSelectorRectInitialization = (e) => {
+        if (this.props.selectPanMode === false) {
+            console.log('event mouse down main root', e, e.target.tagName)
+            document.getElementById('main-two-root').focus()
+            if (e.target.tagName == 'svg') {
+                const rect = document.getElementById('selector-rect')
+                rect.style.position = 'absolute'
+                rect.style.zIndex = '1'
+                rect.style.width = '20px'
+                rect.style.height = '20px'
+                rect.style.border = '0px dashed grey'
+                rect.style.transform = `translateX(${e.x - 10}px) translateY(${
+                    e.y - 10
+                }px) `
+                document.getElementById('main-two-root').blur()
+                rect.setAttribute('draggable', true)
+            }
+        } else {
+            document
+                .getElementById('main-two-root')
+                .removeEventListener(
+                    'mousedown',
+                    this.handleSelectorRectInitialization
+                )
 
-    // }
+            document
+                .getElementById('selector-rect')
+                .removeEventListener('drag', this.handleSelectorRectDrag)
+
+            document
+                .getElementById('selector-rect')
+                .removeEventListener('dragend', this.handleSelectorRectDragEnd)
+        }
+    }
 
     handleSelectorRectDrag = (e) => {
-        console.log(
-            'selector-rect being dragged',
-            e,
-            this.props.selectCursorMode
-        )
-        // const rect = document.getElementById('selector-rect')
-        // rect.style.zIndex = '1'
-        // rect.style.border = '1px dashed grey'
-        // rect.style.width = `${Math.abs(e.offsetX)}px`
-        // rect.style.height = `${Math.abs(e.offsetY)}px`
-        // console.log('rect getBoundingClientRect', rect.getBoundingClientRect())
+        console.log('selector-rect being dragged', e, this.props.selectPanMode)
+        const rect = document.getElementById('selector-rect')
+        rect.style.zIndex = '1'
+        rect.style.border = '1px dashed grey'
+        rect.style.width = `${Math.abs(e.offsetX)}px`
+        rect.style.height = `${Math.abs(e.offsetY)}px`
+        console.log('rect getBoundingClientRect', rect.getBoundingClientRect())
     }
 
     handleSelectorRectDragEnd = (e) => {
         console.log('selector-rect drag end', e)
-        // const rect = document.getElementById('selector-rect')
-        // rect.style.zIndex = '-1'
-        // rect.style.width = `${Math.abs(e.offsetX)}px`
-        // rect.style.height = `${Math.abs(e.offsetY)}px`
-        // rect.setAttribute('draggable', false)
-        // rect.blur()
-        // console.log('rect getBoundingClientRect', rect.getBoundingClientRect())
-        // this.handleFinalDrag(rect.getBoundingClientRect())
+        const rect = document.getElementById('selector-rect')
+        rect.style.zIndex = '-1'
+        rect.style.width = `${Math.abs(e.offsetX)}px`
+        rect.style.height = `${Math.abs(e.offsetY)}px`
+        rect.setAttribute('draggable', false)
+        rect.blur()
+        console.log('rect getBoundingClientRect', rect.getBoundingClientRect())
+        this.handleFinalDrag(rect.getBoundingClientRect())
     }
 
     handleFinalDrag = (e) => {
@@ -432,7 +405,7 @@ class CanvasContainer extends Component {
                 id: item.id,
                 childrenArr: item.children,
                 itemData: item,
-                selectCursorMode: this.props.selectCursorMode,
+                selectPanMode: this.props.selectPanMode,
             })
             return (
                 <React.Fragment key={item.id}>
