@@ -82,9 +82,12 @@ class CanvasContainer extends Component {
             domElement.addEventListener('touchcancel', touchend, false)
 
             function mousedown(e) {
+                // initialize shape definition
+                shape = null
                 mouse.x = e.clientX
                 mouse.y = e.clientY
 
+                // checks for path in event if it contains following element with condition
                 e.path.forEach((item, index) => {
                     if (
                         item?.classList?.value &&
@@ -105,14 +108,15 @@ class CanvasContainer extends Component {
                     }
                 })
 
+                // if shape is null, we initialize it with root element
                 if (shape === null) {
                     shape = two.scene
                 }
-
+                console.log('on mouse down', e, shape)
                 let rect = document
                     .getElementById(shape.id)
                     .getBoundingClientRect()
-                console.log('shape in mousedown', mouse, rect, shape.id)
+
                 dragging =
                     mouse.x > rect.left &&
                     mouse.x < rect.right &&
@@ -130,25 +134,31 @@ class CanvasContainer extends Component {
                 console.log(
                     'shape in mousemove',
                     e,
+                    shape,
                     thisRef.props.selectPanMode
                 )
 
                 if (
                     document
                         .getElementById(shape.id)
-                        .hasAttribute('data-resize') ||
-                    !thisRef.props.selectPanMode
+                        .hasAttribute('data-resize')
                 ) {
                     console.log('has pan')
                     window.removeEventListener('mousemove', mousemove, false)
                     window.removeEventListener('mouseup', mouseup, false)
                 } else {
                     console.log('inside mousemove', dragging)
-                    if (dragging) {
+
+                    // check if while dragging, the shape does not point to root element (two-0)
+                    if (dragging && shape.id !== 'two-0') {
                         shape.position.x += dx / zui.scale
                         shape.position.y += dy / zui.scale
                     } else {
-                        zui.translateSurface(dx, dy)
+                        if (!thisRef.props.selectPanMode) {
+                            // nothing
+                        } else {
+                            zui.translateSurface(dx, dy)
+                        }
                     }
                     mouse.set(e.clientX, e.clientY)
                     two.update()
@@ -268,7 +278,7 @@ class CanvasContainer extends Component {
 
         const arr = [
             // { id: 1, name: 'buttonWithIcon' },
-            { id: 3, name: 'tooltip' },
+            // { id: 3, name: 'tooltip' },
             {
                 id: 4,
                 name: 'circle',
