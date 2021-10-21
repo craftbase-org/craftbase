@@ -43,8 +43,9 @@ function Avatar(props) {
         // Get all instances of every sub child element
         const { group, circleSvgGroup, circle, externalSVG } =
             elementFactory.createElement()
-
-        if (props.parentGroup) {
+            group.elementData = props?.itemData
+        
+            if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             const parentGroup = props.parentGroup
             circleSvgGroup.translation.x = props.metaData.x
@@ -57,6 +58,7 @@ function Avatar(props) {
             // After creating group, pass it's instance to selector class
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
+            
             group.children.unshift(circleSvgGroup)
             two.update()
 

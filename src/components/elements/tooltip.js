@@ -101,7 +101,7 @@ function Tooltip(props) {
         tooltipText = text
 
         const group = two.makeGroup(mainRect, secondaryRect, text)
-
+        group.elementData = props?.itemData
         // const calcX = parseInt(prevX) + (parseInt(rect.width / 2) - 10);
         // const calcY = parseInt(prevY) - (parseInt(46) - parseInt(rect.height / 2));
         // group.center();

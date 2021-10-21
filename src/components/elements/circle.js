@@ -46,7 +46,8 @@ function Circle(props) {
         const elementFactory = new CircleFactory(two, prevX, prevY, {})
         // Get all instances of every sub child element
         const { group, circle } = elementFactory.createElement()
-
+        group.elementData = props?.itemData
+        
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             console.log('properties of circle', props)
@@ -61,6 +62,7 @@ function Circle(props) {
 
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
+            
             group.children.unshift(circle)
             two.update()
 

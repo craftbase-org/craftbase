@@ -117,6 +117,7 @@ function Dropdown(props) {
         // rectangle.noStroke();
 
         group.add(rectangle)
+        group.elementData = props?.itemData
         group.children.unshift(textGroup)
 
         externalSVG.translation.set(
@@ -133,7 +134,7 @@ function Dropdown(props) {
 
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
-
+            
             two.update()
 
             document

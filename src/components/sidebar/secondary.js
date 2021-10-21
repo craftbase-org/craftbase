@@ -15,7 +15,7 @@ import RadioboxPNG from 'assets/radiobox.png'
 import RectanglePNG from 'assets/rectangle.png'
 import TextPNG from 'assets/text.png'
 import TextInputPNG from 'assets/textinput.png'
-import TogglePNG from 'assets/toggle.png'
+import TogglePNG from 'assets/toggle.svg'
 import { Rectangle } from 'two.js'
 
 class SecondarySidebar extends Component {

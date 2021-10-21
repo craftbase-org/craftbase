@@ -52,6 +52,7 @@ function GroupedObjectWrapper(props) {
         console.log('rectangle', rectangle.getBoundingClientRect(), props)
 
         const group = two.makeGroup(rectangle)
+        group.elementData = props?.itemData
         group.translation.x = parseInt(prevX) || 500
         group.translation.y = parseInt(prevY) || 200
         two.update()

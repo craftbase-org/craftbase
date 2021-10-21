@@ -39,7 +39,8 @@ function ImageCard(props) {
         // Get all instances of every sub child element
         const { group, circleSvgGroup, externalSVG, rectangle } =
             elementFactory.createElement()
-
+        group.elementData = props?.itemData
+        
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             const parentGroup = props.parentGroup

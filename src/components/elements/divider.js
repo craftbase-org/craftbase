@@ -41,7 +41,8 @@ function Divider(props) {
         // Get all instances of every sub child element
         const { group, pointCircle1, pointCircle2, resizeLine, line } =
             elementFactory.createElement()
-
+            group.elementData = props?.itemData
+            
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             const parentGroup = props.parentGroup
@@ -53,8 +54,7 @@ function Divider(props) {
             resizeLineInstance = resizeLine
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
-
-            console.log('BUtton', props.twoJSInstance)
+            
             two.update()
 
             document

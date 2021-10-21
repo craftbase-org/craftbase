@@ -143,7 +143,7 @@ class CanvasContainer extends Component {
                         .getElementById(shape.id)
                         .hasAttribute('data-resize')
                 ) {
-                    console.log('has pan')
+                    console.log('has pans')
                     window.removeEventListener('mousemove', mousemove, false)
                     window.removeEventListener('mouseup', mouseup, false)
                 } else {
@@ -168,13 +168,8 @@ class CanvasContainer extends Component {
             function mouseup(e) {
                 console.log(
                     'e in ZUI mouse up',
-                    e,
-                    two.scene.translation,
-                    zui.scale,
-                    two.scene.scale,
-                    shape.getBoundingClientRect(),
-                    shape.getBoundingClientRect(true),
-                    shape.translation
+                    // e,
+                    shape
                 )
                 const getCoordLabel = document
                     .getElementById(shape.id)
@@ -187,9 +182,19 @@ class CanvasContainer extends Component {
                     `${getCoordLabel + 'Y'}`,
                     shape.translation.y
                 )
+                let item = Object.assign({}, shape.elementData, {
+                    data: { x: shape.translation.x, y: shape.translation.y },
+                })
+                // let item = {
+                //     elementId: shape.elementData.elementId,
+                //     data: { x: shape.translation.x, y: shape.translation.y },
+                // }
+                console.log('shape.elementData.writable', item)
+
                 window.removeEventListener('mousemove', mousemove, false)
                 window.removeEventListener('mouseup', mouseup, false)
                 two.update()
+                thisRef.updateToGlobalState(item)
             }
 
             function mousewheel(e) {
@@ -277,10 +282,10 @@ class CanvasContainer extends Component {
         }
 
         const arr = [
-            // { id: 1, name: 'buttonWithIcon' },
-            // { id: 3, name: 'tooltip' },
+            // { elementId: 1, name: 'buttonWithIcon' },
+            // { elementId: 3, name: 'tooltip' },
             {
-                id: 4,
+                elementId: 4,
                 name: 'circle',
                 data: {
                     x: 272,
@@ -288,30 +293,30 @@ class CanvasContainer extends Component {
                     name: 'circle',
                 },
             },
-            // { id: 5, name: 'imageCard' },
+            // { elementId: 5, name: 'imageCard' },
             // {
-            //     id: 6,
+            //     elementId: 6,
             //     name: 'rectangle',
             //     data: { x: 290, y: 430, name: 'rectangle' },
             // },
-            { id: 2, name: 'toggle', data: {} },
-            // { id: 7, name: 'divider' },
-            // { id: 8, name: 'avatar' },
-            // { id: 9, name: 'linkWithIcon' },
-            // { id: 10, name: 'text', data: { fontSize: '16' } },
-            // { id: 11, name: 'overlay' },
-            // { id: 12, name: 'button' },
-            // { id: 13, name: 'checkbox' },
-            // { id: 14, name: 'radiobox' },
-            // { id: 15, name: 'textinput' },
-            // { id: 16, name: 'dropdown' },
-            // { id: 17, name: 'textarea' },
+            { elementId: 2, name: 'toggle', data: {} },
+            // { elementId: 7, name: 'divider' },
+            // { elementId: 8, name: 'avatar' },
+            // { elementId: 9, name: 'linkWithIcon' },
+            // { elementId: 10, name: 'text', data: { fontSize: '16' } },
+            // { elementId: 11, name: 'overlay' },
+            // { elementId: 12, name: 'button' },
+            // { elementId: 13, name: 'checkbox' },
+            // { elementId: 14, name: 'radiobox' },
+            // { elementId: 15, name: 'textinput' },
+            // { elementId: 16, name: 'dropdown' },
+            // { elementId: 17, name: 'textarea' },
             // {
-            //     id: 18,
+            //     elementId: 18,
             //     name: 'groupobject',
             //     children: [
-            //         { id: 8, name: 'avatar', x: -30, y: 2 },
-            //         { id: 9, name: 'linkwithicon', x: 30, y: 2 },
+            //         { elementId: 8, name: 'avatar', x: -30, y: 2 },
+            //         { elementId: 9, name: 'linkwithicon', x: 30, y: 2 },
             //     ],
             // },
         ]
@@ -338,6 +343,10 @@ class CanvasContainer extends Component {
                 .getElementById('selector-rect')
                 .addEventListener('dragend', this.handleSelectorRectDragEnd)
         }
+    }
+
+    updateToGlobalState = (newItem) => {
+        this.props.getElementsData('UPDATE_ELEMENT_DATA', newItem)
     }
 
     handleSelectorRectInitialization = (e) => {
@@ -387,6 +396,9 @@ class CanvasContainer extends Component {
 
     handleSelectorRectDragEnd = (e) => {
         console.log('selector-rect drag end', e)
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        e.preventDefault()
         const rect = document.getElementById('selector-rect')
         rect.style.zIndex = '-1'
         rect.style.width = `${Math.abs(e.offsetX)}px`
@@ -412,13 +424,13 @@ class CanvasContainer extends Component {
         const renderData = elements.map((item) => {
             const NewComponent = ComponentWrapper(item.name, {
                 twoJSInstance: this.state.twoJSInstance,
-                id: item.id,
+                id: item.elementId,
                 childrenArr: item.children,
                 itemData: item,
                 selectPanMode: this.props.selectPanMode,
             })
             return (
-                <React.Fragment key={item.id}>
+                <React.Fragment key={item.elementId}>
                     <NewComponent />
                 </React.Fragment>
             )

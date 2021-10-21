@@ -29,11 +29,11 @@ export default (state = initial_state, action) =>
     produce(state, (draft) => {
         switch (action.type) {
             case CONSTRUCT:
-                const newArr = action.payload.map((item) => item.id)
+                const newArr = action.payload.map((item) => item.elementId)
                 console.log('action.payload construct', action.payload)
                 const getCoordGraph = {}
                 action.payload.forEach((item) => {
-                    getCoordGraph[item.id] = item.data
+                    getCoordGraph[item.elementId] = item.data
                 })
 
                 return {
@@ -46,7 +46,7 @@ export default (state = initial_state, action) =>
 
             case COMPLETE:
                 const newItems = [...state.elementIDs]
-                const elementId = action.payload.data.id
+                const elementId = action.payload.data.elementId
                 newItems.push(elementId)
                 return {
                     ...state,
@@ -57,10 +57,14 @@ export default (state = initial_state, action) =>
 
             case UPDATE_ELEMENT_DATA:
                 console.log('action.payload', action.payload.data)
-                let findId = state.boardData.findIndex(
-                    (x) => x.id === action.payload?.data?.id
+                let findId = state.componentData.findIndex(
+                    (x) => x.elementId === action.payload?.elementId
                 )
                 console.log('update element data', findId)
+                // if (findId !== -1) {
+                //     draft.componentData[findId] = action.payload
+                // }
+
                 break
 
             case AREA_SELECTION:
@@ -136,9 +140,10 @@ export default (state = initial_state, action) =>
                             )
                             selectedComponentArr.push(idToSelect)
 
-                            let indexOfComponentArr = draft.componentData.findIndex(
-                                (i) => i.id == idToSelect
-                            )
+                            let indexOfComponentArr =
+                                draft.componentData.findIndex(
+                                    (i) => i.elementId == idToSelect
+                                )
 
                             draft.componentData.splice(indexOfComponentArr, 1)
 
@@ -162,7 +167,7 @@ export default (state = initial_state, action) =>
                 })
 
                 console.log('area_selection newChildren', newChildren)
-                newGroup.id = Math.floor(Math.random() * 9000) + 1000
+                // newGroup.id = Math.floor(Math.random() * 9000) + 1000
                 newGroup.name = 'groupobject'
                 newGroup.width = action.payload.width
                 newGroup.height = action.payload.height
@@ -197,7 +202,7 @@ export default (state = initial_state, action) =>
             case UNGROUP_ELEMENT:
                 const groupToBeRemoved = action.payload.data.groupId
                 const indexOfGroup = state.componentData.findIndex(
-                    (x) => x.id === groupToBeRemoved
+                    (x) => x.elementId === groupToBeRemoved
                 )
                 console.log(
                     'getIndexOf',

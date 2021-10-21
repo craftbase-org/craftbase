@@ -117,17 +117,19 @@ function Checkbox(props) {
         })
 
         const checkboxGroup = two.makeGroup(Object.values(groupMap))
-
+        const group = two.makeGroup(checkboxGroup)
+        group.elementData = props?.itemData
         // console.log("checkboxGroup", checkboxGroup, checkboxGroup.id);
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             const parentGroup = props.parentGroup
+            checkboxGroup.elementData = props?.itemData
             parentGroup.add(checkboxGroup)
             two.update()
         } else {
             /** This element will render by creating it's own group wrapper */
-            const group = two.makeGroup(checkboxGroup)
+            
             group.translation.x = parseInt(prevX) || 500
             group.translation.y = parseInt(prevY) || 200
             groupObject = group
@@ -136,7 +138,7 @@ function Checkbox(props) {
 
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
-
+            
             // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
             group.children.unshift(checkboxGroup)
             two.update()

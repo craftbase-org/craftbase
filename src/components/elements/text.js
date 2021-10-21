@@ -43,7 +43,7 @@ function Text(props) {
         // Get all instances of every sub child element
         const { group, rectTextGroup, rectangle } =
             elementFactory.createElement()
-
+        group.elementData = props?.itemData
         // the custom foreign object hook
         const svgElem = rectTextGroup._renderer.elem
 

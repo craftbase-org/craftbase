@@ -43,7 +43,8 @@ function Textarea(props) {
       textGroup,
       text,
     } = elementFactory.createElement();
-
+    group.elementData = props?.itemData
+    
     if (props.parentGroup) {
       /** This element will be rendered and scoped in its parent group */
       const parentGroup = props.parentGroup;

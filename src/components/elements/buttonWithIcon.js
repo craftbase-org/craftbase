@@ -50,6 +50,7 @@ function ButtonWithIcon(props) {
             rectTextGroup,
         } = elementFactory.createElement()
         rectContainer = rectangle
+        group.elementData = props?.itemData
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
@@ -62,7 +63,7 @@ function ButtonWithIcon(props) {
 
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
-
+            
             group.children.unshift(textGroup)
             two.update()
 

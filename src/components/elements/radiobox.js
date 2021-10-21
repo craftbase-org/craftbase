@@ -112,17 +112,19 @@ function RadioBox(props) {
             groupMap[`radiobox${index}`] = group
         })
         const radioboxGroup = two.makeGroup(Object.values(groupMap))
-
+        const group = two.makeGroup(radioboxGroup)
+        group.elementData = props?.itemData
         // console.log("radioboxGroup", radioboxGroup, radioboxGroup.id);
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             const parentGroup = props.parentGroup
+            radioboxGroup.elementData = props?.itemData
             parentGroup.add(radioboxGroup)
             two.update()
         } else {
             /** This element will render by creating it's own group wrapper */
-            const group = two.makeGroup(radioboxGroup)
+            
             group.translation.x = parseInt(prevX) || 500
             group.translation.y = parseInt(prevY) || 200
             groupObject = group
