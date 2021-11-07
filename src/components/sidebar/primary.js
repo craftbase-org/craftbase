@@ -7,7 +7,7 @@ import CursorICON from 'assets/cursor.svg'
 import PanICON from 'assets/pan.svg'
 import Icon from 'icons/icon'
 import { addElement } from 'store/actions/main'
-import './sidebar.scss'
+import './sidebar.css'
 
 class Sidebar extends Component {
     constructor(props) {

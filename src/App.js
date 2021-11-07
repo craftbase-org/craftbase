@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import './App.scss'
+import './App.css'
 import Dashboard from './Dashboard'
 
 import reducers from 'store/reducers'
@@ -9,7 +9,7 @@ import { Provider } from 'react-redux'
 import { createStore, applyMiddleware } from 'redux'
 
 import './styles/main.css'
-import './common.scss'
+import './common.css'
 
 const createStoreWithMiddleware = applyMiddleware(
     reduxThunk,
