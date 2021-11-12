@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react'
 import { connect } from 'react-redux'
-
-import ComponentWrapper from 'components/elementWrapper'
-import Toolbar from 'components/floatingToolbar'
+import { useQuery } from '@apollo/client'
 import Two from 'two.js'
 import Zui from 'two.js/extras/zui'
 import panzoom from 'panzoom'
+import ZUI from 'two.js/extras/zui'
 
+import ComponentWrapper from 'components/elementWrapper'
+import Toolbar from 'components/floatingToolbar'
+import { GET_USER_DETAILS } from 'schema/queries'
 import { getElementsData } from 'store/actions/main'
 import Zoomer from 'components/utils/zoomer'
-import ZUI from 'two.js/extras/zui'
 
 function addZUI(props, updateToGlobalState, two) {
     let shape = null
@@ -211,6 +212,14 @@ function addZUI(props, updateToGlobalState, two) {
 }
 
 const Canvas = (props) => {
+    const {
+        loading: getUserDetailsLoading,
+        data: getUserDetailsData,
+        error: getUserDetailsError,
+    } = useQuery(GET_USER_DETAILS, {
+        variables: { id: '4fb2b505-c815-4a01-8fa4-7d7b32468de2' },
+    })
+
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     useEffect(() => {
         // setting pan displacement values to initial
@@ -338,6 +347,8 @@ const Canvas = (props) => {
 
         return renderData
     }
+
+    console.log('getUserDetailsData', getUserDetailsData)
 
     return (
         <>

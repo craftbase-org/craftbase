@@ -151,6 +151,4 @@ function mapStateToProps(state) {
         componentData: state.main.componentData,
     }
 }
-export default connect(null, {
-    addElement,
-})(Sidebar)
+export default Sidebar
