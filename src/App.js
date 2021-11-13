@@ -1,8 +1,5 @@
 import React, { Component } from 'react'
-import './App.css'
-import Dashboard from './Dashboard'
-
-import reducers from 'store/reducers'
+import { Switch, Route, BrowserRouter } from 'react-router-dom'
 import logger from 'redux-logger'
 import reduxThunk from 'redux-thunk'
 import { Provider } from 'react-redux'
@@ -17,6 +14,12 @@ import {
 import { getMainDefinition } from '@apollo/client/utilities'
 import { WebSocketLink } from '@apollo/client/link/ws'
 
+import BoardViewContainer from 'views/Board'
+import HomePageViewContainer from 'views/Home'
+import reducers from 'store/reducers'
+import routes from './routes'
+
+import './App.css'
 import './styles/main.css'
 import './common.css'
 
@@ -94,11 +97,24 @@ class App extends Component {
     render() {
         const apolloClient = getApolloClient()
         return (
-            <ApolloProvider client={apolloClient}>
-                <div className="App bg-neutrals-n20">
-                    <Dashboard />
-                </div>
-            </ApolloProvider>
+            <BrowserRouter>
+                <ApolloProvider client={apolloClient}>
+                    <div className="App ">
+                        <Switch>
+                            <Route
+                                exact
+                                path={routes.home}
+                                component={HomePageViewContainer}
+                            />
+                            <Route
+                                exact
+                                path={routes.board}
+                                component={BoardViewContainer}
+                            />
+                        </Switch>
+                    </div>
+                </ApolloProvider>
+            </BrowserRouter>
         )
     }
 }
