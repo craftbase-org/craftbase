@@ -16,8 +16,8 @@ export default class CircleFactory extends Main {
 
         // Create group and take children elements as a parameter
         const group = two.makeGroup(circle)
-        group.translation.x = parseInt(prevX) || 500
-        group.translation.y = parseInt(prevY) || 200
+        group.translation.x = parseInt(prevX)
+        group.translation.y = parseInt(prevY)
         this.group = group
         console.log('group.id circle', group.id)
         return { group: this.group, circle: this.circle }

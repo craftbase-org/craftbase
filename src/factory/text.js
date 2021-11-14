@@ -15,8 +15,8 @@ export default class TextFactory extends Main {
         const rectTextGroup = two.makeGroup(rectangle)
 
         const group = two.makeGroup(rectTextGroup)
-        group.translation.x = parseInt(prevX) || 500
-        group.translation.y = parseInt(prevY) || 200
+        group.translation.x = parseInt(prevX)
+        group.translation.y = parseInt(prevY)
 
         two.update()
         console.log(

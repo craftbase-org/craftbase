@@ -24,8 +24,8 @@ export default class AvatarFactory extends Main {
         const circleSvgGroup = two.makeGroup(circle, externalSVG)
         const group = two.makeGroup(circleSvgGroup)
         group.center()
-        group.translation.x = parseInt(prevX) || 500
-        group.translation.y = parseInt(prevY) || 200
+        group.translation.x = parseInt(prevX)
+        group.translation.y = parseInt(prevY)
 
         return { group, circleSvgGroup, circle, externalSVG }
     }

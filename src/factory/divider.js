@@ -35,8 +35,8 @@ export default class DividerFactory extends Main {
         // const calcX = parseInt(prevX) + (parseInt(rectangle.width / 2) - 10);
         // const calcY = parseInt(prevY) - (parseInt(46) - parseInt(rectangle.height / 2));
         group.center()
-        group.translation.x = parseInt(prevX) || 500
-        group.translation.y = parseInt(prevY) || 200
+        group.translation.x = parseInt(prevX)
+        group.translation.y = parseInt(prevY)
 
         return { group, pointCircle1, pointCircle2, resizeLine, line }
     }

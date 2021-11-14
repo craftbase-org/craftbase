@@ -23,8 +23,8 @@ export default class ButtonFactory extends Main {
         const rectTextGroup = two.makeGroup(rectGroup, textGroup)
 
         const group = two.makeGroup(rectTextGroup)
-        group.translation.x = parseInt(prevX) || 500
-        group.translation.y = parseInt(prevY) || 200
+        group.translation.x = parseInt(prevX)
+        group.translation.y = parseInt(prevY)
 
         return { group, rectTextGroup, text, rectangle }
     }

@@ -16,8 +16,8 @@ export default class OverlayFactory extends Main {
 
         const group = two.makeGroup(rectangle)
 
-        group.translation.x = parseInt(prevX) || 500
-        group.translation.y = parseInt(prevY) || 200
+        group.translation.x = parseInt(prevX)
+        group.translation.y = parseInt(prevY)
 
         return { group, rectangle }
     }

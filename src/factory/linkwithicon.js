@@ -32,8 +32,8 @@ export default class LinkWithIconFactory extends Main {
         textGroup.fill = '#0052CC'
 
         const group = two.makeGroup(textGroup)
-        group.translation.x = parseInt(prevX) || 500
-        group.translation.y = parseInt(prevY) || 200
+        group.translation.x = parseInt(prevX)
+        group.translation.y = parseInt(prevY)
         return { group, textGroup, externalSVG, text }
     }
 }

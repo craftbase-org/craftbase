@@ -28,8 +28,8 @@ export default class ImageCardFactory extends Main {
         const group = two.makeGroup(circleSvgGroup)
 
         group.center()
-        group.translation.x = parseInt(prevX) || 500
-        group.translation.y = parseInt(prevY) || 200
+        group.translation.x = parseInt(prevX)
+        group.translation.y = parseInt(prevY)
 
         return { group, circleSvgGroup, externalSVG, rectangle }
     }

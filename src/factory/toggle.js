@@ -23,8 +23,8 @@ export default class ToggleFactory extends Main {
         // const calcX = parseInt(prevX) + (parseInt(rect.width / 2) - 10);
         // const calcY = parseInt(prevY) - (parseInt(46) - parseInt(rect.height / 2));
         // group.center();
-        group.translation.x = parseInt(prevX) || 500
-        group.translation.y = parseInt(prevY) || 200
+        group.translation.x = parseInt(prevX)
+        group.translation.y = parseInt(prevY)
 
         return { group, circle, rectCircleGroup, rect }
     }
