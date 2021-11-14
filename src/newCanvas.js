@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { connect } from 'react-redux'
-import { useQuery } from '@apollo/client'
+import { useQuery, useMutation } from '@apollo/client'
 import Two from 'two.js'
 import Zui from 'two.js/extras/zui'
 import panzoom from 'panzoom'
@@ -8,7 +8,7 @@ import ZUI from 'two.js/extras/zui'
 
 import ComponentWrapper from 'components/elementWrapper'
 import Toolbar from 'components/floatingToolbar'
-import { GET_USER_DETAILS } from 'schema/queries'
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { getElementsData } from 'store/actions/main'
 import Zoomer from 'components/utils/zoomer'
 
@@ -212,15 +212,10 @@ function addZUI(props, updateToGlobalState, two) {
 }
 
 const Canvas = (props) => {
-    const {
-        loading: getUserDetailsLoading,
-        data: getUserDetailsData,
-        error: getUserDetailsError,
-    } = useQuery(GET_USER_DETAILS, {
-        variables: { id: '4fb2b505-c815-4a01-8fa4-7d7b32468de2' },
-    })
-
     const [twoJSInstance, setTwoJSInstance] = useState(null)
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     useEffect(() => {
         // setting pan displacement values to initial
         localStorage.setItem('displacement_x', 0)
@@ -258,6 +253,19 @@ const Canvas = (props) => {
     }, [])
 
     const updateToGlobalState = (newItem) => {
+        console.log('updateToGlobalState', newItem)
+        if (newItem.id) {
+            updateComponentInfo({
+                variables: {
+                    id: newItem.id,
+                    updateObj: {
+                        x: parseInt(newItem.data.x),
+                        y: parseInt(newItem.data.y),
+                    },
+                },
+            })
+        }
+
         // props.getElementsData('UPDATE_ELEMENT_DATA', newItem)
     }
 
@@ -347,8 +355,6 @@ const Canvas = (props) => {
 
         return renderData
     }
-
-    console.log('getUserDetailsData', getUserDetailsData)
 
     return (
         <>
