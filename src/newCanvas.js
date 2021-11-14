@@ -331,10 +331,10 @@ const Canvas = (props) => {
 
         const elements = props.componentData
         const renderData = elements.map((item) => {
-            const NewComponent = ComponentWrapper(item.name, {
+            const NewComponent = ComponentWrapper(item.componentType, {
                 twoJSInstance: twoJSInstance,
-                id: item.elementId,
-                childrenArr: item.children,
+                id: item.id,
+                // childrenArr: item.children,
                 itemData: item,
                 selectPanMode: props.selectPanMode,
             })

@@ -3,7 +3,6 @@ import interact from 'interactjs'
 import idx from 'idx'
 import { useImmer } from 'use-immer'
 import Panzoom from 'panzoom'
-import { useDispatch, useSelector } from 'react-redux'
 
 import getEditComponents from 'components/utils/editWrapper'
 import handleDrag from 'components/utils/dragger'
@@ -14,12 +13,10 @@ import { elementOnBlurHandler } from 'utils/misc'
 import Toolbar from 'components/floatingToolbar'
 
 function Rectangle(props) {
-    const selectedComponents = useSelector(
-        (state) => state.main.selectedComponents
-    )
+    const selectedComponents = []
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
-    const dispatch = useDispatch()
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
@@ -45,7 +42,7 @@ function Rectangle(props) {
         // Get all instances of every sub child element
         const { group, rectangle } = elementFactory.createElement()
         group.elementData = props?.itemData
-        
+
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             const parentGroup = props.parentGroup

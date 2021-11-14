@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
 import { useImmer } from 'use-immer'
 
 // import Panzoom from '@panzoom/panzoom'
@@ -14,12 +13,11 @@ import { color_blue, defaultScaleConstant } from 'utils/constants'
 import Toolbar from 'components/floatingToolbar'
 
 function Circle(props) {
-    const selectedComponents = useSelector(
-        (state) => state.main.selectedComponents
-    )
+    const selectedComponents = []
+
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
-    const dispatch = useDispatch()
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let toolbarInstance = null
@@ -47,7 +45,7 @@ function Circle(props) {
         // Get all instances of every sub child element
         const { group, circle } = elementFactory.createElement()
         group.elementData = props?.itemData
-        
+
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             console.log('properties of circle', props)
@@ -62,7 +60,7 @@ function Circle(props) {
 
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
-            
+
             group.children.unshift(circle)
             two.update()
 
