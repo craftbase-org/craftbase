@@ -58,8 +58,8 @@ function RadioBox(props) {
         let checkboxCounter = 2
         let selectedRadioControl = null
 
-        const prevX = localStorage.getItem('radiobox_coordX')
-        const prevY = localStorage.getItem('radiobox_coordY')
+        const prevX = props.x
+        const prevY = props.y
 
         const currentCheckboxes = [
             { name: 'radio 1', checked: false },
@@ -124,7 +124,7 @@ function RadioBox(props) {
             two.update()
         } else {
             /** This element will render by creating it's own group wrapper */
-            
+
             group.translation.x = parseInt(prevX) || 500
             group.translation.y = parseInt(prevY) || 200
             groupObject = group
@@ -444,9 +444,18 @@ function RadioBox(props) {
         return () => {
             console.log('UNMOUNTING in Radio box', groupObject)
             // clean garbage by removing instance
-            two.remove(groupObject)
+            // two.remove(groupObject)
         }
     }, [])
+
+    useEffect(() => {
+        if (internalState?.group?.data) {
+            let groupInstance = internalState.group.data
+            groupInstance.translation.x = props.x
+            groupInstance.translation.y = props.y
+            two.update()
+        }
+    }, [props.x, props.y, props.metadata])
 
     function closeToolbar() {
         toggleToolbar(false)

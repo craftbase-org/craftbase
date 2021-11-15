@@ -58,8 +58,8 @@ function Checkbox(props) {
         const offsetHeight = 0
         let checkboxCounter = 2
 
-        const prevX = localStorage.getItem('checkbox_coordX')
-        const prevY = localStorage.getItem('checkbox_coordY')
+        const prevX = props.x
+        const prevY = props.y
 
         const currentCheckboxes = [
             { name: 'checkbox 1', checked: false },
@@ -129,7 +129,7 @@ function Checkbox(props) {
             two.update()
         } else {
             /** This element will render by creating it's own group wrapper */
-            
+
             group.translation.x = parseInt(prevX) || 500
             group.translation.y = parseInt(prevY) || 200
             groupObject = group
@@ -138,7 +138,7 @@ function Checkbox(props) {
 
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
-            
+
             // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
             group.children.unshift(checkboxGroup)
             two.update()
@@ -439,9 +439,18 @@ function Checkbox(props) {
         return () => {
             console.log('UNMOUNTING in Check box', checkboxGroup)
             // clean garbage by removing instance
-            two.remove(checkboxGroup)
+            // two.remove(checkboxGroup)
         }
     }, [])
+
+    useEffect(() => {
+        if (internalState?.group?.data) {
+            let groupInstance = internalState.group.data
+            groupInstance.translation.x = props.x
+            groupInstance.translation.y = props.y
+            two.update()
+        }
+    }, [props.x, props.y, props.metadata])
 
     function closeToolbar() {
         toggleToolbar(false)

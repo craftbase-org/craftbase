@@ -40,8 +40,8 @@ function Dropdown(props) {
         // Calculate x and y through dividing width and height by 2 or vice versa
         // if x and y are given then multiply width and height into 2
         const offsetHeight = 0
-        const prevX = localStorage.getItem('dropdown_coordX')
-        const prevY = localStorage.getItem('dropdown_coordY')
+        const prevX = props.x
+        const prevY = props.y
 
         const text = two.makeText('Select dropdown', -30, 0)
         text.size = '14'
@@ -134,7 +134,7 @@ function Dropdown(props) {
 
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
-            
+
             two.update()
 
             document
@@ -381,9 +381,18 @@ function Dropdown(props) {
         return () => {
             console.log('UNMOUNTING in Dropdown', groupObject)
             // clean garbage by removing instance
-            two.remove(groupObject)
+            // two.remove(groupObject)
         }
     }, [])
+
+    useEffect(() => {
+        if (internalState?.group?.data) {
+            let groupInstance = internalState.group.data
+            groupInstance.translation.x = props.x
+            groupInstance.translation.y = props.y
+            two.update()
+        }
+    }, [props.x, props.y, props.metadata])
 
     function closeToolbar() {
         toggleToolbar(false)

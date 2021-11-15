@@ -35,17 +35,17 @@ function Avatar(props) {
         // Calculate x and y through dividing width and height by 2 or vice versa
         // if x and y are given then multiply width and height into 2
         const offsetHeight = 0
-        const prevX = localStorage.getItem('avatar_coordX')
-        const prevY = localStorage.getItem('avatar_coordY')
+        const prevX = props.x
+        const prevY = props.y
 
         // Instantiate factory
         const elementFactory = new ElementFactory(two, prevX, prevY, {})
         // Get all instances of every sub child element
         const { group, circleSvgGroup, circle, externalSVG } =
             elementFactory.createElement()
-            group.elementData = props?.itemData
-        
-            if (props.parentGroup) {
+        group.elementData = props?.itemData
+
+        if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             const parentGroup = props.parentGroup
             circleSvgGroup.translation.x = props.metaData.x
@@ -58,7 +58,7 @@ function Avatar(props) {
             // After creating group, pass it's instance to selector class
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
-            
+
             group.children.unshift(circleSvgGroup)
             two.update()
 
@@ -214,9 +214,18 @@ function Avatar(props) {
         return () => {
             console.log('UNMOUNTING in Avatar', group)
             // clean garbage by removing instance
-            two.remove(group)
+            // two.remove(group)
         }
     }, [])
+
+    useEffect(() => {
+        if (internalState?.group?.data) {
+            let groupInstance = internalState.group.data
+            groupInstance.translation.x = props.x
+            groupInstance.translation.y = props.y
+            two.update()
+        }
+    }, [props.x, props.y, props.metadata])
 
     function closeToolbar() {
         toggleToolbar(false)
