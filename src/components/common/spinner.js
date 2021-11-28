@@ -1,9 +1,9 @@
 import React from 'react'
 
-const Spinner = (props) => {
+const Spinner = ({ displayText }) => {
     return (
         <>
-            <div>Loading components ...</div>
+            <div>{displayText ? displayText : 'Loading components ...'}</div>
         </>
     )
 }

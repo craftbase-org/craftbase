@@ -12,7 +12,7 @@ const BoardViewPage = (props) => {
         loading: getBoardDataLoading,
         error: getBoardDataError,
         data: getBoardDataSuccess,
-    } = useQuery(GET_BOARD_DATA, { variables: { id: boardId } })
+    } = useSubscription(GET_BOARD_DATA, { variables: { id: boardId } })
     const [selectPanMode, setSelectPanMode] = useState(false)
 
     const changeSelectMode = () => {
@@ -20,13 +20,13 @@ const BoardViewPage = (props) => {
         setSelectPanMode(!prevSelectPanMode)
     }
 
-    if (getBoardDataLoading) {
-        return (
-            <>
-                <Spinner />
-            </>
-        )
-    }
+    // if (getBoardDataLoading) {
+    //     return (
+    //         <>
+    //             <Spinner displayText={'Loading data'} />
+    //         </>
+    //     )
+    // }
 
     if (getBoardDataError) {
         return (
@@ -36,7 +36,22 @@ const BoardViewPage = (props) => {
         )
     }
 
-    console.log('getBoardDataSuccess', getBoardDataSuccess)
+    let dummyComponentData = [
+        // {
+        //     id: '2d599d5e-dc89-4d92-83e8-5ad6dc06bd4d',
+        //     componentType: 'circle',
+        // },
+        // {
+        //     id: '9021dad1-cc07-4462-9c7d-04599427c088',
+        //     componentType: 'rectangle',
+        // },
+        {
+            id: 'ab357112-d505-4512-8550-e24888217221',
+            componentType: 'arrowLine',
+        },
+    ]
+
+    // console.log('getBoardDataSuccess', getBoardDataSuccess)
     return (
         <>
             <div>
@@ -46,9 +61,7 @@ const BoardViewPage = (props) => {
                 />
                 <Canvas
                     selectPanMode={selectPanMode}
-                    componentData={
-                        getBoardDataSuccess.boardData.components || []
-                    }
+                    componentData={dummyComponentData}
                 />
             </div>
         </>

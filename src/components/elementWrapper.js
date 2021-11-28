@@ -22,7 +22,7 @@ const ElementWrapper = (elementName, data) => {
         } = useSubscription(GET_COMPONENT_INFO, { variables: { id: data.id } })
 
         if (getComponentInfoLoading) {
-            return <Spinner />
+            return <Spinner displayText={'Loading component data'} />
         }
 
         console.log('getComponentInfoData data change', getComponentInfoData)

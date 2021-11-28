@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client'
 
 export const GET_BOARD_DATA = gql`
-    query GET_BOARD_DATA($id: uuid = "") {
+    subscription GET_BOARD_DATA($id: uuid = "") {
         boardData: boards_board_by_pk(id: $id) {
             components
             id
@@ -16,6 +16,10 @@ export const GET_COMPONENT_INFO = gql`
             metadata
             x
             y
+            x1
+            y1
+            x2
+            y2
             componentType
         }
     }
