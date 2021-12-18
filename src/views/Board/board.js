@@ -37,10 +37,10 @@ const BoardViewPage = (props) => {
     }
 
     let dummyComponentData = [
-        // {
-        //     id: '2d599d5e-dc89-4d92-83e8-5ad6dc06bd4d',
-        //     componentType: 'circle',
-        // },
+        {
+            id: '2d599d5e-dc89-4d92-83e8-5ad6dc06bd4d',
+            componentType: 'circle',
+        },
         // {
         //     id: '9021dad1-cc07-4462-9c7d-04599427c088',
         //     componentType: 'rectangle',

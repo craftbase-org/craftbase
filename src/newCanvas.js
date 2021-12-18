@@ -37,12 +37,25 @@ function addZUI(props, updateToGlobalState, two) {
         shape = null
         mouse.x = e.clientX
         mouse.y = e.clientY
+        let avoidDragging = false
 
         // checks for path in event if it contains following element with condition
         e.path.forEach((item, index) => {
+            console.log(
+                'item?.classList?.value',
+                item?.classList?.value,
+                item?.classList?.value &&
+                    item?.classList?.value.includes('dragger-picker') &&
+                    !item?.classList?.value.includes('avoid-dragging') &&
+                    item.tagName === 'g'
+            )
+            if (item?.classList?.value.includes('avoid-dragging')) {
+                avoidDragging = true
+            }
             if (
                 item?.classList?.value &&
                 item?.classList?.value.includes('dragger-picker') &&
+                !item?.classList?.value.includes('avoid-dragging') &&
                 item.tagName === 'g'
             ) {
                 console.log('iterating through path', item.id)
@@ -54,6 +67,10 @@ function addZUI(props, updateToGlobalState, two) {
                 shape = two.scene.children.find((child) => child.id === item.id)
             }
         })
+
+        if (avoidDragging) {
+            shape = null
+        }
 
         // if shape is null, we initialize it with root element
         if (shape === null) {
@@ -335,7 +352,7 @@ const Canvas = (props) => {
     }
 
     const renderElements = () => {
-        console.log('At the time of rendering', twoJSInstance.scene.children)
+        console.log('At the time of rendering', props.componentData)
 
         const elements = props.componentData
         const renderData = elements.map((item) => {
@@ -347,7 +364,7 @@ const Canvas = (props) => {
                 selectPanMode: props.selectPanMode,
             })
             return (
-                <React.Fragment key={item.elementId}>
+                <React.Fragment key={item.id}>
                     <NewComponent />
                 </React.Fragment>
             )

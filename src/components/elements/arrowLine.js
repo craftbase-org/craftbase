@@ -68,14 +68,25 @@ function ArrowLine(props) {
 
             two.update()
 
+            console.log(
+                'point circle dom',
+                document.getElementById(pointCircle1.id)
+            )
             // some styling
             document.getElementById(line.id).style.cursor = 'pointer'
             document.getElementById(pointCircle1.id).style.cursor = 'pointer'
             document.getElementById(pointCircle2.id).style.cursor = 'pointer'
 
-            // document
-            //     .getElementById(group.id)
-            //     .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(pointCircle1.id)
+                .setAttribute('class', 'avoid-dragging')
+            document
+                .getElementById(pointCircle2.id)
+                .setAttribute('class', 'avoid-dragging')
+
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
             // document
             //     .getElementById(group.id)
             //     .setAttribute('data-label', 'line_coord')
@@ -134,17 +145,39 @@ function ArrowLine(props) {
             //     toggleToolbar(true)
             // })
 
-            interact(`#${pointCircle1.id}`).on('click', (e) => {
-                console.log('on click pointCircle1', e)
-
-                // resizeLine.opacity = 1
+            interact(`#${group.id}`).on('click', (e) => {
+                console.log('on click group', e)
+                // pointCircle1.opacity = 0
+                resizeLine.opacity = 1
+                pointCircle1.translation.x = line.vertices[0].x - 4
+                pointCircle1.translation.y = line.vertices[0].y - 6
+                pointCircle2.translation.x = line.vertices[1].x + 4
+                pointCircle2.translation.y = line.vertices[1].y - 6
                 // selector.update(
                 //     line.getBoundingClientRect(true).left - 10,
                 //     line.getBoundingClientRect(true).right + 10,
                 //     line.getBoundingClientRect(true).top - 10,
                 //     line.getBoundingClientRect(true).bottom + 10
                 // )
-                // two.update()
+                two.update()
+                // toggleToolbar(true)
+            })
+
+            interact(`#${group.id}`).on('blur', (e) => {
+                console.log('on click group', e)
+                // pointCircle1.opacity = 0
+                resizeLine.opacity = 0
+                pointCircle1.translation.x = line.vertices[0].x - 4
+                pointCircle1.translation.y = line.vertices[0].y - 6
+                pointCircle2.translation.x = line.vertices[1].x + 4
+                pointCircle2.translation.y = line.vertices[1].y - 6
+                // selector.update(
+                //     line.getBoundingClientRect(true).left - 10,
+                //     line.getBoundingClientRect(true).right + 10,
+                //     line.getBoundingClientRect(true).top - 10,
+                //     line.getBoundingClientRect(true).bottom + 10
+                // )
+                two.update()
                 // toggleToolbar(true)
             })
 
@@ -205,11 +238,9 @@ function ArrowLine(props) {
                         )
                     },
                     move(event) {
-                        line.vertices[0].x += event.dx
-                        pointCircle1.translation.x = line.vertices[0].x
-
-                        line.vertices[0].y += event.dy
-                        pointCircle1.translation.y = line.vertices[0].y
+                        let x1 = (line.vertices[0].x += event.dx)
+                        let y1 = (line.vertices[0].y += event.dy)
+                        updateX1Y1Vertices(line, x1, y1, pointCircle1)
 
                         two.update()
                         // pointCircle1.translation.x =
@@ -268,36 +299,36 @@ function ArrowLine(props) {
                 },
             })
 
-            interact(`#${group.id}`).draggable({
-                // enable inertial throwing
-                inertia: false,
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
 
-                listeners: {
-                    start(event) {
-                        // console.log(event.type, event.target);
-                    },
-                    move(event) {
-                        event.target.style.transform = `translate(${
-                            event.pageX
-                        }px, ${event.pageY - offsetHeight}px)`
-                    },
-                    end(event) {
-                        group.translation.x = event.pageX
-                        group.translation.y = event.pageY
-                        two.update()
+            //     listeners: {
+            //         start(event) {
+            //             // console.log(event.type, event.target);
+            //         },
+            //         move(event) {
+            //             event.target.style.transform = `translate(${
+            //                 event.pageX
+            //             }px, ${event.pageY - offsetHeight}px)`
+            //         },
+            //         end(event) {
+            //             group.translation.x = event.pageX
+            //             group.translation.y = event.pageY
+            //             two.update()
 
-                        updateComponentInfo({
-                            variables: {
-                                id: props.id,
-                                updateObj: {
-                                    x: parseInt(event.pageX),
-                                    y: parseInt(event.pageY),
-                                },
-                            },
-                        })
-                    },
-                },
-            })
+            //             updateComponentInfo({
+            //                 variables: {
+            //                     id: props.id,
+            //                     updateObj: {
+            //                         x: parseInt(event.pageX),
+            //                         y: parseInt(event.pageY),
+            //                     },
+            //                 },
+            //             })
+            //         },
+            //     },
+            // })
         }
 
         return () => {
@@ -369,6 +400,68 @@ function ArrowLine(props) {
         two.update()
     }
 
+    const updateX1Y1Vertices = (line, x1, y1, pointCircle1) => {
+        pointCircle1.translation.x = line.vertices[0].x + 4
+        pointCircle1.translation.y = line.vertices[0].y - 6
+
+        // copied code from definition of makeArrow
+        let headlen = 10
+
+        let angle = Math.atan2(line.vertices[1].y - y1, line.vertices[1].x - x1)
+
+        let vertices = [
+            new Two.Anchor(
+                x1,
+                y1,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                Two.Commands.move
+            ),
+            new Two.Anchor(
+                line.vertices[1].x,
+                line.vertices[1].y,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                Two.Commands.line
+            ),
+            new Two.Anchor(
+                line.vertices[1].x - headlen * Math.cos(angle - Math.PI / 4),
+                line.vertices[1].y - headlen * Math.sin(angle - Math.PI / 4),
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                Two.Commands.line
+            ),
+
+            new Two.Anchor(
+                line.vertices[1].x,
+                line.vertices[1].y,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                Two.Commands.move
+            ),
+            new Two.Anchor(
+                line.vertices[1].x - headlen * Math.cos(angle + Math.PI / 4),
+                line.vertices[1].y - headlen * Math.sin(angle + Math.PI / 4),
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                Two.Commands.line
+            ),
+        ]
+        line.vertices = vertices
+
+        two.update()
+    }
+
     useEffect(() => {
         if (internalState?.group?.data) {
             let groupInstance = internalState.group.data
@@ -378,17 +471,20 @@ function ArrowLine(props) {
 
             groupInstance.translation.x = props.x
             groupInstance.translation.y = props.y
-
-            lineInstance.vertices[0].x = props.x1
-            lineInstance.vertices[0].y = props.y1
-            pointCircle1.translation.x = props.x1 - 4
-            pointCircle1.translation.y = props.y1 - 6
-
-            updateX2Y2Vertices(lineInstance, props.x2, props.y2, pointCircle2)
-
             two.update()
+
+            updateX1Y1Vertices(lineInstance, props.x1, props.y1, pointCircle1)
+            updateX2Y2Vertices(lineInstance, props.x2, props.y2, pointCircle2)
         }
-    }, [props.x, props.y, props.metadata, props.x1, props.x2])
+    }, [
+        props.x,
+        props.y,
+        props.metadata,
+        props.x1,
+        props.x2,
+        props.y1,
+        props.y2,
+    ])
 
     function closeToolbar() {
         toggleToolbar(false)
@@ -411,8 +507,8 @@ function ArrowLine(props) {
 }
 
 ArrowLine.propTypes = {
-    x: PropTypes.string,
-    y: PropTypes.string,
+    x: PropTypes.number,
+    y: PropTypes.number,
 }
 
 ArrowLine.defaultProps = {
