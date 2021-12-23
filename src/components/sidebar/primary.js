@@ -1,85 +1,131 @@
-import React, { Component } from 'react'
-import { connect } from 'react-redux'
-import Panzoom from 'panzoom'
+import React, { useState, useEffect } from 'react'
+import { useMutation, useQuery } from '@apollo/client'
+import { useHistory } from 'react-router-dom'
 
 import SecondarySidebar from './secondary'
 import CursorICON from 'assets/cursor.svg'
 import PanICON from 'assets/pan.svg'
+import RightArrowIcon from 'assets/right_arrow.svg'
 import Icon from 'icons/icon'
-import { addElement } from 'store/actions/main'
+import { INSERT_COMPONENT, UPDATE_BOARD_COMPONENTS } from 'schema/mutations'
+import { GET_COMPONENT_TYPES } from 'schema/queries'
+
 import './sidebar.css'
 
-class Sidebar extends Component {
-    constructor(props) {
-        super(props)
-        this.state = {
-            selectedItem: null,
-            toggleSecondaryMenu: false,
+const PrimarySidebar = (props) => {
+    const {
+        loading: getComponentTypesLoading,
+        data: getComponentTypesData,
+        error: getComponentTypesError,
+    } = useQuery(GET_COMPONENT_TYPES)
+    const history = useHistory()
+    console.log('boardId', props.match.params.boardId)
+    const [
+        insertComponent,
+        {
+            loading: insertComponentLoading,
+            data: insertComponentSuccess,
+            error: insertComponentError,
+        },
+    ] = useMutation(INSERT_COMPONENT)
+    const [
+        updateBoardComponents,
+        {
+            loading: updateBoardComponentsLoading,
+            data: updateBoardComponentsSuccess,
+            error: updateBoardComponentsError,
+        },
+    ] = useMutation(UPDATE_BOARD_COMPONENTS)
+    const [secondaryMenu, toggleSecondaryMenu] = useState(false)
+
+    useEffect(() => {
+        if (insertComponentSuccess) {
+            let insertComponentData = insertComponentSuccess.component
+            let newBoardData = [
+                ...props.boardData,
+                {
+                    componentType: insertComponentData.componentType,
+                    id: insertComponentData.id,
+                },
+            ]
+            updateBoardComponents({
+                variables: {
+                    id: props.match.params.boardId,
+                    components: newBoardData,
+                },
+            })
+            console.log('insertComponentSuccess', insertComponentSuccess)
         }
-    }
-    componentDidMount() {
-        // Panzoom(document.getElementById('sidebar-container'))
-    }
-    handleMenuClick = (menu) => {
-        console.log('Yo dawg')
-        this.setState({ selectedItem: menu, toggleSecondaryMenu: true })
+    }, [insertComponentSuccess])
+
+    const addShape = (label) => {
+        let shapeData = null
+        console.log('getComponentTypesData', getComponentTypesData, label)
+        if (getComponentTypesData) {
+            getComponentTypesData.componentTypes.forEach((item, index) => {
+                if (item.label === label) {
+                    shapeData = {
+                        componentType: label,
+                        x: 200,
+                        y: 200,
+                        boardId: props.match.params.boardId,
+                    }
+                }
+            })
+        }
+        console.log('shapeData', shapeData)
+
+        shapeData && insertComponent({ variables: { object: shapeData } })
     }
 
-    addElementToScene = (result) => {
-        let id = Math.floor(Math.random() * 9000) + 1000
-        let newElement = { id, name: result }
-        this.props.addElement('ADD_ELEMENT', newElement)
-    }
-
-    handleOnBlurSecSidebar = (result) => {
-        result && this.addElementToScene(result)
-        this.setState({ toggleSecondaryMenu: false, selectedItem: null })
-    }
-
-    render() {
-        return (
+    return (
+        <>
             <div
                 id="sidebar-container"
                 className="sidebar-container flex items-center "
             >
-                {' '}
-                <div>
-                    {this.state.toggleSecondaryMenu && (
-                        <SecondarySidebar
-                            selectedItem={this.state.selectedItem}
-                            handleOnBlur={(result) => {
-                                // this.handleOnBlurSecSidebar(result)
-                            }}
-                        />
-                    )}
-                </div>
-                <div className="flex items-center justify-center w-64 px-2 py-2 mx-4 bg-white shadow-xl">
-                    <div className="relative transition-transform">
-                        <button
-                            className={`${
-                                this.state.selectedItem === 'elements'
-                                    ? ''
-                                    : 'icon-elements'
-                            }  hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                            onClick={() => this.handleMenuClick('elements')}
-                        >
-                            <Icon icon="SIDEBAR_ICON_ELEMENTS" />
-                        </button>
-                    </div>
-                    <div className="relative">
-                        {' '}
-                        <button
-                            className={`${
-                                this.state.selectedItem === 'shapes'
-                                    ? ''
-                                    : 'icon-shape'
-                            }  hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                            onClick={() => this.handleMenuClick('shapes')}
-                        >
-                            <Icon icon="SIDEBAR_ICON_POLYGON" />
-                        </button>
-                    </div>
-                    {/* <div className="relative">
+                <div className="flex items-center justify-center w-64 h-12 px-2 py-2 mx-4 bg-white shadow-xl">
+                    {getComponentTypesLoading ? (
+                        <div className=" text-blues-b500">Loading ...</div>
+                    ) : (
+                        <>
+                            {' '}
+                            <div>
+                                {secondaryMenu && (
+                                    <SecondarySidebar
+                                        selectedItem={null}
+                                        handleOnBlur={(result) => {
+                                            // this.handleOnBlurSecSidebar(result)
+                                        }}
+                                    />
+                                )}
+                            </div>
+                            <div className="relative transition-transform">
+                                <button
+                                    className={`hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
+                                    onClick={() => addShape('rectangle')}
+                                >
+                                    <Icon
+                                        width="23"
+                                        height="23"
+                                        icon="SIDEBAR_ICON_RECTANGLE"
+                                    />
+                                </button>
+                            </div>
+                            <div className="relative">
+                                {' '}
+                                <button
+                                    className={`hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
+                                    onClick={() => addShape('circle')}
+                                >
+                                    <Icon
+                                        width="23"
+                                        height="23"
+                                        icon="SIDEBAR_ICON_CIRCLE"
+                                    />
+                                </button>
+                            </div>
+                            {/* <div className="relative">
                         <button
                             className={`${
                                 this.state.selectedItem === 'frames'
@@ -91,19 +137,30 @@ class Sidebar extends Component {
                             <Icon icon="SIDEBAR_ICON_FRAME" />
                         </button>
                     </div> */}
-                    <div className="relative">
-                        <button
-                            className={`${
-                                this.state.selectedItem === 'text'
-                                    ? ''
-                                    : 'icon-text'
-                            }  hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                            onClick={this.handleMenuClick}
-                        >
-                            <Icon icon="SIDEBAR_ICON_TEXT" />
-                        </button>
-                    </div>
-                    <div className="relative">
+                            <div className="relative">
+                                <button
+                                    className={`hover:bg-blues-b50 bg-transparent px-2 py-2 block`}
+                                    onClick={() => addShape('arrowLine')}
+                                >
+                                    <img
+                                        className="w-6 h-6"
+                                        src={RightArrowIcon}
+                                    />
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <button
+                                    className={`hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
+                                    // onClick={this.handleMenuClick}
+                                >
+                                    <Icon
+                                        width="23"
+                                        height="23"
+                                        icon="SIDEBAR_ICON_TEXT"
+                                    />
+                                </button>
+                            </div>
+                            {/* <div className="relative">
                         {' '}
                         <button
                             className={`${
@@ -115,40 +172,21 @@ class Sidebar extends Component {
                         >
                             <Icon icon="SIDEBAR_ICON_PENCIL" />
                         </button>
-                    </div>
-                    <div className="relative">
-                        <button
-                            className={`${
-                                this.state.selectedItem === 'selector'
-                                    ? ''
-                                    : 'icon-selector'
-                            }  hover:bg-blues-b50 bg-transparent px-2 py-2 block`}
-                            onClick={this.props.changeSelectMode}
-                        >
-                            <img width={30} height={30} src={CursorICON} />
-                        </button>
-                    </div>
-                    <div className="relative">
-                        <button
-                            className={`${
-                                this.state.selectedItem === 'selector'
-                                    ? ''
-                                    : 'icon-selector'
-                            }  hover:bg-blues-b50 bg-transparent px-2 py-2 block`}
-                            onClick={this.props.changeSelectMode}
-                        >
-                            <img width={30} height={30} src={PanICON} />
-                        </button>
-                    </div>
+                    </div> */}
+                            <div className="relative">
+                                <button
+                                    className={` hover:bg-blues-b50 bg-transparent px-2 py-2 block`}
+                                    onClick={props.changeSelectMode}
+                                >
+                                    <img className="w-6 h-6" src={PanICON} />
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
-        )
-    }
+        </>
+    )
 }
 
-function mapStateToProps(state) {
-    return {
-        componentData: state.main.componentData,
-    }
-}
-export default Sidebar
+export default PrimarySidebar

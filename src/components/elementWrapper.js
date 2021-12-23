@@ -27,7 +27,12 @@ const ElementWrapper = (elementName, data) => {
 
         console.log('getComponentInfoData data change', getComponentInfoData)
         return data.twoJSInstance ? (
-            <ElementToRender {...data} {...getComponentInfoData.component} />
+            getComponentInfoData?.component ? (
+                <ElementToRender
+                    {...data}
+                    {...getComponentInfoData.component}
+                />
+            ) : null
         ) : (
             <Spinner />
         )

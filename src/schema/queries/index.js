@@ -8,3 +8,13 @@ export const GET_USER_DETAILS = gql`
         }
     }
 `
+
+export const GET_COMPONENT_TYPES = gql`
+    query getComponentTypes {
+        componentTypes: components_componentType {
+            label
+            defaultMetaData
+            logo
+        }
+    }
+`
