@@ -249,6 +249,8 @@ function ArrowLine(props) {
                         // two.update()
                     },
                     end(event) {
+                        // Had to use mutation as seperate here in this component due to
+                        // no control of pointcircle available in canvas component
                         updateComponentInfo({
                             variables: {
                                 id: props.id,
@@ -286,6 +288,8 @@ function ArrowLine(props) {
                         // two.update()
                     },
                     end(event) {
+                        // Had to use mutation as seperate here in this component due to
+                        // no control of pointcircle available in canvas component
                         updateComponentInfo({
                             variables: {
                                 id: props.id,

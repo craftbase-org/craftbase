@@ -133,13 +133,14 @@ button:focus {
     -ms-box-flex: 0;
     box-flex: 0;
     position: fixed;
-    height: 10%;
+    top: 5px;
+    /* height: 10%; */
     -webkit-transition: all 500ms;
     -moz-transition: all 500ms;
     -o-transition: all 500ms;
     transition: all 500ms;
 }
-
+/* 
 .sidebar-container .icon-elements:hover::after {
     content: 'Elements';
     width: 90px;
@@ -344,7 +345,7 @@ button:focus {
     -o-transition: all 1s;
     transition: all 1s;
     z-index: 1;
-}
+} */
 
 /* .secondary-sidebar-content::before {
 //     content: ' ';
