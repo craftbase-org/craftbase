@@ -20,21 +20,21 @@ const BoardViewPage = (props) => {
         setSelectPanMode(!prevSelectPanMode)
     }
 
-    if (getBoardDataLoading) {
-        return (
-            <>
-                <Spinner displayText={'Loading data'} />
-            </>
-        )
-    }
+    // if (getBoardDataLoading) {
+    //     return (
+    //         <>
+    //             <Spinner displayText={'Loading data'} />
+    //         </>
+    //     )
+    // }
 
-    if (getBoardDataError) {
-        return (
-            <>
-                <div>Something went wrong while rendering board</div>
-            </>
-        )
-    }
+    // if (getBoardDataError) {
+    //     return (
+    //         <>
+    //             <div>Something went wrong while rendering board</div>
+    //         </>
+    //     )
+    // }
 
     let dummyComponentData = [
         {
@@ -51,7 +51,11 @@ const BoardViewPage = (props) => {
         },
     ]
 
-    console.log('getBoardData', getBoardData)
+    console.log(
+        'getBoardData.boardData.components',
+        getBoardData?.boardData?.components
+        // getBoardData.boardData.components
+    )
     return (
         <>
             <div>
@@ -59,11 +63,11 @@ const BoardViewPage = (props) => {
                     selectCursorMode={selectPanMode}
                     {...props}
                     changeSelectMode={changeSelectMode}
-                    boardData={getBoardData.boardData.components}
+                    boardData={dummyComponentData}
                 />
                 <Canvas
                     selectPanMode={selectPanMode}
-                    componentData={getBoardData.boardData.components}
+                    componentData={dummyComponentData}
                 />
             </div>
         </>

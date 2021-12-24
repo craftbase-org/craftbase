@@ -9,10 +9,12 @@ import RightArrowIcon from 'assets/right_arrow.svg'
 import Icon from 'icons/icon'
 import { INSERT_COMPONENT, UPDATE_BOARD_COMPONENTS } from 'schema/mutations'
 import { GET_COMPONENT_TYPES } from 'schema/queries'
+import SpinnerWithSize from 'components/common/spinnerWithSize'
 
 import './sidebar.css'
 
 const PrimarySidebar = (props) => {
+    const [showAddShapeLoader, setShowAddShapeLoader] = useState(false)
     const {
         loading: getComponentTypesLoading,
         data: getComponentTypesData,
@@ -58,6 +60,12 @@ const PrimarySidebar = (props) => {
         }
     }, [insertComponentSuccess])
 
+    useEffect(() => {
+        if (updateBoardComponentsSuccess && showAddShapeLoader) {
+            setShowAddShapeLoader(false)
+        }
+    }, [updateBoardComponentsSuccess])
+
     const addShape = (label) => {
         let shapeData = null
         console.log('getComponentTypesData', getComponentTypesData, label)
@@ -69,12 +77,14 @@ const PrimarySidebar = (props) => {
                         x: 200,
                         y: 200,
                         boardId: props.match.params.boardId,
+                        metadata: props.defaultMetaData,
                     }
                 }
             })
         }
         console.log('shapeData', shapeData)
 
+        setShowAddShapeLoader(true)
         shapeData && insertComponent({ variables: { object: shapeData } })
     }
 
@@ -151,7 +161,7 @@ const PrimarySidebar = (props) => {
                             <div className="relative">
                                 <button
                                     className={`hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                                    // onClick={this.handleMenuClick}
+                                    onClick={() => addShape('text')}
                                 >
                                     <Icon
                                         width="23"
@@ -184,6 +194,9 @@ const PrimarySidebar = (props) => {
                         </>
                     )}
                 </div>
+            </div>
+            <div className="w-5 absolute">
+                <SpinnerWithSize loaderSize="sm" />
             </div>
         </>
     )

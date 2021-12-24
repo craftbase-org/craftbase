@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
+import { useMutation } from '@apollo/client'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
+
 import { useImmer } from 'use-immer'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import handleDrag from 'components/utils/dragger'
@@ -12,9 +14,12 @@ import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/text'
 
 function Text(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({ textFontSize: 16 })
-    const dispatch = useDispatch()
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
@@ -203,6 +208,17 @@ function Text(props) {
           </foreignObject>
           `
                     two.update()
+                    updateComponentInfo({
+                        variables: {
+                            id: props.id,
+                            updateObj: {
+                                metaData: {
+                                    ...props.metadata,
+                                    content: textValue,
+                                },
+                            },
+                        },
+                    })
                     input.remove()
                 })
             })
