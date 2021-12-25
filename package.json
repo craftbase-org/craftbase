@@ -4,10 +4,12 @@
     "private": true,
     "dependencies": {
         "@apollo/client": "^3.4.16",
+        "@craco/craco": "^6.1.2",
         "@panzoom/panzoom": "^4.3.2",
         "@testing-library/jest-dom": "^4.2.4",
         "@testing-library/react": "^9.3.2",
         "@testing-library/user-event": "^7.1.2",
+        "craco-less": "^1.17.1",
         "dragselect": "^1.13.1",
         "framer-motion": "^1.11.0",
         "graphql": "^16.0.1",
@@ -23,23 +25,20 @@
         "react-redux": "^7.2.0",
         "react-router": "^5.1.2",
         "react-router-dom": "^5.1.2",
-        "react-scripts": "3.4.0",
+        "react-scripts": "4.0.3",
         "redux": "^4.0.5",
         "redux-logger": "^3.0.6",
         "redux-thunk": "^2.3.0",
         "styled-components": "^5.1.1",
         "subscriptions-transport-ws": "^0.11.0",
-        "tailwindcss": "^1.4.6",
-        "two.js": "^0.7.1",
+        "two.js": "^0.7.13",
         "use-immer": "^0.4.0"
     },
     "scripts": {
-        "start": "npm run watch:css && react-scripts start",
-        "build": "npm run build:css && react-scripts build",
-        "test": "react-scripts test",
-        "eject": "react-scripts eject",
-        "build:css": "postcss src/styles/tailwind.css -o src/styles/main.css",
-        "watch:css": "postcss src/styles/tailwind.css -o src/styles/main.css"
+        "start": "craco start",
+        "build": "craco build",
+        "test": "craco test",
+        "eject": "react-scripts eject"
     },
     "eslintConfig": {
         "extends": "react-app"
@@ -57,7 +56,8 @@
         ]
     },
     "devDependencies": {
-        "autoprefixer": "^9.7.6",
-        "postcss-cli": "^7.1.0"
+        "autoprefixer": "^9",
+        "postcss": "^7",
+        "tailwindcss": "npm:@tailwindcss/postcss7-compat"
     }
 }

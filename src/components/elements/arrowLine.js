@@ -160,7 +160,7 @@ function ArrowLine(props) {
                 //     line.getBoundingClientRect(true).bottom + 10
                 // )
                 two.update()
-                // toggleToolbar(true)
+                toggleToolbar(true)
             })
 
             interact(`#${group.id}`).on('blur', (e) => {

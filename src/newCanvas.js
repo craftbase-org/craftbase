@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { connect } from 'react-redux'
 import { useQuery, useMutation } from '@apollo/client'
 import Two from 'two.js'
-import Zui from 'two.js/extras/zui'
 import panzoom from 'panzoom'
-import ZUI from 'two.js/extras/zui'
+import ZUI from 'two.js/extras/jsm/zui'
 
 import ComponentWrapper from 'components/elementWrapper'
 import Toolbar from 'components/floatingToolbar'
@@ -258,6 +257,7 @@ const Canvas = (props) => {
             fullscreen: true,
             // width: "auto",
         }).appendTo(elem)
+
         two.update()
 
         console.log('two', two.scene)

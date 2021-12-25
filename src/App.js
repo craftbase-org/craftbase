@@ -1,9 +1,6 @@
 import React, { Component } from 'react'
 import { Switch, Route, BrowserRouter } from 'react-router-dom'
-import logger from 'redux-logger'
-import reduxThunk from 'redux-thunk'
-import { Provider } from 'react-redux'
-import { createStore, applyMiddleware } from 'redux'
+
 import {
     ApolloClient,
     ApolloProvider,
@@ -22,16 +19,6 @@ import routes from './routes'
 import './App.css'
 import './styles/main.css'
 import './common.css'
-
-const createStoreWithMiddleware = applyMiddleware(
-    reduxThunk,
-    logger
-)(createStore)
-
-const store = createStoreWithMiddleware(
-    reducers,
-    window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
-)
 
 function getApolloClient() {
     const accessToken = localStorage.getItem('access_token')

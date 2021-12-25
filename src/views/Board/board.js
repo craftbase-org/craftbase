@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSubscription, useQuery } from '@apollo/client'
 
-import { GET_BOARD_DATA } from 'schema/subscriptions'
+import { GET_BOARD_DATA, GET_COMPONENT_INFO } from 'schema/subscriptions'
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Spinner from 'components/common/spinner'
@@ -13,6 +13,7 @@ const BoardViewPage = (props) => {
         error: getBoardDataError,
         data: getBoardData,
     } = useSubscription(GET_BOARD_DATA, { variables: { id: boardId } })
+
     const [selectPanMode, setSelectPanMode] = useState(false)
 
     const changeSelectMode = () => {
@@ -20,13 +21,13 @@ const BoardViewPage = (props) => {
         setSelectPanMode(!prevSelectPanMode)
     }
 
-    // if (getBoardDataLoading) {
-    //     return (
-    //         <>
-    //             <Spinner displayText={'Loading data'} />
-    //         </>
-    //     )
-    // }
+    if (getBoardDataLoading) {
+        return (
+            <>
+                <Spinner displayText={'Loading data'} />
+            </>
+        )
+    }
 
     // if (getBoardDataError) {
     //     return (
