@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { connect } from 'react-redux'
-import { useQuery, useMutation } from '@apollo/client'
+import { useQuery, useMutation, useSubscription } from '@apollo/client'
 import Two from 'two.js'
-import panzoom from 'panzoom'
+
+import Loadable from 'react-loadable'
 import ZUI from 'two.js/extras/jsm/zui'
 
 import ComponentWrapper from 'components/elementWrapper'
@@ -10,6 +11,10 @@ import Toolbar from 'components/floatingToolbar'
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { getElementsData } from 'store/actions/main'
 import Zoomer from 'components/utils/zoomer'
+
+import Spinner from 'components/common/spinner'
+import { GET_COMPONENT_INFO } from 'schema/subscriptions'
+import Loader from 'components/utils/loader'
 
 function addZUI(props, updateToGlobalState, two) {
     let shape = null
@@ -227,11 +232,41 @@ function addZUI(props, updateToGlobalState, two) {
     }
 }
 
+const getMeElement = (ElementToRender, data) => {
+    const RenderElement = () => {
+        console.log('in render Element', data)
+        const {
+            loading: getComponentInfoLoading,
+            data: getComponentInfoData,
+            error: getComponentInfoError,
+        } = useSubscription(GET_COMPONENT_INFO, { variables: { id: data.id } })
+
+        if (getComponentInfoLoading) {
+            return <Spinner displayText={'Loading component data'} />
+        }
+
+        console.log('getComponentInfoData data change', getComponentInfoData)
+        return data.twoJSInstance ? (
+            getComponentInfoData?.component ? (
+                <ElementToRender
+                    {...data}
+                    {...getComponentInfoData.component}
+                />
+            ) : null
+        ) : (
+            <Spinner />
+        )
+    }
+    return RenderElement
+}
 const Canvas = (props) => {
     const [twoJSInstance, setTwoJSInstance] = useState(null)
+    const [prevElements, setPrevElements] = useState([])
+    const [componentsToRender, setComponentsToRender] = useState([])
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
+
     useEffect(() => {
         // setting pan displacement values to initial
         localStorage.setItem('displacement_x', 0)
@@ -268,6 +303,45 @@ const Canvas = (props) => {
         // this.props.getElementsData('CONSTRUCT', arr)
         setTwoJSInstance(two)
     }, [])
+
+    useEffect(() => {
+        console.log(
+            'on change props.componentData',
+            props.componentData,
+            prevElements,
+            twoJSInstance
+        )
+        let arr = []
+        let components = [...componentsToRender]
+        if (props.componentData && twoJSInstance) {
+            props.componentData.forEach((item, index) => {
+                if (prevElements.includes(item.id)) {
+                    // nothing
+                } else {
+                    const ElementToRender = Loadable({
+                        loader: () =>
+                            import(`components/elements/${item.componentType}`),
+                        loading: Loader,
+                    })
+                    const data = {
+                        twoJSInstance: twoJSInstance,
+                        id: item.id,
+                        // childrenArr: item.children,
+                        itemData: item,
+                        selectPanMode: props.selectPanMode,
+                    }
+                    const component = getMeElement(ElementToRender, data)
+                    components.push(component)
+                }
+
+                arr.push(item.id)
+            })
+            setComponentsToRender(components)
+            twoJSInstance && setPrevElements(arr)
+        }
+
+        // setComponentsToRender()
+    }, [props.componentData, twoJSInstance])
 
     const updateToGlobalState = (newItem) => {
         console.log('updateToGlobalState', newItem)
@@ -373,6 +447,7 @@ const Canvas = (props) => {
         return renderData
     }
 
+    console.log('componentsToRender', componentsToRender)
     return (
         <>
             <div id="rsz-rect"></div>
@@ -380,9 +455,14 @@ const Canvas = (props) => {
             <div id="pan-dragger"></div>
 
             <div id="main-two-root"></div>
-            {twoJSInstance && (
+            {/* {twoJSInstance && (
                 <React.Fragment>{renderElements()}</React.Fragment>
-            )}
+            )} */}
+            {componentsToRender.map((Component, index) => (
+                <React.Fragment key={index}>
+                    <Component />
+                </React.Fragment>
+            ))}
             <Zoomer sceneInstance={twoJSInstance} />
         </>
     )

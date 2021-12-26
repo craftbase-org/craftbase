@@ -17,7 +17,7 @@ import reducers from 'store/reducers'
 import routes from './routes'
 
 import './App.css'
-import './styles/main.css'
+
 import './common.css'
 
 function getApolloClient() {

@@ -13,7 +13,7 @@ const ElementWrapper = (elementName, data) => {
         loading: Loader,
     })
 
-    const RenderElement = () => {
+    const RenderElement = ({ ElementToRender, data }) => {
         console.log('in render Element', data)
         const {
             loading: getComponentInfoLoading,
