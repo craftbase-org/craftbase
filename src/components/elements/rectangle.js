@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
+import { useMutation } from '@apollo/client'
 import idx from 'idx'
 import { useImmer } from 'use-immer'
 import Panzoom from 'panzoom'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import getEditComponents from 'components/utils/editWrapper'
 import handleDrag from 'components/utils/dragger'
 import { setPeronsalInformation } from 'store/actions/main'
@@ -13,6 +15,9 @@ import { elementOnBlurHandler } from 'utils/misc'
 import Toolbar from 'components/floatingToolbar'
 
 function Rectangle(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const selectedComponents = []
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
@@ -38,7 +43,12 @@ function Rectangle(props) {
         const prevY = props.y
 
         // Instantiate factory
-        const elementFactory = new ElementFactory(two, prevX, prevY, {})
+        const elementFactory = new ElementFactory(
+            two,
+            prevX,
+            prevY,
+            props.metadata
+        )
         // Get all instances of every sub child element
         const { group, rectangle } = elementFactory.createElement()
         group.elementData = props?.itemData
@@ -165,7 +175,24 @@ function Rectangle(props) {
                     },
                     end(event) {
                         getGroupElementFromDOM.removeAttribute('data-resize')
-                        console.log('rect event end', event.pageX)
+                        updateComponentInfo({
+                            variables: {
+                                id: props.id,
+                                updateObj: {
+                                    metadata: {
+                                        ...props.metadata,
+                                        height: parseInt(rectangle.height),
+                                        width: parseInt(rectangle.width),
+                                    },
+                                },
+                            },
+                        })
+                        console.log(
+                            'rect event end',
+                            event.pageX,
+                            rectangle.width,
+                            rectangle.height
+                        )
                         console.log('the end')
                     },
                 },
@@ -266,7 +293,20 @@ function Rectangle(props) {
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
-                    updateComponent={() => {
+                    updateComponent={(propertyToUpdate, propertyValue) => {
+                        propertyToUpdate &&
+                            propertyValue &&
+                            updateComponentInfo({
+                                variables: {
+                                    id: props.id,
+                                    updateObj: {
+                                        metadata: {
+                                            ...props.metadata,
+                                            [propertyToUpdate]: propertyValue,
+                                        },
+                                    },
+                                },
+                            })
                         two.update()
                     }}
                 />

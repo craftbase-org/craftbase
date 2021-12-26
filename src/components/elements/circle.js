@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
+import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
 
 // import Panzoom from '@panzoom/panzoom'
-
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import handleDrag from 'components/utils/dragger'
 import { elementOnBlurHandler } from 'utils/misc'
 import { setPeronsalInformation } from 'store/actions/main'
@@ -13,6 +14,9 @@ import { color_blue, defaultScaleConstant } from 'utils/constants'
 import Toolbar from 'components/floatingToolbar'
 
 function Circle(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const selectedComponents = []
 
     const [showToolbar, toggleToolbar] = useState(false)
@@ -41,7 +45,12 @@ function Circle(props) {
         const prevY = props.y
 
         // Instantiate factory
-        const elementFactory = new CircleFactory(two, prevX, prevY, {})
+        const elementFactory = new CircleFactory(
+            two,
+            prevX,
+            prevY,
+            props.metadata
+        )
         // Get all instances of every sub child element
         const { group, circle } = elementFactory.createElement()
         group.elementData = props?.itemData
@@ -173,7 +182,20 @@ function Circle(props) {
                         two.update()
                     },
                     end(event) {
-                        console.log('the end')
+                        console.log('the end', circle)
+                        updateComponentInfo({
+                            variables: {
+                                id: props.id,
+                                updateObj: {
+                                    metadata: {
+                                        ...props.metadata,
+                                        height: parseInt(circle.height),
+                                        width: parseInt(circle.width),
+                                        radius: circle.radius,
+                                    },
+                                },
+                            },
+                        })
                         getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
@@ -285,7 +307,20 @@ function Circle(props) {
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
-                    updateComponent={() => {
+                    updateComponent={(propertyToUpdate, propertyValue) => {
+                        propertyToUpdate &&
+                            propertyValue &&
+                            updateComponentInfo({
+                                variables: {
+                                    id: props.id,
+                                    updateObj: {
+                                        metadata: {
+                                            ...props.metadata,
+                                            [propertyToUpdate]: propertyValue,
+                                        },
+                                    },
+                                },
+                            })
                         two.update()
                     }}
                 />
