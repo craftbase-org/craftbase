@@ -77,7 +77,7 @@ const PrimarySidebar = (props) => {
                         x: 200,
                         y: 200,
                         boardId: props.match.params.boardId,
-                        metadata: props.defaultMetaData,
+                        metadata: item.defaultMetaData,
                     }
                 }
             })
@@ -195,9 +195,14 @@ const PrimarySidebar = (props) => {
                     )}
                 </div>
             </div>
-            <div className="w-5 absolute">
-                <SpinnerWithSize loaderSize="sm" />
-            </div>
+            {showAddShapeLoader ? (
+                <div className="w-32  absolute right-0 -top-5">
+                    <div className="w-full flex items-center flex-wrap px-2 py-2 ">
+                        <SpinnerWithSize loaderSize="sm" />{' '}
+                        {/* <div className="w-32 pl-1 text-sm text-left">updating</div> */}
+                    </div>
+                </div>
+            ) : null}
         </>
     )
 }

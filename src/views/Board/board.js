@@ -64,11 +64,11 @@ const BoardViewPage = (props) => {
                     selectCursorMode={selectPanMode}
                     {...props}
                     changeSelectMode={changeSelectMode}
-                    boardData={dummyComponentData}
+                    boardData={getBoardData.boardData.components}
                 />
                 <Canvas
                     selectPanMode={selectPanMode}
-                    componentData={dummyComponentData}
+                    componentData={getBoardData.boardData.components}
                 />
             </div>
         </>

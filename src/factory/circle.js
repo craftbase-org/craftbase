@@ -6,10 +6,10 @@ export default class CircleFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill } = this.properties
+        const { fill, width, height, radius } = this.properties
 
         // Implement core element
-        const circle = two.makeEllipse(0, 0, 30, 30)
+        const circle = two.makeCircle(0, 0, radius)
         circle.fill = fill ? fill : color_blue
         circle.noStroke()
         this.circle = circle

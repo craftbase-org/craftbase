@@ -1,15 +1,3 @@
-body {
-    margin: 0;
-    font-family: 'Noto Sans JP', sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-        monospace;
-}
-
-/* g {
-    cursor: pointer;
-} */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

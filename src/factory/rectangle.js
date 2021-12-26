@@ -6,11 +6,11 @@ export default class RectangleFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { bgColor } = this.properties
+        const { bgColor, width, height } = this.properties
 
         // Implement core element
 
-        const rectangle = two.makeRectangle(0, 0, 210, 110)
+        const rectangle = two.makeRectangle(0, 0, width || 210, height || 110)
         rectangle.fill = bgColor ? bgColor : color_blue
         rectangle.noStroke()
         // dashed dotted

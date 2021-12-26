@@ -5,11 +5,12 @@ export default class TextFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill } = this.properties
+        console.log('this.properties', this.properties)
+        const { fill = 'rgba(0,0,0,0)', content = '' } = this.properties
 
         // pass width and height here for transparent rectangle container
         const rectangle = two.makeRoundedRectangle(0, 0, 330, 45, 5)
-        rectangle.fill = 'rgba(0,0,0,0)'
+        rectangle.fill = fill
         rectangle.noStroke()
 
         const rectTextGroup = two.makeGroup(rectangle)
@@ -28,7 +29,7 @@ export default class TextFactory extends Main {
     <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
             rectTextGroup.getBoundingClientRect(true).top
         } width=${rectangle.width} height=${50}>
-        <div>This is HTML gregre reyreyyre yryeyer</div>
+        <div>${content}</div>
     </foreignObject>
     `
         rectTextGroup.center()

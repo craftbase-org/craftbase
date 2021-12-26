@@ -37,8 +37,8 @@
     margin: 20px;
     display: block;
     /* 	background-color:green; */
-    border: 4px solid;
-    animation: spinner 0.5s linear infinite;
+    border: 3px solid;
+    animation: spinner 0.4s linear infinite;
     width: 25px;
     height: 25px;
     border-radius: 25px;

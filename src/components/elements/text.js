@@ -35,7 +35,7 @@ function Text(props) {
     // Using unmount phase to remove event listeners
     useEffect(() => {
         let textFontSize = 16
-        let textValue = 'This is HTML gregre reyreyyre yryeyer'
+        let textValue = props.metadata.content
         let itemData = props?.itemData
         // Calculate x and y through dividing width and height by 2 or vice versa
         // if x and y are given then multiply width and height into 2
@@ -44,7 +44,12 @@ function Text(props) {
         const prevY = props.y
 
         // Instantiate factory
-        const elementFactory = new ElementFactory(two, prevX, prevY, {})
+        const elementFactory = new ElementFactory(
+            two,
+            prevX,
+            prevY,
+            props.metadata
+        )
         // Get all instances of every sub child element
         const { group, rectTextGroup, rectangle } =
             elementFactory.createElement()
@@ -212,7 +217,7 @@ function Text(props) {
                         variables: {
                             id: props.id,
                             updateObj: {
-                                metaData: {
+                                metadata: {
                                     ...props.metadata,
                                     content: textValue,
                                 },
