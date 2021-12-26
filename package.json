@@ -1,5 +1,5 @@
 {
-    "name": "draftbase",
+    "name": "craftbase",
     "version": "0.1.0",
     "private": true,
     "dependencies": {
@@ -36,7 +36,7 @@
     },
     "scripts": {
         "start": "craco start",
-        "build": "craco build",
+        "build": "CI= craco build",
         "test": "craco test",
         "eject": "react-scripts eject"
     },

@@ -219,62 +219,62 @@ const Toolbar = (props) => {
             ),
             renderSvg: () => <Icon icon="ICON_CARET" width={25} height={25} />,
         },
-        {
-            key: properties.fontSize,
-            title: 'Font ',
-            accordion: state.fontAccordion,
-            toggleAccordion: () =>
-                setState((draft) => {
-                    draft.fontAccordion = !state.fontAccordion
-                }),
-            content: () => (
-                <Fragment>
-                    <FontSizeSlider
-                        title="Size"
-                        currentFontSize={state.fontSize}
-                        onChangeComplete={(arr) => {
-                            setState((draft) => {
-                                draft.fontSize = arr[0]
-                            })
-                        }}
-                    />
-                    <hr className="my-4 mt-12" />
-                    <div className="transition duration-300 mb-2">
-                        <div className="p-1 text-left">Style</div>
-                        <div className="py-3 px-1 text-left">
-                            <FontWeightBtn
-                                className="hover:bg-blues-b400 hover:text-white transition duration-100"
-                                fontWeight={state.fontWeight}
-                                onClick={() => {
-                                    if (state.fontWeight !== 600)
-                                        setState((draft) => {
-                                            draft.fontWeight = 600
-                                        })
-                                    else
-                                        setState((draft) => {
-                                            draft.fontWeight = 400
-                                        })
-                                }}
-                            >
-                                B
-                            </FontWeightBtn>
-                            <TextUnderlineBtn
-                                className="ml-2 hover:bg-blues-b50 hover:text-blues-b400 transition duration-100"
-                                hasUnderline={state.hasUnderline}
-                                onClick={() => {
-                                    setState((draft) => {
-                                        draft.hasUnderline = !state.hasUnderline
-                                    })
-                                }}
-                            >
-                                U
-                            </TextUnderlineBtn>
-                        </div>
-                    </div>
-                </Fragment>
-            ),
-            renderSvg: () => <Icon icon="ICON_CARET" width={25} height={25} />,
-        },
+        // {
+        //     key: properties.fontSize,
+        //     title: 'Font ',
+        //     accordion: state.fontAccordion,
+        //     toggleAccordion: () =>
+        //         setState((draft) => {
+        //             draft.fontAccordion = !state.fontAccordion
+        //         }),
+        //     content: () => (
+        //         <Fragment>
+        //             <FontSizeSlider
+        //                 title="Size"
+        //                 currentFontSize={state.fontSize}
+        //                 onChangeComplete={(arr) => {
+        //                     setState((draft) => {
+        //                         draft.fontSize = arr[0]
+        //                     })
+        //                 }}
+        //             />
+        //             <hr className="my-4 mt-12" />
+        //             <div className="transition duration-300 mb-2">
+        //                 <div className="p-1 text-left">Style</div>
+        //                 <div className="py-3 px-1 text-left">
+        //                     <FontWeightBtn
+        //                         className="hover:bg-blues-b400 hover:text-white transition duration-100"
+        //                         fontWeight={state.fontWeight}
+        //                         onClick={() => {
+        //                             if (state.fontWeight !== 600)
+        //                                 setState((draft) => {
+        //                                     draft.fontWeight = 600
+        //                                 })
+        //                             else
+        //                                 setState((draft) => {
+        //                                     draft.fontWeight = 400
+        //                                 })
+        //                         }}
+        //                     >
+        //                         B
+        //                     </FontWeightBtn>
+        //                     <TextUnderlineBtn
+        //                         className="ml-2 hover:bg-blues-b50 hover:text-blues-b400 transition duration-100"
+        //                         hasUnderline={state.hasUnderline}
+        //                         onClick={() => {
+        //                             setState((draft) => {
+        //                                 draft.hasUnderline = !state.hasUnderline
+        //                             })
+        //                         }}
+        //                     >
+        //                         U
+        //                     </TextUnderlineBtn>
+        //                 </div>
+        //             </div>
+        //         </Fragment>
+        //     ),
+        //     renderSvg: () => <Icon icon="ICON_CARET" width={25} height={25} />,
+        // },
         {
             key: properties.borderColor,
             title: 'Border',
