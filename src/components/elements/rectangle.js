@@ -43,12 +43,9 @@ function Rectangle(props) {
         const prevY = props.y
 
         // Instantiate factory
-        const elementFactory = new ElementFactory(
-            two,
-            prevX,
-            prevY,
-            props.metadata
-        )
+        const elementFactory = new ElementFactory(two, prevX, prevY, {
+            ...props,
+        })
         // Get all instances of every sub child element
         const { group, rectangle } = elementFactory.createElement()
         group.elementData = props?.itemData
@@ -179,11 +176,8 @@ function Rectangle(props) {
                             variables: {
                                 id: props.id,
                                 updateObj: {
-                                    metadata: {
-                                        ...props.metadata,
-                                        height: parseInt(rectangle.height),
-                                        width: parseInt(rectangle.width),
-                                    },
+                                    height: parseInt(rectangle.height),
+                                    width: parseInt(rectangle.width),
                                 },
                             },
                         })
@@ -277,7 +271,15 @@ function Rectangle(props) {
             groupInstance.translation.y = props.y
             two.update()
         }
-    }, [props.x, props.y, props.metadata])
+        if (internalState?.shape?.data) {
+            let shapeInstance = internalState.shape.data
+            shapeInstance.width = props.width || shapeInstance.width
+            shapeInstance.height = props.height || shapeInstance.height
+            shapeInstance.fill = props.fill || shapeInstance.fill
+
+            two.update()
+        }
+    }, [props.x, props.y, props.width, props.height, props.fill])
 
     function closeToolbar() {
         toggleToolbar(false)
@@ -300,10 +302,7 @@ function Rectangle(props) {
                                 variables: {
                                     id: props.id,
                                     updateObj: {
-                                        metadata: {
-                                            ...props.metadata,
-                                            [propertyToUpdate]: propertyValue,
-                                        },
+                                        [propertyToUpdate]: propertyValue,
                                     },
                                 },
                             })

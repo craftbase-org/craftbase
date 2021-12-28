@@ -45,12 +45,9 @@ function Circle(props) {
         const prevY = props.y
 
         // Instantiate factory
-        const elementFactory = new CircleFactory(
-            two,
-            prevX,
-            prevY,
-            props.metadata
-        )
+        const elementFactory = new CircleFactory(two, prevX, prevY, {
+            ...props,
+        })
         // Get all instances of every sub child element
         const { group, circle } = elementFactory.createElement()
         group.elementData = props?.itemData
@@ -187,12 +184,7 @@ function Circle(props) {
                             variables: {
                                 id: props.id,
                                 updateObj: {
-                                    metadata: {
-                                        ...props.metadata,
-                                        height: parseInt(circle.height),
-                                        width: parseInt(circle.width),
-                                        radius: circle.radius,
-                                    },
+                                    radius: parseInt(circle.radius),
                                 },
                             },
                         })
@@ -292,7 +284,16 @@ function Circle(props) {
             groupInstance.translation.y = props.y
             two.update()
         }
-    }, [props.x, props.y, props.metadata])
+        if (internalState?.shape?.data) {
+            let shapeInstance = internalState.shape.data
+            shapeInstance.radius = props.radius
+                ? props.radius
+                : shapeInstance.radius
+            shapeInstance.fill = props.fill ? props.fill : shapeInstance.fill
+
+            two.update()
+        }
+    }, [props.x, props.y, props.fill, props.radius])
 
     function closeToolbar() {
         toggleToolbar(false)
@@ -314,10 +315,7 @@ function Circle(props) {
                                 variables: {
                                     id: props.id,
                                     updateObj: {
-                                        metadata: {
-                                            ...props.metadata,
-                                            [propertyToUpdate]: propertyValue,
-                                        },
+                                        [propertyToUpdate]: propertyValue,
                                     },
                                 },
                             })

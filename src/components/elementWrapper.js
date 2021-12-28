@@ -19,7 +19,10 @@ const ElementWrapper = (elementName, data) => {
             loading: getComponentInfoLoading,
             data: getComponentInfoData,
             error: getComponentInfoError,
-        } = useSubscription(GET_COMPONENT_INFO, { variables: { id: data.id } })
+        } = useSubscription(GET_COMPONENT_INFO, {
+            variables: { id: data.id },
+            fetchPolicy: 'no-cache',
+        })
 
         if (getComponentInfoLoading) {
             return <Spinner displayText={'Loading component data'} />

@@ -14,6 +14,12 @@ export const GET_COMPONENT_INFO = gql`
     subscription getComponentInfoSubscription($id: uuid = "") {
         component: components_component_by_pk(id: $id) {
             metadata
+            width
+            height
+            fill
+            radius
+            stroke
+            linewidth
             x
             y
             x1

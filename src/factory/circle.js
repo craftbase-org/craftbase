@@ -9,7 +9,7 @@ export default class CircleFactory extends Main {
         const { fill, width, height, radius } = this.properties
 
         // Implement core element
-        const circle = two.makeCircle(0, 0, radius)
+        const circle = two.makeCircle(0, 0, radius || 30)
         circle.fill = fill ? fill : color_blue
         circle.noStroke()
         this.circle = circle
