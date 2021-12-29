@@ -19,8 +19,8 @@ const ToolbarContainer = styled(motion.div)`
     left: 0;
     outline: none;
     top: 0;
-    background: rgba(255, 255, 255, 0.5);
-    backdrop-filter: blur(3px);
+    background: rgba(255, 255, 255, 1);
+
     display: flex;
     flex-direction: column;
     align-items: center;

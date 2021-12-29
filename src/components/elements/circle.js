@@ -185,6 +185,8 @@ function Circle(props) {
                                 id: props.id,
                                 updateObj: {
                                     radius: parseInt(circle.radius),
+                                    width: parseInt(circle.width),
+                                    height: parseInt(circle.height),
                                 },
                             },
                         })
