@@ -248,71 +248,22 @@ function Text(props) {
                         let target = event.target
                         let rect = event.rect
 
-                        if (
-                            rect.width <
-                                rectTextGroup.getBoundingClientRect(true)
-                                    .width ||
-                            rect.height <
-                                rectTextGroup.getBoundingClientRect(true).height
-                        ) {
-                            console.log(
-                                'new rect width low',
-                                props.itemData.data.fontSize
-                            )
+                        rectangle.width = rect.width
+                        rectangle.height = rect.height
+                        selector.update(
+                            rectTextGroup.getBoundingClientRect(true).left - 5,
+                            rectTextGroup.getBoundingClientRect(true).right + 5,
+                            rectTextGroup.getBoundingClientRect(true).top - 5,
+                            rectTextGroup.getBoundingClientRect(true).bottom + 5
+                        )
 
-                            rectangle.width = rect.width
-                            rectangle.height = rect.height
-                            selector.update(
-                                rectTextGroup.getBoundingClientRect(true).left -
-                                    5,
-                                rectTextGroup.getBoundingClientRect(true)
-                                    .right + 5,
-                                rectTextGroup.getBoundingClientRect(true).top -
-                                    5,
-                                rectTextGroup.getBoundingClientRect(true)
-                                    .bottom + 5
-                            )
-
-                            svgElem.innerHTML = `
-      <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
-                                rectTextGroup.getBoundingClientRect(true).top
-                            } width=${rectangle.width} height=${
-                                rectangle.height
-                            }>
-          <div style="font-size:${textFontSize + 'px'}">${textValue}</div>
-      </foreignObject>
-      `
-                        } else if (
-                            rect.width >
-                                rectTextGroup.getBoundingClientRect(true)
-                                    .width ||
-                            rect.height >
-                                rectTextGroup.getBoundingClientRect(true).height
-                        ) {
-                            rectangle.width = rect.width
-                            rectangle.height = rect.height
-                            selector.update(
-                                rectTextGroup.getBoundingClientRect(true).left -
-                                    5,
-                                rectTextGroup.getBoundingClientRect(true)
-                                    .right + 5,
-                                rectTextGroup.getBoundingClientRect(true).top -
-                                    5,
-                                rectTextGroup.getBoundingClientRect(true)
-                                    .bottom + 5
-                            )
-
-                            svgElem.innerHTML = `
-        <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
-                                rectTextGroup.getBoundingClientRect(true).top
-                            } width=${rectangle.width} height=${
-                                rectangle.height
-                            }>
-            <div style="font-size:${textFontSize + 'px'}">${textValue}</div>
-        </foreignObject>
-        `
-                            console.log('new rect width high')
-                        }
+                        svgElem.innerHTML = `
+<foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
+                            rectTextGroup.getBoundingClientRect(true).top
+                        } width=${rectangle.width} height=${rectangle.height}>
+    <div style="font-size:${textFontSize + 'px'}">${textValue}</div>
+</foreignObject>
+`
 
                         two.update()
                         // Restrict width to shrink if it has reached point

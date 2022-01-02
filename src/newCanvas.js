@@ -8,7 +8,7 @@ import ZUI from 'two.js/extras/jsm/zui'
 
 import ComponentWrapper from 'components/elementWrapper'
 import Toolbar from 'components/floatingToolbar'
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
+import { UPDATE_COMPONENT_INFO, DELETE_COMPONENT_BY_ID } from 'schema/mutations'
 import { getElementsData } from 'store/actions/main'
 import Zoomer from 'components/utils/zoomer'
 
@@ -80,6 +80,16 @@ function addZUI(props, updateToGlobalState, two) {
         if (shape === null) {
             shape = two.scene
         }
+
+        // inserting prevX and prevY to diff at updateToGlobalState function
+        // checking if new x,y are not equal to prev x,y
+        // then only perform the mutation
+        shape.elementData = {
+            ...shape?.elementData,
+            prevX: parseInt(shape.translation.x),
+            prevY: parseInt(shape.translation.y),
+        }
+
         console.log('on mouse down', e, shape)
         let rect = document.getElementById(shape.id).getBoundingClientRect()
 
@@ -133,19 +143,25 @@ function addZUI(props, updateToGlobalState, two) {
             .getAttribute('data-label')
         localStorage.setItem(`${getCoordLabel + 'X'}`, shape.translation.x)
         localStorage.setItem(`${getCoordLabel + 'Y'}`, shape.translation.y)
-        let item = Object.assign({}, shape.elementData, {
-            data: { x: shape.translation.x, y: shape.translation.y },
+
+        // diff to check new x,y and prev x,y
+        let oldShapeData = { ...shape.elementData }
+        let newShapeData = Object.assign({}, shape.elementData, {
+            data: {
+                x: parseInt(shape.translation.x),
+                y: parseInt(shape.translation.y),
+            },
         })
         // let item = {
         //     elementId: shape.elementData.elementId,
         //     data: { x: shape.translation.x, y: shape.translation.y },
         // }
-        console.log('shape.elementData.writable', item)
+        console.log('shape.elementData.writable', newShapeData)
 
         window.removeEventListener('mousemove', mousemove, false)
         window.removeEventListener('mouseup', mouseup, false)
         two.update()
-        updateToGlobalState(item)
+        updateToGlobalState(newShapeData, oldShapeData)
     }
 
     function mousewheel(e) {
@@ -232,8 +248,9 @@ function addZUI(props, updateToGlobalState, two) {
     }
 }
 
-const getMeElement = (ElementToRender, data) => {
+const getMeElement = (ElementToRender, data, twoJSInstance) => {
     const RenderElement = () => {
+        const [twoJSShape, setTwoJSShape] = useState(null)
         console.log('in render Element', data)
         const {
             loading: getComponentInfoLoading,
@@ -241,14 +258,38 @@ const getMeElement = (ElementToRender, data) => {
             error: getComponentInfoError,
         } = useSubscription(GET_COMPONENT_INFO, { variables: { id: data.id } })
 
+        const [
+            deleteComponent,
+            {
+                loading: deleteComponentLoading,
+                data: deleteComponentData,
+                error: deleteComponentError,
+            },
+        ] = useMutation(DELETE_COMPONENT_BY_ID)
+
+        useEffect(() => {
+            if (getComponentInfoData?.component === null && twoJSShape) {
+                twoJSInstance.remove([twoJSShape])
+            }
+        }, [getComponentInfoData])
+
         if (getComponentInfoLoading) {
             return <Spinner displayText={'Loading component data'} />
+        }
+
+        const handleDeleteComponent = (twoJSShape) => {
+            setTwoJSShape(twoJSShape)
+            deleteComponent({
+                variables: { id: data.id },
+                errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
+            })
         }
 
         console.log('getComponentInfoData data change', getComponentInfoData)
         return data.twoJSInstance ? (
             getComponentInfoData?.component ? (
                 <ElementToRender
+                    handleDeleteComponent={handleDeleteComponent}
                     {...data}
                     {...getComponentInfoData.component}
                 />
@@ -266,6 +307,14 @@ const Canvas = (props) => {
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
+    const [
+        deleteComponent,
+        {
+            loading: deleteComponentLoading,
+            data: deleteComponentData,
+            error: deleteComponentError,
+        },
+    ] = useMutation(DELETE_COMPONENT_BY_ID)
 
     useEffect(() => {
         // setting pan displacement values to initial
@@ -330,7 +379,11 @@ const Canvas = (props) => {
                         itemData: item,
                         selectPanMode: props.selectPanMode,
                     }
-                    const component = getMeElement(ElementToRender, data)
+                    const component = getMeElement(
+                        ElementToRender,
+                        data,
+                        twoJSInstance
+                    )
                     components.push(component)
                 }
 
@@ -343,15 +396,22 @@ const Canvas = (props) => {
         // setComponentsToRender()
     }, [props.componentData, twoJSInstance])
 
-    const updateToGlobalState = (newItem) => {
-        console.log('updateToGlobalState', newItem)
-        if (newItem.id) {
+    const updateToGlobalState = (newShapeData, oldShapeData) => {
+        console.log('updateToGlobalState', newShapeData, oldShapeData)
+
+        // also check that new x,y is updated or not by comparing to prev x,y
+        // then only perform mutation
+        if (
+            newShapeData.id &&
+            (newShapeData.data.x != newShapeData.prevX ||
+                newShapeData.data.y != newShapeData.prevY)
+        ) {
             updateComponentInfo({
                 variables: {
-                    id: newItem.id,
+                    id: newShapeData.id,
                     updateObj: {
-                        x: parseInt(newItem.data.x),
-                        y: parseInt(newItem.data.y),
+                        x: parseInt(newShapeData.data.x),
+                        y: parseInt(newShapeData.data.y),
                     },
                 },
             })

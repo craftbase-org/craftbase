@@ -16,3 +16,12 @@
 .dragger-picker {
     cursor: pointer;
 }
+
+.rounded-50-percent {
+    border-radius: 50%;
+}
+
+/* patch - to disable automatically appending iframe */
+iframe {
+    z-index: -11111 !important;
+}

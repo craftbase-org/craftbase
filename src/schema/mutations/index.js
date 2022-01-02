@@ -33,3 +33,11 @@ export const UPDATE_BOARD_COMPONENTS = gql`
         }
     }
 `
+
+export const DELETE_COMPONENT_BY_ID = gql`
+    mutation deleteComponentById($id: uuid = "") {
+        delete_components_component_by_pk(id: $id) {
+            boardId
+        }
+    }
+`

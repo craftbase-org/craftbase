@@ -6,12 +6,31 @@ import SecondarySidebar from './secondary'
 import CursorICON from 'assets/cursor.svg'
 import PanICON from 'assets/pan.svg'
 import RightArrowIcon from 'assets/right_arrow.svg'
+import LinkIcon from 'assets/link_white.svg'
+import RadioWhiteIcon from 'assets/radio_white.svg'
 import Icon from 'icons/icon'
 import { INSERT_COMPONENT, UPDATE_BOARD_COMPONENTS } from 'schema/mutations'
 import { GET_COMPONENT_TYPES } from 'schema/queries'
 import SpinnerWithSize from 'components/common/spinnerWithSize'
+import Button from 'components/common/button'
 
 import './sidebar.css'
+
+const randomBgColors = [
+    '#BF2600',
+    '#FF8B00',
+    '#006644',
+    '#008DA6',
+    '#0747A6',
+    '#403294',
+    '#091E42',
+    '#FF5630',
+    '#FFAB00',
+    '#36B37E',
+    '#00B8D9',
+    '#0065FF',
+    '#6554C0',
+]
 
 const PrimarySidebar = (props) => {
     const [showAddShapeLoader, setShowAddShapeLoader] = useState(false)
@@ -94,7 +113,11 @@ const PrimarySidebar = (props) => {
                 id="sidebar-container"
                 className="sidebar-container flex items-center "
             >
-                <div className="flex items-center justify-center w-64 h-12 px-2 py-2 mx-4 bg-white shadow-xl">
+                <div
+                    className="flex items-center justify-center 
+                w-64 h-12 px-2 py-2 mx-4
+                 bg-white rounded-md shadow-xl"
+                >
                     {getComponentTypesLoading ? (
                         <div className=" text-blues-b500">Loading ...</div>
                     ) : (
@@ -195,14 +218,54 @@ const PrimarySidebar = (props) => {
                     )}
                 </div>
             </div>
-            {showAddShapeLoader ? (
-                <div className="w-32  absolute right-0 -top-5">
-                    <div className="w-full flex items-center flex-wrap px-2 py-2 ">
-                        <SpinnerWithSize loaderSize="sm" />{' '}
-                        {/* <div className="w-32 pl-1 text-sm text-left">updating</div> */}
+            <div className="absolute right-10 mt-2">
+                <div className="flex items-center">
+                    <div className="relative">
+                        {showAddShapeLoader ? (
+                            <div className="w-full absolute right-32 -top-10">
+                                <div className="w-48 flex items-center flex-wrap px-2 py-2 ">
+                                    <div className="w-14 pl-1 text-sm text-left">
+                                        updating
+                                    </div>
+                                    <SpinnerWithSize loaderSize="sm" />{' '}
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                    <div className="text-sm pr-2">
+                        <a className=" flex items-center px-4 py-2 rounded-md border bg-white text-black shadow-md ">
+                            <div className="w-2 h-2 bg-reds-r400 rounded-50-percent"></div>
+                            <span className="ml-2 text-sm">Live</span>
+                            {/* <img
+                                src={RadioWhiteIcon}
+                                className="ml-2 w-5 h-5"
+                            /> */}
+                        </a>
+                    </div>
+                    <div className="text-sm pr-2">
+                        <a className=" flex items-center px-4 py-2 rounded-md bg-primary-blue text-white shadow-md">
+                            <span className="text-sm">Share</span>
+                            <img src={LinkIcon} className="ml-2 w-5 h-5" />
+                        </a>
+                    </div>
+                    <div
+                        className="w-7 h-7 flex items-center justify-center 
+                        rounded-50-percent border border-blues-b500  
+                        text-sm text-white "
+                        style={{ background: randomBgColors[0] }}
+                    >
+                        M
+                    </div>
+                    <div
+                        className="w-7 h-7 flex items-center justify-center 
+                        rounded-50-percent border border-blues-b500  
+                        text-sm text-white -ml-2"
+                        style={{ background: randomBgColors[1] }}
+                    >
+                        A
                     </div>
                 </div>
-            ) : null}
+            </div>
         </>
     )
 }
