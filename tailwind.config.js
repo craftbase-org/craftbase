@@ -23,6 +23,10 @@ module.exports = {
         },
         extend: {
             colors: {
+                primary: {
+                    blue: '#0747A6',
+                    red: '#BF2600',
+                },
                 cyan: '#9cdbff',
                 reds: {
                     r500: '#BF2600',
