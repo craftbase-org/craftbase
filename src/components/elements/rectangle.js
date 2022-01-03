@@ -305,7 +305,7 @@ function Rectangle(props) {
     return (
         <React.Fragment>
             <div id="two-rectangle"></div>
-            {showToolbar && <button> Rectangles </button>}
+            {/* {showToolbar && <button> Rectangles </button>} */}
             {/* <button>change button in group</button> */}
             {showToolbar ? (
                 <Toolbar
