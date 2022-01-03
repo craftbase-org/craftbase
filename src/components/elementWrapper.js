@@ -25,7 +25,7 @@ const ElementWrapper = (elementName, data) => {
         })
 
         if (getComponentInfoLoading) {
-            return <Spinner displayText={'Loading component data'} />
+            return <></>
         }
 
         console.log('getComponentInfoData data change', getComponentInfoData)
