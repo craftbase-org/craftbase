@@ -274,7 +274,7 @@ const getMeElement = (ElementToRender, data, twoJSInstance) => {
         }, [getComponentInfoData])
 
         if (getComponentInfoLoading) {
-            return <Spinner displayText={'Loading component data'} />
+            return <></>
         }
 
         const handleDeleteComponent = (twoJSShape) => {
