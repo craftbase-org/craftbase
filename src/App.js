@@ -33,8 +33,9 @@ function getApolloClient() {
     const httpLink = new HttpLink({
         uri: process.env.REACT_APP_GRAPHQL_ENDPOINT,
         headers: {
-            authorization: `Bearer ${accessToken}`,
+            // authorization: `Bearer ${accessToken}`,
             'content-type': 'application/json',
+            'x-hasura-admin-secret': process.env.REACT_APP_HASURA_ADMIN_SECRET,
         },
     })
 
@@ -45,8 +46,10 @@ function getApolloClient() {
             reconnect: true,
             connectionParams: {
                 headers: {
-                    authorization: `Bearer ${accessToken}`,
+                    // authorization: `Bearer ${accessToken}`,
                     'content-type': 'application/json',
+                    'x-hasura-admin-secret':
+                        process.env.REACT_APP_HASURA_ADMIN_SECRET,
                 },
             },
         },
