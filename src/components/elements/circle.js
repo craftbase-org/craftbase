@@ -184,7 +184,6 @@ function Circle(props) {
                         //   resizeRect.width = rect.width;
                         circle.width = rect.width
                         circle.height = rect.height
-                        circle.radius = parseInt(rect.width / 2)
 
                         selector.update(
                             circle.getBoundingClientRect(true).left - 10,
@@ -201,7 +200,6 @@ function Circle(props) {
                             variables: {
                                 id: props.id,
                                 updateObj: {
-                                    radius: parseInt(circle.radius),
                                     width: parseInt(circle.width),
                                     height: parseInt(circle.height),
                                 },
@@ -305,14 +303,18 @@ function Circle(props) {
         }
         if (internalState?.shape?.data) {
             let shapeInstance = internalState.shape.data
-            shapeInstance.radius = props.radius
-                ? props.radius
-                : shapeInstance.radius
+
+            shapeInstance.width = props.width
+                ? props.width
+                : shapeInstance.width
+            shapeInstance.height = props.height
+                ? props.height
+                : shapeInstance.height
             shapeInstance.fill = props.fill ? props.fill : shapeInstance.fill
 
             two.update()
         }
-    }, [props.x, props.y, props.fill, props.radius])
+    }, [props.x, props.y, props.fill, props.width, props.height])
 
     function closeToolbar() {
         toggleToolbar(false)

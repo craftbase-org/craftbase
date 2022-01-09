@@ -17,7 +17,7 @@ export const GET_COMPONENT_INFO = gql`
             width
             height
             fill
-            radius
+
             stroke
             linewidth
             x

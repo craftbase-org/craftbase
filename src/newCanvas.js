@@ -43,8 +43,9 @@ function addZUI(props, updateToGlobalState, two) {
         mouse.y = e.clientY
         let avoidDragging = false
 
+        var path = e.path || (e.composedPath && e.composedPath())
         // checks for path in event if it contains following element with condition
-        e.path.forEach((item, index) => {
+        path.forEach((item, index) => {
             console.log(
                 'item?.classList?.value',
                 item?.classList?.value,
