@@ -27,11 +27,33 @@ function ArrowLine(props) {
     let resizeLineInstance = null
 
     function onBlurHandler(e) {
-        elementOnBlurHandler(e, selectorInstance, two)
+        console.log('on blur arrow line', selectorInstance.pointCircle1.opacity)
+        // elementOnBlurHandler(e, selectorInstance, two)
+        selectorInstance.pointCircle1.opacity = 0
+        selectorInstance.pointCircle2.opacity = 0
+        two.update()
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
+    }
+
+    function handleKeyDown(e) {
+        if (e.keyCode === 8 || e.keyCode === 46) {
+            console.log('handle key down event', e)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            props.handleDeleteComponent &&
+                props.handleDeleteComponent(groupObject)
+            two.remove([groupObject])
+            two.update()
+        }
     }
 
     function onFocusHandler(e) {
         document.getElementById(`${groupObject.id}`).style.outline = 0
+        document
+            .getElementById(`${groupObject.id}`)
+            .addEventListener('keydown', handleKeyDown)
     }
 
     // Using unmount phase to remove event listeners
@@ -64,7 +86,10 @@ function ArrowLine(props) {
             groupObject = group
             resizeLineInstance = resizeLine
             // const { selector } = getEditComponents(two, group, 4)
-            selectorInstance = null
+            selectorInstance = {
+                pointCircle1,
+                pointCircle2,
+            }
 
             two.update()
 
@@ -124,11 +149,11 @@ function ArrowLine(props) {
                 }
             })
 
-            // const getGroupElementFromDOM = document.getElementById(
-            //     `${group.id}`
-            // )
-            // getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
-            // getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+            const getGroupElementFromDOM = document.getElementById(
+                `${group.id}`
+            )
+            getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
             // const { mousemove, mouseup } = handleDrag(two, group, 'line')
 
@@ -149,6 +174,10 @@ function ArrowLine(props) {
                 console.log('on click group', e)
                 // pointCircle1.opacity = 0
                 resizeLine.opacity = 1
+                pointCircle1.opacity = 1
+                pointCircle1.opacity = 1
+                pointCircle2.opacity = 1
+                pointCircle2.opacity = 1
                 pointCircle1.translation.x = line.vertices[0].x - 4
                 pointCircle1.translation.y = line.vertices[0].y - 6
                 pointCircle2.translation.x = line.vertices[1].x + 4
@@ -161,24 +190,6 @@ function ArrowLine(props) {
                 // )
                 two.update()
                 toggleToolbar(true)
-            })
-
-            interact(`#${group.id}`).on('blur', (e) => {
-                console.log('on click group', e)
-                // pointCircle1.opacity = 0
-                resizeLine.opacity = 0
-                pointCircle1.translation.x = line.vertices[0].x - 4
-                pointCircle1.translation.y = line.vertices[0].y - 6
-                pointCircle2.translation.x = line.vertices[1].x + 4
-                pointCircle2.translation.y = line.vertices[1].y - 6
-                // selector.update(
-                //     line.getBoundingClientRect(true).left - 10,
-                //     line.getBoundingClientRect(true).right + 10,
-                //     line.getBoundingClientRect(true).top - 10,
-                //     line.getBoundingClientRect(true).bottom + 10
-                // )
-                two.update()
-                // toggleToolbar(true)
             })
 
             // Captures double click event for text

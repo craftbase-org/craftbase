@@ -26,10 +26,28 @@ function Text(props) {
 
     function onBlurHandler(e) {
         elementOnBlurHandler(e, selectorInstance, two)
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
+    }
+
+    function handleKeyDown(e) {
+        if (e.keyCode === 8 || e.keyCode === 46) {
+            console.log('handle key down event', e)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            props.handleDeleteComponent &&
+                props.handleDeleteComponent(groupObject)
+            two.remove([groupObject])
+            two.update()
+        }
     }
 
     function onFocusHandler(e) {
         document.getElementById(`${groupObject.id}`).style.outline = 0
+        document
+            .getElementById(`${groupObject.id}`)
+            .addEventListener('keydown', handleKeyDown)
     }
 
     // Using unmount phase to remove event listeners

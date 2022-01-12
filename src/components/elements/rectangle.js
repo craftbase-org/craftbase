@@ -28,9 +28,10 @@ function Rectangle(props) {
 
     function onBlurHandler(e) {
         elementOnBlurHandler(e, selectorInstance, two)
-        document
-            .getElementById(`${groupObject.id}`)
-            .removeEventListener('keydown', handleKeyDown)
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
     }
 
     function handleKeyDown(e) {

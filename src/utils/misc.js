@@ -4,7 +4,7 @@ export const elementOnBlurHandler = (e, selectorInstance, two) => {
         if (e?.relatedTarget?.dataset.parent === 'floating-toolbar') {
             // no action required
         } else {
-            selectorInstance.hide()
+            selectorInstance && selectorInstance.hide()
             // toggleToolbar(false);
         }
     }
@@ -18,7 +18,7 @@ export const elementOnBlurHandler = (e, selectorInstance, two) => {
             .getElementById('floating-toolbar')
             .addEventListener('blur', blurListenerCB)
     } else {
-        selectorInstance.hide()
+        selectorInstance && selectorInstance.hide()
         // toggleToolbar(false);
     }
     two.update()
