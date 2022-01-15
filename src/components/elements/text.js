@@ -53,7 +53,7 @@ function Text(props) {
     // Using unmount phase to remove event listeners
     useEffect(() => {
         let textFontSize = 16
-        let textValue = props.metadata.content
+        let textValue = props?.metadata?.content
         let itemData = props?.itemData
         // Calculate x and y through dividing width and height by 2 or vice versa
         // if x and y are given then multiply width and height into 2

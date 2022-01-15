@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import { connect } from 'react-redux'
 import { useQuery, useMutation, useSubscription } from '@apollo/client'
 import Two from 'two.js'
+import { useHistory } from 'react-router-dom'
 
 import Loadable from 'react-loadable'
 import ZUI from 'two.js/extras/jsm/zui'
 
-import ComponentWrapper from 'components/elementWrapper'
-import Toolbar from 'components/floatingToolbar'
 import { UPDATE_COMPONENT_INFO, DELETE_COMPONENT_BY_ID } from 'schema/mutations'
-import { getElementsData } from 'store/actions/main'
 import Zoomer from 'components/utils/zoomer'
-
+import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
-import { GET_COMPONENT_INFO } from 'schema/subscriptions'
+import {
+    GET_COMPONENT_INFO,
+    GET_COMPONENTS_FOR_BOARD,
+} from 'schema/subscriptions'
 import Loader from 'components/utils/loader'
 
 function addZUI(props, updateToGlobalState, two) {
@@ -249,7 +249,7 @@ function addZUI(props, updateToGlobalState, two) {
     }
 }
 
-const getMeElement = (ElementToRender, data, twoJSInstance) => {
+const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
     const RenderElement = () => {
         const [twoJSShape, setTwoJSShape] = useState(null)
         console.log('in render Element', data)
@@ -270,7 +270,8 @@ const getMeElement = (ElementToRender, data, twoJSInstance) => {
 
         useEffect(() => {
             if (getComponentInfoData?.component === null && twoJSShape) {
-                twoJSInstance.remove([twoJSShape])
+                // twoJSInstance.remove([twoJSShape]) // twoJSInstance was send via params
+                data.twoJSInstance.remove([twoJSShape])
             }
         }, [getComponentInfoData])
 
@@ -301,21 +302,36 @@ const getMeElement = (ElementToRender, data, twoJSInstance) => {
     }
     return RenderElement
 }
+
+const GroupRenderWrapper = (ElementToRender, data) => {
+    const RenderGroup = () => {
+        console.log('in render group wrapper', data)
+
+        return data.twoJSInstance ? <ElementToRender {...data} /> : <Spinner />
+    }
+    return RenderGroup
+}
+
 const Canvas = (props) => {
+    // use this data for calculating coordinate graph for grouping
+    const {
+        loading: getComponentsForBoardLoading,
+        data: getComponentsForBoardData,
+        error: getComponentsForBoardError,
+    } = useSubscription(GET_COMPONENTS_FOR_BOARD, {
+        variables: { boardId: props.boardId },
+    })
+
+    console.log('getComponentsForBoardData', getComponentsForBoardData)
+
     const [twoJSInstance, setTwoJSInstance] = useState(null)
+    const [currentElements, setCurrentElements] = useState([])
     const [prevElements, setPrevElements] = useState([])
+    const [onGroup, setOnGroup] = useState(null)
     const [componentsToRender, setComponentsToRender] = useState([])
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
-    const [
-        deleteComponent,
-        {
-            loading: deleteComponentLoading,
-            data: deleteComponentData,
-            error: deleteComponentError,
-        },
-    ] = useMutation(DELETE_COMPONENT_BY_ID)
 
     useEffect(() => {
         // setting pan displacement values to initial
@@ -361,10 +377,20 @@ const Canvas = (props) => {
             prevElements,
             twoJSInstance
         )
+
+        if (props.componentData?.length > 0 && twoJSInstance) {
+            setCurrentElements(props.componentData)
+        }
+
+        // setComponentsToRender()
+    }, [props.componentData, twoJSInstance])
+
+    useEffect(() => {
+        console.log('on change currentElements', currentElements)
         let arr = []
         let components = [...componentsToRender]
-        if (props.componentData && twoJSInstance) {
-            props.componentData.forEach((item, index) => {
+        if (currentElements && twoJSInstance) {
+            currentElements.forEach((item, index) => {
                 if (prevElements.includes(item.id)) {
                     // nothing
                 } else {
@@ -380,11 +406,20 @@ const Canvas = (props) => {
                         itemData: item,
                         selectPanMode: props.selectPanMode,
                     }
-                    const component = getMeElement(
-                        ElementToRender,
-                        data,
-                        twoJSInstance
-                    )
+                    // DEBUG HERE
+                    let component = null
+                    if (item.componentType === GROUP_COMPONENT) {
+                        component = GroupRenderWrapper(ElementToRender, {
+                            ...data,
+                            ...item,
+                        })
+                    } else {
+                        component = ElementRenderWrapper(
+                            ElementToRender,
+                            data,
+                            twoJSInstance
+                        )
+                    }
                     components.push(component)
                 }
 
@@ -395,7 +430,83 @@ const Canvas = (props) => {
         }
 
         // setComponentsToRender()
-    }, [props.componentData, twoJSInstance])
+    }, [currentElements, twoJSInstance])
+
+    useEffect(() => {
+        if (onGroup) {
+            console.log('on group useeffect', onGroup)
+            let e = onGroup
+            let x1Coord = e.left
+            let x2Coord = e.right
+            let y1Coord = e.top
+            let y2Coord = e.bottom
+
+            let xMid = parseInt(e.left) + parseInt(e.width / 2)
+            let yMid = parseInt(e.top) + parseInt(e.height / 2)
+
+            const newGroup = {}
+            const newChildren = []
+            const selectedComponentArr = []
+            const allComponentCoords = getComponentsForBoardData.components
+            // console.log(
+            //     'area_selection allComponentCoords',
+            //     xMid,
+            //     yMid,
+            //     state.getCoordGraph
+            // )
+
+            allComponentCoords.forEach((item, index) => {
+                console.log('item', item)
+                console.log('area_selection item', item)
+                if (
+                    item.x > x1Coord &&
+                    item.x < x2Coord &&
+                    item.y > y1Coord &&
+                    item.y < y2Coord
+                ) {
+                    console.log('area_selection a match')
+
+                    selectedComponentArr.push(item.id)
+
+                    let relativeX = item.x - xMid
+                    let relativeY = item.y - yMid
+                    console.log(
+                        'relativeX relativeY',
+                        item.x,
+                        e.x,
+                        item.y,
+                        e.y,
+                        parseInt(item.x) - parseInt(e.x),
+                        parseInt(item.y) - parseInt(e.y)
+                    )
+                    let obj = {
+                        ...item,
+                        id: item.id,
+                        componentType: item.componentType,
+                        x: parseInt(item.x) - parseInt(e.x),
+                        y: parseInt(item.y) - parseInt(e.y),
+                    }
+                    newChildren.push(obj)
+                }
+            })
+
+            newGroup.id = Math.floor(100000 + Math.random() * 900000)
+            newGroup.componentType = 'groupobject'
+            newGroup.width = e.width
+            newGroup.height = e.height
+
+            // Adding half width/height to x,y coords
+            // due to selector rectangle being in inside
+            // of selected area portion
+            newGroup.x = e.x
+            newGroup.y = e.y
+
+            newGroup.children = newChildren
+
+            console.log('newGroup', newGroup)
+            setCurrentElements([...currentElements, newGroup])
+        }
+    }, [onGroup])
 
     const updateToGlobalState = (newShapeData, oldShapeData) => {
         console.log('updateToGlobalState', newShapeData, oldShapeData)
@@ -482,30 +593,9 @@ const Canvas = (props) => {
     }
 
     const handleFinalDrag = (e) => {
-        console.log('final drag', e)
+        console.log('final drag', e, getComponentsForBoardData)
+        setOnGroup(e)
         // props.getElementsData('AREA_SELECTION', e)
-    }
-
-    const renderElements = () => {
-        console.log('At the time of rendering', props.componentData)
-
-        const elements = props.componentData
-        const renderData = elements.map((item) => {
-            const NewComponent = ComponentWrapper(item.componentType, {
-                twoJSInstance: twoJSInstance,
-                id: item.id,
-                // childrenArr: item.children,
-                itemData: item,
-                selectPanMode: props.selectPanMode,
-            })
-            return (
-                <React.Fragment key={item.id}>
-                    <NewComponent />
-                </React.Fragment>
-            )
-        })
-
-        return renderData
     }
 
     console.log('componentsToRender', componentsToRender)

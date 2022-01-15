@@ -68,6 +68,7 @@ const BoardViewPage = (props) => {
                 />
                 <Canvas
                     selectPanMode={selectPanMode}
+                    boardId={boardId}
                     componentData={getBoardData?.boardData.components}
                 />
             </div>

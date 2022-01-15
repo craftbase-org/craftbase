@@ -6,7 +6,7 @@ export default class TextFactory extends Main {
         const prevX = this.x
         const prevY = this.y
         console.log('this.properties', this.properties)
-        const { fill = 'rgba(0,0,0,0)', content = '' } = this.properties
+        const { fill = 'rgba(0,0,0,0)', content = '' } = this?.properties || {}
 
         // pass width and height here for transparent rectangle container
         const rectangle = two.makeRoundedRectangle(0, 0, 330, 45, 5)

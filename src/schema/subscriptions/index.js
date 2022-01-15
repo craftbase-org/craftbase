@@ -45,3 +45,23 @@ export const GET_COMPONENT_INFO_QUERY = gql`
         }
     }
 `
+
+export const GET_COMPONENTS_FOR_BOARD = gql`
+    subscription getComponentsForBoard($boardId: String = "") {
+        components: components_component(
+            where: { boardId: { _eq: $boardId } }
+        ) {
+            id
+            componentType
+            x
+            x1
+            x2
+            y
+            y1
+            y2
+            fill
+            width
+            height
+        }
+    }
+`

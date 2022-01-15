@@ -1,6 +1,6 @@
 import React, { useEffect, useState, Fragment } from 'react'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
+
 import ObjectSelector from 'components/utils/objectSelector'
 import { setPeronsalInformation, ungroupElements } from 'store/actions/main'
 import Loadable from 'react-loadable'
@@ -8,13 +8,6 @@ import Loader from 'components/utils/loader'
 import ElementWrapper from 'components/elementWrapper'
 
 function GroupedObjectWrapper(props) {
-    const status = useSelector((state) => state.main.currentStatus)
-    const lastAddedElement = useSelector((state) => state.main.lastAddedElement)
-    const dispatch = useDispatch()
-    console.log(
-        'useSelector',
-        useSelector((state) => state)
-    )
     const two = props.twoJSInstance
 
     let rectangleInstance = null
@@ -31,19 +24,20 @@ function GroupedObjectWrapper(props) {
     }
 
     useEffect(() => {
+        console.log('group object props', props)
         // Calculate x and y through dividing width and height by 2 or vice versa
         // if x and y are given then multiply width and height into 2
         const offsetHeight = 0
 
-        const prevX = localStorage.getItem('groupobject_coordX')
-        const prevY = localStorage.getItem('groupobject_coordY')
+        const prevX = props.x
+        const prevY = props.y
 
         // Dummying group's layout by empty rectangle's shape implementation
         const rectangle = two.makeRectangle(
             parseInt(prevX),
             parseInt(prevY),
-            props.itemData.width || 0,
-            props.itemData.height || 0
+            props?.width || 0,
+            props?.height || 0
         )
         rectangle.fill = 'rgba(0,0,0,0)'
         rectangle.noStroke()
@@ -62,16 +56,16 @@ function GroupedObjectWrapper(props) {
 
         // });
 
-        for (let index = 0; index < props.childrenArr.length; index++) {
-            const item = props.childrenArr[index]
-            console.log('item in childrenArr', item)
-            import(`factory/${item.name}`).then((component) => {
+        for (let index = 0; index < props.children.length; index++) {
+            const item = props.children[index]
+            console.log('item in children', item)
+            import(`factory/${item.componentType}`).then((component) => {
                 console.log('component', component)
                 const componentFactory = new component.default(
                     two,
                     item.x,
                     item.y,
-                    {}
+                    { ...item }
                 )
                 const factoryObject = componentFactory.createElement()
                 const coreObject = factoryObject.group
@@ -117,33 +111,29 @@ function GroupedObjectWrapper(props) {
             two.update()
         })
 
-        group._renderer.elem.addEventListener('dblclick', () => {
-            // console.log("group dblclick handler", group.children[1].id);
+        // group._renderer.elem.addEventListener('dblclick', () => {
+        //     // console.log("group dblclick handler", group.children[1].id);
 
-            // loop through all children of group
-            props.childrenArr.forEach((child, index) => {
-                // This is DOM element's id not the actual data's id
-                const childDOMNode = document.getElementById(
-                    group.children[index + 1].id
-                )
-                console.log('childDOMNode', childDOMNode)
-                localStorage.setItem(
-                    `${child.name}_coordX`,
-                    childDOMNode.getBoundingClientRect().x
-                )
-                localStorage.setItem(
-                    `${child.name}_coordY`,
-                    childDOMNode.getBoundingClientRect().y
-                )
-            })
-            group.opacity = 0
-            dispatch(
-                ungroupElements('UNGROUP_ELEMENT', {
-                    data: { groupId: props.id },
-                })
-            )
-            // two.remove();
-        })
+        //     // loop through all children of group
+        //     props.childrenArr.forEach((child, index) => {
+        //         // This is DOM element's id not the actual data's id
+        //         const childDOMNode = document.getElementById(
+        //             group.children[index + 1].id
+        //         )
+        //         console.log('childDOMNode', childDOMNode)
+        //         localStorage.setItem(
+        //             `${child.name}_coordX`,
+        //             childDOMNode.getBoundingClientRect().x
+        //         )
+        //         localStorage.setItem(
+        //             `${child.name}_coordY`,
+        //             childDOMNode.getBoundingClientRect().y
+        //         )
+        //     })
+        //     group.opacity = 0
+
+        //     // two.remove();
+        // })
 
         interact(`#${group.id}`).resizable({
             edges: { right: true, left: true, top: true, bottom: true },
