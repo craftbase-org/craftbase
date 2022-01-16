@@ -15,11 +15,13 @@ function GroupedObjectWrapper(props) {
     let selectorInstance = null
 
     function onBlurHandler(e) {
+        console.log('on groupobject blur')
         selectorInstance.hide()
         two.update()
     }
 
     function onFocusHandler(e) {
+        console.log('on groupobject focus')
         document.getElementById(`${groupInstance.id}`).style.outline = 0
     }
 
@@ -43,7 +45,7 @@ function GroupedObjectWrapper(props) {
         rectangle.noStroke()
         rectangleInstance = rectangle
 
-        console.log('rectangle', rectangle.getBoundingClientRect(), props)
+        // console.log('rectangle', rectangle.getBoundingClientRect(), props)
 
         const group = two.makeGroup(rectangle)
         group.elementData = props?.itemData
@@ -58,9 +60,9 @@ function GroupedObjectWrapper(props) {
 
         for (let index = 0; index < props.children.length; index++) {
             const item = props.children[index]
-            console.log('item in children', item)
+            // console.log('item in children', item)
             import(`factory/${item.componentType}`).then((component) => {
-                console.log('component', component)
+                // console.log('component', component)
                 const componentFactory = new component.default(
                     two,
                     item.x,
@@ -69,7 +71,7 @@ function GroupedObjectWrapper(props) {
                 )
                 const factoryObject = componentFactory.createElement()
                 const coreObject = factoryObject.group
-                console.log('factoryObject', factoryObject)
+                // console.log('factoryObject', factoryObject)
                 // set component's coordinates
                 coreObject.translation.x = item.x
                 coreObject.translation.y = item.y
@@ -81,7 +83,7 @@ function GroupedObjectWrapper(props) {
 
         groupInstance = group
 
-        console.log('Grouped Objects Wrapper', props.twoJSInstance)
+        // console.log('Grouped Objects Wrapper', props.twoJSInstance)
 
         const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4)
         selector.create()
@@ -99,6 +101,17 @@ function GroupedObjectWrapper(props) {
         const getGroupElementFromDOM = document.getElementById(`${group.id}`)
         getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
         getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+
+        getGroupElementFromDOM.focus()
+
+        // simulating click behvior
+        selector.update(
+            rectangle.getBoundingClientRect(true).left - 10,
+            rectangle.getBoundingClientRect(true).right + 10,
+            rectangle.getBoundingClientRect(true).top - 10,
+            rectangle.getBoundingClientRect(true).bottom + 10
+        )
+        two.update()
 
         interact(`#${group.id}`).on('click', () => {
             console.log('on click ')
@@ -204,7 +217,7 @@ function GroupedObjectWrapper(props) {
         // })
 
         return () => {
-            two.remove(group)
+            // two.remove(group)
         }
     }, [])
 

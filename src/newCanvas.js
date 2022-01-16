@@ -108,14 +108,14 @@ function addZUI(props, updateToGlobalState, two) {
     function mousemove(e) {
         let dx = e.clientX - mouse.x
         let dy = e.clientY - mouse.y
-        console.log('shape in mousemove', e, shape, props.selectPanMode)
+        // console.log('shape in mousemove', e, shape, props.selectPanMode)
 
         if (document.getElementById(shape.id).hasAttribute('data-resize')) {
             console.log('has pans')
             window.removeEventListener('mousemove', mousemove, false)
             window.removeEventListener('mouseup', mouseup, false)
         } else {
-            console.log('inside mousemove', dragging)
+            // console.log('inside mousemove', dragging)
 
             // check if while dragging, the shape does not point to root element (two-0)
             if (dragging && shape.id !== 'two-0') {
@@ -139,11 +139,13 @@ function addZUI(props, updateToGlobalState, two) {
             // e,
             shape
         )
-        const getCoordLabel = document
-            .getElementById(shape.id)
-            .getAttribute('data-label')
-        localStorage.setItem(`${getCoordLabel + 'X'}`, shape.translation.x)
-        localStorage.setItem(`${getCoordLabel + 'Y'}`, shape.translation.y)
+
+        // old school logic here
+        // const getCoordLabel = document
+        //     .getElementById(shape.id)
+        //     .getAttribute('data-label')
+        // localStorage.setItem(`${getCoordLabel + 'X'}`, shape.translation.x)
+        // localStorage.setItem(`${getCoordLabel + 'Y'}`, shape.translation.y)
 
         // diff to check new x,y and prev x,y
         let oldShapeData = { ...shape.elementData }
@@ -252,13 +254,13 @@ function addZUI(props, updateToGlobalState, two) {
 const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
     const RenderElement = () => {
         const [twoJSShape, setTwoJSShape] = useState(null)
-        console.log('in render Element', data)
+
         const {
             loading: getComponentInfoLoading,
             data: getComponentInfoData,
             error: getComponentInfoError,
         } = useSubscription(GET_COMPONENT_INFO, { variables: { id: data.id } })
-
+        console.log('in render Element', data, getComponentInfoData?.component)
         const [
             deleteComponent,
             {
@@ -270,8 +272,8 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
 
         useEffect(() => {
             if (getComponentInfoData?.component === null && twoJSShape) {
-                // twoJSInstance.remove([twoJSShape]) // twoJSInstance was send via params
-                data.twoJSInstance.remove([twoJSShape])
+                twoJSInstance.remove([twoJSShape]) // twoJSInstance was send via params
+                // data.twoJSInstance.remove([twoJSShape])
             }
         }, [getComponentInfoData])
 
@@ -325,7 +327,7 @@ const Canvas = (props) => {
     console.log('getComponentsForBoardData', getComponentsForBoardData)
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
-    const [currentElements, setCurrentElements] = useState([])
+    const [currentComponents, setCurrentComponents] = useState([])
     const [prevElements, setPrevElements] = useState([])
     const [onGroup, setOnGroup] = useState(null)
     const [componentsToRender, setComponentsToRender] = useState([])
@@ -379,18 +381,18 @@ const Canvas = (props) => {
         )
 
         if (props.componentData?.length > 0 && twoJSInstance) {
-            setCurrentElements(props.componentData)
+            setCurrentComponents(props.componentData)
         }
 
         // setComponentsToRender()
     }, [props.componentData, twoJSInstance])
 
     useEffect(() => {
-        console.log('on change currentElements', currentElements)
+        console.log('on change currentComponents', currentComponents)
         let arr = []
         let components = [...componentsToRender]
-        if (currentElements && twoJSInstance) {
-            currentElements.forEach((item, index) => {
+        if (currentComponents && twoJSInstance) {
+            currentComponents.forEach((item, index) => {
                 if (prevElements.includes(item.id)) {
                     // nothing
                 } else {
@@ -430,9 +432,10 @@ const Canvas = (props) => {
         }
 
         // setComponentsToRender()
-    }, [currentElements, twoJSInstance])
+    }, [currentComponents])
 
     useEffect(() => {
+        let componentsArr = [...currentComponents]
         if (onGroup) {
             console.log('on group useeffect', onGroup)
             let e = onGroup
@@ -447,6 +450,7 @@ const Canvas = (props) => {
             const newGroup = {}
             const newChildren = []
             const selectedComponentArr = []
+            let twoShapesToDelete = []
             const allComponentCoords = getComponentsForBoardData.components
             // console.log(
             //     'area_selection allComponentCoords',
@@ -464,21 +468,28 @@ const Canvas = (props) => {
                     item.y > y1Coord &&
                     item.y < y2Coord
                 ) {
-                    console.log('area_selection a match')
+                    console.log(
+                        'area_selection a match',
+                        twoJSInstance.scene.children
+                    )
+
+                    let findTwoShapeIndex =
+                        twoJSInstance.scene.children.findIndex(
+                            (child) => child.elementData.id === item.id
+                        )
+
+                    console.log('findTwoShapeIndex', findTwoShapeIndex)
+                    if (findTwoShapeIndex !== -1) {
+                        let shape =
+                            twoJSInstance.scene.children[findTwoShapeIndex]
+                        twoJSInstance.remove([shape])
+                    }
 
                     selectedComponentArr.push(item.id)
 
                     let relativeX = item.x - xMid
                     let relativeY = item.y - yMid
-                    console.log(
-                        'relativeX relativeY',
-                        item.x,
-                        e.x,
-                        item.y,
-                        e.y,
-                        parseInt(item.x) - parseInt(e.x),
-                        parseInt(item.y) - parseInt(e.y)
-                    )
+
                     let obj = {
                         ...item,
                         id: item.id,
@@ -504,7 +515,19 @@ const Canvas = (props) => {
             newGroup.children = newChildren
 
             console.log('newGroup', newGroup)
-            setCurrentElements([...currentElements, newGroup])
+
+            // filter out those selected children (which are now grouped into one) from main current components array
+            // that means we dont render those components as seperate rather they
+            // are now children of this new group
+            let newComponents = componentsArr.filter((item, index) => {
+                if (selectedComponentArr.includes(item.id)) {
+                    return false
+                } else {
+                    return true
+                }
+            })
+
+            setCurrentComponents([...newComponents, newGroup])
         }
     }, [onGroup])
 

@@ -91,9 +91,12 @@ function Circle(props) {
             document
                 .getElementById(group.id)
                 .setAttribute('class', 'dragger-picker')
+
+            // setting database's id in html attribute of element
             document
                 .getElementById(group.id)
-                .setAttribute('data-label', 'Circle_coord')
+                .setAttribute('data-component-id', props.id)
+
             // console.log('two circle', group.id)
             const initialSceneCoords = document
                 .getElementById(two.scene.id)

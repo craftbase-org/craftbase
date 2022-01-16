@@ -112,6 +112,11 @@ function ArrowLine(props) {
             document
                 .getElementById(group.id)
                 .setAttribute('class', 'dragger-picker')
+
+            // setting database's id in html attribute of element
+            document
+                .getElementById(group.id)
+                .setAttribute('data-component-id', props.id)
             // document
             //     .getElementById(group.id)
             //     .setAttribute('data-label', 'line_coord')

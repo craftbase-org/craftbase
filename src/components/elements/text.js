@@ -93,9 +93,11 @@ function Text(props) {
             document
                 .getElementById(group.id)
                 .setAttribute('class', 'dragger-picker')
+
+            // setting database's id in html attribute of element
             document
                 .getElementById(group.id)
-                .setAttribute('data-label', 'text_coord')
+                .setAttribute('data-component-id', props.id)
 
             setInternalState((draft) => {
                 draft.element = {
