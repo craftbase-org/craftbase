@@ -271,6 +271,8 @@ function ArrowLine(props) {
                             variables: {
                                 id: props.id,
                                 updateObj: {
+                                    x: group.translation.x,
+                                    y: group.translation.y,
                                     x1: parseInt(line.vertices[0].x),
                                     y1: parseInt(line.vertices[0].y),
                                 },
@@ -310,6 +312,8 @@ function ArrowLine(props) {
                             variables: {
                                 id: props.id,
                                 updateObj: {
+                                    x: group.translation.x,
+                                    y: group.translation.y,
                                     x2: parseInt(line.vertices[1].x),
                                     y2: parseInt(line.vertices[1].y),
                                 },

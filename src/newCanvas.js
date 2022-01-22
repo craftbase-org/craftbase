@@ -553,8 +553,8 @@ const Canvas = (props) => {
             // Adding half width/height to x,y coords
             // due to selector rectangle being in inside
             // of selected area portion
-            newGroup.x = e.x
-            newGroup.y = e.y
+            newGroup.x = e.x + e.width / 2
+            newGroup.y = e.y + e.height / 2
 
             newGroup.children = newChildren
 

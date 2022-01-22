@@ -117,20 +117,20 @@ function GroupedObjectWrapper(props) {
 
         // simulating click behvior
         selector.update(
-            rectangle.getBoundingClientRect(true).left - 10,
-            rectangle.getBoundingClientRect(true).right + 10,
-            rectangle.getBoundingClientRect(true).top - 10,
-            rectangle.getBoundingClientRect(true).bottom + 10
+            rectangle.getBoundingClientRect(true).left,
+            rectangle.getBoundingClientRect(true).right,
+            rectangle.getBoundingClientRect(true).top,
+            rectangle.getBoundingClientRect(true).bottom
         )
         two.update()
 
         interact(`#${group.id}`).on('click', () => {
             console.log('on click ')
             selector.update(
-                rectangle.getBoundingClientRect(true).left - 10,
-                rectangle.getBoundingClientRect(true).right + 10,
-                rectangle.getBoundingClientRect(true).top - 10,
-                rectangle.getBoundingClientRect(true).bottom + 10
+                rectangle.getBoundingClientRect(true).left,
+                rectangle.getBoundingClientRect(true).right,
+                rectangle.getBoundingClientRect(true).top,
+                rectangle.getBoundingClientRect(true).bottom
             )
             two.update()
         })
@@ -178,10 +178,10 @@ function GroupedObjectWrapper(props) {
                         rectangle.height = rect.height
 
                         selector.update(
-                            rectangle.getBoundingClientRect(true).left - 10,
-                            rectangle.getBoundingClientRect(true).right + 10,
-                            rectangle.getBoundingClientRect(true).top - 10,
-                            rectangle.getBoundingClientRect(true).bottom + 10
+                            rectangle.getBoundingClientRect(true).left,
+                            rectangle.getBoundingClientRect(true).right,
+                            rectangle.getBoundingClientRect(true).top,
+                            rectangle.getBoundingClientRect(true).bottom
                         )
                     }
                     two.update()
