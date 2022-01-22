@@ -17,6 +17,7 @@ import {
 import Loader from 'components/utils/loader'
 
 function addZUI(props, updateToGlobalState, two) {
+    console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
     let domElement = two.renderer.domElement
     let zui = new ZUI(two.scene, domElement)
@@ -249,6 +250,8 @@ function addZUI(props, updateToGlobalState, two) {
         zui.zoomBy(delta / 250, mouse.x, mouse.y)
         distance = d
     }
+
+    return zui
 }
 
 const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
@@ -355,6 +358,7 @@ const Canvas = (props) => {
     console.log('getComponentsForBoardData', getComponentsForBoardData)
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
+    const [zuiInstance, setZuiInstance] = useState(null)
     const [currentComponents, setCurrentComponents] = useState([])
     const [prevElements, setPrevElements] = useState([])
     const [onGroup, setOnGroup] = useState(null)
@@ -371,19 +375,6 @@ const Canvas = (props) => {
         console.log('CANVAS CDM', props.selectPanMode)
         const elem = document.getElementById('main-two-root')
 
-        // Logic for capturing events in empty space in drawing area
-        document
-            .getElementById('main-two-root')
-            .addEventListener('mousedown', handleSelectorRectInitialization)
-
-        document
-            .getElementById('selector-rect')
-            .addEventListener('drag', handleSelectorRectDrag)
-
-        document
-            .getElementById('selector-rect')
-            .addEventListener('dragend', handleSelectorRectDragEnd)
-
         const two = new Two({
             fullscreen: true,
             // width: "auto",
@@ -394,11 +385,30 @@ const Canvas = (props) => {
         console.log('two', two.scene)
 
         // two.scene.translation.x = -50
-        addZUI(props, updateToGlobalState, two)
+        let zuiInstance = addZUI(props, updateToGlobalState, two)
 
         // this.props.getElementsData('CONSTRUCT', arr)
+        setZuiInstance(zuiInstance)
         setTwoJSInstance(two)
     }, [])
+
+    // once two.js instance is stored in state, attach event listeners
+    useEffect(() => {
+        // Logic for capturing events in empty space in drawing area
+        if (twoJSInstance !== null && zuiInstance !== null) {
+            document
+                .getElementById('main-two-root')
+                .addEventListener('mousedown', handleSelectorRectInitialization)
+
+            document
+                .getElementById('selector-rect')
+                .addEventListener('drag', handleSelectorRectDrag)
+
+            document
+                .getElementById('selector-rect')
+                .addEventListener('dragend', handleSelectorRectDragEnd)
+        }
+    }, [twoJSInstance])
 
     useEffect(() => {
         console.log(
@@ -655,6 +665,7 @@ const Canvas = (props) => {
             console.log('event mouse down main root', e, e.target.tagName)
             document.getElementById('main-two-root').focus()
             if (e.target.tagName == 'svg') {
+                // construct empty rectangle for selector
                 const rect = document.getElementById('selector-rect')
                 rect.style.position = 'absolute'
                 rect.style.zIndex = '1'
@@ -687,6 +698,13 @@ const Canvas = (props) => {
 
     const handleSelectorRectDrag = (e) => {
         console.log('selector-rect being dragged', e)
+
+        // let default zoom be zero
+        if (zuiInstance.zoom !== 0 || zuiInstance.zoom !== 1) {
+            zuiInstance.zoomSet(1, e.clientX, e.clientY)
+            twoJSInstance.update()
+        }
+
         const rect = document.getElementById('selector-rect')
         rect.style.zIndex = '1'
         rect.style.border = '1px dashed grey'
