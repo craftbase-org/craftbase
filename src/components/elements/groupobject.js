@@ -2,6 +2,8 @@ import React, { useEffect, useState, Fragment } from 'react'
 import interact from 'interactjs'
 
 import ObjectSelector from 'components/utils/objectSelector'
+import getEditComponents from 'components/utils/editWrapper'
+import { elementOnBlurHandler } from 'utils/misc'
 import { setPeronsalInformation, ungroupElements } from 'store/actions/main'
 import Loadable from 'react-loadable'
 import Loader from 'components/utils/loader'
@@ -15,8 +17,13 @@ function GroupedObjectWrapper(props) {
     let selectorInstance = null
 
     function onBlurHandler(e) {
-        console.log('on groupobject blur')
-        selectorInstance.hide()
+        console.log(
+            'on groupobject blur',
+            groupInstance.translation.x,
+            groupInstance.translation.y
+        )
+        elementOnBlurHandler(e, selectorInstance, two)
+        props.unGroup && props.unGroup(groupInstance)
         two.update()
     }
 
@@ -36,8 +43,8 @@ function GroupedObjectWrapper(props) {
 
         // Dummying group's layout by empty rectangle's shape implementation
         const rectangle = two.makeRectangle(
-            parseInt(prevX),
-            parseInt(prevY),
+            0,
+            0,
             props?.width || 0,
             props?.height || 0
         )
@@ -85,11 +92,15 @@ function GroupedObjectWrapper(props) {
 
         // console.log('Grouped Objects Wrapper', props.twoJSInstance)
 
-        const selector = new ObjectSelector(two, group, 0, 0, 0, 0, 4)
-        selector.create()
+        const { selector } = getEditComponents(two, group, 4)
         selectorInstance = selector
 
         two.update()
+        console.log(
+            'group object translation',
+            group.translation.x,
+            group.translation.y
+        )
 
         document
             .getElementById(group.id)

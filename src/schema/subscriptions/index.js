@@ -1,5 +1,14 @@
 import { gql } from '@apollo/client'
 
+export const GET_USER_DETAILS = gql`
+    subscription MyQuery($id: uuid = "") {
+        users: users_user(where: { id: { _eq: $id } }) {
+            firstName
+            id
+        }
+    }
+`
+
 export const GET_BOARD_DATA = gql`
     subscription GET_BOARD_DATA($id: uuid = "") {
         boardData: boards_board_by_pk(id: $id) {
@@ -17,7 +26,7 @@ export const GET_COMPONENT_INFO = gql`
             width
             height
             fill
-
+            id
             stroke
             linewidth
             x

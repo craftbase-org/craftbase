@@ -254,7 +254,7 @@ function addZUI(props, updateToGlobalState, two) {
 const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
     const RenderElement = () => {
         const [twoJSShape, setTwoJSShape] = useState(null)
-
+        const [componentData, setComponentData] = useState({})
         const {
             loading: getComponentInfoLoading,
             data: getComponentInfoData,
@@ -275,6 +275,25 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
                 twoJSInstance.remove([twoJSShape]) // twoJSInstance was send via params
                 // data.twoJSInstance.remove([twoJSShape])
             }
+
+            if (getComponentInfoData?.component) {
+                if (data.itemData.isDummy) {
+                    if (
+                        parseInt(getComponentInfoData.component.x) !==
+                        parseInt(data.itemData.x)
+                    ) {
+                        console.log('is dummy data', data.itemData)
+                        setComponentData(data.itemData)
+                    } else if (
+                        parseInt(getComponentInfoData.component.x) ===
+                        parseInt(data.itemData.x)
+                    ) {
+                        setComponentData(getComponentInfoData.component)
+                    }
+                } else {
+                    setComponentData(getComponentInfoData?.component)
+                }
+            }
         }, [getComponentInfoData])
 
         if (getComponentInfoLoading) {
@@ -289,13 +308,13 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
             })
         }
 
-        console.log('getComponentInfoData data change', getComponentInfoData)
+        // console.log('getComponentInfoData data change', getComponentInfoData)
         return data.twoJSInstance ? (
             getComponentInfoData?.component ? (
                 <ElementToRender
                     handleDeleteComponent={handleDeleteComponent}
                     {...data}
-                    {...getComponentInfoData.component}
+                    {...componentData}
                 />
             ) : null
         ) : (
@@ -305,11 +324,20 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
     return RenderElement
 }
 
-const GroupRenderWrapper = (ElementToRender, data) => {
+const GroupRenderWrapper = (ElementToRender, data, cb) => {
     const RenderGroup = () => {
         console.log('in render group wrapper', data)
 
-        return data.twoJSInstance ? <ElementToRender {...data} /> : <Spinner />
+        return data.twoJSInstance ? (
+            <ElementToRender
+                {...data}
+                unGroup={(twoGroupInstance) => {
+                    cb && cb(twoGroupInstance)
+                }}
+            />
+        ) : (
+            <Spinner />
+        )
     }
     return RenderGroup
 }
@@ -408,13 +436,24 @@ const Canvas = (props) => {
                         itemData: item,
                         selectPanMode: props.selectPanMode,
                     }
-                    // DEBUG HERE
+
+                    // Different render wrapper for components and group
                     let component = null
                     if (item.componentType === GROUP_COMPONENT) {
-                        component = GroupRenderWrapper(ElementToRender, {
-                            ...data,
-                            ...item,
-                        })
+                        component = GroupRenderWrapper(
+                            ElementToRender,
+                            {
+                                ...item,
+                                ...data,
+                            },
+                            (twoGroupInstance) => {
+                                console.log('on group wrapper callback')
+                                handleUngroupComponents(
+                                    item.id,
+                                    twoGroupInstance
+                                )
+                            }
+                        )
                     } else {
                         component = ElementRenderWrapper(
                             ElementToRender,
@@ -434,6 +473,7 @@ const Canvas = (props) => {
         // setComponentsToRender()
     }, [currentComponents])
 
+    // on group select use effect hook
     useEffect(() => {
         let componentsArr = [...currentComponents]
         if (onGroup) {
@@ -451,7 +491,8 @@ const Canvas = (props) => {
             const newChildren = []
             const selectedComponentArr = []
             let twoShapesToDelete = []
-            const allComponentCoords = getComponentsForBoardData.components
+            const allComponentCoords =
+                getComponentsForBoardData?.components || []
             // console.log(
             //     'area_selection allComponentCoords',
             //     xMid,
@@ -494,9 +535,12 @@ const Canvas = (props) => {
                         ...item,
                         id: item.id,
                         componentType: item.componentType,
-                        x: parseInt(item.x) - parseInt(e.x),
-                        y: parseInt(item.y) - parseInt(e.y),
+                        x: relativeX,
+                        relativeX: relativeX,
+                        y: relativeY,
+                        relativeY: relativeY,
                     }
+
                     newChildren.push(obj)
                 }
             })
@@ -530,6 +574,57 @@ const Canvas = (props) => {
             setCurrentComponents([...newComponents, newGroup])
         }
     }, [onGroup])
+
+    const handleUngroupComponents = (groupId, twoGroupInstance) => {
+        let componentsArr = [...currentComponents]
+        let groupData = null
+
+        componentsArr.forEach((item) => {
+            if (item.id === groupId) {
+                groupData = item
+            }
+        })
+
+        // console.log('groupData', groupData)
+        console.log(
+            'componentsArr before child insert',
+            componentsArr,
+            twoGroupInstance
+        )
+        if (groupData.children?.length > 0) {
+            groupData.children.forEach((child) => {
+                console.log('iterating children while ungrouping', child)
+                child.isDummy = true
+                child.x =
+                    parseInt(twoGroupInstance.translation.x) + parseInt(child.x)
+                child.y =
+                    parseInt(twoGroupInstance.translation.y) + parseInt(child.y)
+
+                componentsArr.push(child)
+                updateComponentInfo({
+                    variables: {
+                        id: child.id,
+                        updateObj: {
+                            x: child.x,
+                            y: child.y,
+                        },
+                    },
+                })
+            })
+        }
+        console.log('componentsArr after child insert', componentsArr)
+        let finalComponentsArr = componentsArr.filter(
+            (item) => item.id !== groupId
+        )
+        console.log('final components Arr', finalComponentsArr)
+
+        // removal of group from two.js scene graph
+        setTimeout(() => {
+            twoJSInstance.remove([twoGroupInstance])
+        }, 1000)
+
+        setCurrentComponents(finalComponentsArr)
+    }
 
     const updateToGlobalState = (newShapeData, oldShapeData) => {
         console.log('updateToGlobalState', newShapeData, oldShapeData)
@@ -591,13 +686,13 @@ const Canvas = (props) => {
     }
 
     const handleSelectorRectDrag = (e) => {
-        console.log('selector-rect being dragged', e, props.selectPanMode)
+        console.log('selector-rect being dragged', e)
         const rect = document.getElementById('selector-rect')
         rect.style.zIndex = '1'
         rect.style.border = '1px dashed grey'
         rect.style.width = `${Math.abs(e.offsetX)}px`
         rect.style.height = `${Math.abs(e.offsetY)}px`
-        console.log('rect getBoundingClientRect', rect.getBoundingClientRect())
+        // console.log('rect getBoundingClientRect', rect.getBoundingClientRect())
     }
 
     const handleSelectorRectDragEnd = (e) => {
