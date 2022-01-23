@@ -626,11 +626,21 @@ const Canvas = (props) => {
         let finalComponentsArr = componentsArr.filter(
             (item) => item.id !== groupId
         )
-        console.log('final components Arr', finalComponentsArr)
+        console.log(
+            'final components Arr',
+            finalComponentsArr,
+            twoGroupInstance,
+            twoGroupInstance.children
+        )
+
+        // REMOVE CHILDREN HERE
 
         // removal of group from two.js scene graph
         setTimeout(() => {
+            twoGroupInstance.remove([twoGroupInstance.children])
+
             twoJSInstance.remove([twoGroupInstance])
+            twoJSInstance.update()
         }, 1000)
 
         setCurrentComponents(finalComponentsArr)
