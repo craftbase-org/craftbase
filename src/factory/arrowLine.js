@@ -7,7 +7,7 @@ export default class ArrowLineFactory extends Main {
         const prevY = this.y
         const { fill, x1, x2, y1, y2 } = this.properties
 
-        console.log('arrow line factory x1, y1, x2, y2', x1, y1, x2, y2)
+        // console.log('arrow line factory x1, y1, x2, y2', x1, y1, x2, y2)
         let line = two.makeArrow(x1, y1, x2, y2, 10)
         line.linewidth = 5
         // line.vertices[1].y = 200
@@ -27,7 +27,7 @@ export default class ArrowLineFactory extends Main {
         resizeLine.opacity = 0
 
         let group = two.makeGroup(line, resizeLine)
-        console.log('main group', group.getBoundingClientRect())
+        // console.log('main group', group.getBoundingClientRect())
 
         // Overriding the circle point group's coordinate and
         // manipulating it with line's coordinate

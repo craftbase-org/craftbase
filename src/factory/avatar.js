@@ -7,26 +7,54 @@ export default class AvatarFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { bgColor } = this.properties
+        const {
+            width = 70,
+            height = 70,
+            radius,
+            fill = color_blue,
 
-        const circle = two.makeCircle(0, 0, 40)
-        circle.fill = bgColor ? bgColor : color_blue
+            stroke,
+            linewidth,
+            children = {},
+        } = this.properties
 
+        const circle = two.makeCircle(0, 0, 0)
+        circle.width = width
+        circle.height = height
+        circle.radius = parseInt(width / 2)
+        circle.fill = fill
+
+        if (stroke && linewidth) {
+            circle.stroke = stroke
+            circle.linewidth = linewidth
+        } else {
+            circle.noStroke()
+        }
+
+        let iconType = children?.icon?.iconType
+            ? children?.icon?.iconType
+            : 'ICON_IMAGE_AVATAR_WHITE'
+        // creates svg with proper template
         const svgImage = new DOMParser().parseFromString(
-            Icon.ICON_IMAGE_AVATAR_WHITE.data,
+            Icon[iconType].data,
             'text/xml'
         )
-        //   console.log("svgImage", svgImage, circle.width / 2);
-        const externalSVG = two.interpret(svgImage.firstChild)
-        externalSVG.scale = 1.5
-        externalSVG.center()
 
-        const circleSvgGroup = two.makeGroup(circle, externalSVG)
+        const externalSVG = two.interpret(svgImage.firstChild)
+        //   console.log("svgImage", svgImage, circle.width / 2);
+        externalSVG.scale = children?.icon?.iconScale
+            ? children?.icon?.iconScale
+            : 1
+
+        const externalSVGGroup = two.makeGroup(externalSVG)
+        externalSVGGroup.center()
+        const circleSvgGroup = two.makeGroup(circle, externalSVGGroup)
+
         const group = two.makeGroup(circleSvgGroup)
         group.center()
         group.translation.x = parseInt(prevX)
         group.translation.y = parseInt(prevY)
 
-        return { group, circleSvgGroup, circle, externalSVG }
+        return { group, circleSvgGroup, circle, externalSVG, externalSVGGroup }
     }
 }

@@ -7,18 +7,25 @@ export default class ButtonWithIconFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { bgColor, borderColor, textString, textColor } = this.properties
+        const {
+            width = 70,
+            height = 70,
+            fill = color_blue,
+
+            stroke,
+            linewidth,
+            children = {},
+        } = this.properties
 
         // Implement core element
 
-        const text = two.makeText(textString, 10, 0)
-        text.size = '16'
-        text.weight = '400'
-        // ;
-        text.size = 18
-        text.fill = textColor ? textColor : '#fff'
+        const text = two.makeText('Button', -15, 0)
+        text.value = children?.text?.value || 'Button'
+        text.size = children?.text?.size || '16'
+        text.fill = '#fff'
+        text.weight = children?.text?.weight || '500'
         // text.baseline = "sub";
-        text.alignment = 'left'
+        text.alignment = 'right'
 
         // Implement custom svg
         const svgImage = new DOMParser().parseFromString(
@@ -27,45 +34,76 @@ export default class ButtonWithIconFactory extends Main {
         )
         // console.log("svgImage", svgImage);
         const externalSVG = two.interpret(svgImage.firstChild)
-        externalSVG.translation.x = -3
-        externalSVG.translation.y = -1
-        externalSVG.scale = 0.9
-        externalSVG.center()
+        // externalSVG.translation.x = -10
+        // externalSVG.translation.y = -1
+        externalSVG.scale = children?.icon?.iconScale
+            ? children?.icon?.iconScale
+            : 0.8
+        // externalSVG.center()
 
-        let textGroup = two.makeGroup(externalSVG, text)
-        textGroup.center()
+        let externalSVGGroup = two.makeGroup(externalSVG)
+        externalSVGGroup.center()
+
+        let textGroup = two.makeGroup(text)
+        // textGroup.center()
         // console.log("textGroup", textGroup, textGroup.id);
 
-        const group = two.makeGroup(textGroup)
+        const textSvgGroup = two.makeGroup(externalSVGGroup, textGroup)
+        // textSvgGroup.translation.x = -10
+        textSvgGroup.center()
 
-        // group.center();
+        const rectangle = two.makeRoundedRectangle(0, 0, 140, 45, 5)
+        rectangle.width = width
+        rectangle.height = height
+        rectangle.fill = fill
+        if (stroke && linewidth) {
+            rectangle.stroke = stroke
+            rectangle.linewidth = linewidth
+        } else {
+            rectangle.noStroke()
+        }
+
+        const rectTextSvgGroup = two.makeGroup(rectangle, textSvgGroup)
+        // rectTextSvgGroup.center()
+        rectangle.noStroke()
+        const group = two.makeGroup(rectTextSvgGroup)
+
+        // group.center()
         group.translation.x = parseInt(prevX)
         group.translation.y = parseInt(prevY)
 
         // Implement external layer of rectangle
-        const rectangle = two.makePath(
-            group.getBoundingClientRect(true).left - 40,
-            group.getBoundingClientRect(true).top - 10,
+        // const rectangle = two.makePath(
+        //     group.getBoundingClientRect(true).left - 40,
+        //     group.getBoundingClientRect(true).top - 10,
 
-            group.getBoundingClientRect(true).right + 10,
-            group.getBoundingClientRect(true).top - 10,
+        //     group.getBoundingClientRect(true).right + 10,
+        //     group.getBoundingClientRect(true).top - 10,
 
-            group.getBoundingClientRect(true).right + 10,
-            group.getBoundingClientRect(true).bottom + 10,
+        //     group.getBoundingClientRect(true).right + 10,
+        //     group.getBoundingClientRect(true).bottom + 10,
 
-            group.getBoundingClientRect(true).left - 40,
-            group.getBoundingClientRect(true).bottom + 10
-        )
-        rectangle.fill = bgColor ? bgColor : color_blue
-        rectangle.stroke = borderColor ? borderColor : color_blue
-        rectangle.linewidth = 8
-        rectangle.join = 'round'
+        //     group.getBoundingClientRect(true).left - 40,
+        //     group.getBoundingClientRect(true).bottom + 10
+        // )
+        // rectangle.fill = fill
 
-        const rectTextGroup = two.makeGroup(rectangle, textGroup)
-        // rectangle.noStroke();
+        // rectangle.linewidth = 8
+        // rectangle.join = 'round'
 
-        group.add(rectangle)
-
-        return { group, text, rectangle, textGroup, externalSVG, rectTextGroup }
+        // if (stroke) {
+        //     rectangle.stroke = stroke
+        //     // rectangle.linewidth = linewidth
+        // } else {
+        //     rectangle.noStroke()
+        // }
+        return {
+            group,
+            text,
+            rectangle,
+            textSvgGroup,
+            externalSVG,
+            rectTextSvgGroup,
+        }
     }
 }

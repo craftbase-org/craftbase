@@ -6,14 +6,22 @@ export default class CircleFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill, width, height, radius } = this.properties
+        const { fill, width, height, radius, stroke, linewidth } =
+            this.properties
 
         // Implement core element
         const circle = two.makeEllipse(0, 0, 0, 0)
         circle.width = width || 30
         circle.height = height || 30
         circle.fill = fill ? fill : color_blue
-        circle.noStroke()
+
+        if (stroke && linewidth) {
+            circle.stroke = stroke
+            circle.linewidth = linewidth
+        } else {
+            circle.noStroke()
+        }
+
         this.circle = circle
 
         // Create group and take children elements as a parameter

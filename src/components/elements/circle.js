@@ -5,12 +5,9 @@ import { useImmer } from 'use-immer'
 
 // import Panzoom from '@panzoom/panzoom'
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
-import handleDrag from 'components/utils/dragger'
 import { elementOnBlurHandler } from 'utils/misc'
-import { setPeronsalInformation } from 'store/actions/main'
 import getEditComponents from 'components/utils/editWrapper'
 import CircleFactory from 'factory/circle'
-import { color_blue, defaultScaleConstant } from 'utils/constants'
 import Toolbar from 'components/floatingToolbar'
 
 function Circle(props) {
