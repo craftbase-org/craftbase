@@ -1,21 +1,22 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
 import { useImmer } from 'use-immer'
+import { useMutation } from '@apollo/client'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
-import handleDrag from 'components/utils/dragger'
+import ElementFactory from 'factory/button'
 import getEditComponents from 'components/utils/editWrapper'
 import Toolbar from 'components/floatingToolbar'
 
-import { setPeronsalInformation } from 'store/actions/main'
-import ElementFactory from 'factory/button'
-
 function Button(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
-    const dispatch = useDispatch()
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
@@ -37,9 +38,11 @@ function Button(props) {
         const prevY = props.y
 
         // Instantiate factory
-        const elementFactory = new ElementFactory(two, prevX, prevY, {})
+        const elementFactory = new ElementFactory(two, prevX, prevY, {
+            ...props,
+        })
         // Get all instances of every sub child element
-        const { group, rectTextGroup, text, rectangle } =
+        const { group, rectTextGroup, text, textGroup, rectangle } =
             elementFactory.createElement()
         group.elementData = props?.itemData
 
@@ -78,8 +81,8 @@ function Button(props) {
                 }
                 draft.shape = {
                     type: 'button',
-                    id: rectTextGroup.id,
-                    data: rectTextGroup,
+                    id: rectangle.id,
+                    data: rectangle,
                 }
                 draft.text = {
                     id: text.id,
@@ -87,6 +90,10 @@ function Button(props) {
                 }
                 draft.icon = {
                     data: {},
+                }
+                draft.textGroup = {
+                    id: textGroup.id,
+                    data: textGroup,
                 }
             })
 
@@ -193,6 +200,22 @@ function Button(props) {
                         rectTextGroup.getBoundingClientRect(true).bottom + 5
                     )
                     selector.hide()
+                    updateComponentInfo({
+                        variables: {
+                            id: props.id,
+
+                            updateObj: {
+                                width: parseInt(rectangle.width),
+                                children: {
+                                    ...props.children,
+                                    text: {
+                                        ...props.children?.text,
+                                        value: text.value,
+                                    },
+                                },
+                            },
+                        },
+                    })
                     two.update()
                 })
             })
@@ -215,8 +238,8 @@ function Button(props) {
                     },
 
                     move(event) {
-                        var target = event.target
-                        var rect = event.rect
+                        let target = event.target
+                        let rect = event.rect
 
                         // Restrict width to shrink if it has reached point
                         //  where it's width should be less than or equal to text's
@@ -238,6 +261,14 @@ function Button(props) {
                     },
                     end(event) {
                         console.log('the end')
+                        updateComponentInfo({
+                            variables: {
+                                id: props.id,
+                                updateObj: {
+                                    width: parseInt(rectangle.width),
+                                },
+                            },
+                        })
                         getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
@@ -296,7 +327,37 @@ function Button(props) {
             groupInstance.translation.y = props.y
             two.update()
         }
-    }, [props.x, props.y, props.metadata])
+
+        // update internal shape data
+        if (internalState?.shape?.data) {
+            let shapeInstance = internalState.shape.data
+
+            shapeInstance.width = props.width
+                ? props.width
+                : shapeInstance.width
+            shapeInstance.fill = props.fill ? props.fill : shapeInstance.fill
+
+            two.update()
+        }
+
+        // update external svg/icon data
+        if (internalState?.text?.data) {
+            let textInstance = internalState.text.data
+            let textGroupInstance = internalState.textGroup.data
+            textInstance.value = props.children?.text?.value
+                ? props.children?.text?.value
+                : textInstance.value
+            textGroupInstance.center()
+            two.update()
+        }
+    }, [
+        props.x,
+        props.y,
+        props.fill,
+        props.width,
+        props.height,
+        props.children,
+    ])
 
     function closeToolbar() {
         toggleToolbar(false)
@@ -310,23 +371,23 @@ function Button(props) {
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
-                    updateComponent={() => {
+                    updateComponent={(propertyToUpdate, propertyValue) => {
+                        propertyToUpdate &&
+                            propertyValue &&
+                            updateComponentInfo({
+                                variables: {
+                                    id: props.id,
+                                    updateObj: {
+                                        [propertyToUpdate]: propertyValue,
+                                    },
+                                },
+                            })
                         two.update()
                     }}
                 />
             ) : null}
         </React.Fragment>
     )
-}
-
-Button.propTypes = {
-    x: PropTypes.string,
-    y: PropTypes.string,
-}
-
-Button.defaultProps = {
-    x: 100,
-    y: 50,
 }
 
 export default Button
