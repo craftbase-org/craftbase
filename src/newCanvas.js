@@ -263,7 +263,7 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
             data: getComponentInfoData,
             error: getComponentInfoError,
         } = useSubscription(GET_COMPONENT_INFO, { variables: { id: data.id } })
-        console.log('in render Element', data, getComponentInfoData?.component)
+        // console.log('in render Element', data, getComponentInfoData?.component)
         const [
             deleteComponent,
             {
@@ -355,7 +355,7 @@ const Canvas = (props) => {
         variables: { boardId: props.boardId },
     })
 
-    console.log('getComponentsForBoardData', getComponentsForBoardData)
+    // console.log('getComponentsForBoardData', getComponentsForBoardData)
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [zuiInstance, setZuiInstance] = useState(null)
@@ -744,7 +744,7 @@ const Canvas = (props) => {
         // props.getElementsData('AREA_SELECTION', e)
     }
 
-    console.log('componentsToRender', componentsToRender)
+    // console.log('componentsToRender', componentsToRender)
     return (
         <>
             <div id="rsz-rect"></div>

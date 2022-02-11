@@ -2,25 +2,27 @@ import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import Two from 'two.js'
 import interact from 'interactjs'
-import { useDispatch } from 'react-redux'
 import { useImmer } from 'use-immer'
+import { useMutation } from '@apollo/client'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import Toolbar from 'components/floatingToolbar'
 import Icon from 'icons/icons'
-import ObjectSelector from 'components/utils/objectSelector'
-import { setPeronsalInformation } from 'store/actions/main'
+
 import AddIcon from 'assets/add.svg'
 
 function Checkbox(props) {
-    const [showToolbar, toggleToolbar] = useState(false)
-    const [internalState, setInternalState] = useImmer({
-        mainElement: null,
-        hidebtn: true,
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
     })
-    const dispatch = useDispatch()
+    const [showToolbar, toggleToolbar] = useState(false)
+
+    const [internalState, setInternalState] = useImmer({})
+
     const two = props.twoJSInstance
+
     let selectorInstance = null
     let groupObject = null
 
@@ -53,34 +55,53 @@ function Checkbox(props) {
         })
     }
 
+    function deleteCheckboxItem(group, checkboxGroup) {
+        console.log('deleteCheckboxItem', checkboxGroup)
+        console.log('group in text blur input checkbox', group)
+
+        // deleteCheckboxItem(index)
+
+        checkboxGroup.remove(group)
+        two.remove([group])
+        two.update()
+
+        // let newCheckboxArr = [...props.metadata?.checkboxArr]
+        // newCheckboxArr.splice(index, 1)
+
+        // updateComponentInfo({
+        //     variables: {
+        //         id: props.id,
+
+        //         updateObj: {
+        //             metadata: {
+        //                 checkboxArr: newCheckboxArr,
+        //             },
+        //         },
+        //     },
+        // })
+    }
+
     // Using unmount phase to remove event listeners
     useEffect(() => {
+        let checkboxGroup = two.makeGroup([])
         const offsetHeight = 0
-        let checkboxCounter = 2
+        let checkboxCounter = props.metadata.checkboxArr.length - 1
 
         const prevX = props.x
         const prevY = props.y
 
-        const currentCheckboxes = [
-            { name: 'checkbox 1', checked: false },
-            { name: 'checkbox 2', checked: true },
-            { name: 'checkbox 3', checked: false },
-        ]
+        const currentCheckboxes = props.metadata.checkboxArr || []
 
         const svgImage = new DOMParser().parseFromString(
             Icon.ICON_CHECKBOX_1.data,
             'text/xml'
         )
 
-        const textMap = {}
-        const rectMap = {}
-        const groupMap = {}
-        const svgMap = {}
-
         // Iterating over data and attaching to it's respective mappings
+        let groupMap = []
         currentCheckboxes.forEach((item, index) => {
             // construct text part of the checkbox
-            let text = new Two.Text(item.name, 10, index * 30)
+            let text = new Two.Text(item.textValue, 10, index * 30)
             text.alignment = 'left'
             text.size = '16'
             text.weight = '400'
@@ -97,6 +118,9 @@ function Checkbox(props) {
                 svgImage.firstChild.firstChild.firstChild
             )
 
+            if (props.fill) {
+                externalSVG.fill = props.fill
+            }
             externalSVG.translation.x = -10
             externalSVG.translation.y = index * 30
             externalSVG.scale = 0.04
@@ -108,15 +132,19 @@ function Checkbox(props) {
 
             // construct group to combine all parts into one
             let group = two.makeGroup(rect, externalSVG, text)
+            group.elementData = { ...item }
+            group.childrenObj = {
+                text,
+                rect,
+                externalSVG,
+            }
             // group.children.unshift(externalSVG);
 
-            textMap[`checkbox${index}`] = text
-            rectMap[`checkbox${index}`] = rect
-            svgMap[`checkbox${index}`] = externalSVG
-            groupMap[`checkbox${index}`] = group
+            groupMap.push(group)
         })
 
-        const checkboxGroup = two.makeGroup(Object.values(groupMap))
+        checkboxGroup.add(Object.values(groupMap))
+
         const group = two.makeGroup(checkboxGroup)
         group.elementData = props?.itemData
         // console.log("checkboxGroup", checkboxGroup, checkboxGroup.id);
@@ -162,6 +190,10 @@ function Checkbox(props) {
                     [group.id]: group,
                     // [selector.id]: selector,
                 }
+                draft.checkboxGroup = {
+                    id: checkboxGroup.id,
+                    data: checkboxGroup,
+                }
                 draft.group = {
                     id: group.id,
                     data: group,
@@ -184,7 +216,8 @@ function Checkbox(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            const addCheckboxClickHandler = (index, initialLoad) => {
+            const addCheckboxClickHandler = (e) => {
+                console.log('event on add checkbox', e, e.detail)
                 // console.log("add checkbox listener");
                 checkboxCounter = checkboxCounter + 1
 
@@ -218,17 +251,58 @@ function Checkbox(props) {
                 // construct group to combine all parts into one
                 let group = two.makeGroup(rect, externalSVG, text)
 
-                textMap[`checkbox${checkboxCounter}`] = text
-                rectMap[`checkbox${checkboxCounter}`] = rect
-                svgMap[`checkbox${checkboxCounter}`] = externalSVG
-                groupMap[`checkbox${checkboxCounter}`] = group
+                if (e.isTrusted === false) {
+                    text.value = e.detail.textValue
+                    group.elementData = { ...e.detail }
+                } else {
+                    group.elementData = {
+                        id: Math.floor(1000 + Math.random() * 9000),
+                        textValue: `checkbox${checkboxCounter}`,
+                        checked: false,
+                    }
+                }
 
+                // console.log(
+                //     'group.elementData in add checkbox',
+                //     group.elementData
+                // )
+
+                group.childrenObj = {
+                    text,
+                    rect,
+                    externalSVG,
+                }
+
+                groupMap.push(group)
                 checkboxGroup.add(group)
                 two.update()
 
-                updateCheckboxState(checkboxGroup)
+                // e.isTrusted === true means its been called via event dispatched through DOM element
+                if (e.isTrusted === true) {
+                    let newCheckboxArr = [...props.metadata?.checkboxArr]
+                    newCheckboxArr.push(group.elementData)
+                    updateComponentInfo({
+                        variables: {
+                            id: props.id,
+
+                            updateObj: {
+                                metadata: {
+                                    checkboxArr: newCheckboxArr,
+                                },
+                            },
+                        },
+                    })
+                }
+
+                // updateCheckboxState(checkboxGroup)
                 attachEventToCheckboxes()
             }
+
+            window.addEventListener(
+                'onAddNewCheckbox',
+                addCheckboxClickHandler,
+                false
+            )
 
             interact(`#${group.id}`).on('click', () => {
                 selector.update(
@@ -253,15 +327,77 @@ function Checkbox(props) {
             let checkboxRectArr = []
             let checkboxSvgArr = []
 
+            // update checkbox array data after updating item's text value
+            function updateCheckboxArrItemText(groupId, textValue) {
+                let newCheckboxArr = [...props.metadata?.checkboxArr]
+                let findIndex = newCheckboxArr.findIndex(
+                    (item) => item.id === groupId
+                )
+                if (findIndex !== -1) {
+                    newCheckboxArr[findIndex] = {
+                        ...newCheckboxArr[findIndex],
+                        textValue: textValue,
+                    }
+                }
+
+                updateComponentInfo({
+                    variables: {
+                        id: props.id,
+
+                        updateObj: {
+                            metadata: {
+                                checkboxArr: newCheckboxArr,
+                            },
+                        },
+                    },
+                })
+            }
+
+            // update checkbox array data after updating item's checked value
+            function updateCheckboxArrItemChecked(groupId, svgValue) {
+                let checked = svgValue === 0 ? false : true
+
+                let newCheckboxArr = [...props.metadata?.checkboxArr]
+                let findIndex = newCheckboxArr.findIndex(
+                    (item) => item.id === groupId
+                )
+                if (findIndex !== -1) {
+                    newCheckboxArr[findIndex] = {
+                        ...newCheckboxArr[findIndex],
+                        checked: checked,
+                    }
+                }
+
+                updateComponentInfo({
+                    variables: {
+                        id: props.id,
+
+                        updateObj: {
+                            metadata: {
+                                checkboxArr: newCheckboxArr,
+                            },
+                        },
+                    },
+                })
+            }
+
             // Loop and attach event listeners to all elements
             function attachEventToCheckboxes(flushEvents) {
                 for (
                     let index = 0;
-                    index < Object.values(textMap).length;
+                    index < checkboxGroup.children.length;
                     index++
                 ) {
+                    console.log(
+                        'checkboxGroup.children[index].childrenObj',
+                        checkboxGroup.children[index].childrenObj
+                    )
                     /* Double Click event handling portion for text*/
-                    let text = Object.values(textMap)[index]
+                    let text = checkboxGroup.children[index].childrenObj.text
+                    let externalSVG =
+                        checkboxGroup.children[index].childrenObj.externalSVG
+                    let rect = checkboxGroup.children[index].childrenObj.rect
+                    let groupId = checkboxGroup.children[index].elementData.id
 
                     const dblClickHandler = () => {
                         // Hide actual text and replace it with input box
@@ -326,23 +462,30 @@ function Checkbox(props) {
                         input.addEventListener('blur', (e) => {
                             console.log('BLUR E', e)
                             twoTextInstance.style.display = 'block'
-                            text.value = input.value
-                            input.remove()
+                            if (input.value === '' || input.value === ' ') {
+                                let item = Object.values(checkboxGroup)[index]
+                                deleteCheckboxItem(item, checkboxGroup)
+                            } else {
+                                text.value = input.value
+                                input.remove()
 
-                            selector.update(
-                                checkboxGroup.getBoundingClientRect(true).left -
-                                    10,
-                                checkboxGroup.getBoundingClientRect(true)
-                                    .right + 10,
-                                checkboxGroup.getBoundingClientRect(true).top -
-                                    10,
-                                checkboxGroup.getBoundingClientRect(true)
-                                    .bottom + 10
-                            )
-                            selector.hide()
-                            //patch
-                            if (e?.relatedTarget?.id !== 'checkbox-add') {
-                                toggleAddBtn(true)
+                                updateCheckboxArrItemText(groupId, text.value)
+
+                                selector.update(
+                                    checkboxGroup.getBoundingClientRect(true)
+                                        .left - 10,
+                                    checkboxGroup.getBoundingClientRect(true)
+                                        .right + 10,
+                                    checkboxGroup.getBoundingClientRect(true)
+                                        .top - 10,
+                                    checkboxGroup.getBoundingClientRect(true)
+                                        .bottom + 10
+                                )
+                                selector.hide()
+                                //patch
+                                if (e?.relatedTarget?.id !== 'checkbox-add') {
+                                    toggleAddBtn(true)
+                                }
                             }
 
                             two.update()
@@ -357,19 +500,21 @@ function Checkbox(props) {
                     }
 
                     /* On click event handling portion for rect (checkbox)*/
-                    let rect = Object.values(rectMap)[index]
-                    let svg = Object.values(svgMap)[index]
 
                     const checkboxClickHandler = () => {
-                        if (svg.opacity == 0) {
-                            svg.opacity = 1
+                        if (externalSVG.opacity == 0) {
+                            externalSVG.opacity = 1
                         } else {
-                            svg.opacity = 0
+                            externalSVG.opacity = 0
                         }
+                        updateCheckboxArrItemChecked(
+                            groupId,
+                            externalSVG.opacity
+                        )
                     }
 
                     // One event handler for both the elements (rect and svg)
-                    // as user behavior would be clicking on checkbox or either empty rectangle
+                    // as user behavior would be clicking on checkbox or either empty rectangle(empty checkbox)
 
                     if (!checkboxRectArr.includes(rect.id)) {
                         checkboxRectArr.push(rect.id)
@@ -378,14 +523,15 @@ function Checkbox(props) {
                             .addEventListener('click', checkboxClickHandler)
                     }
 
-                    if (!checkboxSvgArr.includes(svg.id)) {
-                        checkboxSvgArr.push(svg.id)
+                    if (!checkboxSvgArr.includes(externalSVG.id)) {
+                        checkboxSvgArr.push(externalSVG.id)
                         document
-                            .getElementById(svg.id)
+                            .getElementById(externalSVG.id)
                             .addEventListener('click', checkboxClickHandler)
                     }
                 }
             }
+
             attachEventToCheckboxes()
 
             // interact(`#${group.id}`).draggable({
@@ -450,7 +596,50 @@ function Checkbox(props) {
             groupInstance.translation.y = props.y
             two.update()
         }
-    }, [props.x, props.y, props.metadata])
+
+        if (internalState?.checkboxGroup?.data) {
+            let checkboxGroupArr = internalState.checkboxGroup.data.children
+            console.log('checkboxGroupArr len', checkboxGroupArr.length)
+
+            // iterating checkbox's children.
+            // checking there `elementData` and comparing it with updated data
+            props.metadata.checkboxArr.forEach((item, index) => {
+                let findCheckboxItemIndex = checkboxGroupArr.findIndex(
+                    (j) => j.elementData.id == item.id
+                )
+
+                if (findCheckboxItemIndex !== -1) {
+                    let getCheckbox = checkboxGroupArr[findCheckboxItemIndex]
+
+                    // update text value if it does not match
+                    if (getCheckbox.elementData.textValue !== item.textValue) {
+                        // we are updating actual two's Text value
+                        getCheckbox.childrenObj.text.value = item.textValue
+                    }
+
+                    // update checked value if it does not match
+                    if (getCheckbox.elementData.checked !== item.checked) {
+                        // we are updating actual two's svg
+                        getCheckbox.childrenObj.externalSVG.opacity =
+                            item.checked === true ? 1 : 0
+                    }
+                } else {
+                    // let addCheckboxBtnElement =
+                    //     document.getElementById('checkbox-add')
+                    // addCheckboxBtnElement.click()
+
+                    let evt = new CustomEvent('onAddNewCheckbox', {
+                        detail: item,
+                        newElementData: item,
+                    })
+                    window.dispatchEvent(evt)
+                }
+            })
+
+            two.update()
+            console.log('checkboxGroupArr', checkboxGroupArr)
+        }
+    }, [props.x, props.y, props.fill, props.metadata])
 
     function closeToolbar() {
         toggleToolbar(false)
