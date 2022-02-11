@@ -93,10 +93,10 @@ function ArrowLine(props) {
 
             two.update()
 
-            console.log(
-                'point circle dom',
-                document.getElementById(pointCircle1.id)
-            )
+            // console.log(
+            //     'point circle dom',
+            //     document.getElementById(pointCircle1.id)
+            // )
             // some styling
             document.getElementById(line.id).style.cursor = 'pointer'
             document.getElementById(pointCircle1.id).style.cursor = 'pointer'
