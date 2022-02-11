@@ -1,23 +1,23 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
 import { useImmer } from 'use-immer'
+import { useMutation } from '@apollo/client'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
-
 import getEditComponents from 'components/utils/editWrapper'
-import handleDrag from 'components/utils/dragger'
-
-import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/avatar'
 import Toolbar from 'components/floatingToolbar'
 
 function Avatar(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({
         externalSVG: null,
     })
-    const dispatch = useDispatch()
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
@@ -39,9 +39,11 @@ function Avatar(props) {
         const prevY = props.y
 
         // Instantiate factory
-        const elementFactory = new ElementFactory(two, prevX, prevY, {})
+        const elementFactory = new ElementFactory(two, prevX, prevY, {
+            ...props,
+        })
         // Get all instances of every sub child element
-        const { group, circleSvgGroup, circle, externalSVG } =
+        const { group, circleSvgGroup, circle, externalSVG, externalSVGGroup } =
             elementFactory.createElement()
         group.elementData = props?.itemData
 
@@ -81,18 +83,19 @@ function Avatar(props) {
                 }
                 draft.shape = {
                     type: 'avatar',
-                    id: circleSvgGroup.id,
-                    data: circleSvgGroup,
+                    id: circle.id,
+                    data: circle,
                 }
                 draft.icon = {
                     id: externalSVG.id,
                     data: externalSVG,
                 }
+                draft.externalSVGGroup = {
+                    id: externalSVGGroup.id,
+                    data: externalSVGGroup,
+                }
             })
 
-            const initialScaleCoefficient = parseInt(
-                circle.radius / externalSVG.scale
-            )
             const getGroupElementFromDOM = document.getElementById(
                 `${group.id}`
             )
@@ -131,6 +134,10 @@ function Avatar(props) {
                         // window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
+                        let initialScaleCoefficient = parseInt(
+                            circle.radius / externalSVG.scale
+                        )
+
                         const rect = event.rect
                         const rectRadii = parseInt(rect.width / 2)
 
@@ -144,7 +151,7 @@ function Avatar(props) {
                             // console.log("circle.radius", circle.radius);
                             externalSVG.scale =
                                 circle.radius / initialScaleCoefficient
-                            externalSVG.center()
+                            externalSVGGroup.center()
 
                             selector.update(
                                 circle.getBoundingClientRect(true).left - 3,
@@ -158,6 +165,27 @@ function Avatar(props) {
                     },
                     end(event) {
                         console.log('the end')
+                        updateComponentInfo({
+                            variables: {
+                                id: props.id,
+                                updateObj: {
+                                    width: parseInt(circle.width),
+                                    height: parseInt(circle.height),
+                                    children: {
+                                        ...props.children,
+                                        icon: {
+                                            iconType:
+                                                props.children?.icon
+                                                    ?.iconType || null,
+                                            iconStroke:
+                                                props.children?.icon
+                                                    ?.iconStroke || null,
+                                            iconScale: externalSVG.scale,
+                                        },
+                                    },
+                                },
+                            },
+                        })
                         getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
@@ -225,7 +253,41 @@ function Avatar(props) {
             groupInstance.translation.y = props.y
             two.update()
         }
-    }, [props.x, props.y, props.metadata])
+
+        // update internal shape data
+        if (internalState?.shape?.data) {
+            let shapeInstance = internalState.shape.data
+
+            shapeInstance.width = props.width
+                ? props.width
+                : shapeInstance.width
+            shapeInstance.height = props.height
+                ? props.height
+                : shapeInstance.height
+            shapeInstance.radius = parseInt(shapeInstance.width / 2)
+            shapeInstance.fill = props.fill ? props.fill : shapeInstance.fill
+
+            two.update()
+        }
+
+        // update external svg/icon data
+        if (internalState?.icon?.data) {
+            let externalSVGInstance = internalState.icon.data
+            let externalSVGGroupInstance = internalState.externalSVGGroup.data
+            externalSVGInstance.scale = props.children?.icon?.iconScale
+                ? props.children?.icon?.iconScale
+                : externalSVGInstance.scale
+            externalSVGGroupInstance.center()
+            two.update()
+        }
+    }, [
+        props.x,
+        props.y,
+        props.fill,
+        props.width,
+        props.height,
+        props.children,
+    ])
 
     function closeToolbar() {
         toggleToolbar(false)
@@ -239,7 +301,17 @@ function Avatar(props) {
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
-                    updateComponent={() => {
+                    updateComponent={(propertyToUpdate, propertyValue) => {
+                        propertyToUpdate &&
+                            propertyValue &&
+                            updateComponentInfo({
+                                variables: {
+                                    id: props.id,
+                                    updateObj: {
+                                        [propertyToUpdate]: propertyValue,
+                                    },
+                                },
+                            })
                         two.update()
                     }}
                 />
