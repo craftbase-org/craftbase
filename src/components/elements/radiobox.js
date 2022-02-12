@@ -1,24 +1,27 @@
 import React, { useEffect, useState } from 'react'
 import Two from 'two.js'
 import interact from 'interactjs'
-import { useDispatch } from 'react-redux'
+import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
-import getEditComponents from 'components/utils/editWrapper'
 import Toolbar from 'components/floatingToolbar'
 import Icon from 'icons/icons'
 import ObjectSelector from 'components/utils/objectSelector'
-import { setPeronsalInformation } from 'store/actions/main'
+
 import AddIcon from 'assets/add.svg'
 
 function RadioBox(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({
         mainElement: null,
         hidebtn: true,
     })
-    const dispatch = useDispatch()
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
@@ -52,35 +55,56 @@ function RadioBox(props) {
         })
     }
 
+    function deleteRadioboxItem(group, radioboxGroup) {
+        console.log('deleteRadioboxItem', radioboxGroup)
+        console.log('group in text blur input radiobox', group)
+        let findIndex = radioboxGroup.children.findIndex(
+            (i) => i.elementData.id == group.elementData.id
+        )
+        // deleteRadioboxItem(index)
+
+        radioboxGroup.remove(group)
+        two.remove([group])
+        two.update()
+
+        let newRadioboxArr = [...props.metadata?.radioboxArr]
+        newRadioboxArr.splice(findIndex, 1)
+
+        updateComponentInfo({
+            variables: {
+                id: props.id,
+
+                updateObj: {
+                    metadata: {
+                        radioboxArr: newRadioboxArr,
+                    },
+                },
+            },
+        })
+    }
+
     // Using unmount phase to remove event listeners
     useEffect(() => {
+        let radioboxGroup = two.makeGroup([])
         const offsetHeight = 0
-        let checkboxCounter = 2
+        let checkboxCounter = props.metadata.radioboxArr.length - 1
         let selectedRadioControl = null
 
         const prevX = props.x
         const prevY = props.y
 
-        const currentCheckboxes = [
-            { name: 'radio 1', checked: false },
-            { name: 'radio 2', checked: true },
-            { name: 'radio 3', checked: false },
-        ]
+        const currentCheckboxes = props.metadata.radioboxArr || []
 
         const svgImage = new DOMParser().parseFromString(
             Icon.ICON_CHECKBOX_1.data,
             'text/xml'
         )
 
-        const textMap = {}
-        const circleMap = {}
-        const groupMap = {}
-        const iconMap = {}
-
         // Iterating over data and attaching to it's respective mappings
+        let groupMap = []
         currentCheckboxes.forEach((item, index) => {
             // text part of the radio control
-            let text = new Two.Text(item.name, 10, index * 30)
+            let text = new Two.Text(item.textValue, 10, index * 30)
             text.alignment = 'left'
             text.size = '16'
             text.weight = '400'
@@ -105,13 +129,23 @@ function RadioBox(props) {
             // group all the parts into one to form radio control
             let group = two.makeGroup(externalCircle, innerCircle, text)
             // group.children.unshift(externalSVG);
+            group.elementData = { ...item }
+            group.childrenObj = {
+                text,
+                innerCircle,
+                externalCircle,
+            }
 
-            textMap[`radiobox${index}`] = text
-            circleMap[`radiobox${index}`] = externalCircle
-            iconMap[`radiobox${index}`] = innerCircle
-            groupMap[`radiobox${index}`] = group
+            // textMap[`radiobox${index}`] = text
+            // circleMap[`radiobox${index}`] = externalCircle
+            // iconMap[`radiobox${index}`] = innerCircle
+            // groupMap[`radiobox${index}`] = group
+
+            groupMap.push(group)
         })
-        const radioboxGroup = two.makeGroup(Object.values(groupMap))
+
+        radioboxGroup.add(Object.values(groupMap))
+
         const group = two.makeGroup(radioboxGroup)
         group.elementData = props?.itemData
         // console.log("radioboxGroup", radioboxGroup, radioboxGroup.id);
@@ -160,6 +194,10 @@ function RadioBox(props) {
                     id: group.id,
                     data: group,
                 }
+                draft.radioboxGroup = {
+                    id: radioboxGroup.id,
+                    data: radioboxGroup,
+                }
                 draft.shape = {
                     id: radioboxGroup.id,
                     data: radioboxGroup,
@@ -179,8 +217,9 @@ function RadioBox(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            const addRadioControlHandler = (index, initialLoad) => {
-                console.log('add checkbox listener')
+            const addRadioControlHandler = (e) => {
+                console.log('event on add radiobox', e, e.detail)
+
                 checkboxCounter = checkboxCounter + 1
 
                 let text = new Two.Text(
@@ -210,20 +249,59 @@ function RadioBox(props) {
                 // externalSVG.center();
 
                 let group = two.makeGroup(externalCircle, innerCircle, text)
-
+                if (e.isTrusted === false) {
+                    text.value = e.detail.textValue
+                    group.elementData = { ...e.detail }
+                } else {
+                    group.elementData = {
+                        id: Math.floor(1000 + Math.random() * 9000),
+                        textValue: `radiobox${checkboxCounter}`,
+                        checked: false,
+                    }
+                }
+                group.childrenObj = {
+                    text,
+                    innerCircle,
+                    externalCircle,
+                }
                 // group.children.unshift(externalSVG);
 
-                textMap[`radiobox${index}`] = text
-                circleMap[`radiobox${index}`] = externalCircle
-                iconMap[`radiobox${index}`] = innerCircle
-                groupMap[`radiobox${index}`] = group
+                // textMap[`radiobox${index}`] = text
+                // circleMap[`radiobox${index}`] = externalCircle
+                // iconMap[`radiobox${index}`] = innerCircle
+                // groupMap[`radiobox${index}`] = group
 
+                groupMap.push(group)
                 radioboxGroup.add(group)
                 two.update()
 
-                updateRadioBoxState(radioboxGroup)
+                // e.isTrusted === true means its been called via event dispatched through DOM element
+                if (e.isTrusted === true) {
+                    let newRadioboxArr = [...props.metadata?.radioboxArr]
+                    newRadioboxArr.push(group.elementData)
+                    updateComponentInfo({
+                        variables: {
+                            id: props.id,
+
+                            updateObj: {
+                                metadata: {
+                                    radioboxArr: newRadioboxArr,
+                                },
+                            },
+                        },
+                    })
+                }
+
+                // updateRadioBoxState(radioboxGroup)
                 attachEventToRadioControl()
             }
+
+            // custom event listener definition for simulating add radiobox behavior
+            window.addEventListener(
+                'onAddNewRadiobox',
+                addRadioControlHandler,
+                false
+            )
 
             interact(`#${group.id}`).on('click', () => {
                 selector.update(
@@ -252,15 +330,81 @@ function RadioBox(props) {
             let radioExtCircleArr = []
             let radioIntCircleArr = []
 
+            // update checkbox array data after updating item's text value
+            function updateRadioboxArrItemText(groupId, textValue) {
+                let newRadioboxArr = [...props.metadata?.radioboxArr]
+                let findIndex = newRadioboxArr.findIndex(
+                    (item) => item.id === groupId
+                )
+                if (findIndex !== -1) {
+                    newRadioboxArr[findIndex] = {
+                        ...newRadioboxArr[findIndex],
+                        textValue: textValue,
+                    }
+                }
+
+                updateComponentInfo({
+                    variables: {
+                        id: props.id,
+
+                        updateObj: {
+                            metadata: {
+                                radioboxArr: newRadioboxArr,
+                            },
+                        },
+                    },
+                })
+            }
+
+            // update checkbox array data after updating item's checked value
+            function updateRadioboxArrItemChecked(groupId, svgValue) {
+                let checked = svgValue === 0 ? false : true
+
+                let newRadioboxArr = [...props.metadata?.radioboxArr]
+                let findIndex = newRadioboxArr.findIndex(
+                    (item) => item.id === groupId
+                )
+                if (findIndex !== -1) {
+                    newRadioboxArr[findIndex] = {
+                        ...newRadioboxArr[findIndex],
+                        checked: checked,
+                    }
+                }
+
+                updateComponentInfo({
+                    variables: {
+                        id: props.id,
+
+                        updateObj: {
+                            metadata: {
+                                radioboxArr: newRadioboxArr,
+                            },
+                        },
+                    },
+                })
+            }
+
             // Loop and attach event listeners to all elements
             function attachEventToRadioControl(flushEvents) {
                 for (
                     let index = 0;
-                    index < Object.values(textMap).length;
+                    index < radioboxGroup.children.length;
                     index++
                 ) {
+                    console.log(
+                        'radioboxGroup.children[index].childrenObj',
+                        radioboxGroup.children.length,
+                        radioboxGroup.children[index].childrenObj
+                    )
+
                     /* Double Click event handling portion for text*/
-                    let text = Object.values(textMap)[index]
+                    let text = radioboxGroup.children[index].childrenObj.text
+                    let innerCircle =
+                        radioboxGroup.children[index].childrenObj.innerCircle
+                    let externalCircle =
+                        radioboxGroup.children[index].childrenObj.externalCircle
+                    let groupId = radioboxGroup.children[index].elementData.id
+
                     // console.log("text in for loop", text, text._renderer.elem);
 
                     const dblClickHandler = () => {
@@ -331,29 +475,33 @@ function RadioBox(props) {
                         // Handle Input box blur event
                         input.addEventListener('blur', (e) => {
                             twoTextInstance.style.display = 'block'
-                            text.value = input.value
-                            input.remove()
-                            console.log(
-                                'input blur event',
-                                radioboxGroup.id,
-                                radioboxGroup.getBoundingClientRect()
-                            )
+                            if (input.value === '' || input.value === ' ') {
+                                // let item = Object.values(radioboxGroup)[index]
+                                deleteRadioboxItem(
+                                    radioboxGroup.children[index],
+                                    radioboxGroup
+                                )
+                            } else {
+                                text.value = input.value
+                                input.remove()
 
-                            selector.update(
-                                radioboxGroup.getBoundingClientRect(true).left -
-                                    10,
-                                radioboxGroup.getBoundingClientRect(true)
-                                    .right + 10,
-                                radioboxGroup.getBoundingClientRect(true).top -
-                                    10,
-                                radioboxGroup.getBoundingClientRect(true)
-                                    .bottom + 10
-                            )
-                            selector.hide()
+                                updateRadioboxArrItemText(groupId, text.value)
 
-                            //  patch
-                            if (e?.relatedTarget?.id !== 'checkbox-add') {
-                                toggleAddBtn(true)
+                                selector.update(
+                                    radioboxGroup.getBoundingClientRect(true)
+                                        .left - 10,
+                                    radioboxGroup.getBoundingClientRect(true)
+                                        .right + 10,
+                                    radioboxGroup.getBoundingClientRect(true)
+                                        .top - 10,
+                                    radioboxGroup.getBoundingClientRect(true)
+                                        .bottom + 10
+                                )
+                                selector.hide()
+                                //patch
+                                if (e?.relatedTarget?.id !== 'checkbox-add') {
+                                    toggleAddBtn(true)
+                                }
                             }
                             two.update()
                         })
@@ -367,30 +515,33 @@ function RadioBox(props) {
                     }
 
                     /* On click event handling portion for rect (checkbox)*/
-                    let rect = Object.values(circleMap)[index]
-                    let svg = Object.values(iconMap)[index]
 
                     const radioControlClickHandler = () => {
-                        console.log('rect click handler', svg.opacity)
+                        // console.log('rect click handler', svg.opacity)
                         selectedRadioControl.opacity = 0
-                        selectedRadioControl = svg
+                        selectedRadioControl = innerCircle
                         selectedRadioControl.opacity = 1
+
+                        updateRadioboxArrItemChecked(
+                            groupId,
+                            innerCircle.opacity
+                        )
                     }
 
-                    // One event handler for both the elements (rect and svg)
-                    // as user behavior would be clicking on checkbox or either empty rectangle
+                    // One event handler for both the elements (externalCircle and innerCircle)
+                    // as user behavior would be clicking on radiobox(innercircle) or either empty external circle
 
-                    if (!radioExtCircleArr.includes(rect.id)) {
-                        radioExtCircleArr.push(rect.id)
+                    if (!radioExtCircleArr.includes(externalCircle.id)) {
+                        radioExtCircleArr.push(externalCircle.id)
                         document
-                            .getElementById(rect.id)
+                            .getElementById(externalCircle.id)
                             .addEventListener('click', radioControlClickHandler)
                     }
 
-                    if (!radioIntCircleArr.includes(svg.id)) {
-                        radioIntCircleArr.push(svg.id)
+                    if (!radioIntCircleArr.includes(innerCircle.id)) {
+                        radioIntCircleArr.push(innerCircle.id)
                         document
-                            .getElementById(svg.id)
+                            .getElementById(innerCircle.id)
                             .addEventListener('click', radioControlClickHandler)
                     }
                 }
@@ -455,7 +606,50 @@ function RadioBox(props) {
             groupInstance.translation.y = props.y
             two.update()
         }
-    }, [props.x, props.y, props.metadata])
+
+        if (internalState?.radioboxGroup?.data) {
+            let radioboxGroupArr = internalState.radioboxGroup.data.children
+            console.log('radioboxGroupArr len', radioboxGroupArr.length)
+
+            // iterating checkbox's children.
+            // checking there `elementData` and comparing it with updated data
+            props.metadata.radioboxArr.forEach((item, index) => {
+                let findRadioboxItemIndex = radioboxGroupArr.findIndex(
+                    (j) => j.elementData.id == item.id
+                )
+
+                if (findRadioboxItemIndex !== -1) {
+                    let getRadiobox = radioboxGroupArr[findRadioboxItemIndex]
+
+                    // update text value if it does not match
+                    if (getRadiobox.elementData.textValue !== item.textValue) {
+                        // we are updating actual two's Text value
+                        getRadiobox.childrenObj.text.value = item.textValue
+                    }
+
+                    // update checked value if it does not match
+                    if (getRadiobox.elementData.checked !== item.checked) {
+                        // we are updating actual two's svg
+                        // selectedRadioControl = d
+                        // getRadiobox.childrenObj.externalSVG.opacity =
+                        //     item.checked === true ? 1 : 0
+                    }
+                } else {
+                    // let addCheckboxBtnElement =
+                    //     document.getElementById('checkbox-add')
+                    // addCheckboxBtnElement.click()
+
+                    let evt = new CustomEvent('onAddNewRadiobox', {
+                        detail: item,
+                    })
+                    window.dispatchEvent(evt)
+                }
+            })
+
+            two.update()
+            console.log('radioboxGroupArr', radioboxGroupArr)
+        }
+    }, [props.x, props.y, props.fill, props.metadata])
 
     function closeToolbar() {
         toggleToolbar(false)

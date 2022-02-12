@@ -58,27 +58,29 @@ function Checkbox(props) {
     function deleteCheckboxItem(group, checkboxGroup) {
         console.log('deleteCheckboxItem', checkboxGroup)
         console.log('group in text blur input checkbox', group)
-
+        let findIndex = checkboxGroup.children.findIndex(
+            (i) => i.elementData.id == group.elementData.id
+        )
         // deleteCheckboxItem(index)
 
         checkboxGroup.remove(group)
         two.remove([group])
         two.update()
 
-        // let newCheckboxArr = [...props.metadata?.checkboxArr]
-        // newCheckboxArr.splice(index, 1)
+        let newCheckboxArr = [...props.metadata?.checkboxArr]
+        newCheckboxArr.splice(findIndex, 1)
 
-        // updateComponentInfo({
-        //     variables: {
-        //         id: props.id,
+        updateComponentInfo({
+            variables: {
+                id: props.id,
 
-        //         updateObj: {
-        //             metadata: {
-        //                 checkboxArr: newCheckboxArr,
-        //             },
-        //         },
-        //     },
-        // })
+                updateObj: {
+                    metadata: {
+                        checkboxArr: newCheckboxArr,
+                    },
+                },
+            },
+        })
     }
 
     // Using unmount phase to remove event listeners
@@ -298,6 +300,7 @@ function Checkbox(props) {
                 attachEventToCheckboxes()
             }
 
+            // custom event listener definition for simulating add checkbox behavior
             window.addEventListener(
                 'onAddNewCheckbox',
                 addCheckboxClickHandler,
@@ -463,8 +466,11 @@ function Checkbox(props) {
                             console.log('BLUR E', e)
                             twoTextInstance.style.display = 'block'
                             if (input.value === '' || input.value === ' ') {
-                                let item = Object.values(checkboxGroup)[index]
-                                deleteCheckboxItem(item, checkboxGroup)
+                                // let item = Object.values(checkboxGroup)[index]
+                                deleteCheckboxItem(
+                                    checkboxGroup.children[index],
+                                    checkboxGroup
+                                )
                             } else {
                                 text.value = input.value
                                 input.remove()
@@ -630,7 +636,6 @@ function Checkbox(props) {
 
                     let evt = new CustomEvent('onAddNewCheckbox', {
                         detail: item,
-                        newElementData: item,
                     })
                     window.dispatchEvent(evt)
                 }
