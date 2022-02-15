@@ -1,29 +1,49 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
+import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
-import handleDrag from 'components/utils/dragger'
 import Toolbar from 'components/floatingToolbar'
-import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/imagecard'
 
 function ImageCard(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const [showToolbar, toggleToolbar] = useState(false)
-    const [internalState, setInternalState] = useImmer({})
-    const dispatch = useDispatch()
+    const [internalState, setInternalState] = useImmer({ externalSVG: null })
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
         elementOnBlurHandler(e, selectorInstance, two)
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
+    }
+
+    function handleKeyDown(e) {
+        if (e.keyCode === 8 || e.keyCode === 46) {
+            console.log('handle key down event', e)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            props.handleDeleteComponent &&
+                props.handleDeleteComponent(groupObject)
+            two.remove([groupObject])
+            two.update()
+        }
     }
 
     function onFocusHandler(e) {
         document.getElementById(`${groupObject.id}`).style.outline = 0
+        document
+            .getElementById(`${groupObject.id}`)
+            .addEventListener('keydown', handleKeyDown)
     }
 
     // Using unmount phase to remove event listeners
@@ -35,16 +55,25 @@ function ImageCard(props) {
         const prevY = props.y
 
         // Instantiate factory
-        const elementFactory = new ElementFactory(two, prevX, prevY, {})
+        const elementFactory = new ElementFactory(two, prevX, prevY, {
+            ...props,
+        })
         // Get all instances of every sub child element
-        const { group, circleSvgGroup, externalSVG, rectangle } =
-            elementFactory.createElement()
+        const {
+            group,
+            rectSvgGroup,
+            externalSVG,
+            externalSVGGroup,
+            rectangle,
+        } = elementFactory.createElement()
         group.elementData = props?.itemData
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             const parentGroup = props.parentGroup
-            parentGroup.add(circleSvgGroup)
+            rectSvgGroup.translation.x = props.metaData.x
+
+            parentGroup.add(rectSvgGroup)
             two.update()
         } else {
             /** This element will render by creating it's own group wrapper */
@@ -53,7 +82,7 @@ function ImageCard(props) {
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
 
-            group.children.unshift(circleSvgGroup)
+            group.children.unshift(rectSvgGroup)
             two.update()
 
             document
@@ -65,7 +94,7 @@ function ImageCard(props) {
 
             setInternalState((draft) => {
                 draft.element = {
-                    [circleSvgGroup.id]: circleSvgGroup,
+                    [rectSvgGroup.id]: rectSvgGroup,
                     [group.id]: group,
                     // [selector.id]: selector,
                 }
@@ -74,8 +103,8 @@ function ImageCard(props) {
                     data: group,
                 }
                 draft.shape = {
-                    id: circleSvgGroup.id,
-                    data: circleSvgGroup,
+                    id: rectangle.id,
+                    data: rectangle,
                 }
                 draft.text = {
                     data: {},
@@ -84,11 +113,12 @@ function ImageCard(props) {
                     id: externalSVG.id,
                     data: externalSVG,
                 }
+                draft.externalSVGGroup = {
+                    id: externalSVGGroup.id,
+                    data: externalSVGGroup,
+                }
             })
 
-            const initialScaleCoefficient = parseInt(
-                rectangle.width + rectangle.height / externalSVG.scale
-            )
             const getGroupElementFromDOM = document.getElementById(
                 `${group.id}`
             )
@@ -129,6 +159,12 @@ function ImageCard(props) {
                         // window.removeEventListener('mouseup', mouseup, false)
                     },
                     move(event) {
+                        let midpoint = (rectangle.width + rectangle.height) / 2
+
+                        let initialScaleCoefficient = parseInt(
+                            midpoint / externalSVG.scale
+                        )
+
                         const rect = event.rect
                         const minRectHeight = parseInt(rect.height / 2)
                         const minRectWidth = parseInt(rect.width / 2)
@@ -146,13 +182,15 @@ function ImageCard(props) {
                             // update the element's style
                             rectangle.width = rect.width - 10
                             rectangle.height = rect.height - 10
+                            midpoint = parseInt(
+                                (rectangle.width + rectangle.height) / 2
+                            )
 
                             // console.log("rectangle.radius", rectangle.radius);
                             externalSVG.scale =
-                                ((rectangle.width + rectangle.height / 2) /
-                                    initialScaleCoefficient) *
-                                1.5
-                            externalSVG.center()
+                                midpoint / initialScaleCoefficient
+                            console.log('externalSVG.scale', externalSVG.scale)
+                            externalSVGGroup.center()
 
                             selector.update(
                                 rectangle.getBoundingClientRect(true).left - 5,
@@ -166,6 +204,27 @@ function ImageCard(props) {
                     },
                     end(event) {
                         console.log('the end')
+                        updateComponentInfo({
+                            variables: {
+                                id: props.id,
+                                updateObj: {
+                                    width: parseInt(rectangle.width),
+                                    height: parseInt(rectangle.height),
+                                    children: {
+                                        ...props.children,
+                                        icon: {
+                                            iconType:
+                                                props.children?.icon
+                                                    ?.iconType || null,
+                                            iconStroke:
+                                                props.children?.icon
+                                                    ?.iconStroke || null,
+                                            iconScale: externalSVG.scale,
+                                        },
+                                    },
+                                },
+                            },
+                        })
                         getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
@@ -218,7 +277,41 @@ function ImageCard(props) {
             groupInstance.translation.y = props.y
             two.update()
         }
-    }, [props.x, props.y, props.metadata])
+
+        // update internal shape data
+        if (internalState?.shape?.data) {
+            let shapeInstance = internalState.shape.data
+
+            shapeInstance.width = props.width
+                ? props.width
+                : shapeInstance.width
+            shapeInstance.height = props.height
+                ? props.height
+                : shapeInstance.height
+            shapeInstance.radius = parseInt(shapeInstance.width / 2)
+            shapeInstance.fill = props.fill ? props.fill : shapeInstance.fill
+
+            two.update()
+        }
+
+        // update external svg/icon data
+        if (internalState?.icon?.data) {
+            let externalSVGInstance = internalState.icon.data
+            let externalSVGGroupInstance = internalState.externalSVGGroup.data
+            externalSVGInstance.scale = props.children?.icon?.iconScale
+                ? props.children?.icon?.iconScale
+                : externalSVGInstance.scale
+            externalSVGGroupInstance.center()
+            two.update()
+        }
+    }, [
+        props.x,
+        props.y,
+        props.fill,
+        props.width,
+        props.height,
+        props.children,
+    ])
 
     function closeToolbar() {
         toggleToolbar(false)
@@ -232,7 +325,17 @@ function ImageCard(props) {
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
-                    updateComponent={() => {
+                    updateComponent={(propertyToUpdate, propertyValue) => {
+                        propertyToUpdate &&
+                            propertyValue &&
+                            updateComponentInfo({
+                                variables: {
+                                    id: props.id,
+                                    updateObj: {
+                                        [propertyToUpdate]: propertyValue,
+                                    },
+                                },
+                            })
                         two.update()
                     }}
                 />

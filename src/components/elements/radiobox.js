@@ -30,13 +30,31 @@ function RadioBox(props) {
         elementOnBlurHandler(e, selectorInstance, two)
 
         // also hide add btn
-        if (e?.relatedTarget?.id !== 'checkbox-add') {
+        if (e?.relatedTarget?.id !== 'radiobox-add') {
             toggleAddBtn(true)
+        }
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
+    }
+
+    function handleKeyDown(e) {
+        if (e.keyCode === 8 || e.keyCode === 46) {
+            console.log('handle key down event', e)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            props.handleDeleteComponent &&
+                props.handleDeleteComponent(groupObject)
+            two.remove([groupObject])
+            two.update()
         }
     }
 
     function onFocusHandler(e) {
         document.getElementById(`${groupObject.id}`).style.outline = 0
+        document
+            .getElementById(`${groupObject.id}`)
+            .addEventListener('keydown', handleKeyDown)
     }
 
     // this updates checkbox state via passed checkboxgrp instance
@@ -499,7 +517,7 @@ function RadioBox(props) {
                                 )
                                 selector.hide()
                                 //patch
-                                if (e?.relatedTarget?.id !== 'checkbox-add') {
+                                if (e?.relatedTarget?.id !== 'radiobox-add') {
                                     toggleAddBtn(true)
                                 }
                             }
@@ -636,7 +654,7 @@ function RadioBox(props) {
                     }
                 } else {
                     // let addCheckboxBtnElement =
-                    //     document.getElementById('checkbox-add')
+                    //     document.getElementById('radiobox-add')
                     // addCheckboxBtnElement.click()
 
                     let evt = new CustomEvent('onAddNewRadiobox', {

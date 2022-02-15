@@ -6,15 +6,19 @@ export default class RectangleFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill, width, height } = this.properties
+        const { fill, width, height, stroke, linewidth } = this.properties
 
         // Implement core element
 
         const rectangle = two.makeRectangle(0, 0, width || 210, height || 110)
         rectangle.fill = fill ? fill : color_blue
-        rectangle.noStroke()
-        // dashed dotted
-        // rectangle.dashes[0] = 0;
+
+        if (stroke && linewidth) {
+            rectangle.stroke = stroke
+            rectangle.linewidth = linewidth
+        } else {
+            rectangle.noStroke()
+        }
 
         console.log('rectangle', rectangle.getBoundingClientRect())
 

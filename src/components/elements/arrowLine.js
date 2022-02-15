@@ -2,16 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client'
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
 import { useImmer } from 'use-immer'
 import Two from 'two.js'
 
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
-import { elementOnBlurHandler } from 'utils/misc'
-import getEditComponents from 'components/utils/editWrapper'
-import handleDrag from 'components/utils/dragger'
 import Toolbar from 'components/floatingToolbar'
-import { setPeronsalInformation } from 'store/actions/main'
 import ElementCreator from 'factory/arrowLine'
 
 function ArrowLine(props) {
@@ -521,9 +516,9 @@ function ArrowLine(props) {
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
-                    updateComponent={() => {
-                        two.update()
-                    }}
+                    // updateComponent={() => {
+                    //     two.update()
+                    // }}
                 />
             ) : null}
         </React.Fragment>

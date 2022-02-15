@@ -175,10 +175,10 @@ const Toolbar = (props) => {
                                 componentState.shape.data.fill = color
 
                             if (componentState?.icon?.data?.fill)
-                                componentState.icon.data.fill = state.colorIcon
+                                componentState.icon.data.stroke = color
 
-                            if (componentState?.text?.data?.fill)
-                                componentState.text.data.fill = state.colorText
+                            // if (componentState?.text?.data?.fill)
+                            //     componentState.text.data.fill = state.colorText
 
                             updateComponent && updateComponent('fill', color)
                         }}

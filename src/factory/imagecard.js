@@ -7,30 +7,52 @@ export default class ImageCardFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { bg_color } = this.properties
+        const {
+            width = 70,
+            height = 70,
+            radius,
+            fill = color_blue,
+
+            stroke,
+            linewidth,
+            children = {},
+        } = this.properties
 
         const rectangle = two.makeRectangle(0, 0, 60, 60)
-        rectangle.fill = bg_color ? bg_color : color_blue
+        rectangle.width = width
+        rectangle.height = height
+        rectangle.fill = fill
+
+        if (stroke && linewidth) {
+            rectangle.stroke = stroke
+            rectangle.linewidth = linewidth
+        } else {
+            rectangle.noStroke()
+        }
+
+        let iconType = children?.icon?.iconType
+            ? children?.icon?.iconType
+            : 'ICON_IMAGE_AVATAR_WHITE'
 
         const svgImage = new DOMParser().parseFromString(
-            Icon.ICON_IMAGE_1.data,
+            Icon[iconType].data,
             'text/xml'
         )
         // console.log("svgImage", svgImage, rectangle.width / 2);
         const externalSVG = two.interpret(svgImage.firstChild)
-        // externalSVG.translation.x = -rectangle.width / 8;
-        // externalSVG.translation.y = -rectangle.height / 8;
-        externalSVG.scale = 1.5
-        externalSVG.center()
+        externalSVG.scale = children?.icon?.iconScale
+            ? children?.icon?.iconScale
+            : 1
 
-        const circleSvgGroup = two.makeGroup(rectangle, externalSVG)
+        const externalSVGGroup = two.makeGroup(externalSVG)
+        externalSVGGroup.center()
+        const rectSvgGroup = two.makeGroup(rectangle, externalSVGGroup)
 
-        const group = two.makeGroup(circleSvgGroup)
-
+        const group = two.makeGroup(rectSvgGroup)
         group.center()
         group.translation.x = parseInt(prevX)
         group.translation.y = parseInt(prevY)
 
-        return { group, circleSvgGroup, externalSVG, rectangle }
+        return { group, rectSvgGroup, externalSVG, externalSVGGroup, rectangle }
     }
 }

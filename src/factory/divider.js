@@ -5,18 +5,20 @@ export default class DividerFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill } = this.properties
+        const { fill, x1, x2, y1, y2 } = this.properties
 
-        let line = two.makeLine(100, 100, 400, 100)
-        line.linewidth = 2
+        let line = two.makeLine(x1, y1, x2, y2)
+        line.linewidth = 4
 
         const pointCircle1 = two.makeEllipse(0, 0, 5, 5)
-        pointCircle1.fill = '#0052CC'
-        pointCircle1.noStroke()
+        pointCircle1.fill = '#FFF'
+        pointCircle1.stroke = '#0052CC'
+        // pointCircle1.noStroke()
 
         const pointCircle2 = two.makeEllipse(10, 0, 5, 5)
-        pointCircle2.fill = '#0052CC'
-        pointCircle2.noStroke()
+        pointCircle2.fill = '#FFF'
+        pointCircle2.stroke = '#0052CC'
+        // pointCircle2.noStroke()
 
         const resizeLine = two.makeGroup(pointCircle1, pointCircle2)
         resizeLine.translation.y = -line.linewidth + 1
@@ -27,10 +29,12 @@ export default class DividerFactory extends Main {
 
         // Overriding the circle point group's coordinate and
         // manipulating it with line's coordinate
-        pointCircle1.translation.x = line.getBoundingClientRect().left
-        pointCircle1.translation.y = line.getBoundingClientRect().bottom
-        pointCircle2.translation.x = line.getBoundingClientRect().right
-        pointCircle2.translation.y = line.getBoundingClientRect().bottom
+        pointCircle1.translation.x = line.vertices[0].x - 4
+        pointCircle1.translation.y =
+            line.vertices[0].y + parseInt(line.linewidth / 2)
+        pointCircle2.translation.x = line.vertices[1].x + 4
+        pointCircle2.translation.y =
+            line.vertices[1].y + parseInt(line.linewidth / 2)
 
         // const calcX = parseInt(prevX) + (parseInt(rectangle.width / 2) - 10);
         // const calcY = parseInt(prevY) - (parseInt(46) - parseInt(rectangle.height / 2));

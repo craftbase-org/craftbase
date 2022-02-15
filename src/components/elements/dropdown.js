@@ -1,21 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useDispatch } from 'react-redux'
 import { useImmer } from 'use-immer'
+import { useMutation } from '@apollo/client'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
-import handleDrag from 'components/utils/dragger'
 import Toolbar from 'components/floatingToolbar'
 import Icon from 'icons/icons'
-import ObjectSelector from 'components/utils/objectSelector'
-import { setPeronsalInformation } from 'store/actions/main'
 
 function Dropdown(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
 
-    const dispatch = useDispatch()
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null

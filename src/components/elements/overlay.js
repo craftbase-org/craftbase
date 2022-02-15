@@ -1,29 +1,49 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
 import { useImmer } from 'use-immer'
+import { useMutation } from '@apollo/client'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
-import handleDrag from 'components/utils/dragger'
 import Toolbar from 'components/floatingToolbar'
-import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/overlay'
 
 function Overlay(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
-    const dispatch = useDispatch()
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
         elementOnBlurHandler(e, selectorInstance, two)
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
+    }
+
+    function handleKeyDown(e) {
+        if (e.keyCode === 8 || e.keyCode === 46) {
+            console.log('handle key down event', e)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            props.handleDeleteComponent &&
+                props.handleDeleteComponent(groupObject)
+            two.remove([groupObject])
+            two.update()
+        }
     }
 
     function onFocusHandler(e) {
         document.getElementById(`${groupObject.id}`).style.outline = 0
+        document
+            .getElementById(`${groupObject.id}`)
+            .addEventListener('keydown', handleKeyDown)
     }
 
     // Using unmount phase to remove event listeners
@@ -149,6 +169,15 @@ function Overlay(props) {
                     },
                     end(event) {
                         getGroupElementFromDOM.removeAttribute('data-resize')
+                        updateComponentInfo({
+                            variables: {
+                                id: props.id,
+                                updateObj: {
+                                    height: parseInt(rectangle.height),
+                                    width: parseInt(rectangle.width),
+                                },
+                            },
+                        })
                         console.log('the end')
                     },
                 },
@@ -206,7 +235,15 @@ function Overlay(props) {
             groupInstance.translation.y = props.y
             two.update()
         }
-    }, [props.x, props.y, props.metadata])
+        if (internalState?.shape?.data) {
+            let shapeInstance = internalState.shape.data
+            shapeInstance.width = props.width || shapeInstance.width
+            shapeInstance.height = props.height || shapeInstance.height
+            shapeInstance.fill = props.fill || shapeInstance.fill
+
+            two.update()
+        }
+    }, [props.x, props.y, props.width, props.height, props.fill])
 
     function closeToolbar() {
         toggleToolbar(false)
@@ -220,7 +257,17 @@ function Overlay(props) {
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
-                    updateComponent={() => {
+                    updateComponent={(propertyToUpdate, propertyValue) => {
+                        propertyToUpdate &&
+                            propertyValue &&
+                            updateComponentInfo({
+                                variables: {
+                                    id: props.id,
+                                    updateObj: {
+                                        [propertyToUpdate]: propertyValue,
+                                    },
+                                },
+                            })
                         two.update()
                     }}
                 />

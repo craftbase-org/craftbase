@@ -1,30 +1,50 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
+import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import Toolbar from 'components/floatingToolbar'
-import handleDrag from 'components/utils/dragger'
-import { setPeronsalInformation } from 'store/actions/main'
 import getEditComponents from 'components/utils/editWrapper'
 import ElementFactory from 'factory/linkwithicon'
 
 function LinkWithIcon(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
-    const dispatch = useDispatch()
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
         elementOnBlurHandler(e, selectorInstance, two)
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
+    }
+
+    function handleKeyDown(e) {
+        if (e.keyCode === 8 || e.keyCode === 46) {
+            console.log('handle key down event', e)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            props.handleDeleteComponent &&
+                props.handleDeleteComponent(groupObject)
+            two.remove([groupObject])
+            two.update()
+        }
     }
 
     function onFocusHandler(e) {
         document.getElementById(`${groupObject.id}`).style.outline = 0
+        document
+            .getElementById(`${groupObject.id}`)
+            .addEventListener('keydown', handleKeyDown)
     }
 
     // function changeSVG() {
@@ -43,17 +63,25 @@ function LinkWithIcon(props) {
         const prevY = props.y
 
         // Instantiate factory
-        const elementFactory = new ElementFactory(two, prevX, prevY, {})
+        const elementFactory = new ElementFactory(two, prevX, prevY, {
+            ...props,
+        })
         // Get all instances of every sub child element
-        const { group, textGroup, externalSVG, text } =
-            elementFactory.createElement()
+        const {
+            group,
+            rectTextSvgGroup,
+            externalSVG,
+            text,
+            textSvgGroup,
+            rectangle,
+        } = elementFactory.createElement()
         group.elementData = props?.itemData
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             const parentGroup = props.parentGroup
-            textGroup.translation.x = props.metaData.x
-            parentGroup.add(textGroup)
+            rectTextSvgGroup.translation.x = props.metaData.x
+            parentGroup.add(rectTextSvgGroup)
             two.update()
         } else {
             /** This element will render by creating it's own group wrapper */
@@ -63,7 +91,7 @@ function LinkWithIcon(props) {
             selectorInstance = selector
 
             // Shifting order of objects in group to reflect "z-index alias" mechanism for text box
-            group.children.unshift(textGroup)
+            group.children.unshift(rectTextSvgGroup)
             two.update()
 
             document
@@ -75,7 +103,7 @@ function LinkWithIcon(props) {
 
             setInternalState((draft) => {
                 draft.element = {
-                    [textGroup.id]: textGroup,
+                    [rectTextSvgGroup.id]: rectTextSvgGroup,
                     [group.id]: group,
                     // [selector.id]: selector,
                 }
@@ -84,8 +112,12 @@ function LinkWithIcon(props) {
                     data: group,
                 }
                 draft.shape = {
-                    id: textGroup.id,
-                    data: textGroup,
+                    id: rectangle.id,
+                    data: rectangle,
+                }
+                draft.textSvgGroup = {
+                    id: textSvgGroup.id,
+                    data: textSvgGroup,
                 }
                 draft.text = {
                     id: text.id,
@@ -112,10 +144,10 @@ function LinkWithIcon(props) {
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ', text.getBoundingClientRect(true))
                 selector.update(
-                    textGroup.getBoundingClientRect(true).left - 30,
-                    textGroup.getBoundingClientRect(true).right + 10,
-                    textGroup.getBoundingClientRect(true).top - 10,
-                    textGroup.getBoundingClientRect(true).bottom + 10
+                    rectTextSvgGroup.getBoundingClientRect(true).left - 30,
+                    rectTextSvgGroup.getBoundingClientRect(true).right + 10,
+                    rectTextSvgGroup.getBoundingClientRect(true).top - 10,
+                    rectTextSvgGroup.getBoundingClientRect(true).bottom + 10
                 )
                 two.update()
                 toggleToolbar(true)
@@ -141,7 +173,7 @@ function LinkWithIcon(props) {
                 input.style.top = `${getCoordOfBtnText.top - topBuffer}px`
                 input.style.left = `${getCoordOfBtnText.left}px`
                 input.style.width = `${
-                    textGroup.getBoundingClientRect(true).width
+                    rectTextSvgGroup.getBoundingClientRect(true).width + 4
                 }px`
                 input.className = 'temp-input-area'
 
@@ -156,16 +188,16 @@ function LinkWithIcon(props) {
 
                 input.addEventListener('input', () => {
                     input.style.width = `${
-                        textGroup.getBoundingClientRect(true).width + 4
+                        rectTextSvgGroup.getBoundingClientRect(true).width + 4
                     }px`
 
                     // Synchronously update selector tool's coordinates
                     text.value = input.value
                     selector.update(
-                        textGroup.getBoundingClientRect(true).left - 30,
-                        textGroup.getBoundingClientRect(true).right + 30,
-                        textGroup.getBoundingClientRect(true).top - 10,
-                        textGroup.getBoundingClientRect(true).bottom + 10
+                        rectTextSvgGroup.getBoundingClientRect(true).left - 30,
+                        rectTextSvgGroup.getBoundingClientRect(true).right + 30,
+                        rectTextSvgGroup.getBoundingClientRect(true).top - 10,
+                        rectTextSvgGroup.getBoundingClientRect(true).bottom + 10
                     )
                     two.update()
                 })
@@ -176,19 +208,34 @@ function LinkWithIcon(props) {
                     input.remove()
                     console.log(
                         'input blur event',
-                        textGroup.id,
-                        textGroup.getBoundingClientRect()
+                        rectTextSvgGroup.id,
+                        rectTextSvgGroup.getBoundingClientRect()
                     )
 
                     // USE 4 LINES 4 CIRCLES
 
                     selector.update(
-                        textGroup.getBoundingClientRect(true).left - 30,
-                        textGroup.getBoundingClientRect(true).right + 10,
-                        textGroup.getBoundingClientRect(true).top - 10,
-                        textGroup.getBoundingClientRect(true).bottom + 10
+                        rectTextSvgGroup.getBoundingClientRect(true).left - 30,
+                        rectTextSvgGroup.getBoundingClientRect(true).right + 10,
+                        rectTextSvgGroup.getBoundingClientRect(true).top - 10,
+                        rectTextSvgGroup.getBoundingClientRect(true).bottom + 10
                     )
                     selector.hide()
+                    updateComponentInfo({
+                        variables: {
+                            id: props.id,
+
+                            updateObj: {
+                                children: {
+                                    ...props.children,
+                                    text: {
+                                        ...props.children?.text,
+                                        value: text.value,
+                                    },
+                                },
+                            },
+                        },
+                    })
                     two.update()
                 })
             })
@@ -244,7 +291,41 @@ function LinkWithIcon(props) {
             groupInstance.translation.y = props.y
             two.update()
         }
-    }, [props.x, props.y, props.metadata])
+
+        // update internal shape data
+        if (internalState?.shape?.data) {
+            let shapeInstance = internalState.shape.data
+            let textSvgGroupInstance = internalState.textSvgGroup.data
+
+            shapeInstance.width = props.width
+                ? props.width
+                : shapeInstance.width
+
+            textSvgGroupInstance.fill = props.fill
+                ? props.fill
+                : textSvgGroupInstance.fill
+
+            two.update()
+        }
+
+        // update text data
+        if (internalState?.text?.data) {
+            let textInstance = internalState.text.data
+            let textSvgGroupInstance = internalState.textSvgGroup.data
+            textInstance.value = props.children?.text?.value
+                ? props.children?.text?.value
+                : textInstance.value
+            textSvgGroupInstance.center()
+            two.update()
+        }
+    }, [
+        props.x,
+        props.y,
+        props.fill,
+        props.width,
+        props.height,
+        props.children,
+    ])
 
     function closeToolbar() {
         toggleToolbar(false)

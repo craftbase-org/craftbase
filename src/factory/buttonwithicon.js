@@ -27,9 +27,13 @@ export default class ButtonWithIconFactory extends Main {
         // text.baseline = "sub";
         text.alignment = 'right'
 
+        let iconType = children?.icon?.iconType
+            ? children?.icon?.iconType
+            : 'ICON_IMAGE_PHONE_WHITE'
+
         // Implement custom svg
         const svgImage = new DOMParser().parseFromString(
-            Icon.ICON_IMAGE_PHONE_WHITE.data,
+            Icon[iconType].data,
             'text/xml'
         )
         // console.log("svgImage", svgImage);
