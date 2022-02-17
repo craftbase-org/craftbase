@@ -5,7 +5,8 @@ export default class ToggleFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill } = this.properties
+        const { fill, width, height, radius, stroke, linewidth } =
+            this.properties
 
         // Implement outer rectangle
         const rect = two.makeRoundedRectangle(0, 0, 55, 30, 16)

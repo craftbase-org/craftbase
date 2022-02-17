@@ -5,10 +5,10 @@ export default class TextAreaFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill } = this.properties
+        const { fill = 'rgba(0,0,0,0)', content = '' } = this?.properties || {}
 
         const text = two.makeText('Enter something here', -30, 0)
-        text.size = '14'
+        text.size = '16'
         text.weight = '400'
         text.fill = '#B3BAC5'
         // text.baseline = "sub";

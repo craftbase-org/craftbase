@@ -1,22 +1,24 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
+import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
 
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import { color_blue } from 'utils/constants'
 import getEditComponents from 'components/utils/editWrapper'
-import handleDrag from 'components/utils/dragger'
 import Toolbar from 'components/floatingToolbar'
-import { setPeronsalInformation } from 'store/actions/main'
 import ElementCreator from 'factory/toggle'
 
 function Toggle(props) {
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({
         toggleState: true,
     })
-    const dispatch = useDispatch()
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
@@ -24,10 +26,28 @@ function Toggle(props) {
 
     function onBlurHandler(e) {
         elementOnBlurHandler(e, selectorInstance, two)
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
+    }
+
+    function handleKeyDown(e) {
+        if (e.keyCode === 8 || e.keyCode === 46) {
+            console.log('handle key down event', e)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            props.handleDeleteComponent &&
+                props.handleDeleteComponent(groupObject)
+            two.remove([groupObject])
+            two.update()
+        }
     }
 
     function onFocusHandler(e) {
         document.getElementById(`${groupObject.id}`).style.outline = 0
+        document
+            .getElementById(`${groupObject.id}`)
+            .addEventListener('keydown', handleKeyDown)
     }
 
     // Using unmount phase to remove event listeners
@@ -38,7 +58,9 @@ function Toggle(props) {
         const prevX = props.x
         const prevY = props.y
 
-        const elementFactory = new ElementCreator(two, prevX, prevY, {})
+        const elementFactory = new ElementCreator(two, prevX, prevY, {
+            ...props,
+        })
         const { group, circle, rectCircleGroup, rect } =
             elementFactory.createElement()
         group.elementData = props?.itemData
@@ -121,7 +143,7 @@ function Toggle(props) {
                         two.update()
                     } else {
                         toggleCircle.translation.x = parseInt(calcCirclePointX)
-                        toggleRect.fill = color_blue
+                        toggleRect.fill = props.fill ? props.fill : color_blue
                         two.update()
                     }
                 }

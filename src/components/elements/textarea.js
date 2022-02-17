@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
-import { useDispatch, useSelector } from 'react-redux'
+
 import { useImmer } from 'use-immer'
 
 import { elementOnBlurHandler } from 'utils/misc'
@@ -13,7 +13,7 @@ import ElementFactory from 'factory/textarea'
 function Textarea(props) {
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
-    const dispatch = useDispatch()
+
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
@@ -263,9 +263,9 @@ function Textarea(props) {
                             parseInt(event.pageY - offsetHeight)
                         )
 
-                        dispatch(
-                            setPeronsalInformation('COMPLETE', { data: {} })
-                        )
+                        // dispatch(
+                        //     setPeronsalInformation('COMPLETE', { data: {} })
+                        // )
                     },
                 },
             })
