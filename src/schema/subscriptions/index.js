@@ -63,6 +63,8 @@ export const GET_COMPONENTS_FOR_BOARD = gql`
         ) {
             id
             componentType
+            children
+            metadata
             x
             x1
             x2

@@ -16,7 +16,7 @@ import {
 } from 'schema/subscriptions'
 import Loader from 'components/utils/loader'
 
-function addZUI(props, updateToGlobalState, two) {
+function addZUI(props, two, updateToGlobalState, customEventListener) {
     console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
     let domElement = two.renderer.domElement
@@ -36,6 +36,18 @@ function addZUI(props, updateToGlobalState, two) {
     domElement.addEventListener('touchmove', touchmove, false)
     domElement.addEventListener('touchend', touchend, false)
     domElement.addEventListener('touchcancel', touchend, false)
+
+    // listen for ctrl + c event
+    domElement.addEventListener('keydown', onKeyDown)
+
+    function onKeyDown(evt) {
+        // unclosed event listener (temp)
+        if (evt.key === 'c' && (evt.ctrlKey || evt.metaKey)) {
+            alert('Ctrl + c pressed')
+            customEventListener('COPY', shape.elementData)
+            // domElement.removeEventListener('keydown', onKeyDown)
+        }
+    }
 
     function mousedown(e) {
         // initialize shape definition
@@ -363,6 +375,7 @@ const Canvas = (props) => {
     const [prevElements, setPrevElements] = useState([])
     const [onGroup, setOnGroup] = useState(null)
     const [componentsToRender, setComponentsToRender] = useState([])
+    const [cloneElement, setCloneElement] = useState(null)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
@@ -385,7 +398,12 @@ const Canvas = (props) => {
         console.log('two', two.scene)
 
         // two.scene.translation.x = -50
-        let zuiInstance = addZUI(props, updateToGlobalState, two)
+        let zuiInstance = addZUI(
+            props,
+            two,
+            updateToGlobalState,
+            customEventListener
+        )
 
         // this.props.getElementsData('CONSTRUCT', arr)
         setZuiInstance(zuiInstance)
@@ -585,6 +603,19 @@ const Canvas = (props) => {
         }
     }, [onGroup])
 
+    useEffect(() => {
+        window.addEventListener('keydown', onPasteEvent)
+        return () => {
+            window.removeEventListener('keydown', onPasteEvent)
+        }
+    }, [cloneElement])
+
+    const onPasteEvent = (evt) => {
+        if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
+            alert(`Ctrl+V was pressed ${cloneElement.prevX}`)
+        }
+    }
+
     const handleUngroupComponents = (groupId, twoGroupInstance) => {
         let componentsArr = [...currentComponents]
         let groupData = null
@@ -604,6 +635,7 @@ const Canvas = (props) => {
         if (groupData.children?.length > 0) {
             groupData.children.forEach((child) => {
                 console.log('iterating children while ungrouping', child)
+                // for ungrouping initially supply isDummy to true
                 child.isDummy = true
                 child.x =
                     parseInt(twoGroupInstance.translation.x) + parseInt(child.x)
@@ -644,6 +676,12 @@ const Canvas = (props) => {
         }, 1000)
 
         setCurrentComponents(finalComponentsArr)
+    }
+
+    const customEventListener = (action, shapeData) => {
+        if (action === 'COPY') {
+            setCloneElement(shapeData)
+        }
     }
 
     const updateToGlobalState = (newShapeData, oldShapeData) => {
