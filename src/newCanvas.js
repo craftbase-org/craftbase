@@ -6,7 +6,11 @@ import { useHistory } from 'react-router-dom'
 import Loadable from 'react-loadable'
 import ZUI from 'two.js/extras/jsm/zui'
 
-import { UPDATE_COMPONENT_INFO, DELETE_COMPONENT_BY_ID } from 'schema/mutations'
+import {
+    UPDATE_COMPONENT_INFO,
+    DELETE_COMPONENT_BY_ID,
+    INSERT_COMPONENT,
+} from 'schema/mutations'
 import Zoomer from 'components/utils/zoomer'
 import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
@@ -43,8 +47,13 @@ function addZUI(props, two, updateToGlobalState, customEventListener) {
     function onKeyDown(evt) {
         // unclosed event listener (temp)
         if (evt.key === 'c' && (evt.ctrlKey || evt.metaKey)) {
-            alert('Ctrl + c pressed')
-            customEventListener('COPY', shape.elementData)
+            console.log('shape.elementData', shape.elementData)
+            if (shape.elementData?.id !== undefined) {
+                // alert('Ctrl + c pressed')
+                console.log('ctrl + c', shape)
+                customEventListener('COPY', shape.elementData)
+            }
+
             // domElement.removeEventListener('keydown', onKeyDown)
         }
     }
@@ -366,6 +375,14 @@ const Canvas = (props) => {
     } = useSubscription(GET_COMPONENTS_FOR_BOARD, {
         variables: { boardId: props.boardId },
     })
+    const [
+        insertComponent,
+        {
+            loading: insertComponentLoading,
+            data: insertComponentSuccess,
+            error: insertComponentError,
+        },
+    ] = useMutation(INSERT_COMPONENT)
 
     // console.log('getComponentsForBoardData', getComponentsForBoardData)
 
@@ -544,7 +561,7 @@ const Canvas = (props) => {
 
                     let findTwoShapeIndex =
                         twoJSInstance.scene.children.findIndex(
-                            (child) => child.elementData.id === item.id
+                            (child) => child?.elementData?.id === item.id
                         )
 
                     console.log('findTwoShapeIndex', findTwoShapeIndex)
@@ -612,7 +629,11 @@ const Canvas = (props) => {
 
     const onPasteEvent = (evt) => {
         if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
-            alert(`Ctrl+V was pressed ${cloneElement.prevX}`)
+            if (cloneElement?.id !== undefined) {
+                console.log('ctrl + v', cloneElement)
+                // alert(`Ctrl+V was pressed ${cloneElement.prevX}`)
+                // setCloneElement(null)
+            }
         }
     }
 

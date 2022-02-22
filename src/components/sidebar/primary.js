@@ -49,41 +49,36 @@ const PrimarySidebar = (props) => {
             error: insertComponentError,
         },
     ] = useMutation(INSERT_COMPONENT)
-    const [
-        updateBoardComponents,
-        {
-            loading: updateBoardComponentsLoading,
-            data: updateBoardComponentsSuccess,
-            error: updateBoardComponentsError,
-        },
-    ] = useMutation(UPDATE_BOARD_COMPONENTS)
+    // const [
+    //     updateBoardComponents,
+    //     {
+    //         loading: updateBoardComponentsLoading,
+    //         data: updateBoardComponentsSuccess,
+    //         error: updateBoardComponentsError,
+    //     },
+    // ] = useMutation(UPDATE_BOARD_COMPONENTS)
     const [secondaryMenu, toggleSecondaryMenu] = useState(false)
 
     useEffect(() => {
         if (insertComponentSuccess) {
-            let insertComponentData = insertComponentSuccess.component
-            let newBoardData = [
-                ...props.boardData,
-                {
-                    componentType: insertComponentData.componentType,
-                    id: insertComponentData.id,
-                },
-            ]
-            updateBoardComponents({
-                variables: {
-                    id: props.match.params.boardId,
-                    components: newBoardData,
-                },
-            })
+            setShowAddShapeLoader(false)
+            // let insertComponentData = insertComponentSuccess.component
+            // let newBoardData = [
+            //     ...props.boardData,
+            //     {
+            //         componentType: insertComponentData.componentType,
+            //         id: insertComponentData.id,
+            //     },
+            // ]
+            // updateBoardComponents({
+            //     variables: {
+            //         id: props.match.params.boardId,
+            //         components: newBoardData,
+            //     },
+            // })
             console.log('insertComponentSuccess', insertComponentSuccess)
         }
     }, [insertComponentSuccess])
-
-    useEffect(() => {
-        if (updateBoardComponentsSuccess && showAddShapeLoader) {
-            setShowAddShapeLoader(false)
-        }
-    }, [updateBoardComponentsSuccess])
 
     const addShape = (label) => {
         let shapeData = null

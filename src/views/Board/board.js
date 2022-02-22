@@ -12,7 +12,7 @@ const BoardViewPage = (props) => {
         loading: getBoardDataLoading,
         error: getBoardDataError,
         data: getBoardData,
-    } = useSubscription(GET_BOARD_DATA, { variables: { id: boardId } })
+    } = useSubscription(GET_BOARD_DATA, { variables: { boardId: boardId } })
 
     const [selectPanMode, setSelectPanMode] = useState(false)
 
@@ -53,8 +53,8 @@ const BoardViewPage = (props) => {
     ]
 
     console.log(
-        'getBoardData.boardData.components',
-        getBoardData?.boardData?.components
+        'getBoardData.components',
+        getBoardData.components
         // getBoardData.boardData.components
     )
     return (
@@ -64,12 +64,12 @@ const BoardViewPage = (props) => {
                     selectCursorMode={selectPanMode}
                     {...props}
                     changeSelectMode={changeSelectMode}
-                    boardData={getBoardData?.boardData.components}
+                    boardData={getBoardData?.components}
                 />
                 <Canvas
                     selectPanMode={selectPanMode}
                     boardId={boardId}
-                    componentData={getBoardData?.boardData.components}
+                    componentData={getBoardData?.components}
                 />
             </div>
         </>

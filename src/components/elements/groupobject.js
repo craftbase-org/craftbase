@@ -1,17 +1,24 @@
 import React, { useEffect, useState, Fragment } from 'react'
 import interact from 'interactjs'
+import { useMutation } from '@apollo/client'
 
+import { INSERT_COMPONENT, UPDATE_BOARD_COMPONENTS } from 'schema/mutations'
 import ObjectSelector from 'components/utils/objectSelector'
 import getEditComponents from 'components/utils/editWrapper'
 import { elementOnBlurHandler } from 'utils/misc'
-import { setPeronsalInformation, ungroupElements } from 'store/actions/main'
-import Loadable from 'react-loadable'
-import Loader from 'components/utils/loader'
-import ElementWrapper from 'components/elementWrapper'
 
 function GroupedObjectWrapper(props) {
+    const [
+        insertComponent,
+        {
+            loading: insertComponentLoading,
+            data: insertComponentSuccess,
+            error: insertComponentError,
+        },
+    ] = useMutation(INSERT_COMPONENT)
     const two = props.twoJSInstance
-
+    const [cloneElement, setCloneElement] = useState(null)
+    // const [twoGroupInstance,setTwoGroupInstance] = useState(null)
     let rectangleInstance = null
     let groupInstance = null
     let selectorInstance = null
@@ -31,6 +38,40 @@ function GroupedObjectWrapper(props) {
         console.log('on groupobject focus')
         document.getElementById(`${groupInstance.id}`).style.outline = 0
     }
+
+    // const customEventListener = (action, shapeData) => {
+    //     if (action === 'COPY') {
+    //         setCloneElement(shapeData)
+    //     }
+    // }
+
+    function onKeyDown(evt) {
+        // unclosed event listener (temp)
+        if (evt.key === 'c' && (evt.ctrlKey || evt.metaKey)) {
+            // set element data for copy and paste action
+            setCloneElement(groupInstance.elementData)
+            // alert('Ctrl + c pressed in group oject')
+            // customEventListener('COPY', shape.elementData)
+            // domElement.removeEventListener('keydown', onKeyDown)
+        }
+    }
+
+    const onPasteEvent = (evt) => {
+        if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
+            if (cloneElement?.id !== undefined) {
+                console.log('clone element', cloneElement)
+                // alert(`Ctrl+V was pressed ${cloneElement.id}`)
+                // setCloneElement(null)
+            }
+        }
+    }
+
+    useEffect(() => {
+        window.addEventListener('keydown', onPasteEvent)
+        return () => {
+            window.removeEventListener('keydown', onPasteEvent)
+        }
+    }, [cloneElement])
 
     useEffect(() => {
         console.log('group object props', props)
@@ -55,7 +96,10 @@ function GroupedObjectWrapper(props) {
         // console.log('rectangle', rectangle.getBoundingClientRect(), props)
 
         const group = two.makeGroup(rectangle)
-        group.elementData = props?.itemData
+        group.elementData = {
+            ...props?.itemData,
+            children: props.children,
+        }
         group.translation.x = parseInt(prevX) || 500
         group.translation.y = parseInt(prevY) || 200
         two.update()
@@ -109,9 +153,12 @@ function GroupedObjectWrapper(props) {
             .getElementById(group.id)
             .setAttribute('data-label', 'groupobject_coord')
 
+        document.getElementById(group.id).dispatchEvent(new Event('mousedown'))
+
         const getGroupElementFromDOM = document.getElementById(`${group.id}`)
         getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
         getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+        // getGroupElementFromDOM.addEventListener('keydown', onKeyDown)
 
         getGroupElementFromDOM.focus()
 

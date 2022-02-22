@@ -10,11 +10,12 @@ export const GET_USER_DETAILS = gql`
 `
 
 export const GET_BOARD_DATA = gql`
-    subscription GET_BOARD_DATA($id: uuid = "") {
-        boardData: boards_board_by_pk(id: $id) {
-            components
+    subscription getBoardComponents($boardId: String! = "") {
+        components: components_component(
+            where: { boardId: { _eq: $boardId } }
+        ) {
             id
-            name
+            componentType
         }
     }
 `
