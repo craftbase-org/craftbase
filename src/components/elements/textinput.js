@@ -40,7 +40,7 @@ function TextInput(props) {
         // Get all instances of every sub child element
         const { group, textGroup, rectTextGroup, rectangle, text } =
             elementFactory.createElement()
-        group.elementData = props?.itemData
+        group.elementData = { ...props.itemData, ...props }
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */

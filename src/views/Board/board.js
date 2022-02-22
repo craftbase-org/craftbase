@@ -12,7 +12,10 @@ const BoardViewPage = (props) => {
         loading: getBoardDataLoading,
         error: getBoardDataError,
         data: getBoardData,
-    } = useSubscription(GET_BOARD_DATA, { variables: { boardId: boardId } })
+    } = useSubscription(GET_BOARD_DATA, {
+        variables: { boardId: boardId },
+        fetchPolicy: 'network-only',
+    })
 
     const [selectPanMode, setSelectPanMode] = useState(false)
 

@@ -63,7 +63,7 @@ function Toggle(props) {
         })
         const { group, circle, rectCircleGroup, rect } =
             elementFactory.createElement()
-        group.elementData = props?.itemData
+        group.elementData = { ...props.itemData, ...props }
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */

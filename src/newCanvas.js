@@ -20,6 +20,26 @@ import {
 } from 'schema/subscriptions'
 import Loader from 'components/utils/loader'
 
+function getComponentSchema(obj, boardId) {
+    return {
+        boardId: boardId,
+        componentType: obj.componentType,
+        fill: obj.fill,
+        children: obj?.children ? obj.children : {},
+        metadata: obj?.metadata ? obj.metadata : {},
+        x: obj.x + 10,
+        x1: obj.x1,
+        x2: obj.x2,
+        y: obj.y + 10,
+        y1: obj.y1,
+        y2: obj.y2,
+        width: obj.width,
+        height: obj.height,
+        linewidth: obj.linewidth,
+        stroke: obj.stroke,
+    }
+}
+
 function addZUI(props, two, updateToGlobalState, customEventListener) {
     console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
@@ -629,10 +649,19 @@ const Canvas = (props) => {
 
     const onPasteEvent = (evt) => {
         if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
-            if (cloneElement?.id !== undefined) {
+            if (
+                cloneElement?.id !== undefined &&
+                cloneElement.componentType !== 'groupobject'
+            ) {
                 console.log('ctrl + v', cloneElement)
+                let newComponent = getComponentSchema(
+                    cloneElement,
+                    props.boardId
+                )
+
+                insertComponent({ variables: { object: newComponent } })
+                setCloneElement(null)
                 // alert(`Ctrl+V was pressed ${cloneElement.prevX}`)
-                // setCloneElement(null)
             }
         }
     }

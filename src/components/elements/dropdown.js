@@ -117,7 +117,7 @@ function Dropdown(props) {
         // rectangle.noStroke();
 
         group.add(rectangle)
-        group.elementData = props?.itemData
+        group.elementData = { ...props.itemData, ...props }
         group.children.unshift(textGroup)
 
         externalSVG.translation.set(

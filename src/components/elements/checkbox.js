@@ -166,13 +166,13 @@ function Checkbox(props) {
         checkboxGroup.add(Object.values(groupMap))
 
         const group = two.makeGroup(checkboxGroup)
-        group.elementData = props?.itemData
+        group.elementData = { ...props.itemData, ...props }
         // console.log("checkboxGroup", checkboxGroup, checkboxGroup.id);
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             const parentGroup = props.parentGroup
-            checkboxGroup.elementData = props?.itemData
+            checkboxGroup.elementData = { ...props.itemData, ...props }
             parentGroup.add(checkboxGroup)
             two.update()
         } else {
