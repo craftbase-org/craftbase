@@ -41,3 +41,16 @@ export const DELETE_COMPONENT_BY_ID = gql`
         }
     }
 `
+
+export const INSERT_BULK_COMPONENTS = gql`
+    mutation MyMutation($objects: [components_component_insert_input!]! = {}) {
+        insert_components_component(objects: $objects) {
+            affected_rows
+            returning {
+                boardId
+                componentType
+                id
+            }
+        }
+    }
+`

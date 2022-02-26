@@ -5,7 +5,6 @@ export default class TextFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        console.log('this.properties', this.properties)
         const { fill = 'rgba(0,0,0,0)', content = '' } = this?.properties || {}
 
         // pass width and height here for transparent rectangle container
@@ -20,10 +19,7 @@ export default class TextFactory extends Main {
         group.translation.y = parseInt(prevY)
 
         two.update()
-        console.log(
-            'rectTextGroup init',
-            rectTextGroup.getBoundingClientRect(true)
-        )
+
         const svgElem = rectTextGroup._renderer.elem
         svgElem.innerHTML = `
     <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${

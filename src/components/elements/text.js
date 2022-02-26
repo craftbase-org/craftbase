@@ -343,7 +343,7 @@ function Text(props) {
         }
 
         return () => {
-            console.log('UNMOUNTING in Circle', group)
+            // console.log('UNMOUNTING in text', group)
             // clean garbage by removing instance
             // two.remove(group)
         }
