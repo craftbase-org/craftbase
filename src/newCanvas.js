@@ -40,7 +40,13 @@ function getComponentSchema(obj, boardId) {
     }
 }
 
-function addZUI(props, two, updateToGlobalState, customEventListener) {
+function addZUI(
+    props,
+    two,
+    updateToGlobalState,
+    customEventListener,
+    setOnGroup
+) {
     console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
     let domElement = two.renderer.domElement
@@ -80,10 +86,18 @@ function addZUI(props, two, updateToGlobalState, customEventListener) {
 
     function mousedown(e) {
         // initialize shape definition
+        console.log(
+            'e in ZUI mouse down',
+            mouse.x,
+            mouse.y,
+            e.clientX,
+            e.clientY
+        )
         shape = null
         mouse.x = e.clientX
         mouse.y = e.clientY
         let avoidDragging = false
+        let isGroupSelector = false
 
         var path = e.path || (e.composedPath && e.composedPath())
         // checks for path in event if it contains following element with condition
@@ -120,17 +134,54 @@ function addZUI(props, two, updateToGlobalState, customEventListener) {
         }
 
         // if shape is null, we initialize it with root element
-        if (shape === null) {
-            shape = two.scene
-        }
 
         // inserting prevX and prevY to diff at updateToGlobalState function
         // checking if new x,y are not equal to prev x,y
         // then only perform the mutation
-        shape.elementData = {
-            ...shape?.elementData,
-            prevX: parseInt(shape.translation.x),
-            prevY: parseInt(shape.translation.y),
+
+        console.log('props.selectPanMode', props.selectPanMode)
+        if (props.selectPanMode) {
+            shape = two.scene
+        } else {
+            if (shape === null) {
+                // shape = two.scene
+                const { x1, x2, y1, y2 } = {
+                    x1: 0,
+                    x2: 10,
+                    y1: 0,
+                    y2: 10,
+                }
+                const area = two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
+                area.fill = 'rgba(0,0,0,0)'
+                area.opacity = 1
+                area.linewidth = 1
+                // area.dashes[0] = 4;
+                area.stroke = '#505F79'
+
+                let newSelectorGroup = two.makeGroup(area)
+
+                // let dx = e.clientX - mouse.x
+                // let dy = e.clientY - mouse.y
+                // shape.position.x += dx / zui.scale
+                // shape.position.y += dy / zui.scale
+
+                newSelectorGroup.translation.x = mouse.x
+                newSelectorGroup.translation.y = mouse.y
+                // console.log(
+                //     'mouse in selector group',
+                //     mouse,
+                //     mouse.getBoundingClientRect()
+                // )
+                two.update()
+                shape = newSelectorGroup
+                isGroupSelector = true
+            }
+            shape.elementData = {
+                ...shape?.elementData,
+                isGroupSelector: isGroupSelector,
+                prevX: parseInt(shape.translation.x),
+                prevY: parseInt(shape.translation.y),
+            }
         }
 
         console.log('on mouse down', e, shape)
@@ -148,26 +199,85 @@ function addZUI(props, two, updateToGlobalState, customEventListener) {
     }
 
     function mousemove(e) {
+        // console.log('mouse move event', shape.elementData.isGroupSelector)
         let dx = e.clientX - mouse.x
         let dy = e.clientY - mouse.y
         // console.log('shape in mousemove', e, shape, props.selectPanMode)
 
         if (document.getElementById(shape.id).hasAttribute('data-resize')) {
-            console.log('has pans')
+            console.log('element resize is being performed')
             window.removeEventListener('mousemove', mousemove, false)
             window.removeEventListener('mouseup', mouseup, false)
         } else {
             // console.log('inside mousemove', dragging)
 
             // check if while dragging, the shape does not point to root element (two-0)
-            if (dragging && shape.id !== 'two-0') {
+            if (
+                dragging &&
+                shape.id !== 'two-0' &&
+                !shape.elementData.isGroupSelector
+            ) {
                 shape.position.x += dx / zui.scale
                 shape.position.y += dy / zui.scale
-            } else {
+            }
+            // else if (shape.elementData.isGroupSelector) {
+            //     console.log('shape.position', shape)
+            //     let area = shape.children[0]
+
+            //     let x1 = area.vertices[0].x
+            //     let x2 = area.vertices[2].x
+            //     x2 += dx / zui.scale
+
+            //     let y1 = area.vertices[0].y
+            //     let y2 = area.vertices[3].y
+            //     y2 += dy / zui.scale
+
+            //     area.vertices = [
+            //         new Two.Anchor(
+            //             x1,
+            //             y1,
+            //             null,
+            //             null,
+            //             null,
+            //             null,
+            //             Two.Commands.line
+            //         ),
+            //         new Two.Anchor(
+            //             x2,
+            //             y1,
+            //             null,
+            //             null,
+            //             null,
+            //             null,
+            //             Two.Commands.line
+            //         ),
+
+            //         new Two.Anchor(
+            //             x2,
+            //             y2,
+            //             null,
+            //             null,
+            //             null,
+            //             null,
+            //             Two.Commands.line
+            //         ),
+            //         new Two.Anchor(
+            //             x1,
+            //             y2,
+            //             null,
+            //             null,
+            //             null,
+            //             null,
+            //             Two.Commands.line
+            //         ),
+            //     ]
+            //     two.update()
+            // }
+            else {
                 if (!props.selectPanMode) {
                     // nothing
                 } else {
-                    zui.translateSurface(dx, dy)
+                    // zui.translateSurface(dx, dy)
                 }
             }
             mouse.set(e.clientX, e.clientY)
@@ -176,11 +286,7 @@ function addZUI(props, two, updateToGlobalState, customEventListener) {
     }
 
     function mouseup(e) {
-        console.log(
-            'e in ZUI mouse up',
-            // e,
-            shape
-        )
+        console.log('e in ZUI mouse up', mouse, shape.position.x)
 
         // old school logic here
         // const getCoordLabel = document
@@ -190,13 +296,42 @@ function addZUI(props, two, updateToGlobalState, customEventListener) {
         // localStorage.setItem(`${getCoordLabel + 'Y'}`, shape.translation.y)
 
         // diff to check new x,y and prev x,y
-        let oldShapeData = { ...shape.elementData }
-        let newShapeData = Object.assign({}, shape.elementData, {
-            data: {
-                x: parseInt(shape.translation.x),
-                y: parseInt(shape.translation.y),
-            },
-        })
+        let oldShapeData = {}
+        let newShapeData = {}
+        if (shape?.elementData?.isGroupSelector) {
+            // check on mouse up if shape's a group selector or not
+            // if yes, then call setOnGroup for adding a group in two.js space
+            let area = shape.children[0]
+            let obj = {
+                x: area.vertices[0].x + shape.translation.x,
+                y: area.vertices[0].y + shape.translation.y,
+                left: area.vertices[0].x + shape.translation.x,
+                right: area.vertices[1].x + shape.translation.x,
+                top: area.vertices[0].y + shape.translation.y,
+                bottom: area.vertices[3].y + shape.translation.y,
+                width: area.vertices[2].x - area.vertices[0].x,
+                height: area.vertices[3].y - area.vertices[0].y,
+            }
+            console.log(
+                'shape group obj',
+                obj,
+                area.vertices[0],
+                area.vertices[1],
+                area.vertices[2],
+                area.vertices[3]
+            )
+            setOnGroup(obj)
+        } else if (!props.selectPanMode) {
+            // else shape is not a group selector then update shape's properties
+            oldShapeData = { ...shape.elementData }
+            newShapeData = Object.assign({}, shape.elementData, {
+                data: {
+                    x: parseInt(shape.translation.x),
+                    y: parseInt(shape.translation.y),
+                },
+            })
+            updateToGlobalState(newShapeData, oldShapeData)
+        }
         // let item = {
         //     elementId: shape.elementData.elementId,
         //     data: { x: shape.translation.x, y: shape.translation.y },
@@ -206,12 +341,16 @@ function addZUI(props, two, updateToGlobalState, customEventListener) {
         window.removeEventListener('mousemove', mousemove, false)
         window.removeEventListener('mouseup', mouseup, false)
         two.update()
-        updateToGlobalState(newShapeData, oldShapeData)
     }
 
     function mousewheel(e) {
-        let dy = (e.wheelDeltaY || -e.deltaY) / 1000
-        zui.zoomBy(dy, e.clientX, e.clientY)
+        if (e.ctrlKey === true || e.metaKey === true) {
+            let dy = (e.wheelDeltaY || -e.deltaY) / 1000
+            zui.zoomBy(dy, e.clientX, e.clientY)
+        } else {
+            zui.translateSurface(-e.deltaX, -e.deltaY)
+        }
+
         two.update()
     }
 
@@ -439,7 +578,8 @@ const Canvas = (props) => {
             props,
             two,
             updateToGlobalState,
-            customEventListener
+            customEventListener,
+            setOnGroup
         )
 
         // this.props.getElementsData('CONSTRUCT', arr)
@@ -451,17 +591,15 @@ const Canvas = (props) => {
     useEffect(() => {
         // Logic for capturing events in empty space in drawing area
         if (twoJSInstance !== null && zuiInstance !== null) {
-            document
-                .getElementById('main-two-root')
-                .addEventListener('mousedown', handleSelectorRectInitialization)
-
-            document
-                .getElementById('selector-rect')
-                .addEventListener('drag', handleSelectorRectDrag)
-
-            document
-                .getElementById('selector-rect')
-                .addEventListener('dragend', handleSelectorRectDragEnd)
+            // document
+            //     .getElementById('main-two-root')
+            //     .addEventListener('mousedown', handleSelectorRectInitialization)
+            // document
+            //     .getElementById('selector-rect')
+            //     .addEventListener('drag', handleSelectorRectDrag)
+            // document
+            //     .getElementById('selector-rect')
+            //     .addEventListener('dragend', handleSelectorRectDragEnd)
         }
     }, [twoJSInstance])
 
@@ -497,6 +635,7 @@ const Canvas = (props) => {
                     const data = {
                         twoJSInstance: twoJSInstance,
                         id: item.id,
+                        boardId: props.boardId,
                         // childrenArr: item.children,
                         itemData: item,
                         selectPanMode: props.selectPanMode,
@@ -777,20 +916,18 @@ const Canvas = (props) => {
                 rect.setAttribute('draggable', true)
             }
         } else {
-            document
-                .getElementById('main-two-root')
-                .removeEventListener(
-                    'mousedown',
-                    handleSelectorRectInitialization
-                )
-
-            document
-                .getElementById('selector-rect')
-                .removeEventListener('drag', handleSelectorRectDrag)
-
-            document
-                .getElementById('selector-rect')
-                .removeEventListener('dragend', handleSelectorRectDragEnd)
+            // document
+            //     .getElementById('main-two-root')
+            //     .removeEventListener(
+            //         'mousedown',
+            //         handleSelectorRectInitialization
+            //     )
+            // document
+            //     .getElementById('selector-rect')
+            //     .removeEventListener('drag', handleSelectorRectDrag)
+            // document
+            //     .getElementById('selector-rect')
+            //     .removeEventListener('dragend', handleSelectorRectDragEnd)
         }
     }
 
@@ -799,8 +936,8 @@ const Canvas = (props) => {
 
         // let default zoom be zero
         if (zuiInstance.zoom !== 0 || zuiInstance.zoom !== 1) {
-            zuiInstance.zoomSet(1, e.clientX, e.clientY)
-            twoJSInstance.update()
+            // zuiInstance.zoomSet(1, e.clientX, e.clientY)
+            // twoJSInstance.update()
         }
 
         const rect = document.getElementById('selector-rect')

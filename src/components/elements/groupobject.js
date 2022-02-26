@@ -1,21 +1,44 @@
 import React, { useEffect, useState, Fragment } from 'react'
 import interact from 'interactjs'
 import { useMutation } from '@apollo/client'
+import { useHistory } from 'react-router-dom'
 
-import { INSERT_COMPONENT, UPDATE_BOARD_COMPONENTS } from 'schema/mutations'
+import { INSERT_BULK_COMPONENTS } from 'schema/mutations'
 import ObjectSelector from 'components/utils/objectSelector'
 import getEditComponents from 'components/utils/editWrapper'
 import { elementOnBlurHandler } from 'utils/misc'
 
+function getComponentSchema(obj, boardId) {
+    return {
+        boardId: boardId,
+        componentType: obj.componentType,
+        fill: obj.fill,
+        children: obj?.children ? obj.children : {},
+        metadata: obj?.metadata ? obj.metadata : {},
+        x: obj.x + 10,
+        x1: obj.x1,
+        x2: obj.x2,
+        y: obj.y + 10,
+        y1: obj.y1,
+        y2: obj.y2,
+        width: obj.width,
+        height: obj.height,
+        linewidth: obj.linewidth,
+        stroke: obj.stroke,
+    }
+}
+
 function GroupedObjectWrapper(props) {
+    const history = useHistory()
+    console.log('history', history)
     const [
-        insertComponent,
+        insertComponents,
         {
-            loading: insertComponentLoading,
-            data: insertComponentSuccess,
-            error: insertComponentError,
+            loading: insertComponentsLoading,
+            data: insertComponentsSuccess,
+            error: insertComponentsError,
         },
-    ] = useMutation(INSERT_COMPONENT)
+    ] = useMutation(INSERT_BULK_COMPONENTS)
     const two = props.twoJSInstance
     const [cloneElement, setCloneElement] = useState(null)
     // const [twoGroupInstance,setTwoGroupInstance] = useState(null)
@@ -30,7 +53,7 @@ function GroupedObjectWrapper(props) {
             groupInstance.translation.y
         )
         elementOnBlurHandler(e, selectorInstance, two)
-        props.unGroup && props.unGroup(groupInstance)
+        // props.unGroup && props.unGroup(groupInstance)
         two.update()
     }
 
@@ -60,6 +83,17 @@ function GroupedObjectWrapper(props) {
         if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
             if (cloneElement?.id !== undefined) {
                 console.log('clone element', cloneElement)
+
+                let objects = cloneElement.children.map((item, index) => {
+                    let component = getComponentSchema(item, props.boardId)
+                    return component
+                })
+                console.log('objects for insert component bulk', objects)
+                insertComponents({
+                    variables: {
+                        objects: objects,
+                    },
+                })
                 // alert(`Ctrl+V was pressed ${cloneElement.id}`)
                 // setCloneElement(null)
             }
@@ -99,6 +133,7 @@ function GroupedObjectWrapper(props) {
         group.elementData = {
             ...props?.itemData,
             children: props.children,
+            isGroupSelector: true,
         }
         group.translation.x = parseInt(prevX) || 500
         group.translation.y = parseInt(prevY) || 200
@@ -158,7 +193,7 @@ function GroupedObjectWrapper(props) {
         const getGroupElementFromDOM = document.getElementById(`${group.id}`)
         getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
         getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
-        // getGroupElementFromDOM.addEventListener('keydown', onKeyDown)
+        getGroupElementFromDOM.addEventListener('keydown', onKeyDown)
 
         getGroupElementFromDOM.focus()
 
