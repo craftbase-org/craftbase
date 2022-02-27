@@ -1,6 +1,6 @@
 body {
     margin: 0;
-    font-family: 'Noto Sans JP', sans-serif;
+    font-family: sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -52,7 +52,7 @@ text
  g
  path */ {
     cursor: pointer !important;
-    font-family: 'Noto Sans JP', sans-serif;
+    font-family: sans-serif;
 }
 
 g {
@@ -102,7 +102,7 @@ button:focus {
     background: transparent;
     border: none;
     color: #fff;
-    font-family: 'Noto Sans JP';
+    /* font-family: 'Noto Sans JP'; */
     font-weight: 600;
     font-size: 16px;
     resize: none;
@@ -113,7 +113,7 @@ button:focus {
     background: transparent;
     border: none;
     color: #000;
-    font-family: 'Noto Sans JP';
+    /* font-family: 'Noto Sans JP'; */
     font-weight: 300;
     font-size: 16px;
     resize: none;
@@ -125,7 +125,7 @@ button:focus {
     background: transparent;
     border: none;
     color: #000;
-    font-family: 'Noto Sans JP';
+    /* font-family: 'Noto Sans JP'; */
     font-weight: 600;
     font-size: 16px;
     resize: none;
@@ -138,7 +138,7 @@ button:focus {
 
 .sidebar-container {
     z-index: 1;
-    width: 22%;
+    /* width: 22%; */
     -ms-flex: 0 100px;
     -webkit-box-flex: 0;
     -moz-box-flex: 0;

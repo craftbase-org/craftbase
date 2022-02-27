@@ -11,21 +11,20 @@ import Icon from 'icons/icon'
 import { useImmer } from 'use-immer'
 
 const ToolbarContainer = styled(motion.div)`
-    height: 100vh;
-    width: 300px;
+    height: 79vh;
+    width: 288px;
     z-index: 1;
     position: fixed;
     overflow: auto;
-    left: 0;
+    left: 16px;
     outline: none;
-    top: 0;
+    top: 65px;
     background: rgba(255, 255, 255, 1);
 
     display: flex;
     flex-direction: column;
     align-items: center;
     transition: transform 0.3s;
-    box-shadow: 2px 68px 10px rgba(194, 206, 219, 0.68);
 `
 
 const FontWeightBtn = styled.button`
@@ -354,6 +353,7 @@ const Toolbar = (props) => {
         <AnimatePresence>
             <ToolbarContainer
                 key="flo-toolbar"
+                className=" shadow-lg rounded-md"
                 data-parent="floating-toolbar"
                 initial="open"
                 animate="closed"

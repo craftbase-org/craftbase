@@ -110,7 +110,7 @@ const PrimarySidebar = (props) => {
             >
                 <div
                     className="flex items-center justify-center 
-                w-64 h-12 px-2 py-2 mx-4
+                 w-72 h-12 px-2 py-2 mx-4
                  bg-white rounded-md shadow-xl"
                 >
                     {getComponentTypesLoading ? (
