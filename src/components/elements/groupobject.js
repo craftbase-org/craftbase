@@ -53,7 +53,7 @@ function GroupedObjectWrapper(props) {
             groupInstance.translation.y
         )
         elementOnBlurHandler(e, selectorInstance, two)
-        // props.unGroup && props.unGroup(groupInstance)
+        props.unGroup && props.unGroup(groupInstance)
         two.update()
     }
 

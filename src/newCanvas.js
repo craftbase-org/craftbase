@@ -140,48 +140,45 @@ function addZUI(
         // then only perform the mutation
 
         console.log('props.selectPanMode', props.selectPanMode)
-        if (props.selectPanMode) {
-            shape = two.scene
-        } else {
-            if (shape === null) {
-                // shape = two.scene
-                const { x1, x2, y1, y2 } = {
-                    x1: 0,
-                    x2: 10,
-                    y1: 0,
-                    y2: 10,
-                }
-                const area = two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
-                area.fill = 'rgba(0,0,0,0)'
-                area.opacity = 1
-                area.linewidth = 1
-                // area.dashes[0] = 4;
-                area.stroke = '#505F79'
-
-                let newSelectorGroup = two.makeGroup(area)
-
-                // let dx = e.clientX - mouse.x
-                // let dy = e.clientY - mouse.y
-                // shape.position.x += dx / zui.scale
-                // shape.position.y += dy / zui.scale
-
-                newSelectorGroup.translation.x = mouse.x
-                newSelectorGroup.translation.y = mouse.y
-                // console.log(
-                //     'mouse in selector group',
-                //     mouse,
-                //     mouse.getBoundingClientRect()
-                // )
-                two.update()
-                shape = newSelectorGroup
-                isGroupSelector = true
+        if (shape === null) {
+            // shape = two.scene
+            const { x1, x2, y1, y2 } = {
+                x1: 0,
+                x2: 10,
+                y1: 0,
+                y2: 10,
             }
-            shape.elementData = {
-                ...shape?.elementData,
-                isGroupSelector: isGroupSelector,
-                prevX: parseInt(shape.translation.x),
-                prevY: parseInt(shape.translation.y),
-            }
+            const area = two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
+            area.fill = 'rgba(0,0,0,0)'
+            area.opacity = 1
+            area.linewidth = 1
+            // area.dashes[0] = 4;
+            area.stroke = '#505F79'
+
+            let newSelectorGroup = two.makeGroup(area)
+
+            // let dx = e.clientX - mouse.x
+            // let dy = e.clientY - mouse.y
+            // shape.position.x += dx / zui.scale
+            // shape.position.y += dy / zui.scale
+
+            const m = zui.clientToSurface(e.clientX, e.clientY)
+            mouse.copy(m)
+            newSelectorGroup.position.copy(mouse)
+            // console.log(
+            //     'mouse in selector group',
+            //     mouse,
+            //     mouse.getBoundingClientRect()
+            // )
+            two.update()
+            shape = newSelectorGroup
+            isGroupSelector = true
+        }
+        shape.elementData = {
+            ...shape?.elementData,
+            isGroupSelector: isGroupSelector,
+            prevX: parseInt(shape.translation.x),
+            prevY: parseInt(shape.translation.y),
         }
 
         console.log('on mouse down', e, shape)
@@ -219,61 +216,72 @@ function addZUI(
             ) {
                 shape.position.x += dx / zui.scale
                 shape.position.y += dy / zui.scale
-            }
-            // else if (shape.elementData.isGroupSelector) {
-            //     console.log('shape.position', shape)
-            //     let area = shape.children[0]
+            } else if (shape.elementData.isGroupSelector) {
+                console.log('shape.position', shape)
+                let area = shape.children[0]
+                let x = e.clientX
+                let y = e.clientY
 
-            //     let x1 = area.vertices[0].x
-            //     let x2 = area.vertices[2].x
-            //     x2 += dx / zui.scale
+                // let x1 = area.vertices[0].x
+                // let x2 = area.vertices[2].x
+                // x2 += dx / zui.scale
 
-            //     let y1 = area.vertices[0].y
-            //     let y2 = area.vertices[3].y
-            //     y2 += dy / zui.scale
+                // let y1 = area.vertices[0].y
+                // let y2 = area.vertices[3].y
+                // y2 += dy / zui.scale
 
-            //     area.vertices = [
-            //         new Two.Anchor(
-            //             x1,
-            //             y1,
-            //             null,
-            //             null,
-            //             null,
-            //             null,
-            //             Two.Commands.line
-            //         ),
-            //         new Two.Anchor(
-            //             x2,
-            //             y1,
-            //             null,
-            //             null,
-            //             null,
-            //             null,
-            //             Two.Commands.line
-            //         ),
+                // area.vertices = [
+                //     new Two.Anchor(
+                //         x1,
+                //         y1,
+                //         null,
+                //         null,
+                //         null,
+                //         null,
+                //         Two.Commands.line
+                //     ),
+                //     new Two.Anchor(
+                //         x2,
+                //         y1,
+                //         null,
+                //         null,
+                //         null,
+                //         null,
+                //         Two.Commands.line
+                //     ),
 
-            //         new Two.Anchor(
-            //             x2,
-            //             y2,
-            //             null,
-            //             null,
-            //             null,
-            //             null,
-            //             Two.Commands.line
-            //         ),
-            //         new Two.Anchor(
-            //             x1,
-            //             y2,
-            //             null,
-            //             null,
-            //             null,
-            //             null,
-            //             Two.Commands.line
-            //         ),
-            //     ]
-            //     two.update()
-            // }
-            else {
+                //     new Two.Anchor(
+                //         x2,
+                //         y2,
+                //         null,
+                //         null,
+                //         null,
+                //         null,
+                //         Two.Commands.line
+                //     ),
+                //     new Two.Anchor(
+                //         x1,
+                //         y2,
+                //         null,
+                //         null,
+                //         null,
+                //         null,
+                //         Two.Commands.line
+                //     ),
+                // ]
+                const m = zui.clientToSurface(x, y)
+                mouse.copy(m)
+
+                const width = mouse.x - shape.position.x
+                const height = mouse.y - shape.position.y
+
+                area.vertices[1].x = width
+                area.vertices[2].x = width
+                area.vertices[2].y = height
+                area.vertices[3].y = height
+
+                two.update()
+            } else {
                 if (!props.selectPanMode) {
                     // nothing
                 } else {
@@ -312,14 +320,7 @@ function addZUI(
                 width: area.vertices[2].x - area.vertices[0].x,
                 height: area.vertices[3].y - area.vertices[0].y,
             }
-            console.log(
-                'shape group obj',
-                obj,
-                area.vertices[0],
-                area.vertices[1],
-                area.vertices[2],
-                area.vertices[3]
-            )
+            console.log('shape group obj', obj)
             setOnGroup(obj)
         } else if (!props.selectPanMode) {
             // else shape is not a group selector then update shape's properties

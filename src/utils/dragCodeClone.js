@@ -6,10 +6,10 @@ var two = new Two({
 var stage = new Two.Group()
 
 for (var i = 0; i < 100; i++) {
-    var x = Math.random() * two.width * 2 - two.width
-    var y = Math.random() * two.height * 2 - two.height
-    var size = 50
-    var shape = new Two.Rectangle(x, y, size, size)
+    let x = Math.random() * two.width * 2 - two.width
+    let y = Math.random() * two.height * 2 - two.height
+    let size = 50
+    let shape = new Two.Rectangle(x, y, size, size)
     shape.rotation = Math.random() * Math.PI * 2
     shape.noStroke().fill = '#ccc'
     stage.add(shape)

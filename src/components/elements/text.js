@@ -62,12 +62,7 @@ function Text(props) {
         const prevY = props.y
 
         // Instantiate factory
-        const elementFactory = new ElementFactory(
-            two,
-            prevX,
-            prevY,
-            props.metadata
-        )
+        const elementFactory = new ElementFactory(two, prevX, prevY, props)
         // Get all instances of every sub child element
         const { group, rectTextGroup, rectangle } =
             elementFactory.createElement()

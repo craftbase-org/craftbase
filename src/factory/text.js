@@ -5,7 +5,8 @@ export default class TextFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill = 'rgba(0,0,0,0)', content = '' } = this?.properties || {}
+        const { fill = 'rgba(0,0,0,0)' } = this.properties || {}
+        const { content = '' } = this.properties.metadata || {}
 
         // pass width and height here for transparent rectangle container
         const rectangle = two.makeRoundedRectangle(0, 0, 330, 45, 5)
