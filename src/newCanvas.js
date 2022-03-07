@@ -152,7 +152,7 @@ function addZUI(
             area.fill = 'rgba(0,0,0,0)'
             area.opacity = 1
             area.linewidth = 1
-            // area.dashes[0] = 4;
+            area.dashes[0] = 4
             area.stroke = '#505F79'
 
             let newSelectorGroup = two.makeGroup(area)
@@ -321,6 +321,7 @@ function addZUI(
                 height: area.vertices[3].y - area.vertices[0].y,
             }
             console.log('shape group obj', obj)
+            two.remove(shape)
             setOnGroup(obj)
         } else if (!props.selectPanMode) {
             // else shape is not a group selector then update shape's properties

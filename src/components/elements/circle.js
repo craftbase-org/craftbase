@@ -157,6 +157,7 @@ function Circle(props) {
                 two.update()
                 toggleToolbar(true)
             })
+
             // Apply resizable property to element
             interact(`#${group.id}`).resizable({
                 edges: { right: true, left: true, top: true, bottom: true },

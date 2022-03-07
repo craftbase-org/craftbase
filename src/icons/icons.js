@@ -75,4 +75,8 @@ export default {
         viewBox: '0 0 46 46',
         data: '<svg role="img" xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" viewBox="0 0 24 24" aria-labelledby="cursorIconTitle" stroke="#2329D6" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter" fill="none" color="#2329D6"> <title id="cursorIconTitle">Cursor</title> <polygon points="7 20 7 4 19 16 12 16 7 21"/> </svg>',
     },
+    ICON_ROTATE: {
+        viewBox: '0 0 46 46',
+        data: '<svg role="img" xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" viewBox="0 0 24 24" aria-labelledby="refreshIconTitle" stroke="#000" stroke-width="1" stroke-linecap="square" stroke-linejoin="miter" fill="none" color="#2329D6" style="cursor:grab !important;"> <title id="refreshIconTitle">Refresh</title> <polyline points="22 12 19 15 16 12"/> <path d="M11,20 C6.581722,20 3,16.418278 3,12 C3,7.581722 6.581722,4 11,4 C15.418278,4 19,7.581722 19,12 L19,14" style="cursor:grab !important;"/> </svg>',
+    },
 }
