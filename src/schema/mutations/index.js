@@ -54,3 +54,21 @@ export const INSERT_BULK_COMPONENTS = gql`
         }
     }
 `
+
+export const INSERT_USER_ONE = gql`
+    mutation insertUser($object: users_user_insert_input! = {}) {
+        user: insert_users_user_one(object: $object) {
+            id
+            firstName
+        }
+    }
+`
+
+export const CREATE_BOARD = gql`
+    mutation createBoard($object: boards_board_insert_input! = {}) {
+        board: insert_boards_board_one(object: $object) {
+            id
+            createdBy
+        }
+    }
+`

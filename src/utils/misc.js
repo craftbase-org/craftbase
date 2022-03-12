@@ -23,3 +23,37 @@ export const elementOnBlurHandler = (e, selectorInstance, two) => {
     }
     two.update()
 }
+
+export const generateRandomUsernames = () => {
+    let names = [
+        'cake_salad',
+        'raspberry_waffle',
+        'tropical_owl',
+        'high_antopera',
+        'banestick_watermelon',
+        'zephyr_pomegranate',
+        'optimus_prime',
+        'network_tea',
+        'floral_cake',
+        'volcano_bee',
+        'hurricane_cat',
+        'juice_walrus',
+        'groundhog_day',
+        'spacex_dragon',
+        'icecream_fox',
+        'astronout_fly',
+        'icecoffee_cat',
+        'pumpkin_bat',
+        'anonymous_galileo',
+        'raspberry_cat',
+        'water_rabbit',
+        'violet_turtle',
+    ]
+
+    let rB = Math.floor(Math.random() * names.length)
+    let name = names[rB]
+    let firstName = name.split('_')[0]
+    let lastName = name.split('_')[1]
+
+    return { nickname: name, firstName, lastName }
+}

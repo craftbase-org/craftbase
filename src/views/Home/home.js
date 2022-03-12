@@ -1,14 +1,39 @@
 import React, { useEffect, useState } from 'react'
 import { Redirect, useHistory } from 'react-router-dom'
+import { useMutation } from '@apollo/client'
 
+import { INSERT_USER_ONE, CREATE_BOARD } from 'schema/mutations'
 import routes from 'routes'
 import StickerSVG from 'assets/sticker.svg'
 import TwitterLogoSVG from 'assets/twitter_logo.svg'
 import GithubLogoSVG from 'assets/github_logo.svg'
 import CraftbaseBoardScreenshotPNG from 'assets/craftbase_board_screenshot.png'
 import Button from 'components/common/button'
+import { generateRandomUsernames } from 'utils/misc'
 
 const HomePage = (props) => {
+    // create user mutation
+    const [
+        insertUser,
+        {
+            loading: insertUserLoading,
+            data: insertUserData,
+            error: insertUserError,
+            reset: resetInsertUserMutation,
+        },
+    ] = useMutation(INSERT_USER_ONE)
+
+    // create board mutation
+    const [
+        createBoard,
+        {
+            loading: createBoardLoading,
+            data: createBoardData,
+            error: createBoardError,
+            reset: resetCreateBoardMutation,
+        },
+    ] = useMutation(CREATE_BOARD)
+
     const [pageHeight, setPageHeight] = useState(0)
     const history = useHistory()
 
@@ -16,6 +41,55 @@ const HomePage = (props) => {
         console.log('window.innerHeight', window.innerHeight)
         setPageHeight(window.innerHeight - 200)
     }, [window.innerHeight])
+
+    useEffect(() => {
+        if (insertUserData) {
+            const userId = insertUserData.user.id
+            console.log('insertUserData', insertUserData)
+            localStorage.setItem('userId', userId)
+            createBoard({
+                variables: {
+                    object: {
+                        createdBy: userId,
+                    },
+                },
+            })
+            resetInsertUserMutation()
+        }
+    }, [insertUserData])
+
+    useEffect(() => {
+        if (createBoardData) {
+            const boardId = createBoardData.board.id
+            console.log('createBoardData', createBoardData)
+            history.push(`/board/${boardId}`)
+            resetCreateBoardMutation()
+        }
+    }, [createBoardData])
+
+    const onCreateBoard = () => {
+        const userId = localStorage.getItem('userId')
+        if (userId === null) {
+            const { nickname, firstName, lastName } = generateRandomUsernames()
+            insertUser({
+                variables: {
+                    object: {
+                        nickname,
+                        firstName,
+                        lastName,
+                    },
+                },
+            })
+        } else {
+            createBoard({
+                variables: {
+                    object: {
+                        createdBy: userId,
+                    },
+                },
+            })
+        }
+    }
 
     return (
         <>
@@ -46,6 +120,13 @@ const HomePage = (props) => {
                                 intent="primary"
                                 size="large"
                                 label="Create Board"
+                                onClick={onCreateBoard}
+                                loading={
+                                    insertUserLoading || createBoardLoading
+                                }
+                                disabled={
+                                    insertUserLoading || createBoardLoading
+                                }
                             />
                         </div>
                     </div>
