@@ -1,7 +1,9 @@
 import React from 'react'
+import Spinner from 'components/common/spinnerWithSize'
 
 const Button = (props) => {
-    let baseClassNames = ' focus:outline-none rounded-md hover:shadow-lg '
+    let baseClassNames =
+        ' focus:outline-none rounded-md hover:shadow-lg flex items-center '
 
     switch (props.intent) {
         case 'primary': // red
@@ -54,6 +56,18 @@ const Button = (props) => {
                 disabled={props.disabled}
             >
                 {props.children || props.label}
+                {props.loading && (
+                    <div>
+                        <Spinner
+                            loaderSize="md"
+                            customStyles={{
+                                margin: 0,
+                                marginLeft: '8px',
+                                borderBottomColor: '#fff',
+                            }}
+                        />
+                    </div>
+                )}
             </button>
         </>
     )
@@ -61,6 +75,7 @@ const Button = (props) => {
 
 Button.defaultProps = {
     disabled: false,
+    loading: false,
     onClick: () => {},
     intent: '',
     size: '',

@@ -33,14 +33,24 @@
     height: 45px;
     border-radius: 45px;
 }
+.md-loader {
+    margin: 20px;
+    display: block;
+    /* 	background-color:green; */
+    border: 2.5px solid;
+    animation: spinner 0.4s linear infinite;
+    width: 20px;
+    height: 20px;
+    border-radius: 25px;
+}
 .sm-loader {
     margin: 20px;
     display: block;
     /* 	background-color:green; */
     border: 3px solid;
     animation: spinner 0.4s linear infinite;
-    width: 25px;
-    height: 25px;
+    width: 18px;
+    height: 18px;
     border-radius: 25px;
 }
 .xs-loader {
