@@ -310,17 +310,8 @@ function Rectangle(props) {
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
-                    updateComponent={(propertyToUpdate, propertyValue) => {
-                        propertyToUpdate &&
-                            propertyValue &&
-                            updateComponentInfo({
-                                variables: {
-                                    id: props.id,
-                                    updateObj: {
-                                        [propertyToUpdate]: propertyValue,
-                                    },
-                                },
-                            })
+                    componentId={props.id}
+                    postToolbarUpdate={() => {
                         two.update()
                     }}
                 />

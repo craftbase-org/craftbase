@@ -1,14 +1,17 @@
 import React, { Fragment, useEffect } from 'react'
+import { useMutation } from '@apollo/client'
+import styled, { css } from 'styled-components'
+import idx from 'idx'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useImmer } from 'use-immer'
+
 import ColorPicker from 'components/utils/colorPicker'
 import BorderStyleBox from 'components/utils/borderStyleBox'
 import OpacitySlider from 'components/utils/opacitySlider'
 import FontSizeSlider from 'components/utils/fontSizeSlider'
-import styled, { css } from 'styled-components'
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { properties } from 'utils/constants'
-import idx from 'idx'
-import { motion, AnimatePresence } from 'framer-motion'
 import Icon from 'icons/icon'
-import { useImmer } from 'use-immer'
 
 const ToolbarContainer = styled(motion.div)`
     height: 79vh;
@@ -124,8 +127,17 @@ const Accordion = ({
 }
 
 const Toolbar = (props) => {
-    const { toggle, componentState, closeToolbar, updateComponent } = props
+    const {
+        toggle,
+        componentState,
+        closeToolbar,
+        componentId,
+        postToolbarUpdate,
+    } = props
     console.log('Toolbar props', props)
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
 
     const [state, setState] = useImmer({
         colorsAccordion: false,
@@ -148,6 +160,20 @@ const Toolbar = (props) => {
             draft.colorBg = componentState?.shape?.data?.fill
         })
     }, [])
+
+    const updateComponent = (propertyToUpdate, propertyValue) => {
+        const userId = localStorage.getItem('userId')
+        updateComponentInfo({
+            variables: {
+                id: componentId,
+                updateObj: {
+                    [propertyToUpdate]: propertyValue,
+                    updatedBy: userId,
+                },
+            },
+        })
+        postToolbarUpdate && postToolbarUpdate()
+    }
 
     const allowedProperties = [
         {
