@@ -376,13 +376,7 @@ button:focus {
 */
 
 .secondary-sidebar-shapes {
-    position: absolute;
-    top: 45px;
-    left: 21px;
-}
-
-.secondary-sidebar-elements {
-    position: absolute;
+    position: fixed;
     top: 45px;
     left: 21px;
 }

@@ -1,14 +1,15 @@
 import React, { Component } from 'react'
 import Icon from 'icons/icon'
-import AvatarPNG from 'assets/avatar.png'
-import ButtonPNG from 'assets/button.png'
-import ButtonWithIconPNG from 'assets/buttonWithIcon.png'
+import AvatarSVG from 'wireframeAssets/avatar.svg'
+import ButtonSVG from 'wireframeAssets/btn.svg'
+import ButtonWithIconSVG from 'wireframeAssets/btnWithIcon.svg'
+import ImageCardSVG from 'wireframeAssets/imageCard.svg'
 
 import CheckboxPNG from 'assets/checkbox.png'
 import CirclePNG from 'assets/circle.png'
 import DividerPNG from 'assets/divider.png'
 import DropdownPNG from 'assets/dropdown.png'
-import ImageCardPNG from 'assets/imageCard.png'
+
 import LinkWithIconPNG from 'assets/linkwithicon.png'
 import OverlayPNG from 'assets/overlay.png'
 import RadioboxPNG from 'assets/radiobox.png'
@@ -28,164 +29,148 @@ class SecondarySidebar extends Component {
     componentDidMount() {
         // setting focus on secondary sidebar to have blur event
         // effective right on from that
-        document.getElementById('sec-sidebar').focus()
     }
 
     getItemRenderData = (item) => {
-        switch (item) {
-            case 'elements':
-                return (
-                    <div className="secondary-sidebar-content secondary-sidebar-elements w-96 px-2 py-2 bg-white block text-left">
-                        <div className="w-full flex items-center flex-wrap">
-                            <div className="w-1/2 block p-2 ">
-                                <div className="element-image-block border border-gray-500 bg-neutrals-n20">
-                                    <div className="w-full h-max-11vh">
-                                        <img
-                                            className="h-full mx-auto h-max-10vh p-2"
-                                            src={ButtonPNG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                                        Button
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-1/2 block p-2 ">
-                                <div className="element-image-block border border-gray-500 bg-neutrals-n20">
-                                    <div className="w-full h-max-11vh">
-                                        <img
-                                            className=" h-90-per h-max-10vh mx-auto p-2"
-                                            src={ButtonWithIconPNG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                                        Button With Icon
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-1/2 block p-2 ">
-                                <div className="element-image-block border border-gray-500 bg-neutrals-n20">
-                                    <div className="w-full h-max-11vh">
-                                        <img
-                                            className=" h-90-per h-max-10vh mx-auto p-2"
-                                            src={ImageCardPNG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                                        Image Card
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-1/2 block p-2 ">
-                                <div className="element-image-block border border-gray-500 bg-neutrals-n20">
-                                    <div className="w-full h-max-11vh">
-                                        <img
-                                            className=" h-90-per h-max-10vh mx-auto p-2"
-                                            src={TogglePNG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                                        Toggle
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-1/2 block p-2 ">
-                                <div className="element-image-block border border-gray-500 bg-neutrals-n20">
-                                    <div className="w-full h-max-11vh">
-                                        <img
-                                            className=" h-90-per h-max-10vh mx-auto p-2"
-                                            src={DividerPNG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                                        Divider
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-1/2 block p-2 ">
-                                <div className="element-image-block border border-gray-500 bg-neutrals-n20">
-                                    <div className="w-full h-max-11vh">
-                                        <img
-                                            className=" h-90-per h-max-10vh mx-auto p-2"
-                                            src={LinkWithIconPNG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                                        Link with Icon
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-1/2 block p-2 ">
-                                <div className="element-image-block border border-gray-500 bg-neutrals-n20">
-                                    <div className="w-full h-max-11vh">
-                                        <img
-                                            className=" h-90-per h-max-10vh mx-auto p-2"
-                                            src={AvatarPNG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                                        Avatar
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-1/2 block p-2 ">
-                                <div className="element-image-block border border-gray-500 bg-neutrals-n20">
-                                    <div className="w-full h-max-11vh">
-                                        <img
-                                            className=" h-90-per h-max-10vh mx-auto p-2"
-                                            src={OverlayPNG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                                        Overlay
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-1/2 block p-2 ">
-                                <div className="element-image-block border border-gray-500 bg-neutrals-n20">
-                                    <div className="w-full h-max-11vh">
-                                        <img
-                                            className=" h-90-per h-max-10vh mx-auto p-2"
-                                            src={RadioboxPNG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                                        Radio Control
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-1/2 block p-2 ">
-                                <div className="element-image-block border border-gray-500 bg-neutrals-n20">
-                                    <div className="w-full h-max-11vh">
-                                        <img
-                                            className=" h-90-per h-max-10vh mx-auto p-2"
-                                            src={CheckboxPNG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                                        Checkbox Control
-                                    </div>
-                                </div>
-                            </div>
+        return (
+            <div className="w-full flex items-center flex-wrap">
+                <div className="w-1/2 block p-2 ">
+                    <div
+                        className="element-image-block  bg-neutrals-n20 
+                    hover:shadow-lg cursor-pointer"
+                    >
+                        <div className="w-full h-20">
+                            <img className="w-full h-20" src={AvatarSVG} />
+                        </div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Avatar
                         </div>
                     </div>
-                )
-            case 'shapes':
-                return (
-                    <div className="secondary-sidebar-content secondary-sidebar-shapes w-32 px-2 py-2 bg-white block text-left">
-                        <div className="block p-2 border border-gray-500 bg-neutrals-n20">
-                            <img src={RectanglePNG} width={100} height={100} />
-                            <div className="mt-2 text-center">Circle</div>
+                </div>
+                <div className="w-1/2 block p-2  ">
+                    <div
+                        className="element-image-block  bg-neutrals-n20 
+                    hover:shadow-lg cursor-pointer"
+                    >
+                        <div className="w-full h-20">
+                            <img
+                                className="w-full h-20"
+                                src={ButtonWithIconSVG}
+                            />
                         </div>
-                        <div className="block p-2 border border-gray-500 bg-neutrals-n20">
-                            <img src={CirclePNG} width={100} height={100} />
-                            <div className="mt-2 text-center">Circle</div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Button With Icon
                         </div>
                     </div>
-                )
-            default:
-                break
-        }
+                </div>
+                <div className="w-1/2 block p-2 ">
+                    <div
+                        className="element-image-block  bg-neutrals-n20 
+                    hover:shadow-lg cursor-pointer"
+                    >
+                        <div className="w-full h-20">
+                            <img className="w-full h-20" src={ButtonSVG} />
+                        </div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Button
+                        </div>
+                    </div>
+                </div>
+
+                <div className="w-1/2 block p-2 ">
+                    <div
+                        className="element-image-block  bg-neutrals-n20 
+                    hover:shadow-lg cursor-pointer"
+                    >
+                        <div className="w-full h-20">
+                            <img className="w-full h-20" src={ImageCardSVG} />
+                        </div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Image Card
+                        </div>
+                    </div>
+                </div>
+                <div className="w-1/2 block p-2 ">
+                    <div className="element-image-block  bg-neutrals-n20">
+                        <div className="w-full h-max-11vh">
+                            <img
+                                className=" h-90-per h-max-10vh mx-auto p-2"
+                                src={TogglePNG}
+                            />
+                        </div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Toggle
+                        </div>
+                    </div>
+                </div>
+                <div className="w-1/2 block p-2 ">
+                    <div className="element-image-block  bg-neutrals-n20">
+                        <div className="w-full h-max-11vh">
+                            <img
+                                className=" h-90-per h-max-10vh mx-auto p-2"
+                                src={DividerPNG}
+                            />
+                        </div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Divider
+                        </div>
+                    </div>
+                </div>
+                <div className="w-1/2 block p-2 ">
+                    <div className="element-image-block  bg-neutrals-n20">
+                        <div className="w-full h-max-11vh">
+                            <img
+                                className=" h-90-per h-max-10vh mx-auto p-2"
+                                src={LinkWithIconPNG}
+                            />
+                        </div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Link with Icon
+                        </div>
+                    </div>
+                </div>
+
+                <div className="w-1/2 block p-2 ">
+                    <div className="element-image-block  bg-neutrals-n20">
+                        <div className="w-full h-max-11vh">
+                            <img
+                                className=" h-90-per h-max-10vh mx-auto p-2"
+                                src={OverlayPNG}
+                            />
+                        </div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Overlay
+                        </div>
+                    </div>
+                </div>
+                <div className="w-1/2 block p-2 ">
+                    <div className="element-image-block  bg-neutrals-n20">
+                        <div className="w-full h-max-11vh">
+                            <img
+                                className=" h-90-per h-max-10vh mx-auto p-2"
+                                src={RadioboxPNG}
+                            />
+                        </div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Radio Control
+                        </div>
+                    </div>
+                </div>
+                <div className="w-1/2 block p-2 ">
+                    <div className="element-image-block  bg-neutrals-n20">
+                        <div className="w-full h-max-11vh">
+                            <img
+                                className=" h-90-per h-max-10vh mx-auto p-2"
+                                src={CheckboxPNG}
+                            />
+                        </div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Checkbox Control
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     renderItems = () => {
@@ -200,14 +185,24 @@ class SecondarySidebar extends Component {
             <div
                 tabIndex="-1"
                 id="sec-sidebar"
+                className=" transition-all ease-in-out duration-300 
+                secondary-sidebar-content 
+                 overflow-y-auto fixed
+                 
+                w-96  bg-white block text-left
+                 border-b-8 border-white 
+                 rounded-md shadow-lg
+                "
+                style={{
+                    top: '64px',
+                    height: '350px',
+                    // opacity: this.props.showMenu ? 1 : 0,
+                    left: this.props.showMenu ? '21px' : '-400px',
+                    // display: this.props.showMenu ? 'block' : 'none',
+                }}
                 onBlur={() => {
-                    console.log('sec sidebar on blur')
-
-                    // This will also act if user doesn't select any item from secondary sidebar
-                    // leading to no action for redux
                     this.props.handleOnBlur()
                 }}
-                className="relative "
             >
                 {this.renderItems()}
             </div>

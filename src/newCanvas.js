@@ -181,7 +181,7 @@ function addZUI(
             prevY: parseInt(shape.translation.y),
         }
 
-        console.log('on mouse down', e, shape)
+        console.log('on mouse down')
         let rect = document.getElementById(shape.id).getBoundingClientRect()
 
         dragging =
@@ -320,16 +320,16 @@ function addZUI(
                 width: area.vertices[2].x - area.vertices[0].x,
                 height: area.vertices[3].y - area.vertices[0].y,
             }
-            console.log('shape group obj', obj)
+            // console.log('shape group obj', obj)
             two.remove(shape)
             setOnGroup(obj)
-        } else if (!props.selectPanMode) {
+        } else {
             // else shape is not a group selector then update shape's properties
             if (
                 shape.elementData.x == shape.translation.x &&
                 shape.elementData.y == shape.translation.y
             ) {
-                console.log('no need to update')
+                // console.log('no need to update')
             } else {
                 // updating already created two.js scene groups to new x,y set
                 shape.elementData.x = shape.translation.x
@@ -703,7 +703,6 @@ const Canvas = (props) => {
                         boardId: props.boardId,
                         // childrenArr: item.children,
                         itemData: item,
-                        selectPanMode: props.selectPanMode,
                     }
 
                     // Different render wrapper for components and group
@@ -746,7 +745,7 @@ const Canvas = (props) => {
     useEffect(() => {
         let componentsArr = [...currentComponents]
         if (onGroup) {
-            console.log('on group useeffect', onGroup)
+            // console.log('on group useeffect', onGroup)
             let e = onGroup
             let x1Coord = e.left
             let x2Coord = e.right
@@ -770,25 +769,25 @@ const Canvas = (props) => {
             // )
 
             allComponentCoords.forEach((item, index) => {
-                console.log('item', item)
-                console.log('area_selection item', item)
+                // console.log('item', item)
+                // console.log('area_selection item', item)
                 if (
                     item.x > x1Coord &&
                     item.x < x2Coord &&
                     item.y > y1Coord &&
                     item.y < y2Coord
                 ) {
-                    console.log(
-                        'area_selection a match',
-                        twoJSInstance.scene.children
-                    )
+                    // console.log(
+                    //     'area_selection a match',
+                    //     twoJSInstance.scene.children
+                    // )
 
                     let findTwoShapeIndex =
                         twoJSInstance.scene.children.findIndex(
                             (child) => child?.elementData?.id === item.id
                         )
 
-                    console.log('findTwoShapeIndex', findTwoShapeIndex)
+                    // console.log('findTwoShapeIndex', findTwoShapeIndex)
                     if (findTwoShapeIndex !== -1) {
                         let shape =
                             twoJSInstance.scene.children[findTwoShapeIndex]
