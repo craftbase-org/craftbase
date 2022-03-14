@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
 import { useHistory } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 
 import SecondarySidebar from './secondary'
 import CursorICON from 'assets/cursor.svg'
-import PanICON from 'assets/pan.svg'
+import LayersIcon from 'assets/layers_toolbar_icon.svg'
 import RightArrowIcon from 'assets/right_arrow.svg'
 import LinkIcon from 'assets/link_white.svg'
 import RadioWhiteIcon from 'assets/radio_white.svg'
@@ -34,6 +35,7 @@ const randomBgColors = [
 
 const PrimarySidebar = (props) => {
     const [showAddShapeLoader, setShowAddShapeLoader] = useState(false)
+    const [secondaryMenu, toggleSecondaryMenu] = useState(false)
     const {
         loading: getComponentTypesLoading,
         data: getComponentTypesData,
@@ -57,7 +59,6 @@ const PrimarySidebar = (props) => {
     //         error: updateBoardComponentsError,
     //     },
     // ] = useMutation(UPDATE_BOARD_COMPONENTS)
-    const [secondaryMenu, toggleSecondaryMenu] = useState(false)
 
     useEffect(() => {
         if (insertComponentSuccess) {
@@ -102,6 +103,18 @@ const PrimarySidebar = (props) => {
         shapeData && insertComponent({ variables: { object: shapeData } })
     }
 
+    const toggleSecondaryMenuFn = (bool) => {
+        if (secondaryMenu === false) {
+            document.getElementById('sec-sidebar').focus()
+        }
+
+        if (bool) {
+            toggleSecondaryMenu(bool)
+        } else {
+            toggleSecondaryMenu(!secondaryMenu)
+        }
+    }
+
     return (
         <>
             <div
@@ -118,15 +131,12 @@ const PrimarySidebar = (props) => {
                     ) : (
                         <>
                             {' '}
-                            <div>
-                                {secondaryMenu && (
-                                    <SecondarySidebar
-                                        selectedItem={null}
-                                        handleOnBlur={(result) => {
-                                            // this.handleOnBlurSecSidebar(result)
-                                        }}
-                                    />
-                                )}
+                            <div className="  relative ">
+                                <SecondarySidebar
+                                    selectedItem={'elements'}
+                                    showMenu={secondaryMenu}
+                                    handleOnBlur={toggleSecondaryMenuFn}
+                                />
                             </div>
                             <div className="relative transition-transform">
                                 <button
@@ -204,9 +214,9 @@ const PrimarySidebar = (props) => {
                             <div className="relative">
                                 <button
                                     className={` hover:bg-blues-b50 bg-transparent px-2 py-2 block`}
-                                    onClick={props.changeSelectMode}
+                                    onClick={() => toggleSecondaryMenuFn(true)}
                                 >
-                                    <img className="w-6 h-6" src={PanICON} />
+                                    <img className="w-6 h-6" src={LayersIcon} />
                                 </button>
                             </div>
                         </>
