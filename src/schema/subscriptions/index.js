@@ -38,6 +38,7 @@ export const GET_COMPONENT_INFO = gql`
             y2
             componentType
             children
+            updatedBy
         }
     }
 `

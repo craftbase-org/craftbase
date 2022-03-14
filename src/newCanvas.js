@@ -294,7 +294,7 @@ function addZUI(
     }
 
     function mouseup(e) {
-        console.log('e in ZUI mouse up', mouse, shape.position.x)
+        console.log('e in ZUI mouse up')
 
         // old school logic here
         // const getCoordLabel = document
@@ -325,14 +325,26 @@ function addZUI(
             setOnGroup(obj)
         } else if (!props.selectPanMode) {
             // else shape is not a group selector then update shape's properties
-            oldShapeData = { ...shape.elementData }
-            newShapeData = Object.assign({}, shape.elementData, {
-                data: {
-                    x: parseInt(shape.translation.x),
-                    y: parseInt(shape.translation.y),
-                },
-            })
-            updateToGlobalState(newShapeData, oldShapeData)
+            if (
+                shape.elementData.x == shape.translation.x &&
+                shape.elementData.y == shape.translation.y
+            ) {
+                console.log('no need to update')
+            } else {
+                // updating already created two.js scene groups to new x,y set
+                shape.elementData.x = shape.translation.x
+                shape.elementData.y = shape.translation.y
+
+                oldShapeData = { ...shape.elementData }
+
+                newShapeData = Object.assign({}, shape.elementData, {
+                    data: {
+                        x: parseInt(shape.translation.x),
+                        y: parseInt(shape.translation.y),
+                    },
+                })
+                updateToGlobalState(newShapeData, oldShapeData)
+            }
         }
         // let item = {
         //     elementId: shape.elementData.elementId,
@@ -439,7 +451,7 @@ function addZUI(
 const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
     const RenderElement = () => {
         const [twoJSShape, setTwoJSShape] = useState(null)
-        const [componentData, setComponentData] = useState({})
+        const [componentData, setComponentData] = useState(null)
         const {
             loading: getComponentInfoLoading,
             data: getComponentInfoData,
@@ -456,13 +468,15 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
         ] = useMutation(DELETE_COMPONENT_BY_ID)
 
         useEffect(() => {
-            if (getComponentInfoData?.component === null && twoJSShape) {
-                twoJSInstance.remove([twoJSShape]) // twoJSInstance was send via params
-                // data.twoJSInstance.remove([twoJSShape])
-            }
-
-            if (getComponentInfoData?.component) {
+            if (
+                getComponentInfoData?.component != null &&
+                componentData === null
+            ) {
                 if (data.itemData.isDummy) {
+                    /** PATCH */
+                    //Patch for considering components who are just released from group
+                    // that means we render them initially without their server data
+                    // and when server data becomes available we ignore this patch
                     if (
                         parseInt(getComponentInfoData.component.x) !==
                         parseInt(data.itemData.x)
@@ -475,9 +489,36 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
                     ) {
                         setComponentData(getComponentInfoData.component)
                     }
+                    /** PATCH */
                 } else {
                     setComponentData(getComponentInfoData?.component)
                 }
+            } else if (
+                getComponentInfoData?.component != null &&
+                componentData !== null
+            ) {
+                const boardId = data.boardId
+                const userId = localStorage.getItem('userId')
+                const tabsOpen = parseInt(
+                    localStorage.getItem(`tabs_open_${boardId}`)
+                )
+
+                if (getComponentInfoData?.component.updatedBy != userId) {
+                    // console.log('update element wrapper on updatedBy change')
+                    setComponentData(getComponentInfoData?.component)
+                } else if (
+                    getComponentInfoData?.component.updatedBy == userId &&
+                    tabsOpen > 1
+                ) {
+                    // console.log('update element wrapper on tabs open')
+                    setComponentData(getComponentInfoData?.component)
+                } else {
+                    // console.log('update element wrapper on nothing')
+                }
+
+                // if (getComponentInfoData?.component.updatedBy != userId) {
+                //     setComponentData(getComponentInfoData?.component)
+                // }
             }
         }, [getComponentInfoData])
 
@@ -485,8 +526,11 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
             return <></>
         }
 
+        if (getComponentInfoError) {
+            return <></>
+        }
+
         const handleDeleteComponent = (twoJSShape) => {
-            setTwoJSShape(twoJSShape)
             deleteComponent({
                 variables: { id: data.id },
                 errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
@@ -560,8 +604,8 @@ const Canvas = (props) => {
 
     useEffect(() => {
         // setting pan displacement values to initial
-        localStorage.setItem('displacement_x', 0)
-        localStorage.setItem('displacement_y', 0)
+        // localStorage.setItem('displacement_x', 0)
+        // localStorage.setItem('displacement_y', 0)
 
         console.log('CANVAS CDM', props.selectPanMode)
         const elem = document.getElementById('main-two-root')
@@ -587,6 +631,25 @@ const Canvas = (props) => {
         // this.props.getElementsData('CONSTRUCT', arr)
         setZuiInstance(zuiInstance)
         setTwoJSInstance(two)
+
+        const boardId = props.boardId
+        const tabsOpen = localStorage.getItem(`tabs_open_${boardId}`)
+        console.log(`tabs_open_${boardId}`, tabsOpen)
+        if (tabsOpen == null) {
+            localStorage.setItem(`tabs_open_${boardId}`, 1)
+        } else {
+            localStorage.setItem(
+                `tabs_open_${boardId}`,
+                parseInt(tabsOpen) + parseInt(1)
+            )
+        }
+
+        window.onunload = function (e) {
+            const newTabCount = localStorage.getItem(`tabs_open_${boardId}`)
+            if (newTabCount !== null) {
+                localStorage.setItem(`tabs_open_${boardId}`, newTabCount - 1)
+            }
+        }
     }, [])
 
     // once two.js instance is stored in state, attach event listeners
@@ -808,6 +871,7 @@ const Canvas = (props) => {
     }
 
     const handleUngroupComponents = (groupId, twoGroupInstance) => {
+        const userId = localStorage.getItem('userId')
         let componentsArr = [...currentComponents]
         let groupData = null
 
@@ -840,6 +904,7 @@ const Canvas = (props) => {
                         updateObj: {
                             x: child.x,
                             y: child.y,
+                            updatedBy: userId,
                         },
                     },
                 })
@@ -876,6 +941,7 @@ const Canvas = (props) => {
     }
 
     const updateToGlobalState = (newShapeData, oldShapeData) => {
+        const userId = localStorage.getItem('userId')
         console.log('updateToGlobalState', newShapeData, oldShapeData)
 
         // also check that new x,y is updated or not by comparing to prev x,y
@@ -891,6 +957,7 @@ const Canvas = (props) => {
                     updateObj: {
                         x: parseInt(newShapeData.data.x),
                         y: parseInt(newShapeData.data.y),
+                        updatedBy: userId,
                     },
                 },
             })
