@@ -3,7 +3,7 @@ import { useMutation, useQuery } from '@apollo/client'
 import { useHistory } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 
-import SecondarySidebar from './secondary'
+import ElementsDropdown from './elementsDropdown'
 import CursorICON from 'assets/cursor.svg'
 import LayersIcon from 'assets/layers_toolbar_icon.svg'
 import RightArrowIcon from 'assets/right_arrow.svg'
@@ -132,7 +132,7 @@ const PrimarySidebar = (props) => {
                         <>
                             {' '}
                             <div className="  relative ">
-                                <SecondarySidebar
+                                <ElementsDropdown
                                     selectedItem={'elements'}
                                     showMenu={secondaryMenu}
                                     handleOnBlur={toggleSecondaryMenuFn}
