@@ -71,6 +71,10 @@ const ElementsDropdown = (props) => {
                     <div
                         className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            props.addElement('buttonWithIcon')
+                        }}
                     >
                         <div className="w-full h-20">
                             <img
@@ -87,6 +91,10 @@ const ElementsDropdown = (props) => {
                     <div
                         className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            props.addElement('button')
+                        }}
                     >
                         <div className="w-full h-20">
                             <img className="w-full h-20" src={ButtonSVG} />
@@ -101,6 +109,10 @@ const ElementsDropdown = (props) => {
                     <div
                         className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            props.addElement('imageCard')
+                        }}
                     >
                         <div className="w-full h-20">
                             <img className="w-full h-20" src={ImageCardSVG} />
@@ -114,6 +126,10 @@ const ElementsDropdown = (props) => {
                     <div
                         className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            props.addElement('toggle')
+                        }}
                     >
                         <div className="w-full h-20">
                             <img className="w-full h-20" src={ToggleSVG} />
@@ -127,6 +143,10 @@ const ElementsDropdown = (props) => {
                     <div
                         className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            props.addElement('divider')
+                        }}
                     >
                         <div className="w-full h-20">
                             <img
@@ -157,6 +177,10 @@ const ElementsDropdown = (props) => {
                     <div
                         className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            props.addElement('overlay')
+                        }}
                     >
                         <div className="w-full h-20">
                             <img
@@ -173,6 +197,10 @@ const ElementsDropdown = (props) => {
                     <div
                         className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            props.addElement('radiobox')
+                        }}
                     >
                         <div className="w-full h-20">
                             <img
@@ -189,6 +217,10 @@ const ElementsDropdown = (props) => {
                     <div
                         className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            props.addElement('checkbox')
+                        }}
                     >
                         <div className="w-full h-20">
                             <img
