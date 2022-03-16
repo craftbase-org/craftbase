@@ -54,6 +54,10 @@ const ElementsDropdown = (props) => {
                     <div
                         className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            props.addElement('avatar')
+                        }}
                     >
                         <div className="w-full h-20">
                             <img className="w-full h-20" src={AvatarSVG} />

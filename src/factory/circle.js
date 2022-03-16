@@ -11,8 +11,8 @@ export default class CircleFactory extends Main {
 
         // Implement core element
         const circle = two.makeEllipse(0, 0, 0, 0)
-        circle.width = width || 30
-        circle.height = height || 30
+        circle.width = width || 100
+        circle.height = height || 100
         circle.fill = fill ? fill : color_blue
 
         if (stroke && linewidth) {

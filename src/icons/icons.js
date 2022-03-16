@@ -5,7 +5,7 @@ export default {
     },
     SIDEBAR_ICON_TEXT: {
         viewBox: '0 0 16 16',
-        data: '<g xmlns="http://www.w3.org/2000/svg" stroke="#0052cc" transform="translate(1.005 -1036.362)" fill="#c01a1a" class="color000 svgShape colorStroke249fe6 svgStroke"><path fill="none" d="M2.4949237 1041.3622l0-2.5 10.0000003 0 0 2.5M7.5005037 1038.3622l-.01116 12"/></g>',
+        data: '<g xmlns="http://www.w3.org/2000/svg" stroke="#0052cc" stroke-width="1.5" transform="translate(1.005 -1036.362)" fill="#c01a1a" class="color000 svgShape colorStroke249fe6 svgStroke"><path fill="none" d="M2.4949237 1041.3622l0-2.5 10.0000003 0 0 2.5M7.5005037 1038.3622l-.01116 12"/></g>',
     },
     SHOW_RECTANGLE_ICON: {
         viewBox: '0 0 16 16',
@@ -23,14 +23,7 @@ export default {
         viewBox: '0 0 16 16',
         data: '<g><path xmlns="http://www.w3.org/2000/svg" d="M 11.738281 1.0214844 L 4.2597656 1.0234375 L 0.51953125 7.4882812 L 0.6640625 7.7382812 L 4.2597656 13.955078 L 11.738281 13.955078 L 15.478516 7.4882812 L 11.738281 1.0214844 z M 4.8359375 2.0195312 L 11.162109 2.0195312 L 14.324219 7.4863281 L 11.162109 12.955078 L 4.8398438 12.955078 L 1.6777344 7.4882812 L 4.8359375 2.0195312 z " color="#000" enable-background="accumulate" font-family="sans-serif" font-weight="400" overflow="visible" style="line-height:normal;text-indent:0;text-align:start;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:#000;text-transform:none;block-progression:tb;white-space:normal;isolation:auto;mix-blend-mode:normal;solid-color:#000;solid-opacity:1" fill="#0052cc" class="color000 svgShape"/></g>',
     },
-    SIDEBAR_ICON_RECTANGLE: {
-        viewBox: '0 0 16 16',
-        data: '<g><path xmlns="http://www.w3.org/2000/svg" d="M 0 0 L 0 0.5 L 0 16 L 16 16 L 16 0 L 0 0 z M 1 1 L 15 1 L 15 15 L 1 15 L 1 1 z " color="#000" enable-background="accumulate" font-family="sans-serif" font-weight="400" overflow="visible" style="line-height:normal;text-indent:0;text-align:start;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:#000;text-transform:none;block-progression:tb;white-space:normal;isolation:auto;mix-blend-mode:normal;solid-color:#000;solid-opacity:1" fill="#0052cc" class="color000 svgShape"/></g>',
-    },
-    SIDEBAR_ICON_CIRCLE: {
-        viewBox: '3 4 25 25',
-        data: '<g><path xmlns="http://www.w3.org/2000/svg" d="M16 4C9.372 4 4 9.372 4 16s5.372 12 12 12 12-5.372 12-12S22.628 4 16 4zm0 22c-5.514 0-10-4.486-10-10S10.486 6 16 6s10 4.486 10 10-4.486 10-10 10z" fill="#0052cc" class="color000 svgShape"/></g>',
-    },
+
     ICON_IMAGE: {
         viewBox: '0 0 16 16',
         data: '<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" viewBox="0 0 120 120"><path d="M 1 1 L 1 1.5 L 1 15 L 15 15 L 15 1 L 1 1 z M 2 2 L 14 2 L 14 9.1640625 L 11.650391 6.2207031 L 9.078125 9.1816406 L 5.9960938 5.1855469 L 2 9.6855469 L 2 2 z M 5.9394531 6.7519531 L 8.4082031 9.9511719 L 8.4042969 9.9550781 L 8.421875 9.9707031 L 11.529297 14 L 2 14 L 2 11.189453 L 5.9394531 6.7519531 z M 11.617188 7.78125 L 14 10.767578 L 14 14 L 12.794922 14 L 9.6992188 9.9863281 L 11.617188 7.78125 z " color="#000" enable-background="accumulate" font-family="sans-serif" font-weight="400" overflow="visible" style="line-height:normal;text-indent:0;text-align:start;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:#000;text-transform:none;block-progression:tb;white-space:normal;isolation:auto;mix-blend-mode:normal;solid-color:#000;solid-opacity:1" fill="#000000" class="color000 svgShape"></path></svg>',

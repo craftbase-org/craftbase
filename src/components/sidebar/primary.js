@@ -4,7 +4,8 @@ import { useHistory } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import ElementsDropdown from './elementsDropdown'
-import CursorICON from 'assets/cursor.svg'
+import CircleIcon from 'wireframeAssets/circle.svg'
+import RectangleIcon from 'wireframeAssets/rectangle.svg'
 import LayersIcon from 'assets/layers_toolbar_icon.svg'
 import RightArrowIcon from 'assets/right_arrow.svg'
 import LinkIcon from 'assets/link_white.svg'
@@ -63,7 +64,9 @@ const PrimarySidebar = (props) => {
     useEffect(() => {
         if (insertComponentSuccess) {
             setShowAddShapeLoader(false)
+            document.getElementById('show-click-anywhere-btn').style.opacity = 1
             // let insertComponentData = insertComponentSuccess.component
+            // props.updateLastAddedElementId(insertComponentData.id)
             // let newBoardData = [
             //     ...props.boardData,
             //     {
@@ -81,25 +84,32 @@ const PrimarySidebar = (props) => {
         }
     }, [insertComponentSuccess])
 
-    const addShape = (label) => {
+    const addElement = (label) => {
         let shapeData = null
+        let generateId = crypto.randomUUID()
         console.log('getComponentTypesData', getComponentTypesData, label)
         if (getComponentTypesData) {
             getComponentTypesData.componentTypes.forEach((item, index) => {
                 if (item.label === label) {
                     shapeData = {
+                        id: generateId,
                         componentType: label,
-                        x: 200,
-                        y: 200,
+                        x: window.outerWidth - (50 * window.outerWidth) / 100,
+                        y: window.outerHeight - (50 * window.outerHeight) / 100,
                         boardId: props.match.params.boardId,
                         metadata: item.defaultMetaData,
+                        width: item.width,
+                        height: item.height,
                     }
                 }
             })
         }
         console.log('shapeData', shapeData)
+        props.updateLastAddedElement(shapeData)
 
         setShowAddShapeLoader(true)
+        localStorage.setItem('lastAddedElementId', generateId)
+
         shapeData && insertComponent({ variables: { object: shapeData } })
     }
 
@@ -134,6 +144,7 @@ const PrimarySidebar = (props) => {
                             <div className="  relative ">
                                 <ElementsDropdown
                                     selectedItem={'elements'}
+                                    addElement={addElement}
                                     showMenu={secondaryMenu}
                                     handleOnBlur={toggleSecondaryMenuFn}
                                 />
@@ -141,12 +152,11 @@ const PrimarySidebar = (props) => {
                             <div className="relative transition-transform">
                                 <button
                                     className={`hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                                    onClick={() => addShape('rectangle')}
+                                    onClick={() => addElement('rectangle')}
                                 >
-                                    <Icon
-                                        width="23"
-                                        height="23"
-                                        icon="SIDEBAR_ICON_RECTANGLE"
+                                    <img
+                                        className="w-6 h-6"
+                                        src={RectangleIcon}
                                     />
                                 </button>
                             </div>
@@ -154,13 +164,9 @@ const PrimarySidebar = (props) => {
                                 {' '}
                                 <button
                                     className={`hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                                    onClick={() => addShape('circle')}
+                                    onClick={() => addElement('circle')}
                                 >
-                                    <Icon
-                                        width="23"
-                                        height="23"
-                                        icon="SIDEBAR_ICON_CIRCLE"
-                                    />
+                                    <img className="w-6 h-6" src={CircleIcon} />
                                 </button>
                             </div>
                             {/* <div className="relative">
@@ -178,7 +184,7 @@ const PrimarySidebar = (props) => {
                             <div className="relative">
                                 <button
                                     className={`hover:bg-blues-b50 bg-transparent px-2 py-2 block`}
-                                    onClick={() => addShape('arrowLine')}
+                                    onClick={() => addElement('arrowLine')}
                                 >
                                     <img
                                         className="w-6 h-6"
@@ -189,7 +195,7 @@ const PrimarySidebar = (props) => {
                             <div className="relative">
                                 <button
                                     className={`hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                                    onClick={() => addShape('text')}
+                                    onClick={() => addElement('text')}
                                 >
                                     <Icon
                                         width="23"
@@ -223,22 +229,55 @@ const PrimarySidebar = (props) => {
                     )}
                 </div>
             </div>
+            <div
+                id="show-click-anywhere-btn"
+                className="fixed w-full flex justify-center top-0  opacity-0
+                transition-opacity ease-out duration-300"
+            >
+                <div
+                    className="w-auto mt-2
+                         bg-reds-r400 text-reds-r50  
+                            px-4 py-2 rounded-md shadow-md
+                            "
+                >
+                    <div className="flex items-center  ">
+                        <div className="w-auto text-sm text-left">
+                            Click anywhere to place element there
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div className="absolute right-10 mt-2">
                 <div className="flex items-center">
-                    <div className="relative">
+                    <div className="pr-2">
                         {showAddShapeLoader ? (
-                            <div className="w-full absolute right-32 -top-10">
-                                <div className="w-48 flex items-center flex-wrap px-2 py-2 ">
-                                    <div className="w-14 pl-1 text-sm text-left">
-                                        updating
+                            <div
+                                className="w-auto  
+                             bg-greens-g400 text-greens-g75  
+                            px-4 py-2 rounded-md shadow-md
+                            "
+                            >
+                                <div className="flex items-center ">
+                                    <div className="w-auto text-sm text-left">
+                                        Saving
                                     </div>
-                                    <SpinnerWithSize loaderSize="sm" />{' '}
+                                    <div>
+                                        <SpinnerWithSize
+                                            loaderSize="sm"
+                                            customStyles={{
+                                                margin: 0,
+                                                marginLeft: '4px',
+                                                borderBottomColor: '#ABF5D1',
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         ) : null}
                     </div>
+
                     <div className="text-sm pr-2">
-                        <a className=" flex items-center px-4 py-2 rounded-md border bg-white text-black shadow-md ">
+                        <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
                             <div className="w-2 h-2 bg-reds-r400 rounded-50-percent"></div>
                             <span className="ml-2 text-sm">Live</span>
                             {/* <img

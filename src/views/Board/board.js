@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { useSubscription, useQuery } from '@apollo/client'
+import { useSubscription } from '@apollo/client'
 
-import { GET_BOARD_DATA, GET_COMPONENT_INFO } from 'schema/subscriptions'
+import { GET_BOARD_DATA } from 'schema/subscriptions'
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Spinner from 'components/common/spinner'
@@ -16,13 +16,7 @@ const BoardViewPage = (props) => {
         variables: { boardId: boardId },
         fetchPolicy: 'network-only',
     })
-
-    const [selectPanMode, setSelectPanMode] = useState(false)
-
-    const changeSelectMode = () => {
-        let prevSelectPanMode = selectPanMode
-        setSelectPanMode(!prevSelectPanMode)
-    }
+    const [lastAddedElement, setLastAddedElement] = useState(null)
 
     if (getBoardDataLoading) {
         return (
@@ -57,21 +51,38 @@ const BoardViewPage = (props) => {
 
     console.log(
         'getBoardData.components',
-        getBoardData.components
+        getBoardData?.components
         // getBoardData.boardData.components
     )
+
+    const updateLastAddedElement = (obj) => {
+        setLastAddedElement(obj)
+        document.getElementById('main-two-root').style.cursor = 'grabbing'
+    }
+
     return (
         <>
             <div>
                 <Sidebar
-                    selectCursorMode={selectPanMode}
+                    selectCursorMode={false}
                     {...props}
-                    changeSelectMode={changeSelectMode}
+                    updateLastAddedElement={updateLastAddedElement}
                     boardData={getBoardData?.components}
                 />
+                {/* <div className="w-full relative flex items-center justify-center">
+                    <div
+                        className=" fixed top-4  w-64 h-10 bg-neutrals-n900 text-white 
+                px-2 py-2
+                rounded-md text-base
+                "
+                    >
+                        Click anywhere to insert element{' '}
+                    </div>
+                </div> */}
                 <Canvas
-                    selectPanMode={selectPanMode}
+                    selectPanMode={false}
                     boardId={boardId}
+                    lastAddedElement={lastAddedElement}
                     componentData={getBoardData?.components}
                 />
             </div>

@@ -44,6 +44,7 @@ function addZUI(
     props,
     two,
     updateToGlobalState,
+    updateComponentVertices,
     customEventListener,
     setOnGroup
 ) {
@@ -93,6 +94,21 @@ function addZUI(
             e.clientX,
             e.clientY
         )
+        const lastAddedElementId = localStorage.getItem('lastAddedElementId')
+
+        if (lastAddedElementId !== null) {
+            const clientToSurface = zui.clientToSurface(e.clientX, e.clientY)
+
+            updateComponentVertices(
+                lastAddedElementId,
+                clientToSurface.x,
+                clientToSurface.y
+            )
+            localStorage.removeItem('lastAddedElementId')
+
+            document.getElementById('main-two-root').style.cursor = 'auto'
+        }
+
         shape = null
         mouse.x = e.clientX
         mouse.y = e.clientY
@@ -130,7 +146,7 @@ function addZUI(
         })
 
         if (avoidDragging) {
-            shape = null
+            shape = {}
         }
 
         // if shape is null, we initialize it with root element
@@ -196,7 +212,7 @@ function addZUI(
     }
 
     function mousemove(e) {
-        // console.log('mouse move event', shape.elementData.isGroupSelector)
+        console.log('mouse move event', shape.elementData)
         let dx = e.clientX - mouse.x
         let dy = e.clientY - mouse.y
         // console.log('shape in mousemove', e, shape, props.selectPanMode)
@@ -624,6 +640,7 @@ const Canvas = (props) => {
             props,
             two,
             updateToGlobalState,
+            updateComponentVertices,
             customEventListener,
             setOnGroup
         )
@@ -682,6 +699,25 @@ const Canvas = (props) => {
 
         // setComponentsToRender()
     }, [props.componentData, twoJSInstance])
+
+    useEffect(() => {
+        console.log('on change props.lastAddedElement')
+
+        if (props.lastAddedElement !== null) {
+            let oldComponentData = currentComponents
+            setCurrentComponents([
+                ...oldComponentData,
+                {
+                    ...props.lastAddedElement,
+                    isDummy: true,
+                    x: 500,
+                    y: 100,
+                },
+            ])
+        }
+
+        // setComponentsToRender()
+    }, [props.lastAddedElement])
 
     useEffect(() => {
         console.log('on change currentComponents', currentComponents)
@@ -961,6 +997,23 @@ const Canvas = (props) => {
                 },
             })
         }
+
+        // props.getElementsData('UPDATE_ELEMENT_DATA', newItem)
+    }
+
+    const updateComponentVertices = (id, x, y) => {
+        const userId = localStorage.getItem('userId')
+        updateComponentInfo({
+            variables: {
+                id: id,
+                updateObj: {
+                    x: parseInt(x),
+                    y: parseInt(y),
+                    updatedBy: null,
+                },
+            },
+        })
+        document.getElementById('show-click-anywhere-btn').style.opacity = 0
 
         // props.getElementsData('UPDATE_ELEMENT_DATA', newItem)
     }
