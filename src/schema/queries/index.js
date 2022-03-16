@@ -15,6 +15,8 @@ export const GET_COMPONENT_TYPES = gql`
             label
             defaultMetaData
             logo
+            width
+            height
         }
     }
 `

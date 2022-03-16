@@ -247,6 +247,9 @@ function ArrowLine(props) {
                             line.translation.x1,
                             group.translation.x
                         )
+                        document
+                            .getElementById(`${pointCircle1.id}`)
+                            .setAttribute('data-resize', 'true')
                     },
                     move(event) {
                         let x1 = (line.vertices[0].x += event.dx)
@@ -273,6 +276,9 @@ function ArrowLine(props) {
                                 },
                             },
                         })
+                        document
+                            .getElementById(`${pointCircle1.id}`)
+                            .removeAttribute('data-resize')
                     },
                 },
             })
@@ -290,6 +296,9 @@ function ArrowLine(props) {
                             line.translation.x1,
                             group.translation.x
                         )
+                        document
+                            .getElementById(`${pointCircle2.id}`)
+                            .setAttribute('data-resize', 'true')
                     },
                     move(event) {
                         let x2 = (line.vertices[1].x += event.dx)
@@ -314,6 +323,9 @@ function ArrowLine(props) {
                                 },
                             },
                         })
+                        document
+                            .getElementById(`${pointCircle2.id}`)
+                            .removeAttribute('data-resize')
                     },
                 },
             })
