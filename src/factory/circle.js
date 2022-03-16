@@ -19,7 +19,7 @@ export default class CircleFactory extends Main {
             circle.stroke = stroke
             circle.linewidth = linewidth
         } else {
-            circle.noStroke()
+            // circle.noStroke()
         }
 
         this.circle = circle

@@ -17,7 +17,7 @@ export default class RectangleFactory extends Main {
             rectangle.stroke = stroke
             rectangle.linewidth = linewidth
         } else {
-            rectangle.noStroke()
+            // rectangle.noStroke()
         }
 
         console.log('rectangle', rectangle.getBoundingClientRect())

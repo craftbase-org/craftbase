@@ -27,7 +27,7 @@ export default class ImageCardFactory extends Main {
             rectangle.stroke = stroke
             rectangle.linewidth = linewidth
         } else {
-            rectangle.noStroke()
+            // rectangle.noStroke()
         }
 
         let iconType = children?.icon?.iconType

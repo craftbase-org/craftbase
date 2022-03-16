@@ -313,8 +313,15 @@ const Toolbar = (props) => {
                     currentColor={state.borderColor}
                     onChangeComplete={(color) => {
                         setState((draft) => {
-                            state.borderColor = color
+                            draft.borderColor = color
                         })
+                        if (componentState.shape?.data?.stroke) {
+                            componentState.shape.data.stroke = color
+                            componentState.shape.data.linewidth = 4
+                        }
+
+                        updateComponent && updateComponent('stroke', color)
+                        updateComponent && updateComponent('linewidth', 4)
                     }}
                 />
             ),

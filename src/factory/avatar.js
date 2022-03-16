@@ -28,7 +28,7 @@ export default class AvatarFactory extends Main {
             circle.stroke = stroke
             circle.linewidth = linewidth
         } else {
-            circle.noStroke()
+            // circle.noStroke()
         }
 
         let iconType = children?.icon?.iconType
