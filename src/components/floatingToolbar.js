@@ -82,7 +82,7 @@ const Accordion = ({
         <Fragment>
             <button
                 className={`flex transition duration-200 flex-row justify-start items-center
-          py-4 w-11/12 shadow my-2  ${
+          py-2 w-11/12 shadow my-2  ${
               accordion ? `bg-gray-300` : `bg-transparent`
           }  hover:bg-gray-300`}
                 // animate={{ backgroundColor: isOpen ? "#FF0088" : "#0055FF" }}
@@ -91,12 +91,12 @@ const Accordion = ({
                 }}
             >
                 <Fragment>
-                    <div className="flex w-full  ">
+                    <div className="flex w-full px-2">
                         {/* <div className="flex-none w-1/3 ">{renderSvg()}</div> */}
-                        <div className="flex-grow w-8/12 text-left ">
-                            <span className=" text-black  pl-4">{header}</span>
+                        <div className="flex-grow w-10/12 text-left text-sm">
+                            <span className=" text-black  ">{header}</span>
                         </div>
-                        <div className="flex-none w-2/12 text-left ">
+                        <div className="flex-none w-1/12 text-left ">
                             {renderSvg()}
                         </div>
                     </div>
@@ -118,7 +118,7 @@ const Accordion = ({
                             ease: [0.04, 0.62, 0.23, 0.98],
                         }}
                     >
-                        {content()}
+                        <div className="py-1">{content()}</div>
                     </motion.section>
                 )}
             </AnimatePresence>
@@ -208,7 +208,7 @@ const Toolbar = (props) => {
                             updateComponent && updateComponent('fill', color)
                         }}
                     />
-                    <hr className="my-4" />
+                    <hr className="my-2" />
                     {/** Icon color picker */}
                     <ColorPicker
                         title="Icon"
@@ -225,7 +225,7 @@ const Toolbar = (props) => {
                                 updateComponent('iconColor', color)
                         }}
                     />
-                    <hr className="my-4" />
+                    <hr className="my-2" />
                     <ColorPicker
                         title="Text"
                         currentColor={state.colorText}
@@ -242,7 +242,7 @@ const Toolbar = (props) => {
                     />
                 </Fragment>
             ),
-            renderSvg: () => <Icon icon="ICON_CARET" width={25} height={25} />,
+            renderSvg: () => <Icon icon="ICON_CARET" width={20} height={20} />,
         },
         // {
         //     key: properties.fontSize,
@@ -325,7 +325,7 @@ const Toolbar = (props) => {
                     }}
                 />
             ),
-            renderSvg: () => <Icon icon="ICON_CARET" width={25} height={25} />,
+            renderSvg: () => <Icon icon="ICON_CARET" width={20} height={20} />,
         },
 
         {
@@ -347,7 +347,7 @@ const Toolbar = (props) => {
                     }}
                 />
             ),
-            renderSvg: () => <Icon icon="ICON_CARET" width={25} height={25} />,
+            renderSvg: () => <Icon icon="ICON_CARET" width={20} height={20} />,
         },
     ]
 
