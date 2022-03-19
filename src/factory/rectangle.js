@@ -17,6 +17,8 @@ export default class RectangleFactory extends Main {
             rectangle.stroke = stroke
             rectangle.linewidth = linewidth
         } else {
+            rectangle.stroke = '#fff'
+            rectangle.linewidth = 0
             // rectangle.noStroke()
         }
 

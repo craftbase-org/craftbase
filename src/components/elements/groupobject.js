@@ -3,17 +3,22 @@ import interact from 'interactjs'
 import { useMutation } from '@apollo/client'
 import { useHistory } from 'react-router-dom'
 
-import { INSERT_BULK_COMPONENTS } from 'schema/mutations'
+import {
+    INSERT_BULK_COMPONENTS,
+    DELETE_BULK_COMPONENTS,
+} from 'schema/mutations'
 import ObjectSelector from 'components/utils/objectSelector'
 import getEditComponents from 'components/utils/editWrapper'
 import { elementOnBlurHandler } from 'utils/misc'
 
 function getComponentSchema(obj, boardId) {
+    let generateId = crypto.randomUUID()
     return {
+        id: generateId,
         boardId: boardId,
         componentType: obj.componentType,
         fill: obj.fill,
-        children: obj?.children ? obj.children : {},
+        children: obj?.children ? obj.children : null,
         metadata: obj?.metadata ? obj.metadata : {},
         x: obj.x + 10,
         x1: obj.x1,
@@ -39,8 +44,18 @@ function GroupedObjectWrapper(props) {
             error: insertComponentsError,
         },
     ] = useMutation(INSERT_BULK_COMPONENTS)
+    const [
+        deleteComponents,
+        {
+            loading: deleteComponentsLoading,
+            data: deleteComponentsSuccess,
+            error: deleteComponentsError,
+        },
+    ] = useMutation(DELETE_BULK_COMPONENTS)
+
     const two = props.twoJSInstance
-    const [cloneElement, setCloneElement] = useState(null)
+    const [cloneGroupElements, setCloneGroupElements] = useState(null)
+    const [deleteGroupElements, setDeleteGroupElements] = useState(null)
     // const [twoGroupInstance,setTwoGroupInstance] = useState(null)
     let rectangleInstance = null
     let groupInstance = null
@@ -53,7 +68,13 @@ function GroupedObjectWrapper(props) {
             groupInstance.translation.y
         )
         elementOnBlurHandler(e, selectorInstance, two)
-        props.unGroup && props.unGroup(groupInstance)
+
+        // on un-group, these components will return back to their individual state
+        // with their new positions depending on group's x,y was changed
+        if (deleteGroupElements === null) {
+            props.unGroup && props.unGroup(groupInstance)
+        }
+
         two.update()
     }
 
@@ -64,7 +85,7 @@ function GroupedObjectWrapper(props) {
 
     // const customEventListener = (action, shapeData) => {
     //     if (action === 'COPY') {
-    //         setCloneElement(shapeData)
+    //         setCloneGroupElements(shapeData)
     //     }
     // }
 
@@ -72,19 +93,30 @@ function GroupedObjectWrapper(props) {
         // unclosed event listener (temp)
         if (evt.key === 'c' && (evt.ctrlKey || evt.metaKey)) {
             // set element data for copy and paste action
-            setCloneElement(groupInstance.elementData)
+            setCloneGroupElements(groupInstance.elementData)
             // alert('Ctrl + c pressed in group oject')
             // customEventListener('COPY', shape.elementData)
             // domElement.removeEventListener('keydown', onKeyDown)
+        }
+
+        if (evt.keyCode === 8 || evt.keyCode === 46) {
+            console.log('handle key down event', evt)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            // props.handleDeleteComponent &&
+            //     props.handleDeleteComponent(groupObject)
+            setDeleteGroupElements(groupInstance.elementData)
+
+            two.remove([groupInstance])
+            two.update()
         }
     }
 
     const onPasteEvent = (evt) => {
         if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
-            if (cloneElement?.id !== undefined) {
-                console.log('clone element', cloneElement)
+            if (cloneGroupElements?.id !== undefined) {
+                console.log('clone element', cloneGroupElements)
 
-                let objects = cloneElement.children.map((item, index) => {
+                let objects = cloneGroupElements.children.map((item, index) => {
                     let component = getComponentSchema(item, props.boardId)
                     return component
                 })
@@ -94,9 +126,30 @@ function GroupedObjectWrapper(props) {
                         objects: objects,
                     },
                 })
-                // alert(`Ctrl+V was pressed ${cloneElement.id}`)
-                // setCloneElement(null)
+                // alert(`Ctrl+V was pressed ${cloneGroupElements.id}`)
+                // setCloneGroupElements(null)
             }
+            onBlurHandler(evt)
+        }
+    }
+
+    const handleOnDeleteGroupElements = () => {
+        if (deleteGroupElements?.id !== undefined) {
+            console.log('delete element', deleteGroupElements)
+
+            let idsArr = deleteGroupElements.children.map((item, index) => {
+                return item.id
+            })
+
+            deleteComponents({
+                variables: {
+                    _in: idsArr,
+                },
+            })
+
+            setDeleteGroupElements(null)
+            // alert(`Ctrl+V was pressed ${cloneGroupElements.id}`)
+            // setCloneGroupElements(null)
         }
     }
 
@@ -105,7 +158,13 @@ function GroupedObjectWrapper(props) {
         return () => {
             window.removeEventListener('keydown', onPasteEvent)
         }
-    }, [cloneElement])
+    }, [cloneGroupElements])
+
+    useEffect(() => {
+        if (deleteGroupElements !== null) {
+            handleOnDeleteGroupElements()
+        }
+    }, [deleteGroupElements])
 
     useEffect(() => {
         console.log('group object props', props)

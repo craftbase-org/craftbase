@@ -72,3 +72,13 @@ export const CREATE_BOARD = gql`
         }
     }
 `
+
+export const DELETE_BULK_COMPONENTS = gql`
+    mutation deleteComponents($_in: [uuid!]! = "") {
+        deleteComponents: delete_components_component(
+            where: { id: { _in: $_in } }
+        ) {
+            affected_rows
+        }
+    }
+`

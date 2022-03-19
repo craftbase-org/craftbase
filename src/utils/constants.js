@@ -79,6 +79,7 @@ export const allColorShades = [
 ]
 
 export const essentialShades = [
+    '#FFFFFF',
     '#FF5630',
     '#FFAB00',
     '#36B37E',
@@ -86,4 +87,5 @@ export const essentialShades = [
     '#0065FF',
     '#6554C0',
     '#42526E',
+    '#7A869A',
 ]
