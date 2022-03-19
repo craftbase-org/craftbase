@@ -198,9 +198,11 @@ const Toolbar = (props) => {
                             // secondary element's fill property from the existing state
                             if (componentState.shape?.data?.fill)
                                 componentState.shape.data.fill = color
+                            componentState.icon.data.stroke = state.colorIcon
 
                             if (componentState?.icon?.data?.fill)
                                 componentState.icon.data.stroke = color
+                            componentState.icon.data.stroke = state.colorIcon
 
                             // if (componentState?.text?.data?.fill)
                             //     componentState.text.data.fill = state.colorText
@@ -218,11 +220,11 @@ const Toolbar = (props) => {
                                 draft.colorIcon = color
                             })
 
-                            if (componentState?.icon?.data?.fill)
-                                componentState.icon.data.fill = color
+                            if (componentState?.icon?.data?.stroke)
+                                componentState.icon.data.stroke = color
 
                             updateComponent &&
-                                updateComponent('iconColor', color)
+                                updateComponent('iconStroke', color)
                         }}
                     />
                     <hr className="my-2" />

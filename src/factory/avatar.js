@@ -13,6 +13,7 @@ export default class AvatarFactory extends Main {
             radius,
             fill = color_blue,
 
+            iconStroke,
             stroke,
             linewidth,
             children = {},
@@ -28,6 +29,8 @@ export default class AvatarFactory extends Main {
             circle.stroke = stroke
             circle.linewidth = linewidth
         } else {
+            circle.stroke = '#fff'
+            circle.linewidth = 0
             // circle.noStroke()
         }
 
@@ -45,6 +48,7 @@ export default class AvatarFactory extends Main {
         externalSVG.scale = children?.icon?.iconScale
             ? children?.icon?.iconScale
             : 1
+        externalSVG.stroke = iconStroke ? iconStroke : '#fff'
 
         const externalSVGGroup = two.makeGroup(externalSVG)
         externalSVGGroup.center()

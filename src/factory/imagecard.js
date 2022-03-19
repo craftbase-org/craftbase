@@ -13,6 +13,7 @@ export default class ImageCardFactory extends Main {
             radius,
             fill = color_blue,
 
+            iconStroke,
             stroke,
             linewidth,
             children = {},
@@ -27,6 +28,8 @@ export default class ImageCardFactory extends Main {
             rectangle.stroke = stroke
             rectangle.linewidth = linewidth
         } else {
+            rectangle.stroke = '#fff'
+            rectangle.linewidth = 0
             // rectangle.noStroke()
         }
 
@@ -43,6 +46,7 @@ export default class ImageCardFactory extends Main {
         externalSVG.scale = children?.icon?.iconScale
             ? children?.icon?.iconScale
             : 1
+        externalSVG.stroke = iconStroke ? iconStroke : '#fff'
 
         const externalSVGGroup = two.makeGroup(externalSVG)
         externalSVGGroup.center()

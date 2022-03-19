@@ -39,6 +39,7 @@ export const GET_COMPONENT_INFO = gql`
             componentType
             children
             updatedBy
+            iconStroke
         }
     }
 `
