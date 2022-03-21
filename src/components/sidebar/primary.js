@@ -8,7 +8,7 @@ import CircleIcon from 'wireframeAssets/circle.svg'
 import RectangleIcon from 'wireframeAssets/rectangle.svg'
 import LayersIcon from 'assets/layers_toolbar_icon.svg'
 import RightArrowIcon from 'assets/right_arrow.svg'
-import LinkIcon from 'assets/link_white.svg'
+
 import RadioWhiteIcon from 'assets/radio_white.svg'
 import Icon from 'icons/icon'
 import { INSERT_COMPONENT, UPDATE_BOARD_COMPONENTS } from 'schema/mutations'
@@ -17,22 +17,8 @@ import SpinnerWithSize from 'components/common/spinnerWithSize'
 import Button from 'components/common/button'
 
 import './sidebar.css'
-
-const randomBgColors = [
-    '#BF2600',
-    '#FF8B00',
-    '#006644',
-    '#008DA6',
-    '#0747A6',
-    '#403294',
-    '#091E42',
-    '#FF5630',
-    '#FFAB00',
-    '#36B37E',
-    '#00B8D9',
-    '#0065FF',
-    '#6554C0',
-]
+import ShareLinkPopup from './shareLinkPopup'
+import UserDetailsPopup from './userDetailsPopup'
 
 const PrimarySidebar = (props) => {
     const [showAddShapeLoader, setShowAddShapeLoader] = useState(false)
@@ -286,28 +272,8 @@ const PrimarySidebar = (props) => {
                             /> */}
                         </a>
                     </div>
-                    <div className="text-sm pr-2">
-                        <a className=" flex items-center px-4 py-2 rounded-md bg-primary-blue text-white shadow-md">
-                            <span className="text-sm">Share</span>
-                            <img src={LinkIcon} className="ml-2 w-5 h-5" />
-                        </a>
-                    </div>
-                    <div
-                        className="w-7 h-7 flex items-center justify-center 
-                        rounded-50-percent border border-blues-b500  
-                        text-sm text-white "
-                        style={{ background: randomBgColors[0] }}
-                    >
-                        M
-                    </div>
-                    <div
-                        className="w-7 h-7 flex items-center justify-center 
-                        rounded-50-percent border border-blues-b500  
-                        text-sm text-white -ml-2"
-                        style={{ background: randomBgColors[1] }}
-                    >
-                        A
-                    </div>
+                    <ShareLinkPopup />
+                    <UserDetailsPopup />
                 </div>
             </div>
         </>

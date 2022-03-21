@@ -10,7 +10,7 @@ const Button = (props) => {
             baseClassNames += ' bg-primary-blue text-white '
             break
         case 'info': // white
-            baseClassNames += ' bg-white text-black '
+            baseClassNames += ' bg-neutrals-n500 text-neutrals-n40 '
             break
         case 'secondary': // white
             baseClassNames +=
@@ -28,7 +28,7 @@ const Button = (props) => {
                 ' px-4 py-2 2xl:px-6 2xl:py-2 text-sm xl:text-base 2xl:text-xl 3xl:text-2xl '
             break
         case 'small': // white
-            baseClassNames += '  px-2 py-2  text-xs  '
+            baseClassNames += '  px-2 py-1  text-xs  '
             break
         default:
             baseClassNames +=
