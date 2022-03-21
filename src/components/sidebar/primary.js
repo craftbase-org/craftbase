@@ -98,6 +98,7 @@ const PrimarySidebar = (props) => {
         // setShowAddShapeLoader(true)
         localStorage.setItem('lastAddedElementId', generateId)
 
+        // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
         shapeData && insertComponent({ variables: { object: shapeData } })
 
         setTimeout(() => {
