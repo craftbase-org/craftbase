@@ -484,33 +484,22 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
         ] = useMutation(DELETE_COMPONENT_BY_ID)
 
         useEffect(() => {
-            if (
-                getComponentInfoData?.component != null &&
-                componentData === null
-            ) {
+            if (!getComponentInfoData?.component && componentData === null) {
                 if (data.itemData.isDummy) {
                     /** PATCH */
                     //Patch for considering components who are just released from group
                     // that means we render them initially without their server data
                     // and when server data becomes available we ignore this patch
-                    if (
-                        parseInt(getComponentInfoData.component.x) !==
-                        parseInt(data.itemData.x)
-                    ) {
-                        console.log('is dummy data', data.itemData)
-                        setComponentData(data.itemData)
-                    } else if (
-                        parseInt(getComponentInfoData.component.x) ===
-                        parseInt(data.itemData.x)
-                    ) {
-                        setComponentData(getComponentInfoData.component)
-                    }
+                    setComponentData(data.itemData)
                     /** PATCH */
-                } else {
-                    setComponentData(getComponentInfoData?.component)
                 }
             } else if (
-                getComponentInfoData?.component != null &&
+                getComponentInfoData?.component &&
+                componentData === null
+            ) {
+                setComponentData(getComponentInfoData?.component)
+            } else if (
+                getComponentInfoData?.component &&
                 componentData !== null
             ) {
                 const boardId = data.boardId
@@ -555,7 +544,7 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
 
         // console.log('getComponentInfoData data change', getComponentInfoData)
         return data.twoJSInstance ? (
-            getComponentInfoData?.component ? (
+            componentData !== null ? (
                 <ElementToRender
                     handleDeleteComponent={handleDeleteComponent}
                     {...data}
@@ -710,8 +699,8 @@ const Canvas = (props) => {
                 {
                     ...props.lastAddedElement,
                     isDummy: true,
-                    x: 500,
-                    y: 100,
+                    // x: 500,
+                    // y: 100,
                 },
             ])
         }

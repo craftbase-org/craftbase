@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { useSubscription } from '@apollo/client'
+import { useSubscription, useMutation } from '@apollo/client'
 
 import { GET_BOARD_DATA } from 'schema/subscriptions'
+import { INSERT_USER_ONE } from 'schema/mutations'
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Spinner from 'components/common/spinner'
+import { generateRandomUsernames } from 'utils/misc'
 
 const BoardViewPage = (props) => {
     const boardId = props.match.params.boardId
@@ -16,7 +18,32 @@ const BoardViewPage = (props) => {
         variables: { boardId: boardId },
         fetchPolicy: 'network-only',
     })
+    const [
+        insertUser,
+        {
+            loading: insertUserLoading,
+            data: insertUserData,
+            error: insertUserError,
+            reset: resetInsertUserMutation,
+        },
+    ] = useMutation(INSERT_USER_ONE)
     const [lastAddedElement, setLastAddedElement] = useState(null)
+
+    useEffect(() => {
+        const userId = localStorage.getItem('userId')
+        if (userId === null) {
+            const { nickname, firstName, lastName } = generateRandomUsernames()
+            insertUser({
+                variables: {
+                    object: {
+                        nickname,
+                        firstName,
+                        lastName,
+                    },
+                },
+            })
+        }
+    }, [])
 
     if (getBoardDataLoading) {
         return (
@@ -24,6 +51,14 @@ const BoardViewPage = (props) => {
                 <Spinner displayText={'Loading data'} />
             </>
         )
+    }
+
+    if (insertUserData) {
+        const userId = insertUserData.user.id
+
+        localStorage.setItem('userId', userId)
+        console.log('insertUserData', insertUserData)
+        window.location.reload()
     }
 
     // if (getBoardDataError) {

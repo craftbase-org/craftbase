@@ -21,7 +21,7 @@ import ShareLinkPopup from './shareLinkPopup'
 import UserDetailsPopup from './userDetailsPopup'
 
 const PrimarySidebar = (props) => {
-    const [showAddShapeLoader, setShowAddShapeLoader] = useState(false)
+    // const [showAddShapeLoader, setShowAddShapeLoader] = useState(false)
     const [secondaryMenu, toggleSecondaryMenu] = useState(false)
     const {
         loading: getComponentTypesLoading,
@@ -30,14 +30,9 @@ const PrimarySidebar = (props) => {
     } = useQuery(GET_COMPONENT_TYPES)
     const history = useHistory()
     console.log('boardId', props.match.params.boardId)
-    const [
-        insertComponent,
-        {
-            loading: insertComponentLoading,
-            data: insertComponentSuccess,
-            error: insertComponentError,
-        },
-    ] = useMutation(INSERT_COMPONENT)
+    const [insertComponent] = useMutation(INSERT_COMPONENT, {
+        ignoreResults: true,
+    })
     // const [
     //     updateBoardComponents,
     //     {
@@ -47,31 +42,32 @@ const PrimarySidebar = (props) => {
     //     },
     // ] = useMutation(UPDATE_BOARD_COMPONENTS)
 
-    useEffect(() => {
-        if (insertComponentSuccess) {
-            setShowAddShapeLoader(false)
-            document.getElementById('show-click-anywhere-btn').style.opacity = 1
-            // let insertComponentData = insertComponentSuccess.component
-            // props.updateLastAddedElementId(insertComponentData.id)
-            // let newBoardData = [
-            //     ...props.boardData,
-            //     {
-            //         componentType: insertComponentData.componentType,
-            //         id: insertComponentData.id,
-            //     },
-            // ]
-            // updateBoardComponents({
-            //     variables: {
-            //         id: props.match.params.boardId,
-            //         components: newBoardData,
-            //     },
-            // })
-            console.log('insertComponentSuccess', insertComponentSuccess)
-        }
-    }, [insertComponentSuccess])
+    // useEffect(() => {
+    //     if (insertComponentSuccess) {
+    //         // setShowAddShapeLoader(false)
+    //         document.getElementById('show-click-anywhere-btn').style.opacity = 1
+    //         // let insertComponentData = insertComponentSuccess.component
+    //         // props.updateLastAddedElementId(insertComponentData.id)
+    //         // let newBoardData = [
+    //         //     ...props.boardData,
+    //         //     {
+    //         //         componentType: insertComponentData.componentType,
+    //         //         id: insertComponentData.id,
+    //         //     },
+    //         // ]
+    //         // updateBoardComponents({
+    //         //     variables: {
+    //         //         id: props.match.params.boardId,
+    //         //         components: newBoardData,
+    //         //     },
+    //         // })
+    //         console.log('insertComponentSuccess', insertComponentSuccess)
+    //     }
+    // }, [insertComponentSuccess])
 
     const addElement = (label) => {
         let shapeData = null
+        let randomNumber = Math.floor(Math.random() * 80 + 30)
         let generateId = crypto.randomUUID()
         console.log('getComponentTypesData', getComponentTypesData, label)
         if (getComponentTypesData) {
@@ -80,8 +76,14 @@ const PrimarySidebar = (props) => {
                     shapeData = {
                         id: generateId,
                         componentType: label,
-                        x: window.outerWidth - (50 * window.outerWidth) / 100,
-                        y: window.outerHeight - (50 * window.outerHeight) / 100,
+                        x: parseInt(
+                            window.outerWidth -
+                                (randomNumber * window.outerWidth) / 100
+                        ),
+                        y: parseInt(
+                            window.outerHeight -
+                                (randomNumber * window.outerHeight) / 100
+                        ),
                         boardId: props.match.params.boardId,
                         metadata: item.defaultMetaData,
                         width: item.width,
@@ -93,10 +95,14 @@ const PrimarySidebar = (props) => {
         console.log('shapeData', shapeData)
         props.updateLastAddedElement(shapeData)
 
-        setShowAddShapeLoader(true)
+        // setShowAddShapeLoader(true)
         localStorage.setItem('lastAddedElementId', generateId)
 
         shapeData && insertComponent({ variables: { object: shapeData } })
+
+        setTimeout(() => {
+            document.getElementById('show-click-anywhere-btn').style.opacity = 1
+        }, 400)
     }
 
     const toggleSecondaryMenuFn = (bool) => {
@@ -235,32 +241,30 @@ const PrimarySidebar = (props) => {
             </div>
             <div className="absolute right-10 mt-2">
                 <div className="flex items-center">
-                    <div className="pr-2">
-                        {showAddShapeLoader ? (
-                            <div
-                                className="w-auto  
+                    {/* <div id="show-saving-loader" className="pr-2">
+                        <div
+                            className="w-auto  
                              bg-greens-g400 text-greens-g75  
                             px-4 py-2 rounded-md shadow-md
                             "
-                            >
-                                <div className="flex items-center ">
-                                    <div className="w-auto text-sm text-left">
-                                        Saving
-                                    </div>
-                                    <div>
-                                        <SpinnerWithSize
-                                            loaderSize="sm"
-                                            customStyles={{
-                                                margin: 0,
-                                                marginLeft: '4px',
-                                                borderBottomColor: '#ABF5D1',
-                                            }}
-                                        />
-                                    </div>
+                        >
+                            <div className="flex items-center ">
+                                <div className="w-auto text-sm text-left">
+                                    Saving
+                                </div>
+                                <div>
+                                    <SpinnerWithSize
+                                        loaderSize="sm"
+                                        customStyles={{
+                                            margin: 0,
+                                            marginLeft: '4px',
+                                            borderBottomColor: '#ABF5D1',
+                                        }}
+                                    />
                                 </div>
                             </div>
-                        ) : null}
-                    </div>
+                        </div>
+                    </div> */}
 
                     <div className="text-sm pr-2">
                         <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
