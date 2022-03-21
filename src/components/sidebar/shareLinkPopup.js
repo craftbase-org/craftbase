@@ -48,15 +48,16 @@ const ShareLinkPopup = ({}) => {
                     }}
                 >
                     <div
-                        className=" w-128 
+                        className=" 
                         bg-white text-neutrals-n700 border border-neutrals-n40
                         rounded-md px-2 py-4 shadow-md
                         "
+                        style={{ width: '525px' }}
                     >
                         <div className="text-base text-left">
                             Board Link (Public)
                         </div>
-                        <div className="mt-2 flex items-center">
+                        <div className="mt-2 flex items-center justify-between">
                             <div className="text-sm rounded-md bg-neutrals-n40  text-black px-2 py-2 ">
                                 {window.location.href}
                             </div>
