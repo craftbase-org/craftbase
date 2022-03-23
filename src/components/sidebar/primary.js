@@ -278,7 +278,7 @@ const PrimarySidebar = (props) => {
                         </a>
                     </div>
                     <ShareLinkPopup />
-                    <UserDetailsPopup />
+                    {/* <UserDetailsPopup /> */}
                 </div>
             </div>
         </>
