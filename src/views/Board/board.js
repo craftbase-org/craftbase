@@ -5,7 +5,7 @@ import { GET_BOARD_DATA } from 'schema/subscriptions'
 import { INSERT_USER_ONE } from 'schema/mutations'
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
-import Spinner from 'components/common/spinner'
+import Spinner from 'components/common/spinnerWithSize'
 import { generateRandomUsernames } from 'utils/misc'
 
 const BoardViewPage = (props) => {
@@ -48,7 +48,9 @@ const BoardViewPage = (props) => {
     if (getBoardDataLoading) {
         return (
             <>
-                <Spinner displayText={'Loading data'} />
+                <div className="w-full h-full flex items-center justify-center">
+                    <Spinner loaderSize="lg" />
+                </div>
             </>
         )
     }
