@@ -41,7 +41,7 @@ const ShareLinkPopup = ({}) => {
                 </a>
 
                 <div
-                    className="absolute top-12 -right-20 transition-all ease-in duration-200"
+                    className="absolute top-12 right-0 transition-all ease-in duration-200"
                     style={{
                         opacity: showLink ? 1 : 0,
                         zIndex: showLink ? 1 : -1,
@@ -52,7 +52,7 @@ const ShareLinkPopup = ({}) => {
                         bg-white text-neutrals-n700 border border-neutrals-n40
                         rounded-md px-2 py-4 shadow-md
                         "
-                        style={{ width: '525px' }}
+                        style={{ width: '560px' }}
                     >
                         <div className="text-base text-left">
                             Board Link (Public)

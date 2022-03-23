@@ -25,7 +25,7 @@ const CanvasZoomer = (props) => {
         <React.Fragment>
             <div className="zoomer-container">
                 <a
-                    className="cursor-pointer zoom-in-selector shadow-xl bg-white text-black rounded-full p-1"
+                    className="mr-2 cursor-pointer zoom-in-selector shadow-xl bg-white text-black rounded-full p-1"
                     onClick={handleZoomIn}
                 >
                     <img width={40} height={40} src={AddSVG} />

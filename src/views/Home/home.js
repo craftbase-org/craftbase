@@ -109,7 +109,10 @@ const HomePage = (props) => {
                             "
                             />
                         </div>
-                        <div className="pl-2 text-primary-blue text-md lg:text-2xl 2xl:text-4xl">
+                        <div
+                            className="pl-2 
+                        text-primary-blue text-md lg:text-2xl 2xl:text-4xl font-bold"
+                        >
                             craftbase
                         </div>
                     </div>
@@ -136,7 +139,10 @@ const HomePage = (props) => {
                     <div className="w-5/12 h-full flex items-center justify-center">
                         <div className="text-left">
                             <p className="text-base lg:text-3xl 2xl:text-5xl font-bold ">
-                                Brainstorm your ideas into wireframes.
+                                Brainstorm your ideas into a{' '}
+                                <span className=" text-primary-blue border-b-2 border-primary-blue ">
+                                    wireframe
+                                </span>
                             </p>
                             <p className="pt-4 text-sm lg:text-xl 2xl:text-3xl ">
                                 Start creating wireframes with just one click.
