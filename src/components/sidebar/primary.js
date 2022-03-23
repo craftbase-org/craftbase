@@ -130,7 +130,7 @@ const PrimarySidebar = (props) => {
                  bg-white rounded-md shadow-xl"
                 >
                     {getComponentTypesLoading ? (
-                        <div className=" text-blues-b500">Loading ...</div>
+                        <div className=" text-primary-blue">Loading ...</div>
                     ) : (
                         <>
                             {' '}

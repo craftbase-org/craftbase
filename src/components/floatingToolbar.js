@@ -360,6 +360,7 @@ const Toolbar = (props) => {
 
     const globalMouseUpEventHanlder = (e) => {
         const nativeMouseClientX = e.clientX
+        const nativeMouseClientY = e.clientY
         const elementIds = Object.keys(idx(componentState, (_) => _.element))
         const toolbarCoordinate = document
             .getElementById('floating-toolbar')
@@ -374,6 +375,10 @@ const Toolbar = (props) => {
                 closeToolbar()
             }
             // console.log(e.target.id, elementIds, elementIds.includes(e.target.id));
+        } else if (nativeMouseClientY < toolbarCoordinate.y) {
+            if (!elementIds.includes(e.target.id)) {
+                closeToolbar()
+            }
         }
     }
 

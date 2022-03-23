@@ -2,3 +2,7 @@
     min-height: 135px;
     max-height: 135px;
 }
+
+.secondary-sidebar-content {
+    font-weight: 600;
+}
