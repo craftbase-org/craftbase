@@ -121,6 +121,7 @@ const HomePage = (props) => {
                                 size="large"
                                 label="Create Board"
                                 onClick={onCreateBoard}
+                                extendClass="font-semibold shadow-lg"
                                 loading={
                                     insertUserLoading || createBoardLoading
                                 }
@@ -134,7 +135,7 @@ const HomePage = (props) => {
                 <div className="w-full h-full px-10 2xl:px-20 flex items-center ">
                     <div className="w-5/12 h-full flex items-center justify-center">
                         <div className="text-left">
-                            <p className="text-base lg:text-3xl 2xl:text-5xl ">
+                            <p className="text-base lg:text-3xl 2xl:text-5xl font-bold ">
                                 Brainstorm your ideas into wireframes.
                             </p>
                             <p className="pt-4 text-sm lg:text-xl 2xl:text-3xl ">

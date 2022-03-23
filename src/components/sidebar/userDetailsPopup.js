@@ -53,7 +53,7 @@ const UserDetailsPopup = ({}) => {
                 >
                     <div
                         className="w-7 h-7 flex items-center justify-center 
-                        rounded-50-percent border border-blues-b500  
+                        rounded-50-percent   
                         text-sm text-white "
                         style={{ background: randomBgColors[0] }}
                     >
@@ -61,7 +61,7 @@ const UserDetailsPopup = ({}) => {
                     </div>
                     <div
                         className="w-7 h-7 flex items-center justify-center 
-                        rounded-50-percent border border-blues-b500  
+                        rounded-50-percent  
                         text-sm text-white -ml-2"
                         style={{ background: randomBgColors[1] }}
                     >

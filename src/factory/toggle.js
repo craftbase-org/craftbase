@@ -10,7 +10,7 @@ export default class ToggleFactory extends Main {
 
         // Implement outer rectangle
         const rect = two.makeRoundedRectangle(0, 0, 55, 30, 16)
-        rect.fill = '#0747A6'
+        rect.fill = '#0052CC'
         rect.noStroke()
 
         const calcCirclePointX = parseInt(rect.width / 4)
