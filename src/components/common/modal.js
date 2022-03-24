@@ -2,7 +2,7 @@ import React from 'react'
 import styled from 'styled-components'
 // import "wicg-inert";
 
-import Portal from '../portal'
+import Portal from './portal'
 
 const Backdrop = styled.div`
     position: fixed;

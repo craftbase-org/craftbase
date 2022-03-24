@@ -16,7 +16,7 @@ const BoardViewPage = (props) => {
         data: getBoardData,
     } = useSubscription(GET_BOARD_DATA, {
         variables: { boardId: boardId },
-        fetchPolicy: 'network-only',
+        fetchPolicy: 'cache-first',
     })
     const [
         insertUser,
@@ -43,6 +43,7 @@ const BoardViewPage = (props) => {
                 },
             })
         }
+        localStorage.setItem('lastOpenBoard', props.match.params.boardId)
     }, [])
 
     if (getBoardDataLoading) {

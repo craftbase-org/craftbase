@@ -9,9 +9,12 @@ import TwitterLogoSVG from 'assets/twitter_logo.svg'
 import GithubLogoSVG from 'assets/github_logo.svg'
 import CraftbaseBoardScreenshotPNG from 'assets/craftbase_board_screenshot.png'
 import Button from 'components/common/button'
+import ModalContainer from 'components/common/modalContainer'
 import { generateRandomUsernames } from 'utils/misc'
 
 const HomePage = (props) => {
+    const lastOpenBoard = localStorage.getItem('lastOpenBoard')
+    const [showLastOpenBoardModal, setShowLastOpenBoardModal] = useState(false)
     // create user mutation
     const [
         insertUser,
@@ -40,6 +43,7 @@ const HomePage = (props) => {
     useEffect(() => {
         console.log('window.innerHeight', window.innerHeight)
         setPageHeight(window.innerHeight - 200)
+        lastOpenBoard !== null && setShowLastOpenBoardModal(true)
     }, [window.innerHeight])
 
     useEffect(() => {
@@ -91,6 +95,10 @@ const HomePage = (props) => {
         }
     }
 
+    const closeLastOpenBoardModal = () => {
+        setShowLastOpenBoardModal(false)
+    }
+
     return (
         <>
             {/* <Redirect to={`/board/03a3706e-fe79-4df5-80f6-2f4040ade05f`} /> */}
@@ -98,6 +106,31 @@ const HomePage = (props) => {
                 className="home-page-container"
                 style={{ height: `${pageHeight}px` }}
             >
+                <ModalContainer
+                    showModal={showLastOpenBoardModal}
+                    closeModal={closeLastOpenBoardModal}
+                >
+                    <div className="text-xl">
+                        Do you want to continue on your last board ?
+                    </div>
+                    <div className="mt-4 flex items-center justify-center ">
+                        <Button
+                            intent="primary"
+                            label="Yes"
+                            size="large"
+                            onClick={() => {
+                                history.push(`/board/${lastOpenBoard}`)
+                            }}
+                        />
+                        <Button
+                            extendClass="ml-4"
+                            intent="secondary"
+                            label="No"
+                            size="large"
+                            onClick={closeLastOpenBoardModal}
+                        />
+                    </div>
+                </ModalContainer>
                 <nav className="flex items-center w-full px-10 py-1 lg:py-2 2xl:py-4 h-20">
                     <div className="w-1/2 flex items-center ">
                         <div>
