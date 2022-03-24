@@ -9,6 +9,7 @@ import ToggleSVG from 'wireframeAssets/toggle.svg'
 import DividerSVG from 'wireframeAssets/divider.svg'
 import RadioboxSVG from 'wireframeAssets/radiobox.svg'
 import CheckboxSVG from 'wireframeAssets/checkbox.svg'
+import FrameSVG from 'wireframeAssets/frame.svg'
 
 import CirclePNG from 'assets/circle.png'
 
@@ -122,6 +123,25 @@ const ElementsDropdown = (props) => {
                         </div>
                     </div>
                 </div>
+
+                <div className="w-1/2 block p-2 ">
+                    <div
+                        className="element-image-block  bg-neutrals-n20 
+                    hover:shadow-lg cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            props.addElement('frame')
+                        }}
+                    >
+                        <div className="w-full h-20">
+                            <img className="w-full h-20" src={FrameSVG} />
+                        </div>
+                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                            Frame
+                        </div>
+                    </div>
+                </div>
+
                 <div className="w-1/2 block p-2 ">
                     <div
                         className="element-image-block  bg-neutrals-n20 

@@ -133,6 +133,7 @@ const Toolbar = (props) => {
         closeToolbar,
         componentId,
         postToolbarUpdate,
+        hideColorSection,
     } = props
     console.log('Toolbar props', props)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
@@ -153,6 +154,7 @@ const Toolbar = (props) => {
         borderColor: '#000',
         hasUnderline: false,
         opacity: 0.4,
+        hideColorSection: hideColorSection,
     })
 
     useEffect(() => {
@@ -178,6 +180,7 @@ const Toolbar = (props) => {
     const allowedProperties = [
         {
             key: properties.colorBg,
+            hide: state.hideColorSection,
             title: 'Color',
             accordion: state.colorsAccordion,
             toggleAccordion: () =>
@@ -403,16 +406,18 @@ const Toolbar = (props) => {
                 id="floating-toolbar"
                 // tabIndex="1"
             >
-                {allowedProperties.map((i, index) => (
-                    <Accordion
-                        key={index}
-                        accordion={i.accordion}
-                        toggleAccordion={i.toggleAccordion}
-                        header={i.title}
-                        content={i.content}
-                        renderSvg={i.renderSvg}
-                    />
-                ))}
+                {allowedProperties.map((i, index) =>
+                    i.hide === true ? null : (
+                        <Accordion
+                            key={index}
+                            accordion={i.accordion}
+                            toggleAccordion={i.toggleAccordion}
+                            header={i.title}
+                            content={i.content}
+                            renderSvg={i.renderSvg}
+                        />
+                    )
+                )}
             </ToolbarContainer>
         </AnimatePresence>
     )
