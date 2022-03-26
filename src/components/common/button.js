@@ -51,6 +51,7 @@ const Button = (props) => {
     return (
         <>
             <button
+                name={props?.name || 'btn'}
                 className={baseClassNames}
                 onClick={props.onClick}
                 disabled={props.disabled}

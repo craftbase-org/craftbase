@@ -38,6 +38,7 @@ const HomePage = (props) => {
     ] = useMutation(CREATE_BOARD)
 
     const [pageHeight, setPageHeight] = useState(0)
+    const [btnId, setBtnId] = useState(null)
     const history = useHistory()
 
     useEffect(() => {
@@ -71,7 +72,8 @@ const HomePage = (props) => {
         }
     }, [createBoardData])
 
-    const onCreateBoard = () => {
+    const onCreateBoard = (e) => {
+        setBtnId(e.target.name)
         const userId = localStorage.getItem('userId')
         if (userId === null) {
             const { nickname, firstName, lastName } = generateRandomUsernames()
@@ -155,11 +157,13 @@ const HomePage = (props) => {
                             <Button
                                 intent="primary"
                                 size="large"
+                                name="create_board"
                                 label="Create Board"
                                 onClick={onCreateBoard}
                                 extendClass="font-semibold shadow-lg"
                                 loading={
-                                    insertUserLoading || createBoardLoading
+                                    btnId === 'create_board' &&
+                                    (insertUserLoading || createBoardLoading)
                                 }
                                 disabled={
                                     insertUserLoading || createBoardLoading
@@ -183,6 +187,24 @@ const HomePage = (props) => {
                                 share them with your colleagues by sending them
                                 the board link
                             </p>
+                            <div className="mt-4">
+                                <Button
+                                    intent="primary"
+                                    name="start_now"
+                                    label="Start now - it's free"
+                                    size="large"
+                                    onClick={onCreateBoard}
+                                    extendClass="font-semibold shadow-lg"
+                                    loading={
+                                        btnId === 'start_now' &&
+                                        (insertUserLoading ||
+                                            createBoardLoading)
+                                    }
+                                    disabled={
+                                        insertUserLoading || createBoardLoading
+                                    }
+                                />
+                            </div>
                         </div>
                     </div>
                     <div className="w-7/12 h-full flex items-center">

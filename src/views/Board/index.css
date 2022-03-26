@@ -1,0 +1,13 @@
+#show-select-any-shape-btn::before {
+    position: absolute;
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: #00875a;
+    transform: rotate(45deg);
+    /* border: 10px solid transparent; */
+    margin: auto;
+    top: -28px;
+    bottom: 0;
+    z-index: -1;
+}
