@@ -47,139 +47,145 @@ const ElementsDropdown = (props) => {
                 props.handleOnBlur()
             }}
         >
-            <div
-                className="w-full flex items-center flex-wrap overflow-y-auto"
-                style={{ height: '550px' }}
-            >
-                <div className="w-1/2 block p-2 ">
-                    <div
-                        className="element-image-block  bg-neutrals-n20 
+            {props.getComponentTypesLoading ? (
+                <div className="text-primary-blue">Loading ...</div>
+            ) : (
+                <div
+                    className="w-full flex items-center flex-wrap overflow-y-auto"
+                    style={{ height: '550px' }}
+                >
+                    <div className="w-1/2 block p-2 ">
+                        <div
+                            className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            props.addElement('avatar')
-                        }}
-                    >
-                        <div className="w-full h-20">
-                            <img className="w-full h-20" src={AvatarSVG} />
-                        </div>
-                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                            Avatar
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                props.addElement('avatar')
+                            }}
+                        >
+                            <div className="w-full h-20">
+                                <img className="w-full h-20" src={AvatarSVG} />
+                            </div>
+                            <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                Avatar
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className="w-1/2 block p-2  ">
-                    <div
-                        className="element-image-block  bg-neutrals-n20 
+                    <div className="w-1/2 block p-2  ">
+                        <div
+                            className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            props.addElement('buttonWithIcon')
-                        }}
-                    >
-                        <div className="w-full h-20">
-                            <img
-                                className="w-full h-20"
-                                src={ButtonWithIconSVG}
-                            />
-                        </div>
-                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                            Button With Icon
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                props.addElement('buttonWithIcon')
+                            }}
+                        >
+                            <div className="w-full h-20">
+                                <img
+                                    className="w-full h-20"
+                                    src={ButtonWithIconSVG}
+                                />
+                            </div>
+                            <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                Button With Icon
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className="w-1/2 block p-2 ">
-                    <div
-                        className="element-image-block  bg-neutrals-n20 
+                    <div className="w-1/2 block p-2 ">
+                        <div
+                            className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            props.addElement('button')
-                        }}
-                    >
-                        <div className="w-full h-20">
-                            <img className="w-full h-20" src={ButtonSVG} />
-                        </div>
-                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                            Button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                props.addElement('button')
+                            }}
+                        >
+                            <div className="w-full h-20">
+                                <img className="w-full h-20" src={ButtonSVG} />
+                            </div>
+                            <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                Button
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="w-1/2 block p-2 ">
-                    <div
-                        className="element-image-block  bg-neutrals-n20 
+                    <div className="w-1/2 block p-2 ">
+                        <div
+                            className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            props.addElement('imageCard')
-                        }}
-                    >
-                        <div className="w-full h-20">
-                            <img className="w-full h-20" src={ImageCardSVG} />
-                        </div>
-                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                            Image Card
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                props.addElement('imageCard')
+                            }}
+                        >
+                            <div className="w-full h-20">
+                                <img
+                                    className="w-full h-20"
+                                    src={ImageCardSVG}
+                                />
+                            </div>
+                            <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                Image Card
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="w-1/2 block p-2 ">
-                    <div
-                        className="element-image-block  bg-neutrals-n20 
+                    <div className="w-1/2 block p-2 ">
+                        <div
+                            className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            props.addElement('frame')
-                        }}
-                    >
-                        <div className="w-full h-20">
-                            <img className="w-full h-20" src={FrameSVG} />
-                        </div>
-                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                            Frame
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                props.addElement('frame')
+                            }}
+                        >
+                            <div className="w-full h-20">
+                                <img className="w-full h-20" src={FrameSVG} />
+                            </div>
+                            <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                Frame
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="w-1/2 block p-2 ">
-                    <div
-                        className="element-image-block  bg-neutrals-n20 
+                    <div className="w-1/2 block p-2 ">
+                        <div
+                            className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            props.addElement('toggle')
-                        }}
-                    >
-                        <div className="w-full h-20">
-                            <img className="w-full h-20" src={ToggleSVG} />
-                        </div>
-                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                            Toggle
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                props.addElement('toggle')
+                            }}
+                        >
+                            <div className="w-full h-20">
+                                <img className="w-full h-20" src={ToggleSVG} />
+                            </div>
+                            <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                Toggle
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className="w-1/2 block p-2 ">
-                    <div
-                        className="element-image-block  bg-neutrals-n20 
+                    <div className="w-1/2 block p-2 ">
+                        <div
+                            className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            props.addElement('divider')
-                        }}
-                    >
-                        <div className="w-full h-20">
-                            <img
-                                className="w-full h-20 px-10"
-                                src={DividerSVG}
-                            />
-                        </div>
-                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                            Divider
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                props.addElement('divider')
+                            }}
+                        >
+                            <div className="w-full h-20">
+                                <img
+                                    className="w-full h-20 px-10"
+                                    src={DividerSVG}
+                                />
+                            </div>
+                            <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                Divider
+                            </div>
                         </div>
                     </div>
-                </div>
-                {/* <div className="w-1/2 block p-2 ">
+                    {/* <div className="w-1/2 block p-2 ">
                     <div className="element-image-block  bg-neutrals-n20">
                         <div className="w-full h-max-11vh">
                             <img
@@ -193,67 +199,68 @@ const ElementsDropdown = (props) => {
                     </div>
                 </div> */}
 
-                <div className="w-1/2 block p-2 ">
-                    <div
-                        className="element-image-block  bg-neutrals-n20 
+                    <div className="w-1/2 block p-2 ">
+                        <div
+                            className="element-image-block  bg-neutrals-n20 
                     hover:shadow-lg cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            props.addElement('overlay')
-                        }}
-                    >
-                        <div className="w-full h-20">
-                            <img
-                                className="w-full h-20 px-10"
-                                src={OverlayPNG}
-                            />
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                props.addElement('overlay')
+                            }}
+                        >
+                            <div className="w-full h-20">
+                                <img
+                                    className="w-full h-20 px-10"
+                                    src={OverlayPNG}
+                                />
+                            </div>
+                            <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                Overlay
+                            </div>
                         </div>
-                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                            Overlay
+                    </div>
+                    <div className="w-1/2 block p-2 ">
+                        <div
+                            className="element-image-block  bg-neutrals-n20 
+                    hover:shadow-lg cursor-pointer"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                props.addElement('radiobox')
+                            }}
+                        >
+                            <div className="w-full h-20">
+                                <img
+                                    className="w-full h-20 px-10"
+                                    src={RadioboxSVG}
+                                />
+                            </div>
+                            <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                Radio Control
+                            </div>
+                        </div>
+                    </div>
+                    <div className="w-1/2 block p-2 ">
+                        <div
+                            className="element-image-block  bg-neutrals-n20 
+                    hover:shadow-lg cursor-pointer"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                props.addElement('checkbox')
+                            }}
+                        >
+                            <div className="w-full h-20">
+                                <img
+                                    className="w-full h-20 px-10"
+                                    src={CheckboxSVG}
+                                />
+                            </div>
+                            <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                Checkbox Control
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div className="w-1/2 block p-2 ">
-                    <div
-                        className="element-image-block  bg-neutrals-n20 
-                    hover:shadow-lg cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            props.addElement('radiobox')
-                        }}
-                    >
-                        <div className="w-full h-20">
-                            <img
-                                className="w-full h-20 px-10"
-                                src={RadioboxSVG}
-                            />
-                        </div>
-                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                            Radio Control
-                        </div>
-                    </div>
-                </div>
-                <div className="w-1/2 block p-2 ">
-                    <div
-                        className="element-image-block  bg-neutrals-n20 
-                    hover:shadow-lg cursor-pointer"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            props.addElement('checkbox')
-                        }}
-                    >
-                        <div className="w-full h-20">
-                            <img
-                                className="w-full h-20 px-10"
-                                src={CheckboxSVG}
-                            />
-                        </div>
-                        <div className="mt-2 p-1 text-sm text-center text-gray-600">
-                            Checkbox Control
-                        </div>
-                    </div>
-                </div>
-            </div>
+            )}
         </div>
     )
 }
