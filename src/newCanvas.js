@@ -99,6 +99,15 @@ function addZUI(
         if (lastAddedElementId !== null) {
             const clientToSurface = zui.clientToSurface(e.clientX, e.clientY)
 
+            let twoJSElement = two.scene.children.find(
+                (child) => child?.elementData?.id === lastAddedElementId
+            )
+
+            twoJSElement.position.x = clientToSurface.x
+            twoJSElement.position.y = clientToSurface.y
+
+            two.update()
+
             updateComponentVertices(
                 lastAddedElementId,
                 clientToSurface.x,
@@ -107,108 +116,110 @@ function addZUI(
             localStorage.removeItem('lastAddedElementId')
 
             document.getElementById('main-two-root').style.cursor = 'auto'
-        }
+        } else {
+            shape = null
+            mouse.x = e.clientX
+            mouse.y = e.clientY
+            let avoidDragging = false
+            let isGroupSelector = false
 
-        shape = null
-        mouse.x = e.clientX
-        mouse.y = e.clientY
-        let avoidDragging = false
-        let isGroupSelector = false
-
-        var path = e.path || (e.composedPath && e.composedPath())
-        // checks for path in event if it contains following element with condition
-        path.forEach((item, index) => {
-            console.log(
-                'item?.classList?.value',
-                item?.classList?.value,
-                item?.classList?.value &&
+            var path = e.path || (e.composedPath && e.composedPath())
+            // checks for path in event if it contains following element with condition
+            path.forEach((item, index) => {
+                console.log(
+                    'item?.classList?.value',
+                    item?.classList?.value,
+                    item?.classList?.value &&
+                        item?.classList?.value.includes('dragger-picker') &&
+                        !item?.classList?.value.includes('avoid-dragging') &&
+                        item.tagName === 'g'
+                )
+                if (item?.classList?.value.includes('avoid-dragging')) {
+                    avoidDragging = true
+                }
+                if (
+                    item?.classList?.value &&
                     item?.classList?.value.includes('dragger-picker') &&
                     !item?.classList?.value.includes('avoid-dragging') &&
                     item.tagName === 'g'
-            )
-            if (item?.classList?.value.includes('avoid-dragging')) {
-                avoidDragging = true
+                ) {
+                    console.log('iterating through path', item.id)
+                    console.log(
+                        'two scene children',
+                        two.scene.children,
+                        two.scene.children.find((child) => child.id === item.id)
+                    )
+                    shape = two.scene.children.find(
+                        (child) => child.id === item.id
+                    )
+                }
+            })
+
+            if (avoidDragging) {
+                shape = {}
             }
-            if (
-                item?.classList?.value &&
-                item?.classList?.value.includes('dragger-picker') &&
-                !item?.classList?.value.includes('avoid-dragging') &&
-                item.tagName === 'g'
-            ) {
-                console.log('iterating through path', item.id)
-                console.log(
-                    'two scene children',
-                    two.scene.children,
-                    two.scene.children.find((child) => child.id === item.id)
-                )
-                shape = two.scene.children.find((child) => child.id === item.id)
+
+            // if shape is null, we initialize it with root element
+
+            // inserting prevX and prevY to diff at updateToGlobalState function
+            // checking if new x,y are not equal to prev x,y
+            // then only perform the mutation
+
+            console.log('props.selectPanMode', props.selectPanMode)
+            if (shape === null) {
+                // shape = two.scene
+                const { x1, x2, y1, y2 } = {
+                    x1: 0,
+                    x2: 10,
+                    y1: 0,
+                    y2: 10,
+                }
+                const area = two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
+                area.fill = 'rgba(0,0,0,0)'
+                area.opacity = 1
+                area.linewidth = 1
+                area.dashes[0] = 4
+                area.stroke = '#505F79'
+
+                let newSelectorGroup = two.makeGroup(area)
+
+                // let dx = e.clientX - mouse.x
+                // let dy = e.clientY - mouse.y
+                // shape.position.x += dx / zui.scale
+                // shape.position.y += dy / zui.scale
+
+                const m = zui.clientToSurface(e.clientX, e.clientY)
+                mouse.copy(m)
+                newSelectorGroup.position.copy(mouse)
+                // console.log(
+                //     'mouse in selector group',
+                //     mouse,
+                //     mouse.getBoundingClientRect()
+                // )
+                two.update()
+                shape = newSelectorGroup
+                isGroupSelector = true
             }
-        })
-
-        if (avoidDragging) {
-            shape = {}
-        }
-
-        // if shape is null, we initialize it with root element
-
-        // inserting prevX and prevY to diff at updateToGlobalState function
-        // checking if new x,y are not equal to prev x,y
-        // then only perform the mutation
-
-        console.log('props.selectPanMode', props.selectPanMode)
-        if (shape === null) {
-            // shape = two.scene
-            const { x1, x2, y1, y2 } = {
-                x1: 0,
-                x2: 10,
-                y1: 0,
-                y2: 10,
+            shape.elementData = {
+                ...shape?.elementData,
+                isGroupSelector: isGroupSelector,
+                prevX: parseInt(shape.translation.x),
+                prevY: parseInt(shape.translation.y),
             }
-            const area = two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
-            area.fill = 'rgba(0,0,0,0)'
-            area.opacity = 1
-            area.linewidth = 1
-            area.dashes[0] = 4
-            area.stroke = '#505F79'
 
-            let newSelectorGroup = two.makeGroup(area)
+            console.log('on mouse down')
+            let rect = document.getElementById(shape.id).getBoundingClientRect()
 
-            // let dx = e.clientX - mouse.x
-            // let dy = e.clientY - mouse.y
-            // shape.position.x += dx / zui.scale
-            // shape.position.y += dy / zui.scale
+            dragging =
+                mouse.x > rect.left &&
+                mouse.x < rect.right &&
+                mouse.y > rect.top &&
+                mouse.y < rect.bottom
 
-            const m = zui.clientToSurface(e.clientX, e.clientY)
-            mouse.copy(m)
-            newSelectorGroup.position.copy(mouse)
-            // console.log(
-            //     'mouse in selector group',
-            //     mouse,
-            //     mouse.getBoundingClientRect()
-            // )
+            window.addEventListener('mousemove', mousemove, false)
+            window.addEventListener('mouseup', mouseup, false)
             two.update()
-            shape = newSelectorGroup
-            isGroupSelector = true
         }
-        shape.elementData = {
-            ...shape?.elementData,
-            isGroupSelector: isGroupSelector,
-            prevX: parseInt(shape.translation.x),
-            prevY: parseInt(shape.translation.y),
-        }
-
-        console.log('on mouse down')
-        let rect = document.getElementById(shape.id).getBoundingClientRect()
-
-        dragging =
-            mouse.x > rect.left &&
-            mouse.x < rect.right &&
-            mouse.y > rect.top &&
-            mouse.y < rect.bottom
-
-        window.addEventListener('mousemove', mousemove, false)
-        window.addEventListener('mouseup', mouseup, false)
-        two.update()
     }
 
     function mousemove(e) {

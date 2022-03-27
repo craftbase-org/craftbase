@@ -111,10 +111,10 @@ const BoardViewPage = (props) => {
                 <div
                     id="show-select-any-shape-btn"
                     className="fixed w-80 top-14 left-4 
-                transition-opacity ease-out duration-300"
+                transition-all ease-out duration-300"
                     style={{
                         opacity: showHelperTooltip ? 1 : 0,
-                        // zIndex: showHelperTooltip ? 1 : -1,
+                        zIndex: showHelperTooltip ? 1 : -1,
                     }}
                 >
                     <div
