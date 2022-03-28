@@ -68,7 +68,7 @@ const BoardViewPage = (props) => {
 
         localStorage.setItem('userId', userId)
         console.log('insertUserData', insertUserData)
-        window.location.reload()
+        // window.location.reload()
     }
 
     // if (getBoardDataError) {

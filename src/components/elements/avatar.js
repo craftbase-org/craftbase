@@ -180,6 +180,7 @@ function Avatar(props) {
                         two.update()
                     },
                     end(event) {
+                        const userId = localStorage.getItem('userId')
                         console.log('the end')
                         updateComponentInfo({
                             variables: {
@@ -187,6 +188,7 @@ function Avatar(props) {
                                 updateObj: {
                                     width: parseInt(circle.width),
                                     height: parseInt(circle.height),
+                                    updatedBy: userId,
                                     children: {
                                         ...props.children,
                                         icon: {

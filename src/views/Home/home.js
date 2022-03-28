@@ -52,14 +52,14 @@ const HomePage = (props) => {
             const userId = insertUserData.user.id
             console.log('insertUserData', insertUserData)
             localStorage.setItem('userId', userId)
-            createBoard({
-                variables: {
-                    object: {
-                        createdBy: userId,
-                    },
-                },
-            })
-            resetInsertUserMutation()
+            // createBoard({
+            //     variables: {
+            //         object: {
+            //             createdBy: userId,
+            //         },
+            //     },
+            // })
+            // resetInsertUserMutation()
         }
     }, [insertUserData])
 
@@ -68,7 +68,7 @@ const HomePage = (props) => {
             const boardId = createBoardData.board.id
             console.log('createBoardData', createBoardData)
             history.push(`/board/${boardId}`)
-            resetCreateBoardMutation()
+            // resetCreateBoardMutation()
         }
     }, [createBoardData])
 
@@ -86,15 +86,14 @@ const HomePage = (props) => {
                     },
                 },
             })
-        } else {
-            createBoard({
-                variables: {
-                    object: {
-                        createdBy: userId,
-                    },
-                },
-            })
         }
+        createBoard({
+            variables: {
+                object: {
+                    createdBy: userId,
+                },
+            },
+        })
     }
 
     const closeLastOpenBoardModal = () => {
@@ -158,7 +157,7 @@ const HomePage = (props) => {
                                 intent="primary"
                                 size="large"
                                 name="create_board"
-                                label="Create Board"
+                                label="Create Wireframe"
                                 onClick={onCreateBoard}
                                 extendClass="font-semibold shadow-lg"
                                 loading={
@@ -185,13 +184,13 @@ const HomePage = (props) => {
                                 Start creating wireframes with just one click.
                                 Real-time updates across all devices, you can
                                 share them with your colleagues by sending them
-                                the board link
+                                the wireframe link
                             </p>
                             <div className="mt-4">
                                 <Button
                                     intent="primary"
                                     name="start_now"
-                                    label="Start now - it's free"
+                                    label="Create Wireframe - it's free"
                                     size="large"
                                     onClick={onCreateBoard}
                                     extendClass="font-semibold shadow-lg"
