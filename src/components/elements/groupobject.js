@@ -4,6 +4,7 @@ import { useMutation } from '@apollo/client'
 import { useHistory } from 'react-router-dom'
 
 import {
+    UPDATE_COMPONENT_INFO,
     INSERT_BULK_COMPONENTS,
     DELETE_BULK_COMPONENTS,
 } from 'schema/mutations'
@@ -52,6 +53,9 @@ function GroupedObjectWrapper(props) {
             error: deleteComponentsError,
         },
     ] = useMutation(DELETE_BULK_COMPONENTS)
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
 
     const two = props.twoJSInstance
     const [cloneGroupElements, setCloneGroupElements] = useState(null)
@@ -72,9 +76,50 @@ function GroupedObjectWrapper(props) {
         // on un-group, these components will return back to their individual state
         // with their new positions depending on group's x,y was changed
         if (deleteGroupElements === null) {
-            props.unGroup && props.unGroup(groupInstance)
+            const userId = localStorage.getItem('userId')
+            let childrenIds = props.children.map((item) => item.id)
+
+            two.scene.children.forEach((child) => {
+                if (childrenIds.includes(child?.elementData?.id)) {
+                    // here child refers to twoJS shape instead of element data from DB
+                    child.opacity = 1
+
+                    let findRelativeDataForChild = {}
+                    props.children.forEach((item) => {
+                        if (item.id === child?.elementData?.id) {
+                            findRelativeDataForChild = item
+                        }
+                    })
+
+                    let newX =
+                        parseInt(groupInstance.translation.x) +
+                        parseInt(findRelativeDataForChild.x)
+                    let newY =
+                        parseInt(groupInstance.translation.y) +
+                        parseInt(findRelativeDataForChild.y)
+
+                    child.translation.x = newX
+                    child.translation.y = newY
+
+                    // update those component's properties
+                    updateComponentInfo({
+                        variables: {
+                            id: child?.elementData?.id,
+                            updateObj: {
+                                x: child.translation.x,
+                                y: child.translation.y,
+                                updatedBy: userId,
+                            },
+                        },
+                    })
+                    two.update()
+                }
+            })
+
+            // props.unGroup && props.unGroup(groupInstance)
         }
 
+        two.remove([groupInstance])
         two.update()
     }
 

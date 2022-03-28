@@ -477,6 +477,17 @@ function addZUI(
 
 const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
     const RenderElement = () => {
+        useEffect(() => {
+            console.log('CDM Element from wrapper')
+            if (data.itemData.isDummy) {
+                /** PATCH */
+                //Patch for considering components who are just released from group
+                // that means we render them initially without their server data
+                // and when server data becomes available we ignore this patch
+                setComponentData(data.itemData)
+                /** PATCH */
+            }
+        }, [])
         const [twoJSShape, setTwoJSShape] = useState(null)
         const [componentData, setComponentData] = useState(null)
         const {
@@ -495,19 +506,23 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
         ] = useMutation(DELETE_COMPONENT_BY_ID)
 
         useEffect(() => {
-            if (!getComponentInfoData?.component && componentData === null) {
-                if (data.itemData.isDummy) {
-                    /** PATCH */
-                    //Patch for considering components who are just released from group
-                    // that means we render them initially without their server data
-                    // and when server data becomes available we ignore this patch
-                    setComponentData(data.itemData)
-                    /** PATCH */
-                }
-            } else if (
-                getComponentInfoData?.component &&
-                componentData === null
-            ) {
+            // console.log(
+            //     'CDM with getComponentInfoData Element from wrapper',
+            //     !getComponentInfoData?.component && componentData === null,
+            //     data.itemData.isDummy
+            // )
+            // if (!getComponentInfoData?.component && componentData === null) {
+            //     if (data.itemData.isDummy) {
+            //         /** PATCH */
+            //         //Patch for considering components who are just released from group
+            //         // that means we render them initially without their server data
+            //         // and when server data becomes available we ignore this patch
+            //         setComponentData(data.itemData)
+            //         /** PATCH */
+            //     }
+            // } else
+
+            if (getComponentInfoData?.component && componentData === null) {
                 setComponentData(getComponentInfoData?.component)
             } else if (
                 getComponentInfoData?.component &&
@@ -519,17 +534,19 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
                     localStorage.getItem(`tabs_open_${boardId}`)
                 )
 
-                if (getComponentInfoData?.component.updatedBy != userId) {
-                    // console.log('update element wrapper on updatedBy change')
-                    setComponentData(getComponentInfoData?.component)
-                } else if (
-                    getComponentInfoData?.component.updatedBy == userId &&
-                    tabsOpen > 1
-                ) {
-                    // console.log('update element wrapper on tabs open')
-                    setComponentData(getComponentInfoData?.component)
-                } else {
-                    // console.log('update element wrapper on nothing')
+                if (getComponentInfoData?.component.updatedBy !== null) {
+                    if (getComponentInfoData?.component.updatedBy != userId) {
+                        // console.log('update element wrapper on updatedBy change')
+                        setComponentData(getComponentInfoData?.component)
+                    } else if (
+                        getComponentInfoData?.component.updatedBy == userId &&
+                        tabsOpen > 1
+                    ) {
+                        // console.log('update element wrapper on tabs open')
+                        setComponentData(getComponentInfoData?.component)
+                    } else {
+                        // console.log('update element wrapper on nothing')
+                    }
                 }
 
                 // if (getComponentInfoData?.component.updatedBy != userId) {
@@ -538,7 +555,15 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
             }
         }, [getComponentInfoData])
 
-        if (getComponentInfoLoading) {
+        // console.log(
+        //     'while render',
+        //     data.twoJSInstance,
+        //     componentData,
+        //     getComponentInfoLoading,
+        //     getComponentInfoError
+        // )
+
+        if (getComponentInfoLoading && data?.itemData?.isDummy !== true) {
             return <></>
         }
 
@@ -553,7 +578,6 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
             })
         }
 
-        // console.log('getComponentInfoData data change', getComponentInfoData)
         return data.twoJSInstance ? (
             componentData !== null ? (
                 <ElementToRender
@@ -569,20 +593,11 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
     return RenderElement
 }
 
-const GroupRenderWrapper = (ElementToRender, data, cb) => {
+const GroupRenderWrapper = (ElementToRender, data) => {
     const RenderGroup = () => {
-        console.log('in render group wrapper', data)
+        // console.log('in render group wrapper', data)
 
-        return data.twoJSInstance ? (
-            <ElementToRender
-                {...data}
-                unGroup={(twoGroupInstance) => {
-                    cb && cb(twoGroupInstance)
-                }}
-            />
-        ) : (
-            <Spinner />
-        )
+        return data.twoJSInstance ? <ElementToRender {...data} /> : <Spinner />
     }
     return RenderGroup
 }
@@ -609,7 +624,6 @@ const Canvas = (props) => {
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [zuiInstance, setZuiInstance] = useState(null)
-    const [currentComponents, setCurrentComponents] = useState([])
     const [prevElements, setPrevElements] = useState([])
     const [onGroup, setOnGroup] = useState(null)
     const [componentsToRender, setComponentsToRender] = useState([])
@@ -686,48 +700,64 @@ const Canvas = (props) => {
     }, [twoJSInstance])
 
     useEffect(() => {
-        console.log(
-            'on change props.componentData',
-            props.componentData,
-            prevElements,
-            twoJSInstance
-        )
+        // console.log(
+        //     'on change props.componentData',
+        //     props.componentData,
+        //     prevElements,
+        //     twoJSInstance
+        // )
 
         if (props.componentData?.length > 0 && twoJSInstance) {
-            setCurrentComponents(props.componentData)
+            // setCurrentComponents(props.componentData)
+            handleSetComponentsToRender(props.componentData)
         }
 
         // setComponentsToRender()
     }, [props.componentData, twoJSInstance])
 
     useEffect(() => {
-        console.log('on change props.lastAddedElement')
+        // console.log('on change props.lastAddedElement')
 
         if (props.lastAddedElement !== null) {
-            let oldComponentData = currentComponents
-            setCurrentComponents([
-                ...oldComponentData,
+            // let oldComponentData = currentComponents
+            // setCurrentComponents([
+            //     ...oldComponentData,
+            //     {
+            //         ...props.lastAddedElement,
+            //         isDummy: true,
+            //         // x: 500,
+            //         // y: 100,
+            //     },
+            // ])
+            let newArr = [
                 {
                     ...props.lastAddedElement,
                     isDummy: true,
                     // x: 500,
                     // y: 100,
                 },
-            ])
+            ]
+            handleSetComponentsToRender(newArr)
         }
 
         // setComponentsToRender()
     }, [props.lastAddedElement])
 
-    useEffect(() => {
-        console.log('on change currentComponents', currentComponents)
-        let arr = []
+    // useEffect(() => {
+    //     console.log('on change currentComponents', currentComponents)
+
+    //     // setComponentsToRender()
+    // }, [currentComponents])
+
+    const handleSetComponentsToRender = (currentComponents) => {
+        let arr = [...prevElements]
         let components = [...componentsToRender]
         if (currentComponents && twoJSInstance) {
             currentComponents.forEach((item, index) => {
                 if (prevElements.includes(item.id)) {
                     // nothing
                 } else {
+                    arr.push(item.id)
                     const ElementToRender = Loadable({
                         loader: () =>
                             import(`components/elements/${item.componentType}`),
@@ -744,20 +774,10 @@ const Canvas = (props) => {
                     // Different render wrapper for components and group
                     let component = null
                     if (item.componentType === GROUP_COMPONENT) {
-                        component = GroupRenderWrapper(
-                            ElementToRender,
-                            {
-                                ...item,
-                                ...data,
-                            },
-                            (twoGroupInstance) => {
-                                console.log('on group wrapper callback')
-                                handleUngroupComponents(
-                                    item.id,
-                                    twoGroupInstance
-                                )
-                            }
-                        )
+                        component = GroupRenderWrapper(ElementToRender, {
+                            ...item,
+                            ...data,
+                        })
                     } else {
                         component = ElementRenderWrapper(
                             ElementToRender,
@@ -767,19 +787,15 @@ const Canvas = (props) => {
                     }
                     components.push(component)
                 }
-
-                arr.push(item.id)
             })
             setComponentsToRender(components)
             twoJSInstance && setPrevElements(arr)
         }
-
-        // setComponentsToRender()
-    }, [currentComponents])
+    }
 
     // on group select use effect hook
     useEffect(() => {
-        let componentsArr = [...currentComponents]
+        // let componentsArr = [...currentComponents]
         if (onGroup) {
             // console.log('on group useeffect', onGroup)
             let e = onGroup
@@ -818,17 +834,17 @@ const Canvas = (props) => {
                     //     twoJSInstance.scene.children
                     // )
 
-                    let findTwoShapeIndex =
-                        twoJSInstance.scene.children.findIndex(
-                            (child) => child?.elementData?.id === item.id
-                        )
+                    // let findTwoShapeIndex =
+                    //     twoJSInstance.scene.children.findIndex(
+                    //         (child) => child?.elementData?.id === item.id
+                    //     )
 
-                    // console.log('findTwoShapeIndex', findTwoShapeIndex)
-                    if (findTwoShapeIndex !== -1) {
-                        let shape =
-                            twoJSInstance.scene.children[findTwoShapeIndex]
-                        twoJSInstance.remove([shape])
-                    }
+                    // // console.log('findTwoShapeIndex', findTwoShapeIndex)
+                    // if (findTwoShapeIndex !== -1) {
+                    //     let shape =
+                    //         twoJSInstance.scene.children[findTwoShapeIndex]
+                    //     twoJSInstance.remove([shape])
+                    // }
 
                     selectedComponentArr.push(item.id)
 
@@ -862,20 +878,28 @@ const Canvas = (props) => {
 
             newGroup.children = newChildren
 
-            console.log('newGroup', newGroup)
+            // console.log('newGroup', newGroup)
 
             // filter out those selected children (which are now grouped into one) from main current components array
             // that means we dont render those components as seperate rather they
             // are now children of this new group
-            let newComponents = componentsArr.filter((item, index) => {
-                if (selectedComponentArr.includes(item.id)) {
-                    return false
-                } else {
-                    return true
+            // let newComponents = prevElements.filter((item, index) => {
+            //     if (selectedComponentArr.includes(item)) {
+            //         return false
+            //     } else {
+            //         return true
+            //     }
+            // })
+
+            twoJSInstance.scene.children.forEach((child) => {
+                if (selectedComponentArr.includes(child?.elementData?.id)) {
+                    child.opacity = 0
+                    twoJSInstance.update()
                 }
             })
 
-            setCurrentComponents([...newComponents, newGroup])
+            // setCurrentComponents([...newComponents, newGroup])
+            handleSetComponentsToRender([newGroup])
         }
     }, [onGroup])
 
@@ -903,70 +927,6 @@ const Canvas = (props) => {
                 // alert(`Ctrl+V was pressed ${cloneElement.prevX}`)
             }
         }
-    }
-
-    const handleUngroupComponents = (groupId, twoGroupInstance) => {
-        const userId = localStorage.getItem('userId')
-        let componentsArr = [...currentComponents]
-        let groupData = null
-
-        componentsArr.forEach((item) => {
-            if (item.id === groupId) {
-                groupData = item
-            }
-        })
-
-        // console.log('groupData', groupData)
-        console.log(
-            'componentsArr before child insert',
-            componentsArr,
-            twoGroupInstance
-        )
-        if (groupData.children?.length > 0) {
-            groupData.children.forEach((child) => {
-                console.log('iterating children while ungrouping', child)
-                // for ungrouping initially supply isDummy to true
-                child.isDummy = true
-                child.x =
-                    parseInt(twoGroupInstance.translation.x) + parseInt(child.x)
-                child.y =
-                    parseInt(twoGroupInstance.translation.y) + parseInt(child.y)
-
-                componentsArr.push(child)
-                updateComponentInfo({
-                    variables: {
-                        id: child.id,
-                        updateObj: {
-                            x: child.x,
-                            y: child.y,
-                            updatedBy: userId,
-                        },
-                    },
-                })
-            })
-        }
-        console.log('componentsArr after child insert', componentsArr)
-        let finalComponentsArr = componentsArr.filter(
-            (item) => item.id !== groupId
-        )
-        console.log(
-            'final components Arr',
-            finalComponentsArr,
-            twoGroupInstance,
-            twoGroupInstance.children
-        )
-
-        // REMOVE CHILDREN HERE
-
-        // removal of group from two.js scene graph
-        setTimeout(() => {
-            twoGroupInstance.remove([twoGroupInstance.children])
-
-            twoJSInstance.remove([twoGroupInstance])
-            twoJSInstance.update()
-        }, 1000)
-
-        setCurrentComponents(finalComponentsArr)
     }
 
     const customEventListener = (action, shapeData) => {
@@ -1018,82 +978,11 @@ const Canvas = (props) => {
         // props.getElementsData('UPDATE_ELEMENT_DATA', newItem)
     }
 
-    const handleSelectorRectInitialization = (e) => {
-        if (props.selectPanMode === false) {
-            console.log('event mouse down main root', e, e.target.tagName)
-            document.getElementById('main-two-root').focus()
-            if (e.target.tagName == 'svg') {
-                // construct empty rectangle for selector
-                const rect = document.getElementById('selector-rect')
-                rect.style.position = 'absolute'
-                rect.style.zIndex = '1'
-                rect.style.width = '20px'
-                rect.style.height = '20px'
-                rect.style.border = '0px dashed grey'
-                rect.style.transform = `translateX(${e.x - 10}px) translateY(${
-                    e.y - 10
-                }px) `
-                document.getElementById('main-two-root').blur()
-                rect.setAttribute('draggable', true)
-            }
-        } else {
-            // document
-            //     .getElementById('main-two-root')
-            //     .removeEventListener(
-            //         'mousedown',
-            //         handleSelectorRectInitialization
-            //     )
-            // document
-            //     .getElementById('selector-rect')
-            //     .removeEventListener('drag', handleSelectorRectDrag)
-            // document
-            //     .getElementById('selector-rect')
-            //     .removeEventListener('dragend', handleSelectorRectDragEnd)
-        }
-    }
-
-    const handleSelectorRectDrag = (e) => {
-        console.log('selector-rect being dragged', e)
-
-        // let default zoom be zero
-        if (zuiInstance.zoom !== 0 || zuiInstance.zoom !== 1) {
-            // zuiInstance.zoomSet(1, e.clientX, e.clientY)
-            // twoJSInstance.update()
-        }
-
-        const rect = document.getElementById('selector-rect')
-        rect.style.zIndex = '1'
-        rect.style.border = '1px dashed grey'
-        rect.style.width = `${Math.abs(e.offsetX)}px`
-        rect.style.height = `${Math.abs(e.offsetY)}px`
-        // console.log('rect getBoundingClientRect', rect.getBoundingClientRect())
-    }
-
-    const handleSelectorRectDragEnd = (e) => {
-        console.log('selector-rect drag end', e)
-        e.stopPropagation()
-        e.stopImmediatePropagation()
-        e.preventDefault()
-        const rect = document.getElementById('selector-rect')
-        rect.style.zIndex = '-1'
-        rect.style.width = `${Math.abs(e.offsetX)}px`
-        rect.style.height = `${Math.abs(e.offsetY)}px`
-        rect.setAttribute('draggable', false)
-        rect.blur()
-        console.log('rect getBoundingClientRect', rect.getBoundingClientRect())
-        handleFinalDrag(rect.getBoundingClientRect())
-    }
-
-    const handleFinalDrag = (e) => {
-        console.log('final drag', e, getComponentsForBoardData)
-        setOnGroup(e)
-        // props.getElementsData('AREA_SELECTION', e)
-    }
-
     // console.log('componentsToRender', componentsToRender)
     return (
         <>
-            <div id="rsz-rect"></div>
+            {/* <div id="rsz-rect"></div> */}
+
             <div id="selector-rect"></div>
             <div id="pan-dragger"></div>
 

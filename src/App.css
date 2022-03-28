@@ -38,7 +38,7 @@ code {
 #selector-rect {
     z-index: -1;
 }
-
+/* 
 #rsz-rect {
     position: absolute;
     background: transparent;
@@ -46,7 +46,7 @@ code {
     height: 100px;
     border: 1px solid #000;
     opacity: 0;
-}
+} */
 
 text
 /*

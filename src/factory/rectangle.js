@@ -22,6 +22,7 @@ export default class RectangleFactory extends Main {
             // rectangle.noStroke()
         }
 
+        // console.trace('rectangle trace')
         console.log('rectangle', rectangle.getBoundingClientRect())
 
         const group = two.makeGroup(rectangle)

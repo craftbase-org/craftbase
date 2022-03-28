@@ -66,6 +66,10 @@ const PrimarySidebar = (props) => {
     // }, [insertComponentSuccess])
 
     const addElement = (label) => {
+        let el = document.getElementById('show-saving-loader')
+        el.style.opacity = 1
+        el.style.zIndex = 1
+
         let shapeData = null
         let randomNumber = Math.floor(Math.random() * 80 + 30)
         let generateId = crypto.randomUUID()
@@ -103,6 +107,9 @@ const PrimarySidebar = (props) => {
 
         setTimeout(() => {
             document.getElementById('show-click-anywhere-btn').style.opacity = 1
+            let el = document.getElementById('show-saving-loader')
+            el.style.opacity = 0
+            el.style.zIndex = -1
         }, 400)
     }
 
@@ -228,16 +235,21 @@ const PrimarySidebar = (props) => {
                 >
                     <div className="flex items-center  ">
                         <div className="w-auto text-sm text-left">
-                            Click anywhere to place element there
+                            Click anywhere to place element there.
                         </div>
                     </div>
                 </div>
             </div>
             <div className="absolute right-10 mt-2">
                 <div className="flex items-center">
-                    {/* <div id="show-saving-loader" className="pr-2">
+                    <div
+                        id="show-saving-loader"
+                        className="pr-2 transition-all opacity-0"
+                        style={{ zIndex: '-1' }}
+                    >
                         <div
                             className="w-auto  
+                             
                              bg-greens-g400 text-greens-g75  
                             px-4 py-2 rounded-md shadow-md
                             "
@@ -258,7 +270,7 @@ const PrimarySidebar = (props) => {
                                 </div>
                             </div>
                         </div>
-                    </div> */}
+                    </div>
 
                     <div className="text-sm pr-2">
                         <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
