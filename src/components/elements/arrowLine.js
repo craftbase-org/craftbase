@@ -59,12 +59,13 @@ function ArrowLine(props) {
         const prevX = props.x
         const prevY = props.y
 
+        // console.log('arrowLine props', props)
         // Instantiate factory
         const elementFactory = new ElementCreator(two, prevX, prevY, {
-            x1: props.x1,
-            x2: props.x2,
-            y1: props.y1,
-            y2: props.y2,
+            x1: props.x1 || 100,
+            x2: props.x2 || 400,
+            y1: props.y1 || 100,
+            y2: props.y2 || 100,
         })
         // Get all instances of every sub child element
         const { group, pointCircle1, pointCircle2, resizeLine, line } =
