@@ -19,7 +19,7 @@ const ToolbarContainer = styled(motion.div)`
     z-index: 1;
     position: fixed;
     overflow: auto;
-    left: 16px;
+    right: 16px;
     outline: none;
     top: 65px;
     background: rgba(255, 255, 255, 1);
@@ -357,7 +357,7 @@ const Toolbar = (props) => {
     ]
 
     const variants = {
-        open: { x: '-100%' },
+        open: { x: '100%' },
         closed: { x: '0%' },
     }
 
@@ -370,10 +370,7 @@ const Toolbar = (props) => {
             .getBoundingClientRect()
 
         // Checks for blur event by comparing x coords of toolbar and user mouse click event
-        if (
-            nativeMouseClientX >
-            toolbarCoordinate.x + toolbarCoordinate.width
-        ) {
+        if (nativeMouseClientX < toolbarCoordinate.x) {
             if (!elementIds.includes(e.target.id)) {
                 closeToolbar()
             }
