@@ -60,7 +60,7 @@ const BoardViewPage = (props) => {
     if (getBoardData) {
         setTimeout(() => {
             setShowHelperTooltip(false)
-        }, 3000)
+        }, 2500)
     }
 
     if (insertUserData) {
@@ -110,7 +110,7 @@ const BoardViewPage = (props) => {
             <div>
                 <div
                     id="show-select-any-shape-btn"
-                    className="fixed w-80 top-14 left-4 
+                    className="fixed w-40 top-0 left-64 
                 transition-all ease-out duration-300"
                     style={{
                         opacity: showHelperTooltip ? 1 : 0,
@@ -125,7 +125,30 @@ const BoardViewPage = (props) => {
                     >
                         <div className="flex items-center  ">
                             <div className="w-auto text-sm text-left">
-                                Select any shape or element from here
+                                You can select any shape(s) from here
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    id="show-select-any-element-btn"
+                    className="fixed w-40 top-20 left-56 
+                transition-all ease-out duration-300"
+                    style={{
+                        opacity: showHelperTooltip ? 1 : 0,
+                        zIndex: showHelperTooltip ? 1 : -1,
+                    }}
+                >
+                    <div
+                        className="w-auto mt-2
+                          bg-greens-g400 text-white  
+                            px-4 py-2 rounded-md shadow-md
+                            "
+                    >
+                        <div className="flex items-center  ">
+                            <div className="w-auto text-sm text-left">
+                                Or any element(s) from here
                             </div>
                         </div>
                     </div>

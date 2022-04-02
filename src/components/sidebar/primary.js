@@ -22,7 +22,7 @@ import UserDetailsPopup from './userDetailsPopup'
 
 const PrimarySidebar = (props) => {
     // const [showAddShapeLoader, setShowAddShapeLoader] = useState(false)
-    const [secondaryMenu, toggleSecondaryMenu] = useState(false)
+    const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const {
         loading: getComponentTypesLoading,
         data: getComponentTypesData,
@@ -132,8 +132,8 @@ const PrimarySidebar = (props) => {
                 className="sidebar-container flex items-center "
             >
                 <div
-                    className="flex items-center justify-center 
-                 w-72 h-12 px-2 py-2 mx-4
+                    className="flex items-center  
+                 w-56 h-12 px-2 py-2 mx-4
                  bg-white rounded-md shadow-xl"
                 >
                     <>
@@ -214,7 +214,9 @@ const PrimarySidebar = (props) => {
                         <div className="relative">
                             <button
                                 className={` hover:bg-blues-b50 bg-transparent px-2 py-2 block`}
-                                onClick={() => toggleSecondaryMenuFn(true)}
+                                onClick={() =>
+                                    toggleSecondaryMenuFn(!secondaryMenu)
+                                }
                             >
                                 <img className="w-6 h-6" src={LayersIcon} />
                             </button>
