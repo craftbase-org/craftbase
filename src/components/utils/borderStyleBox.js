@@ -18,7 +18,8 @@ const BorderStyleBox = ({
     currentType,
     currentWidth,
     currentColor,
-    onChangeComplete,
+    onChangeColor,
+    onChangeBorderWidth,
 }) => {
     const renderBorderType = () => {
         const types = [
@@ -55,6 +56,9 @@ const BorderStyleBox = ({
                             width == 1 ? `border` : `border-${width}`
                         } w-8 h-8  border-blues-b400 
                         mr-2  bg-blues-b50 font-semibold py-2 rounded`}
+                        onClick={() => {
+                            onChangeBorderWidth(width)
+                        }}
                     ></button>
                 </Fragment>
             )
@@ -87,7 +91,7 @@ const BorderStyleBox = ({
                     title="Fill"
                     currentColor={currentColor}
                     onChangeComplete={(color) => {
-                        onChangeComplete(color)
+                        onChangeColor(color)
                     }}
                 />
             </BorderStyleBoxContainer>

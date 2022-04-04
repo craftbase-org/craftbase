@@ -152,6 +152,7 @@ const Toolbar = (props) => {
         fontSize: 18,
         fontWeight: 400,
         borderColor: '#000',
+        linewidth: 0,
         hasUnderline: false,
         opacity: 0.4,
         hideColorSection: hideColorSection,
@@ -160,6 +161,8 @@ const Toolbar = (props) => {
     useEffect(() => {
         setState((draft) => {
             draft.colorBg = componentState?.shape?.data?.fill
+            draft.borderColor = componentState?.shape?.data?.stroke
+            draft.linewidth = componentState?.shape?.data?.linewidth
         })
     }, [])
 
@@ -316,17 +319,29 @@ const Toolbar = (props) => {
             content: () => (
                 <BorderStyleBox
                     currentColor={state.borderColor}
-                    onChangeComplete={(color) => {
+                    onChangeColor={(color) => {
                         setState((draft) => {
                             draft.borderColor = color
                         })
                         if (componentState.shape?.data?.stroke) {
                             componentState.shape.data.stroke = color
-                            componentState.shape.data.linewidth = 4
+                            // componentState.shape.data.linewidth = 2
                         }
 
                         updateComponent && updateComponent('stroke', color)
-                        updateComponent && updateComponent('linewidth', 4)
+                        // updateComponent && updateComponent('linewidth', 2)
+                    }}
+                    onChangeBorderWidth={(width) => {
+                        setState((draft) => {
+                            draft.linewidth = width
+                        })
+                        if (componentState.shape?.data?.stroke) {
+                            componentState.shape.data.stroke = state.borderColor
+                            componentState.shape.data.linewidth = width
+                        }
+
+                        // updateComponent && updateComponent('stroke', color)
+                        updateComponent && updateComponent('linewidth', width)
                     }}
                 />
             ),

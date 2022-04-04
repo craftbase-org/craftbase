@@ -113,8 +113,8 @@ const ElementsDropdown = (props) => {
                         <React.Fragment key={index}>
                             <div className="w-full block p-2 ">
                                 <div
-                                    className="element-image-block  bg-neutrals-n20 
-                    hover:shadow-lg cursor-pointer"
+                                    className="element-image-block tooltip-parent relative bg-neutrals-n20 
+                    hover:shadow-lg border border-transparent hover:border-primary-blue cursor-pointer"
                                     onClick={(e) => {
                                         e.stopPropagation()
                                         props.addElement(element.elementName)
@@ -128,6 +128,14 @@ const ElementsDropdown = (props) => {
                                     </div>
                                     <div className="mt-2 p-1 text-sm text-center text-gray-600">
                                         {element.elementDisplayName}
+                                    </div>
+                                    <div
+                                        className="tooltip-child absolute text-center
+                                    w-36 left-2 -bottom-3  py-1 rounded-lg
+                                     bg-neutrals-n300 text-white text-xs
+                                     "
+                                    >
+                                        Click element to add
                                     </div>
                                 </div>
                             </div>
