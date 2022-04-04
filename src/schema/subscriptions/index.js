@@ -77,6 +77,9 @@ export const GET_COMPONENTS_FOR_BOARD = gql`
             fill
             width
             height
+            iconStroke
+            stroke
+            linewidth
         }
     }
 `

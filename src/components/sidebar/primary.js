@@ -133,7 +133,7 @@ const PrimarySidebar = (props) => {
             >
                 <div
                     className="flex items-center  
-                 w-56 h-12 px-2 py-2 mx-4
+                 w-48 h-12 px-2 py-2 mx-4
                  bg-white rounded-md shadow-xl"
                 >
                     <>
@@ -211,7 +211,7 @@ const PrimarySidebar = (props) => {
                             <Icon icon="SIDEBAR_ICON_PENCIL" />
                         </button>
                     </div> */}
-                        <div className="relative">
+                        {/* <div className="relative">
                             <button
                                 className={` hover:bg-blues-b50 bg-transparent px-2 py-2 block`}
                                 onClick={() =>
@@ -220,7 +220,7 @@ const PrimarySidebar = (props) => {
                             >
                                 <img className="w-6 h-6" src={LayersIcon} />
                             </button>
-                        </div>
+                        </div> */}
                     </>
                 </div>
             </div>

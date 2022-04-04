@@ -98,7 +98,7 @@ const ElementsDropdown = (props) => {
         >
             {props.getComponentTypesLoading ? (
                 <div
-                    className="text-primary-blue"
+                    className="w-full flex justify-center"
                     style={{ minHeight: '550px' }}
                 >
                     {' '}

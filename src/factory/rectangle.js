@@ -13,14 +13,8 @@ export default class RectangleFactory extends Main {
         const rectangle = two.makeRectangle(0, 0, width || 210, height || 110)
         rectangle.fill = fill ? fill : color_blue
 
-        if (stroke && linewidth) {
-            rectangle.stroke = stroke
-            rectangle.linewidth = linewidth
-        } else {
-            rectangle.stroke = '#fff'
-            rectangle.linewidth = 0
-            // rectangle.noStroke()
-        }
+        rectangle.stroke = stroke ? stroke : '#fff'
+        rectangle.linewidth = linewidth ? linewidth : 0
 
         // console.trace('rectangle trace')
         console.log('rectangle', rectangle.getBoundingClientRect())

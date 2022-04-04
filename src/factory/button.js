@@ -20,12 +20,9 @@ export default class ButtonFactory extends Main {
         rectangle.width = width
         rectangle.height = height
         rectangle.fill = fill
-        if (stroke && linewidth) {
-            rectangle.stroke = stroke
-            rectangle.linewidth = linewidth
-        } else {
-            rectangle.noStroke()
-        }
+
+        rectangle.stroke = stroke ? stroke : '#fff'
+        rectangle.linewidth = linewidth ? linewidth : 0
 
         const text = two.makeText('Button', 10, 0)
 

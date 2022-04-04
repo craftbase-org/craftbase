@@ -15,14 +15,8 @@ export default class CircleFactory extends Main {
         circle.height = height || 100
         circle.fill = fill ? fill : color_blue
 
-        if (stroke && linewidth) {
-            circle.stroke = stroke
-            circle.linewidth = linewidth
-        } else {
-            circle.stroke = '#fff'
-            circle.linewidth = 0
-            // circle.noStroke()
-        }
+        circle.stroke = stroke ? stroke : '#fff'
+        circle.linewidth = linewidth ? linewidth : 0
 
         this.circle = circle
 

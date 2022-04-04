@@ -25,14 +25,8 @@ export default class AvatarFactory extends Main {
         circle.radius = parseInt(width / 2)
         circle.fill = fill
 
-        if (stroke && linewidth) {
-            circle.stroke = stroke
-            circle.linewidth = linewidth
-        } else {
-            circle.stroke = '#fff'
-            circle.linewidth = 0
-            // circle.noStroke()
-        }
+        circle.stroke = stroke ? stroke : '#fff'
+        circle.linewidth = linewidth ? linewidth : 0
 
         let iconType = children?.icon?.iconType
             ? children?.icon?.iconType
