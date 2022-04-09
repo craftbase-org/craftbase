@@ -114,7 +114,7 @@ const ElementsDropdown = (props) => {
                             <div className="w-full block p-2 ">
                                 <div
                                     className="element-image-block tooltip-parent relative bg-neutrals-n20 
-                    hover:shadow-lg border border-transparent hover:border-primary-blue cursor-pointer"
+                    hover:shadow-lg border border-transparent hover:border-primary-blue transition-all ease-in-out duration-300 cursor-pointer"
                                     onClick={(e) => {
                                         e.stopPropagation()
                                         props.addElement(element.elementName)

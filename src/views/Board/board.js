@@ -110,7 +110,7 @@ const BoardViewPage = (props) => {
             <div>
                 <div
                     id="show-select-any-shape-btn"
-                    className="fixed w-40 top-0 left-64 
+                    className="fixed w-40 top-0 left-60 
                 transition-all ease-out duration-300"
                     style={{
                         opacity: showHelperTooltip ? 1 : 0,
@@ -131,7 +131,7 @@ const BoardViewPage = (props) => {
                     </div>
                 </div>
 
-                <div
+                {/* <div
                     id="show-select-any-element-btn"
                     className="fixed w-40 top-20 left-56 
                 transition-all ease-out duration-300"
@@ -152,7 +152,7 @@ const BoardViewPage = (props) => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div> */}
                 <Sidebar
                     selectCursorMode={false}
                     {...props}

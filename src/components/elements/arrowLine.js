@@ -256,8 +256,9 @@ function ArrowLine(props) {
                         let x1 = (line.vertices[0].x += event.dx)
                         let y1 = (line.vertices[0].y += event.dy)
                         updateX1Y1Vertices(line, x1, y1, pointCircle1)
-
+                        group.center()
                         two.update()
+                        // console.log('on move group translation ', group)
                         // pointCircle1.translation.x =
                         //     event.pageX + group.translation.x
                         // pointCircle1.translation.y = event.pageY
@@ -305,6 +306,12 @@ function ArrowLine(props) {
                         let x2 = (line.vertices[1].x += event.dx)
                         let y2 = (line.vertices[1].y += event.dy)
                         updateX2Y2Vertices(line, x2, y2, pointCircle2)
+                        group.center()
+                        two.update()
+                        // console.log(
+                        //     'on move group translation ',
+                        //     group.translation.x
+                        // )
                         // pointCircle1.translation.x =
                         //     event.pageX + group.translation.x
                         // pointCircle1.translation.y = event.pageY

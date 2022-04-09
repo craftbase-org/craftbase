@@ -9,8 +9,8 @@
 
 .tooltip-child {
     opacity: 0; /* define initial transition property */
-    -webkit-transition: all 0.15s ease-in-out; /* define transitions */
-    transition: all 0.15s ease-in-out;
+    -webkit-transition: all 0.2s ease-in-out; /* define transitions */
+    transition: all 0.2s ease-in-out;
     z-index: -1;
 }
 
