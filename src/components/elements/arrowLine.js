@@ -179,10 +179,18 @@ function ArrowLine(props) {
                 pointCircle1.opacity = 1
                 pointCircle2.opacity = 1
                 pointCircle2.opacity = 1
-                pointCircle1.translation.x = line.vertices[0].x - 4
-                pointCircle1.translation.y = line.vertices[0].y - 6
-                pointCircle2.translation.x = line.vertices[1].x + 4
-                pointCircle2.translation.y = line.vertices[1].y - 6
+
+                pointCircle1.translation.x = line.vertices[0].x - 0
+                pointCircle1.translation.y =
+                    line.vertices[0].y + parseInt(line.linewidth)
+
+                // here due to x2 being a arrow head, we need some offset.
+                pointCircle2.translation.x =
+                    line.vertices[1].x < line.vertices[0].x
+                        ? line.vertices[1].x - 6
+                        : line.vertices[1].x + 6
+                pointCircle2.translation.y =
+                    line.vertices[1].y + parseInt(line.linewidth)
                 // selector.update(
                 //     line.getBoundingClientRect(true).left - 10,
                 //     line.getBoundingClientRect(true).right + 10,
@@ -378,8 +386,12 @@ function ArrowLine(props) {
     }, [])
 
     const updateX2Y2Vertices = (line, x2, y2, pointCircle2) => {
-        pointCircle2.translation.x = line.vertices[1].x + 4
-        pointCircle2.translation.y = line.vertices[1].y - 6
+        pointCircle2.translation.x =
+            line.vertices[1].x < line.vertices[0].x
+                ? line.vertices[1].x
+                : line.vertices[1].x + 6
+        pointCircle2.translation.y =
+            line.vertices[1].y + parseInt(line.linewidth)
 
         // copied code from definition of makeArrow
         let headlen = 10
@@ -440,8 +452,9 @@ function ArrowLine(props) {
     }
 
     const updateX1Y1Vertices = (line, x1, y1, pointCircle1) => {
-        pointCircle1.translation.x = line.vertices[0].x + 4
-        pointCircle1.translation.y = line.vertices[0].y - 6
+        pointCircle1.translation.x = line.vertices[0].x + 0
+        pointCircle1.translation.y =
+            line.vertices[0].y + parseInt(line.linewidth)
 
         // copied code from definition of makeArrow
         let headlen = 10
@@ -536,6 +549,10 @@ function ArrowLine(props) {
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
+                    componentId={props.id}
+                    postToolbarUpdate={() => {
+                        two.update()
+                    }}
                     // updateComponent={() => {
                     //     two.update()
                     // }}

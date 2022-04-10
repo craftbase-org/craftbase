@@ -165,10 +165,10 @@ function Divider(props) {
                 pointCircle2.opacity = 1
                 pointCircle1.translation.x = line.vertices[0].x - 4
                 pointCircle1.translation.y =
-                    line.vertices[0].y + parseInt(line.linewidth / 2)
+                    line.vertices[0].y + parseInt(line.linewidth)
                 pointCircle2.translation.x = line.vertices[1].x + 4
                 pointCircle2.translation.y =
-                    line.vertices[1].y + parseInt(line.linewidth / 2)
+                    line.vertices[1].y + parseInt(line.linewidth)
 
                 two.update()
                 toggleToolbar(true)
@@ -195,7 +195,7 @@ function Divider(props) {
                         let x1 = (line.vertices[0].x += event.dx)
                         let y1 = (line.vertices[0].y += event.dy)
                         updateX1Y1Vertices(line, x1, y1, pointCircle1)
-
+                        group.center()
                         two.update()
                         // pointCircle1.translation.x =
                         //     event.pageX + group.translation.x
@@ -238,6 +238,8 @@ function Divider(props) {
                         let x2 = (line.vertices[1].x += event.dx)
                         let y2 = (line.vertices[1].y += event.dy)
                         updateX2Y2Vertices(line, x2, y2, pointCircle2)
+                        group.center()
+                        two.update()
                         // pointCircle1.translation.x =
                         //     event.pageX + group.translation.x
                         // pointCircle1.translation.y = event.pageY
@@ -309,7 +311,7 @@ function Divider(props) {
     const updateX2Y2Vertices = (line, x2, y2, pointCircle2) => {
         pointCircle2.translation.x = line.vertices[1].x + 4
         pointCircle2.translation.y =
-            line.vertices[1].y + parseInt(line.linewidth / 2)
+            line.vertices[1].y + parseInt(line.linewidth)
 
         // copied code from definition of makeArrow
         let headlen = 10
@@ -372,9 +374,9 @@ function Divider(props) {
     const updateX1Y1Vertices = (line, x1, y1, pointCircle1) => {
         pointCircle1.translation.x = line.vertices[0].x + 4
         pointCircle1.translation.y =
-            line.vertices[0].y + parseInt(line.linewidth / 2)
+            line.vertices[0].y + parseInt(line.linewidth)
 
-        // copied code from definition of makeArrow
+        // copiode from definition of makeArrow
         let headlen = 10
 
         let angle = Math.atan2(line.vertices[1].y - y1, line.vertices[1].x - x1)
@@ -467,6 +469,10 @@ function Divider(props) {
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
+                    componentId={props.id}
+                    postToolbarUpdate={() => {
+                        two.update()
+                    }}
                     // updateComponent={() => {
                     //     two.update()
                     // }}
