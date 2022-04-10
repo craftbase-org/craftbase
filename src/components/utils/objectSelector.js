@@ -25,8 +25,8 @@ export default class Selector {
         const area = this.two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
         area.fill = 'rgba(0,0,0,0)'
         area.opacity = 1
-        area.linewidth = 1
-        area.dashes[0] = 4
+        area.linewidth = 2
+        area.dashes[0] = 8
         area.stroke = '#505F79'
         // area.curved = true;
         // console.log("area", area);
@@ -55,10 +55,10 @@ export default class Selector {
                     this.circleGroup = circleGroup
 
                 case 4:
-                    const circle1 = this.two.makeCircle(x1, y1, 3)
-                    const circle2 = this.two.makeCircle(x2, y1, 3)
-                    const circle3 = this.two.makeCircle(x2, y2, 3)
-                    const circle4 = this.two.makeCircle(x1, y2, 3)
+                    const circle1 = this.two.makeCircle(x1, y1, 4)
+                    const circle2 = this.two.makeCircle(x2, y1, 4)
+                    const circle3 = this.two.makeCircle(x2, y2, 4)
+                    const circle4 = this.two.makeCircle(x1, y2, 4)
                     // const circleGroup = this.two.makeGroup(circle1, circle2, circle3, circle4);
                     this.circle1 = circle1
                     this.circle2 = circle2
@@ -70,6 +70,7 @@ export default class Selector {
                         circle3,
                         circle4
                     )
+                    circleGroup.linewidth = 1.5
                     circleGroup.opacity = 0
                     this.circleGroup = circleGroup
                     break
