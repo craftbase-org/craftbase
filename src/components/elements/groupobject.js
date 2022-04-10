@@ -12,7 +12,7 @@ import ObjectSelector from 'components/utils/objectSelector'
 import getEditComponents from 'components/utils/editWrapper'
 import { elementOnBlurHandler } from 'utils/misc'
 
-function getComponentSchema(obj, boardId) {
+function getComponentSchema(obj, boardId, parentGroupX, parentGroupY) {
     let generateId = crypto.randomUUID()
     return {
         id: generateId,
@@ -21,10 +21,10 @@ function getComponentSchema(obj, boardId) {
         fill: obj.fill,
         children: obj?.children ? obj.children : null,
         metadata: obj?.metadata ? obj.metadata : {},
-        x: obj.x + 10,
+        x: parentGroupX + obj.x + 100,
         x1: obj.x1,
         x2: obj.x2,
-        y: obj.y + 10,
+        y: parentGroupY + obj.y + 100,
         y1: obj.y1,
         y2: obj.y2,
         width: obj.width,
@@ -66,11 +66,12 @@ function GroupedObjectWrapper(props) {
     let selectorInstance = null
 
     function onBlurHandler(e) {
-        console.log(
-            'on groupobject blur',
-            groupInstance.translation.x,
-            groupInstance.translation.y
-        )
+        // console.log(
+        //     'groupObject on blur handler',
+        //     groupInstance,
+        //     groupInstance.translation.x,
+        //     groupInstance.translation.y
+        // )
         elementOnBlurHandler(e, selectorInstance, two)
 
         // on un-group, these components will return back to their individual state
@@ -162,7 +163,12 @@ function GroupedObjectWrapper(props) {
                 console.log('clone element', cloneGroupElements)
 
                 let objects = cloneGroupElements.children.map((item, index) => {
-                    let component = getComponentSchema(item, props.boardId)
+                    let component = getComponentSchema(
+                        item,
+                        props.boardId,
+                        parseInt(cloneGroupElements.x),
+                        parseInt(cloneGroupElements.y)
+                    )
                     return component
                 })
                 console.log('objects for insert component bulk', objects)

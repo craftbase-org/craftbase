@@ -370,7 +370,10 @@ function addZUI(
                         y: parseInt(shape.translation.y),
                     },
                 })
-                updateToGlobalState(newShapeData, oldShapeData)
+
+                if (shape.elementData.componentType !== 'groupobject') {
+                    updateToGlobalState(newShapeData, oldShapeData)
+                }
             }
         }
         // let item = {
