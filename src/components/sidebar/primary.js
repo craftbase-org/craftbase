@@ -276,8 +276,12 @@ const PrimarySidebar = (props) => {
 
                     <div className="text-sm pr-2">
                         <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
-                            <div className="w-2 h-2 bg-reds-r400 rounded-50-percent"></div>
-                            <span className="ml-2 text-sm">Live</span>
+                            <span className="text-sm ">Live</span>
+
+                            <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
+                                <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
+                            </div>
+
                             {/* <img
                                 src={RadioWhiteIcon}
                                 className="ml-2 w-5 h-5"

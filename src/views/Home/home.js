@@ -12,6 +12,8 @@ import Button from 'components/common/button'
 import ModalContainer from 'components/common/modalContainer'
 import { generateRandomUsernames } from 'utils/misc'
 
+import './index.css'
+
 const HomePage = (props) => {
     const lastOpenBoard = localStorage.getItem('lastOpenBoard')
     const [showLastOpenBoardModal, setShowLastOpenBoardModal] = useState(false)
@@ -107,7 +109,7 @@ const HomePage = (props) => {
                 className="home-page-container"
                 style={{ height: `${pageHeight}px` }}
             >
-                <ModalContainer
+                {/* <ModalContainer
                     showModal={showLastOpenBoardModal}
                     closeModal={closeLastOpenBoardModal}
                 >
@@ -131,7 +133,7 @@ const HomePage = (props) => {
                             onClick={closeLastOpenBoardModal}
                         />
                     </div>
-                </ModalContainer>
+                </ModalContainer> */}
                 <nav className="flex items-center w-full px-10 py-1 lg:py-2 2xl:py-4 h-20">
                     <div className="w-1/2 flex items-center ">
                         <div>
@@ -157,7 +159,7 @@ const HomePage = (props) => {
                                 intent="primary"
                                 size="large"
                                 name="create_board"
-                                label="Create Wireframe"
+                                label="Create Board"
                                 onClick={onCreateBoard}
                                 extendClass="font-semibold shadow-lg"
                                 loading={
@@ -173,15 +175,19 @@ const HomePage = (props) => {
                 </nav>
                 <div className="w-full h-full px-10 2xl:px-20 flex items-center ">
                     <div className="w-5/12 h-full flex items-center justify-center">
-                        <div className="text-left">
+                        <div className="text-left transition-opacity duration-300 ease-in-out">
                             <p className="text-base lg:text-3xl 2xl:text-5xl font-bold ">
-                                Brainstorm your ideas into a{' '}
+                                Brainstorm your ideas with{' '}
                                 <span className=" text-primary-blue border-b-2 border-primary-blue ">
-                                    wireframe
+                                    craftbase
                                 </span>
                             </p>
                             <p className="pt-4 text-sm lg:text-xl 2xl:text-3xl ">
-                                Start creating wireframes with just one click.
+                                Craftbase is an online whiteboard tool. You can
+                                create diagrams or wireframes or brainstorm with
+                                you peers with just one click.
+                            </p>
+                            <p className="pt-4 text-sm lg:text-xl 2xl:text-3xl ">
                                 Real-time updates across all devices, you can
                                 share them with your colleagues by sending them
                                 the wireframe link
@@ -190,7 +196,7 @@ const HomePage = (props) => {
                                 <Button
                                     intent="primary"
                                     name="start_now"
-                                    label="Create Wireframe - it's free"
+                                    label="Create Board - no signup needed"
                                     size="large"
                                     onClick={onCreateBoard}
                                     extendClass="font-semibold shadow-lg"

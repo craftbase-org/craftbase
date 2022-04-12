@@ -6,6 +6,11 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+#main-two-root svg {
+    background-image: url('./assets/ooorganize.svg') !important;
+    /* background-repeat: no-repeat; */
+}
+
 code {
     font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
         monospace;
