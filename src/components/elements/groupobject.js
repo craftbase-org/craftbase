@@ -10,10 +10,10 @@ import {
 } from 'schema/mutations'
 import ObjectSelector from 'components/utils/objectSelector'
 import getEditComponents from 'components/utils/editWrapper'
-import { elementOnBlurHandler } from 'utils/misc'
+import { elementOnBlurHandler, generateUUID } from 'utils/misc'
 
 function getComponentSchema(obj, boardId, parentGroupX, parentGroupY) {
-    let generateId = crypto.randomUUID()
+    let generateId = generateUUID()
     return {
         id: generateId,
         boardId: boardId,

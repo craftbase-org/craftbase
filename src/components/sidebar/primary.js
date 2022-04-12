@@ -15,6 +15,7 @@ import { INSERT_COMPONENT, UPDATE_BOARD_COMPONENTS } from 'schema/mutations'
 import { GET_COMPONENT_TYPES } from 'schema/queries'
 import SpinnerWithSize from 'components/common/spinnerWithSize'
 import Button from 'components/common/button'
+import { generateUUID } from 'utils/misc'
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
@@ -72,7 +73,7 @@ const PrimarySidebar = (props) => {
 
         let shapeData = null
         let randomNumber = Math.floor(Math.random() * 80 + 30)
-        let generateId = crypto.randomUUID()
+        let generateId = generateUUID()
         console.log('getComponentTypesData', getComponentTypesData, label)
         if (getComponentTypesData) {
             getComponentTypesData.componentTypes.forEach((item, index) => {
