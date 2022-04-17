@@ -108,8 +108,8 @@ const HomePage = (props) => {
         <>
             {/* <Redirect to={`/board/03a3706e-fe79-4df5-80f6-2f4040ade05f`} /> */}
             <div
-                className="home-page-container"
-                style={{ height: `${pageHeight}px` }}
+                className="home-page-container "
+                // style={{ height: `${pageHeight}px` }}
             >
                 {/* <ModalContainer
                     showModal={showLastOpenBoardModal}
@@ -149,12 +149,12 @@ const HomePage = (props) => {
                         </div>
                         <div
                             className="pl-2 
-                        text-primary-blue text-md lg:text-2xl 2xl:text-4xl font-bold"
+                        text-primary-blue text-md lg:text-2xl 2xl:text-3xl font-bold"
                         >
                             craftbase
                         </div>
                     </div>
-                    <div className="pl-5 w-1/2 flex items-center justify-between">
+                    <div className="pl-5 w-1/2 flex items-center justify-between ">
                         <div className="text-lg"></div>
                         <div className="pl-4">
                             <Button
@@ -175,21 +175,21 @@ const HomePage = (props) => {
                         </div>
                     </div>
                 </nav>
-                <div className="w-full h-full px-10 2xl:px-20 flex items-center ">
+                <div className="w-full h-full px-10 2xl:px-20 py-16 big-desktop:py-24 flex items-center ">
                     <div className="w-5/12 h-full flex items-center justify-center">
                         <div className="text-left transition-opacity duration-300 ease-in-out">
-                            <p className="text-base lg:text-3xl 2xl:text-5xl font-bold ">
+                            <p className="text-base lg:text-2xl 2xl:text-3xl font-bold ">
                                 Brainstorm your ideas with{' '}
                                 <span className=" text-primary-blue border-b-2 border-primary-blue ">
                                     craftbase
                                 </span>
                             </p>
-                            <p className="pt-4 text-sm lg:text-xl 2xl:text-3xl ">
+                            <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
                                 Craftbase is an online whiteboard tool. You can
                                 create diagrams or wireframes or brainstorm with
                                 you peers with just one click.
                             </p>
-                            <p className="pt-4 text-sm lg:text-xl 2xl:text-3xl ">
+                            <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
                                 Real-time updates across all devices, you can
                                 share them with your colleagues by sending them
                                 the wireframe link
@@ -233,7 +233,9 @@ const HomePage = (props) => {
                      bg-neutrals-n40  h-20 shadow-inner
                 flex items-center justify-between"
                 >
-                    <div>© 2022 Craftbase. All rights reserved.</div>
+                    <div className="text-sm big-desktop:text-base">
+                        © 2022 Craftbase. All rights reserved.
+                    </div>
                     <div className=" flex items-center">
                         <a href="https://twitter.com/Meet_Zaveri">
                             <img className="w-6 h-6" src={TwitterLogoSVG} />

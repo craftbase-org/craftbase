@@ -25,7 +25,7 @@ const Button = (props) => {
     switch (props.size) {
         case 'large': // red
             baseClassNames +=
-                ' px-4 py-2 2xl:px-6 2xl:py-2 text-sm xl:text-base 2xl:text-xl 3xl:text-2xl '
+                ' px-4 py-2 2xl:px-6 2xl:py-3 text-sm xl:text-base 2xl:text-lg'
             break
         case 'small': // white
             baseClassNames += '  px-2 py-1  text-xs  '
