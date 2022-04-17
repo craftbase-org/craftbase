@@ -7,7 +7,7 @@ body {
 }
 
 #main-two-root svg {
-    background-image: url('./assets/ooorganize.svg') !important;
+    /* background-image: url('./assets/ooorganize.svg') !important; */
     /* background-repeat: no-repeat; */
 }
 
@@ -23,7 +23,7 @@ code {
     z-index: -9;
 }
 #main-two-root svg {
-    background: #f4f5f7;
+    background: #e5e5e5;
     z-index: -1;
 }
 

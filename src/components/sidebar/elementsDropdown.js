@@ -29,10 +29,11 @@ const elementMetaJSON = [
         elementSVG: AvatarSVG,
     },
     {
-        elementName: 'buttonWithIcon',
-        elementDisplayName: 'Button With Icon',
-        elementSVG: ButtonWithIconSVG,
+        elementName: 'toggle',
+        elementDisplayName: 'Toggle',
+        elementSVG: ToggleSVG,
     },
+
     {
         elementName: 'button',
         elementDisplayName: 'Button',
@@ -45,9 +46,9 @@ const elementMetaJSON = [
     },
     { elementName: 'frame', elementDisplayName: 'Frame', elementSVG: FrameSVG },
     {
-        elementName: 'toggle',
-        elementDisplayName: 'Toggle',
-        elementSVG: ToggleSVG,
+        elementName: 'buttonWithIcon',
+        elementDisplayName: 'Button With Icon',
+        elementSVG: ButtonWithIconSVG,
     },
     {
         elementName: 'divider',
@@ -120,13 +121,13 @@ const ElementsDropdown = (props) => {
                                         props.addElement(element.elementName)
                                     }}
                                 >
-                                    <div className="w-full h-20">
+                                    <div className="w-full h-14">
                                         <img
-                                            className="w-full h-20"
+                                            className="w-full h-14"
                                             src={element.elementSVG}
                                         />
                                     </div>
-                                    <div className="mt-2 p-1 text-sm text-center text-gray-600">
+                                    <div className="mt-2 p-1 text-xs text-center text-gray-600">
                                         {element.elementDisplayName}
                                     </div>
                                     <div

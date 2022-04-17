@@ -7,7 +7,9 @@ import routes from 'routes'
 import StickerSVG from 'assets/sticker.svg'
 import TwitterLogoSVG from 'assets/twitter_logo.svg'
 import GithubLogoSVG from 'assets/github_logo.svg'
+import ImageContainer from 'components/ProgressiveImageLoader/loader'
 import CraftbaseBoardScreenshotPNG from 'assets/craftbase_board_screenshot.png'
+import CraftbaseBoardScreenshotBlurJPG from 'assets/blur_craftbase_screenshot.jpg'
 import Button from 'components/common/button'
 import ModalContainer from 'components/common/modalContainer'
 import { generateRandomUsernames } from 'utils/misc'
@@ -213,8 +215,15 @@ const HomePage = (props) => {
                         </div>
                     </div>
                     <div className="w-7/12 h-full flex items-center">
-                        <div className="pl-4">
-                            <img src={CraftbaseBoardScreenshotPNG} />
+                        <div className="pl-4 w-full  ">
+                            <ImageContainer
+                                src={CraftbaseBoardScreenshotPNG}
+                                thumb={CraftbaseBoardScreenshotBlurJPG}
+                                height={382}
+                                width={775}
+                                alt={'screenshot'}
+                                url={''}
+                            />
                         </div>
                     </div>
                 </div>
