@@ -30,7 +30,7 @@ function RadioBox(props) {
         elementOnBlurHandler(e, selectorInstance, two)
 
         // also hide add btn
-        if (e?.relatedTarget?.id !== 'radiobox-add') {
+        if (e?.relatedTarget?.id !== `radiobox-add-${props.id}`) {
             toggleAddBtn(true)
         }
         document.getElementById(`${groupObject.id}`) &&
@@ -312,6 +312,9 @@ function RadioBox(props) {
 
                 // updateRadioBoxState(radioboxGroup)
                 attachEventToRadioControl()
+                setInternalState((draft) => {
+                    draft.hidebtn = true
+                })
             }
 
             // custom event listener definition for simulating add radiobox behavior
@@ -340,7 +343,7 @@ function RadioBox(props) {
             // add event listener on outer html tree to handle respective event
             // this event handler is for adding radiobox
             document
-                .getElementById('radiobox-add')
+                .getElementById(`radiobox-add-${props.id}`)
                 .addEventListener('click', addRadioControlHandler)
 
             // Store the ids of all checkbox elements
@@ -517,7 +520,10 @@ function RadioBox(props) {
                                 )
                                 selector.hide()
                                 //patch
-                                if (e?.relatedTarget?.id !== 'radiobox-add') {
+                                if (
+                                    e?.relatedTarget?.id !==
+                                    `radiobox-add-${props.id}`
+                                ) {
                                     toggleAddBtn(true)
                                 }
                             }
@@ -654,7 +660,7 @@ function RadioBox(props) {
                     }
                 } else {
                     // let addCheckboxBtnElement =
-                    //     document.getElementById('radiobox-add')
+                    //     document.getElementById(`radiobox-add-${props.id}`)
                     // addCheckboxBtnElement.click()
 
                     let evt = new CustomEvent('onAddNewRadiobox', {
@@ -681,7 +687,7 @@ function RadioBox(props) {
         <React.Fragment>
             <div id="two-radiobox"></div>
             <a
-                id="radiobox-add"
+                id={`radiobox-add-${props.id}`}
                 className={`absolute ${
                     internalState.hidebtn ? 'opacity-0' : 'opacity-100'
                 }`}

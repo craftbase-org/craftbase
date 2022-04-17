@@ -19,7 +19,10 @@ function Checkbox(props) {
     })
     const [showToolbar, toggleToolbar] = useState(false)
 
-    const [internalState, setInternalState] = useImmer({})
+    const [internalState, setInternalState] = useImmer({
+        mainElement: null,
+        hidebtn: true,
+    })
 
     const two = props.twoJSInstance
 
@@ -30,7 +33,7 @@ function Checkbox(props) {
         elementOnBlurHandler(e, selectorInstance, two)
 
         // hides add btn on blur
-        if (e?.relatedTarget?.id !== 'checkbox-add') {
+        if (e?.relatedTarget?.id !== `checkbox-add-${props.id}`) {
             toggleAddBtn(true)
         }
         document.getElementById(`${groupObject.id}`) &&
@@ -316,6 +319,9 @@ function Checkbox(props) {
 
                 // updateCheckboxState(checkboxGroup)
                 attachEventToCheckboxes()
+                setInternalState((draft) => {
+                    draft.hidebtn = true
+                })
             }
 
             // custom event listener definition for simulating add checkbox behavior
@@ -340,7 +346,7 @@ function Checkbox(props) {
             // add event listener on outer html tree to handle respective event
             // this event handler is for adding checkbox
             document
-                .getElementById('checkbox-add')
+                .getElementById(`checkbox-add-${props.id}`)
                 .addEventListener('click', addCheckboxClickHandler)
 
             // Store the ids of all checkbox elements
@@ -507,7 +513,10 @@ function Checkbox(props) {
                                 )
                                 selector.hide()
                                 //patch
-                                if (e?.relatedTarget?.id !== 'checkbox-add') {
+                                if (
+                                    e?.relatedTarget?.id !==
+                                    `checkbox-add-${props.id}`
+                                ) {
                                     toggleAddBtn(true)
                                 }
                             }
@@ -649,7 +658,7 @@ function Checkbox(props) {
                     }
                 } else {
                     // let addCheckboxBtnElement =
-                    //     document.getElementById('checkbox-add')
+                    //     document.getElementById(`checkbox-add-${props.id}`)
                     // addCheckboxBtnElement.click()
 
                     let evt = new CustomEvent('onAddNewCheckbox', {
@@ -676,8 +685,10 @@ function Checkbox(props) {
         <React.Fragment>
             <div id="two-checkbox"></div>
             <a
-                id="checkbox-add"
-                className={`absolute`}
+                id={`checkbox-add-${props.id}`}
+                className={`absolute ${
+                    internalState.hidebtn ? 'opacity-0' : 'opacity-100'
+                }`}
                 style={{
                     top: mainElementRect?.bottom
                         ? `${mainElementRect?.bottom + 15}px`
@@ -687,7 +698,7 @@ function Checkbox(props) {
                               mainElementRect?.left + getWidthOfElement / 2 - 10
                           }px`
                         : '200px',
-                    visibility: internalState.hidebtn ? 'hidden' : 'visible',
+                    // visibility: internalState.hidebtn ? 'hidden' : 'visible',
                 }}
                 href=""
                 onClick={(e) => {
