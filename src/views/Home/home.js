@@ -237,7 +237,7 @@ const HomePage = (props) => {
                         © 2022 Craftbase. All rights reserved.
                     </div>
                     <div className=" flex items-center">
-                        <a href="https://twitter.com/Meet_Zaveri">
+                        <a href="https://twitter.com/craftbase_org">
                             <img className="w-6 h-6" src={TwitterLogoSVG} />
                         </a>
                         <a
