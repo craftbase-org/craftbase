@@ -64,7 +64,10 @@ const Button = (props) => {
                             customStyles={{
                                 margin: 0,
                                 marginLeft: '8px',
-                                borderBottomColor: '#fff',
+                                borderBottomColor:
+                                    props.intent === 'secondary'
+                                        ? '#0052CC'
+                                        : '#fff',
                             }}
                         />
                     </div>

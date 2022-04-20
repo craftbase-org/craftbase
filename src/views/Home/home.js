@@ -8,6 +8,7 @@ import StickerSVG from 'assets/sticker.svg'
 import TwitterLogoSVG from 'assets/twitter_logo.svg'
 import GithubLogoSVG from 'assets/github_logo.svg'
 import RightArrowWhiteSVG from 'assets/right_arrow_white.svg'
+import WavesSVG from 'assets/waves.svg'
 import ImageContainer from 'components/ProgressiveImageLoader/loader'
 import CraftbaseBoardScreenshotPNG from 'assets/craftbase_board_screenshot.png'
 import CraftbaseBoardScreenshotBlurJPG from 'assets/blur_craftbase_screenshot.jpg'
@@ -107,9 +108,12 @@ const HomePage = (props) => {
         <>
             {/* <Redirect to={`/board/03a3706e-fe79-4df5-80f6-2f4040ade05f`} /> */}
             <div
-                className="home-page-container "
+                className="home-page-container relative"
                 // style={{ height: `${pageHeight}px` }}
             >
+                <div className="w-full absolute top-0" style={{ zIndex: '-1' }}>
+                    <img src={WavesSVG} className="w-full " />
+                </div>
                 {/* <ModalContainer
                     showModal={showLastOpenBoardModal}
                     closeModal={closeLastOpenBoardModal}
@@ -232,6 +236,7 @@ const HomePage = (props) => {
                                 height="345"
                                 frameborder="0"
                                 allowfullscreen
+                                style={{ zIndex: '1 !important' }}
                             ></iframe>
 
                             {/* <ImageContainer
@@ -245,6 +250,7 @@ const HomePage = (props) => {
                         </div>
                     </div>
                 </div>
+
                 <footer
                     className=" fixed bottom-0 
                     w-full  px-10 2xl:px-20 
