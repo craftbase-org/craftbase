@@ -7,14 +7,13 @@ import routes from 'routes'
 import StickerSVG from 'assets/sticker.svg'
 import TwitterLogoSVG from 'assets/twitter_logo.svg'
 import GithubLogoSVG from 'assets/github_logo.svg'
+import RightArrowWhiteSVG from 'assets/right_arrow_white.svg'
 import ImageContainer from 'components/ProgressiveImageLoader/loader'
 import CraftbaseBoardScreenshotPNG from 'assets/craftbase_board_screenshot.png'
 import CraftbaseBoardScreenshotBlurJPG from 'assets/blur_craftbase_screenshot.jpg'
 import Button from 'components/common/button'
 import ModalContainer from 'components/common/modalContainer'
 import { generateRandomUsernames } from 'utils/misc'
-
-import './index.css'
 
 const HomePage = (props) => {
     const lastOpenBoard = localStorage.getItem('lastOpenBoard')
@@ -149,7 +148,7 @@ const HomePage = (props) => {
                         </div>
                         <div
                             className="pl-2 
-                        text-primary-blue text-md lg:text-2xl 2xl:text-3xl font-bold"
+                        text-white text-md lg:text-2xl 2xl:text-3xl font-bold"
                         >
                             craftbase
                         </div>
@@ -158,7 +157,7 @@ const HomePage = (props) => {
                         <div className="text-lg"></div>
                         <div className="pl-4">
                             <Button
-                                intent="primary"
+                                intent="secondary"
                                 size="large"
                                 name="create_board"
                                 label="Create Board"
@@ -175,33 +174,35 @@ const HomePage = (props) => {
                         </div>
                     </div>
                 </nav>
-                <div className="w-full h-full px-10 2xl:px-20 py-16 big-desktop:py-24 flex items-center ">
+                <div
+                    className="w-full
+                mt-8
+                h-full px-10 2xl:px-20 py-16 big-desktop:py-40 flex items-center "
+                >
                     <div className="w-5/12 h-full flex items-center justify-center">
                         <div className="text-left transition-opacity duration-300 ease-in-out">
-                            <p className="text-base lg:text-2xl 2xl:text-3xl font-bold ">
-                                Brainstorm your ideas with{' '}
-                                <span className=" text-primary-blue border-b-2 border-primary-blue ">
-                                    craftbase
-                                </span>
+                            <p className="text-base lg:text-4xl 2xl:text-5xl font-bold ">
+                                Wireframing made easy.
                             </p>
                             <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
-                                Craftbase is an online whiteboard tool. You can
-                                create diagrams or wireframes or brainstorm with
-                                you peers with just one click.
+                                Craftbase is an open source whiteboard tool
+                                where you can create wireframe design, diagrams
+                                and collaborate with your peers.
                             </p>
                             <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
-                                Real-time updates across all devices, you can
-                                share them with your colleagues by sending them
-                                the wireframe link
+                                With real-time updates across all devices, you
+                                can share the board with your colleagues by
+                                sending them the board link
                             </p>
                             <div className="mt-4">
                                 <Button
                                     intent="primary"
                                     name="start_now"
-                                    label="Create Board - no signup needed"
+                                    // label="Let's create board"
+
                                     size="large"
                                     onClick={onCreateBoard}
-                                    extendClass="font-semibold shadow-lg"
+                                    extendClass="font-semibold shadow-lg primary-btn-home hover:shadow-xl"
                                     loading={
                                         btnId === 'start_now' &&
                                         (insertUserLoading ||
@@ -210,20 +211,37 @@ const HomePage = (props) => {
                                     disabled={
                                         insertUserLoading || createBoardLoading
                                     }
-                                />
+                                >
+                                    <div className="flex items-center">
+                                        <span>Let's create board</span>
+                                        <img
+                                            className="ml-2 home-arrow-icon w-6 h-6"
+                                            src={RightArrowWhiteSVG}
+                                        />
+                                    </div>
+                                </Button>
                             </div>
                         </div>
                     </div>
-                    <div className="w-7/12 h-full flex items-center">
-                        <div className="pl-4 w-full  ">
-                            <ImageContainer
+                    <div className="w-7/12 h-full ">
+                        <div className="pl-4 w-full flex items-center justify-end ">
+                            <iframe
+                                title="vimeo-player"
+                                src="https://player.vimeo.com/video/701362448?h=3b8bc751b0"
+                                className=" w-11/12"
+                                height="345"
+                                frameborder="0"
+                                allowfullscreen
+                            ></iframe>
+
+                            {/* <ImageContainer
                                 src={CraftbaseBoardScreenshotPNG}
                                 thumb={CraftbaseBoardScreenshotBlurJPG}
                                 height={382}
                                 width={775}
                                 alt={'screenshot'}
                                 url={''}
-                            />
+                            /> */}
                         </div>
                     </div>
                 </div>

@@ -1,3 +1,12 @@
 .animate-fade {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1);
 }
+
+.home-arrow-icon {
+    opacity: 0.4;
+    transition: all 0.2s ease;
+}
+.primary-btn-home:hover .home-arrow-icon {
+    opacity: 1;
+    transform: translateX(5px);
+}

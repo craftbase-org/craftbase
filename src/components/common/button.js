@@ -14,7 +14,7 @@ const Button = (props) => {
             break
         case 'secondary': // white
             baseClassNames +=
-                ' bg-transparent text-primary-blue border border-primary-blue'
+                ' bg-white text-primary-blue border border-primary-blue'
             break
         default:
             baseClassNames +=
