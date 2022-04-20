@@ -83,7 +83,7 @@ const ElementsDropdown = (props) => {
          
         w-48  bg-white block text-left
          pt-2 pb-4
-         pr-2 pl-2
+         
          rounded-md shadow-lg
         "
             style={{
@@ -107,7 +107,7 @@ const ElementsDropdown = (props) => {
                 </div>
             ) : (
                 <div
-                    className="w-full flex flex-wrap overflow-y-auto"
+                    className="w-full flex flex-wrap overflow-y-auto pr-2 pl-2"
                     style={{ height: '550px' }}
                 >
                     {elementMetaJSON.map((element, index) => (

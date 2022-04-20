@@ -307,6 +307,8 @@ function Rectangle(props) {
             {/* <button>change button in group</button> */}
             {showToolbar ? (
                 <Toolbar
+                    hideColorText={true}
+                    hideColorIcon={true}
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}

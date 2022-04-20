@@ -89,6 +89,7 @@ const PrimarySidebar = (props) => {
                             window.outerHeight -
                                 (randomNumber * window.outerHeight) / 100
                         ),
+                        x2: label.includes('divider') ? 100 : 0,
                         boardId: props.match.params.boardId,
                         metadata: item.defaultMetaData,
                         width: item.width,

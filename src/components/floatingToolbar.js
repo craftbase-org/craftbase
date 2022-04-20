@@ -75,6 +75,9 @@ const Accordion = ({
     content,
     header,
     renderSvg,
+    hideColorText,
+    hideColorIcon,
+    hideColorBackground,
 }) => {
     // By using `AnimatePresence` to mount and unmount the contents, we can animate
     // them in and out while also only rendering the contents of open accordions
@@ -118,7 +121,13 @@ const Accordion = ({
                             ease: [0.04, 0.62, 0.23, 0.98],
                         }}
                     >
-                        <div className="py-1">{content()}</div>
+                        <div className="py-1">
+                            {content(
+                                hideColorText,
+                                hideColorIcon,
+                                hideColorBackground
+                            )}
+                        </div>
                     </motion.section>
                 )}
             </AnimatePresence>
@@ -190,7 +199,7 @@ const Toolbar = (props) => {
                 setState((draft) => {
                     draft.colorsAccordion = !state.colorsAccordion
                 }),
-            content: () => (
+            content: (hideColorText, hideColorIcon, hideColorBackground) => (
                 <Fragment>
                     <ColorPicker
                         title="Background"
@@ -216,38 +225,49 @@ const Toolbar = (props) => {
                             updateComponent && updateComponent('fill', color)
                         }}
                     />
-                    <hr className="my-2" />
+
                     {/** Icon color picker */}
-                    <ColorPicker
-                        title="Icon"
-                        currentColor={state.colorIcon}
-                        onChangeComplete={(color) => {
-                            setState((draft) => {
-                                draft.colorIcon = color
-                            })
+                    {hideColorIcon ? null : (
+                        <>
+                            <hr className="my-2" />
+                            <ColorPicker
+                                title="Icon"
+                                currentColor={state.colorIcon}
+                                onChangeComplete={(color) => {
+                                    setState((draft) => {
+                                        draft.colorIcon = color
+                                    })
 
-                            if (componentState?.icon?.data?.stroke)
-                                componentState.icon.data.stroke = color
+                                    if (componentState?.icon?.data?.stroke)
+                                        componentState.icon.data.stroke = color
 
-                            updateComponent &&
-                                updateComponent('iconStroke', color)
-                        }}
-                    />
-                    <hr className="my-2" />
-                    <ColorPicker
-                        title="Text"
-                        currentColor={state.colorText}
-                        onChangeComplete={(color) => {
-                            setState((draft) => {
-                                draft.colorText = color
-                            })
+                                    updateComponent &&
+                                        updateComponent('iconStroke', color)
+                                }}
+                            />
+                        </>
+                    )}
 
-                            if (componentState?.text?.data?.fill)
-                                componentState.text.data.fill = color
+                    {hideColorText ? null : (
+                        <>
+                            <hr className="my-2" />
+                            <ColorPicker
+                                title="Text"
+                                currentColor={state.colorText}
+                                onChangeComplete={(color) => {
+                                    setState((draft) => {
+                                        draft.colorText = color
+                                    })
 
-                            updateComponent && updateComponent('color', color)
-                        }}
-                    />
+                                    if (componentState?.text?.data?.fill)
+                                        componentState.text.data.fill = color
+
+                                    updateComponent &&
+                                        updateComponent('fill', color)
+                                }}
+                            />
+                        </>
+                    )}
                 </Fragment>
             ),
             renderSvg: () => <Icon icon="ICON_CARET" width={20} height={20} />,
@@ -427,6 +447,9 @@ const Toolbar = (props) => {
                             header={i.title}
                             content={i.content}
                             renderSvg={i.renderSvg}
+                            hideColorText={props.hideColorText}
+                            hideColorBackground={props.hideColorBackground}
+                            hideColorIcon={props.hideColorIcon}
                         />
                     )
                 )}
