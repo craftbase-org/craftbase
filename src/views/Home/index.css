@@ -10,3 +10,7 @@
     opacity: 1;
     transform: translateX(5px);
 }
+
+.home-page-main-video iframe {
+    z-index: 1 !important;
+}

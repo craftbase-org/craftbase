@@ -228,7 +228,7 @@ const HomePage = (props) => {
                         </div>
                     </div>
                     <div className="w-7/12 h-full ">
-                        <div className="pl-4 w-full flex items-center justify-end ">
+                        <div className="pl-4 home-page-main-video w-full flex items-center justify-end ">
                             <iframe
                                 title="vimeo-player"
                                 src="https://player.vimeo.com/video/701362448?h=3b8bc751b0"
