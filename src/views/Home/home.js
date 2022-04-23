@@ -111,7 +111,11 @@ const HomePage = (props) => {
                 className="home-page-container relative"
                 // style={{ height: `${pageHeight}px` }}
             >
-                <div className="w-full absolute top-0" style={{ zIndex: '-1' }}>
+                <div
+                    id="banner-wave-svg"
+                    className="w-full absolute top-0"
+                    style={{ zIndex: '-1' }}
+                >
                     <img src={WavesSVG} className="w-full " />
                 </div>
                 {/* <ModalContainer

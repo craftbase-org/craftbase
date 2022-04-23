@@ -161,7 +161,7 @@ button:focus {
     transition: all 500ms;
 }
 
-@keyframes fadeIn {
+/* @keyframes fadeIn {
     from {
         opacity: 0;
         transform: scale(0.2);
@@ -171,7 +171,7 @@ button:focus {
         opacity: 1;
         transform: scale(1);
     }
-}
+} */
 /* 
 .sidebar-container .icon-elements:hover::after {
     content: 'Elements';
