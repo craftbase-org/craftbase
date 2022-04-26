@@ -8,7 +8,7 @@ import StickerSVG from 'assets/sticker.svg'
 import TwitterLogoSVG from 'assets/twitter_logo.svg'
 import GithubLogoSVG from 'assets/github_logo.svg'
 import RightArrowWhiteSVG from 'assets/right_arrow_white.svg'
-import WavesSVG from 'assets/waves.svg'
+
 import ImageContainer from 'components/ProgressiveImageLoader/loader'
 import CraftbaseBoardScreenshotPNG from 'assets/craftbase_board_screenshot.png'
 import CraftbaseBoardScreenshotBlurJPG from 'assets/blur_craftbase_screenshot.jpg'
@@ -111,13 +111,6 @@ const HomePage = (props) => {
                 className="home-page-container relative"
                 // style={{ height: `${pageHeight}px` }}
             >
-                <div
-                    id="banner-wave-svg"
-                    className="w-full absolute top-0"
-                    style={{ zIndex: '-1' }}
-                >
-                    <img src={WavesSVG} className="w-full " />
-                </div>
                 {/* <ModalContainer
                     showModal={showLastOpenBoardModal}
                     closeModal={closeLastOpenBoardModal}
@@ -143,20 +136,23 @@ const HomePage = (props) => {
                         />
                     </div>
                 </ModalContainer> */}
-                <nav className="flex items-center w-full px-10 py-1 lg:py-2 2xl:py-4 h-20">
+                <nav
+                    className="flex items-center w-full px-10 py-1 lg:py-2 2xl:py-4
+                 bg-primary-blue"
+                >
                     <div className="w-1/2 flex items-center ">
                         <div>
                             <img
                                 src={StickerSVG}
-                                className="w-6 h-6 
-                            lg:w-8 lg:h-8
-                            2xl:w-10 2xl:h-10
+                                className="w-4 h-4 
+                            lg:w-6 lg:h-6
+                            2xl:w-8 2xl:h-8
                             "
                             />
                         </div>
                         <div
                             className="pl-2 
-                        text-white text-md lg:text-2xl 2xl:text-3xl font-bold"
+                        text-white text-base lg:text-xl 2xl:text-2xl font-bold"
                         >
                             craftbase
                         </div>
@@ -166,7 +162,7 @@ const HomePage = (props) => {
                         <div className="pl-4">
                             <Button
                                 intent="secondary"
-                                size="large"
+                                size="medium"
                                 name="create_board"
                                 label="Create Board"
                                 onClick={onCreateBoard}

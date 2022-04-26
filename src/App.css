@@ -4,8 +4,6 @@ body {
     /* font-weight: 700; */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* background-image: url('./assets/waves.svg') !important;
-    background-repeat: no-repeat; */
 }
 
 #main-two-root svg {

@@ -32,7 +32,7 @@ const Button = (props) => {
             break
         default:
             baseClassNames +=
-                '  px-3 py-2 2xl:px-4 2xl:py-2 text-xs 2xl:text-sm '
+                '  px-3 py-2 2xl:px-4 2xl:py-2 text-sm 2xl:text-base '
             break
     }
 
