@@ -261,9 +261,21 @@ function ArrowLine(props) {
                             .setAttribute('data-resize', 'true')
                     },
                     move(event) {
-                        let x1 = (line.vertices[0].x += event.dx)
-                        let y1 = (line.vertices[0].y += event.dy)
-                        updateX1Y1Vertices(line, x1, y1, pointCircle1)
+                        if (event.shiftKey == true) {
+                            let x1 = (line.vertices[0].x += event.dx)
+                            let y1 = (line.vertices[0].y += event.dy)
+                            updateX1Y1Vertices(line, x1, y1, pointCircle1)
+
+                            /* update x2,y2 vertices acc. to shift key press event */
+                            let x2 = line.vertices[1].x
+                            let y2 = y1
+                            updateX2Y2Vertices(line, x2, y2, pointCircle2)
+                        } else {
+                            let x1 = (line.vertices[0].x += event.dx)
+                            let y1 = (line.vertices[0].y += event.dy)
+                            updateX1Y1Vertices(line, x1, y1, pointCircle1)
+                        }
+
                         group.center()
                         two.update()
                         // console.log('on move group translation ', group)
@@ -283,6 +295,8 @@ function ArrowLine(props) {
                                     y: group.translation.y,
                                     x1: parseInt(line.vertices[0].x),
                                     y1: parseInt(line.vertices[0].y),
+                                    x2: parseInt(line.vertices[1].x),
+                                    y2: parseInt(line.vertices[1].y),
                                 },
                             },
                         })
@@ -311,9 +325,21 @@ function ArrowLine(props) {
                             .setAttribute('data-resize', 'true')
                     },
                     move(event) {
-                        let x2 = (line.vertices[1].x += event.dx)
-                        let y2 = (line.vertices[1].y += event.dy)
-                        updateX2Y2Vertices(line, x2, y2, pointCircle2)
+                        if (event.shiftKey === true) {
+                            let x2 = (line.vertices[1].x += event.dx)
+                            let y2 = (line.vertices[1].y += event.dy)
+                            updateX2Y2Vertices(line, x2, y2, pointCircle2)
+
+                            /* update x1,y1 vertices acc. to shift key press event */
+                            let x1 = line.vertices[0].x
+                            let y1 = y2
+                            updateX1Y1Vertices(line, x1, y1, pointCircle1)
+                        } else {
+                            let x2 = (line.vertices[1].x += event.dx)
+                            let y2 = (line.vertices[1].y += event.dy)
+                            updateX2Y2Vertices(line, x2, y2, pointCircle2)
+                        }
+
                         group.center()
                         two.update()
                         // console.log(
@@ -334,6 +360,8 @@ function ArrowLine(props) {
                                 updateObj: {
                                     x: group.translation.x,
                                     y: group.translation.y,
+                                    x1: parseInt(line.vertices[0].x),
+                                    y1: parseInt(line.vertices[0].y),
                                     x2: parseInt(line.vertices[1].x),
                                     y2: parseInt(line.vertices[1].y),
                                 },
