@@ -186,7 +186,8 @@ const HomePage = (props) => {
                     <div className="w-5/12 h-full flex items-center justify-center">
                         <div className="text-left transition-opacity duration-300 ease-in-out">
                             <p className="text-base lg:text-4xl 2xl:text-5xl font-bold ">
-                                Wireframing made easy.
+                                Brainstorm and prototype with craftbase - an
+                                online whiteboard tool
                             </p>
                             <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
                                 Craftbase is an open source whiteboard tool
