@@ -25,3 +25,11 @@
 iframe {
     z-index: -11111 !important;
 }
+
+/* css for text wireframe element's foreign object */
+.foreign-text-container {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

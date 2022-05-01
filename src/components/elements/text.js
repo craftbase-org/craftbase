@@ -135,10 +135,10 @@ function Text(props) {
                     rectTextGroup.getBoundingClientRect(true)
                 )
                 selector.update(
-                    rectTextGroup.getBoundingClientRect(true).left - 5,
-                    rectTextGroup.getBoundingClientRect(true).right + 5,
-                    rectTextGroup.getBoundingClientRect(true).top - 5,
-                    rectTextGroup.getBoundingClientRect(true).bottom + 5
+                    rectTextGroup.getBoundingClientRect(true).left - 0,
+                    rectTextGroup.getBoundingClientRect(true).right + 0,
+                    rectTextGroup.getBoundingClientRect(true).top - 0,
+                    rectTextGroup.getBoundingClientRect(true).bottom + 0
                 )
                 two.update()
                 toggleToolbar(true)
@@ -224,7 +224,9 @@ function Text(props) {
           } y=${rectTextGroup.getBoundingClientRect(true).top} width=${
                         rectangle.width
                     } height=${rectangle.height}>
-              <div style="font-size:${textFontSize + 'px'}">${textValue}</div>
+              <div class="foreign-text-container" style="font-size:${
+                  textFontSize + 'px'
+              }">${textValue}</div>
           </foreignObject>
           `
                     two.update()
@@ -232,6 +234,8 @@ function Text(props) {
                         variables: {
                             id: props.id,
                             updateObj: {
+                                width: rectangle.width,
+                                height: rectangle.height,
                                 metadata: {
                                     ...props.metadata,
                                     content: textValue,
@@ -263,24 +267,37 @@ function Text(props) {
                         let target = event.target
                         let rect = event.rect
 
-                        rectangle.width = rect.width
-                        rectangle.height = rect.height
-                        selector.update(
-                            rectTextGroup.getBoundingClientRect(true).left - 5,
-                            rectTextGroup.getBoundingClientRect(true).right + 5,
-                            rectTextGroup.getBoundingClientRect(true).top - 5,
-                            rectTextGroup.getBoundingClientRect(true).bottom + 5
-                        )
+                        if (rect.height < 30) {
+                            // do nothing
+                        } else {
+                            rectangle.width = rect.width
+                            rectangle.height = rect.height
+                            selector.update(
+                                rectTextGroup.getBoundingClientRect(true).left -
+                                    0,
+                                rectTextGroup.getBoundingClientRect(true)
+                                    .right + 0,
+                                rectTextGroup.getBoundingClientRect(true).top -
+                                    0,
+                                rectTextGroup.getBoundingClientRect(true)
+                                    .bottom + 0
+                            )
 
-                        svgElem.innerHTML = `
-<foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
-                            rectTextGroup.getBoundingClientRect(true).top
-                        } width=${rectangle.width} height=${rectangle.height}>
-    <div style="font-size:${textFontSize + 'px'}">${textValue}</div>
-</foreignObject>
-`
+                            svgElem.innerHTML = `
+    <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
+                                rectTextGroup.getBoundingClientRect(true).top
+                            } width=${rectangle.width} height=${
+                                rectangle.height
+                            }>
+        <div class="foreign-text-container" style="font-size:${
+            textFontSize + 'px'
+        }">${textValue}</div>
+    </foreignObject>
+    `
 
-                        two.update()
+                            two.update()
+                        }
+
                         // Restrict width to shrink if it has reached point
                         //  where it's width should be less than or equal to text's
                         // if (rect.width > text.getBoundingClientRect().width) {
@@ -296,6 +313,15 @@ function Text(props) {
                         // }
                     },
                     end(event) {
+                        updateComponentInfo({
+                            variables: {
+                                id: props.id,
+                                updateObj: {
+                                    width: parseInt(rectangle.width),
+                                    height: parseInt(rectangle.height),
+                                },
+                            },
+                        })
                         getGroupElementFromDOM.removeAttribute('data-resize')
                         console.log('the end', event)
                     },
@@ -349,9 +375,21 @@ function Text(props) {
             let groupInstance = internalState.group.data
             groupInstance.translation.x = props.x
             groupInstance.translation.y = props.y
+
             two.update()
         }
-    }, [props.x, props.y, props.metadata])
+
+        if (internalState?.shape?.data) {
+            let shapeInstance = internalState.shape.data
+            if (props.width !== shapeInstance.width) {
+                shapeInstance.width = props.width
+            }
+
+            if (props.height !== shapeInstance.height) {
+                shapeInstance.height = props.height
+            }
+        }
+    }, [props.x, props.y, props.width, props.height, props.metadata])
 
     function closeToolbar() {
         toggleToolbar(false)
