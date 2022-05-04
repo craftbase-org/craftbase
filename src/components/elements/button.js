@@ -1,348 +1,402 @@
-import React, { Component, useEffect } from "react";
-import PropTypes from "prop-types";
-import idx from "idx";
-import Two from "two.js";
-import interact from "interactjs";
-import {
-  createSelectorHook,
-  createDispatchHook,
-  useDispatch,
-  useSelector,
-} from "react-redux";
-import Icon from "icons/icons";
-import { ReactReduxContext } from "utils/misc";
-import { setPeronsalInformation } from "redux/actions/main";
+import React, { useEffect, useState } from 'react'
+import PropTypes from 'prop-types'
+import interact from 'interactjs'
+import { useImmer } from 'use-immer'
+import { useMutation } from '@apollo/client'
 
-// const useSelector = createSelectorHook(ReactReduxContext);
-// const useDispatch = createDispatchHook(ReactReduxContext);
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
+import { elementOnBlurHandler } from 'utils/misc'
+import ElementFactory from 'factory/button'
+import getEditComponents from 'components/utils/editWrapper'
+import Toolbar from 'components/floatingToolbar'
 
 function Button(props) {
-  const status = useSelector((state) => state.main.currentStatus);
-  const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
-  const dispatch = useDispatch();
-  console.log(
-    "useSelector",
-    useSelector((state) => state)
-  );
-  const two = props.twoJSInstance;
-  console.log(
-    "CONDITION",
-    props.id,
-    props.twoJSInstance &&
-      (status === "construct" || lastAddedElement.id === props.id)
-  );
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
+    const [showToolbar, toggleToolbar] = useState(false)
+    const [internalState, setInternalState] = useImmer({})
 
-  let rectangleInstance = null;
-  let resizeRectInstance = null;
-  let groupInstance = null;
+    const two = props.twoJSInstance
+    let selectorInstance = null
+    let groupObject = null
 
-  function onBlurHandler(e) {
-    resizeRectInstance.opacity = 0;
-    two.update();
-  }
+    function onBlurHandler(e) {
+        elementOnBlurHandler(e, selectorInstance, two)
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
+    }
 
-  function onFocusHandler(e) {
-    document.getElementById(`${groupInstance.id}`).style.outline = 0;
-  }
+    function handleKeyDown(e) {
+        if (e.keyCode === 8 || e.keyCode === 46) {
+            console.log('handle key down event', e)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            props.handleDeleteComponent &&
+                props.handleDeleteComponent(groupObject)
+            two.remove([groupObject])
+            two.update()
+        }
+    }
 
-  if (status === "construct" || lastAddedElement.id === props.id) {
-    // Calculate x and y through dividing width and height by 2 or vice versa
-    // if x and y are given then multiply width and height into 2
-    const offsetHeight = 0;
+    function onFocusHandler(e) {
+        document.getElementById(`${groupObject.id}`).style.outline = 0
+        document
+            .getElementById(`${groupObject.id}`)
+            .addEventListener('keydown', handleKeyDown)
+    }
 
-    const prevX = localStorage.getItem("button_coordX");
-    const prevY = localStorage.getItem("button_coordY");
+    // Using unmount phase to remove event listeners
+    useEffect(() => {
+        // Calculate x and y through dividing width and height by 2 or vice versa
+        // if x and y are given then multiply width and height into 2
+        const offsetHeight = 0
+        const prevX = props.x
+        const prevY = props.y
 
-    const rectangle = two.makeRoundedRectangle(0, 0, 140, 50);
-    rectangle.fill = "#0747A6";
-    rectangle.noStroke();
+        // Instantiate factory
+        const elementFactory = new ElementFactory(two, prevX, prevY, {
+            ...props,
+        })
+        // Get all instances of every sub child element
+        const { group, rectTextGroup, text, textGroup, rectangle } =
+            elementFactory.createElement()
+        group.elementData = { ...props.itemData, ...props }
 
-    const text = new Two.Text("Button", 10, 0);
-    text.size = "16";
-    text.fill = "#fff";
-    text.weight = "600";
-    text.family = "Ubuntu";
-    text.translation.x = parseInt(rectangle.width / 9);
+        if (props.parentGroup) {
+            /** This element will be rendered and scoped in its parent group */
+            const parentGroup = props.parentGroup
+            parentGroup.add(rectTextGroup)
+            two.update()
+        } else {
+            /** This element will render by creating it's own group wrapper */
+            groupObject = group
 
-    const svgImage = new DOMParser().parseFromString(
-      Icon.ICON_IMAGE_1.data,
-      "text/xml"
-    );
-    console.log("svgImage", externalSVG);
-    var externalSVG = two.interpret(svgImage.firstChild);
-    externalSVG.translation.x = -parseInt(rectangle.width / 3);
-    externalSVG.translation.y = -parseInt(rectangle.height / 4);
+            const { selector } = getEditComponents(two, group, 2)
+            selectorInstance = selector
 
-    const textGroup = two.makeGroup(externalSVG, text);
+            group.children.unshift(rectTextGroup)
+            two.update()
 
-    const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
-    const calcResizeRectHeight = rectangle.getBoundingClientRect().height;
-    const resizeRect = two.makeRoundedRectangle(
-      0,
-      0,
-      calcResizeRectWidth,
-      calcResizeRectHeight
-    );
-    resizeRect.opacity = 0;
-    resizeRectInstance = resizeRect;
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'button_coord')
 
-    const group = two.makeGroup(resizeRect, rectangle, textGroup);
+            // replace shape and shape id here
+            setInternalState((draft) => {
+                draft.element = {
+                    [rectTextGroup.id]: rectTextGroup,
+                    [group.id]: group,
+                    // [selector.id]: selector,
+                }
+                draft.group = {
+                    id: group.id,
+                    data: group,
+                }
+                draft.shape = {
+                    type: 'button',
+                    id: rectangle.id,
+                    data: rectangle,
+                }
+                draft.text = {
+                    id: text.id,
+                    data: text,
+                }
+                draft.icon = {
+                    data: {},
+                }
+                draft.textGroup = {
+                    id: textGroup.id,
+                    data: textGroup,
+                }
+            })
 
-    // const calcX = parseInt(prevX) + (parseInt(rectangle.width / 2) - 10);
-    // const calcY = parseInt(prevY) - (parseInt(46) - parseInt(rectangle.height / 2));
-    group.center();
-    group.translation.x = prevX || 500;
-    group.translation.y = prevY || 200;
-    groupInstance = group;
-    console.log("BUtton", props.twoJSInstance);
-    two.update();
+            const getGroupElementFromDOM = document.getElementById(
+                `${group.id}`
+            )
+            getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-    const getGroupElementFromDOM = document.getElementById(`${group.id}`);
-    getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-    getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+            // const { mousemove, mouseup } = handleDrag(two, group, 'button')
 
-    interact(`#${group.id}`).on("click", () => {
-      console.log("on click ");
-      resizeRect.opacity = 1;
-      resizeRect.noFill();
-      two.update();
-    });
+            interact(`#${group.id}`).on('click', () => {
+                console.log('on click ', text.getBoundingClientRect(true))
+                selector.update(
+                    rectTextGroup.getBoundingClientRect(true).left - 5,
+                    rectTextGroup.getBoundingClientRect(true).right + 5,
+                    rectTextGroup.getBoundingClientRect(true).top - 5,
+                    rectTextGroup.getBoundingClientRect(true).bottom + 5
+                )
+                two.update()
+                toggleToolbar(true)
+            })
 
-    // Captures double click event for text
-    // and generates temporary textarea support for it
-    text._renderer.elem.addEventListener("dblclick", () => {
-      let inputCharCounter = 0;
+            // Captures double click event for text
+            // and generates temporary textarea support for it
+            text._renderer.elem.addEventListener('click', () => {
+                console.log('on click for texy', text.id)
 
-      console.log("on click for texy", text.id);
-      const input = document.createElement("input");
-      input.type = "text";
-      input.value = text.value;
-      const twoTextInstance = document.getElementById(`${text.id}`);
-      const getCoordOfBtnText = twoTextInstance.getBoundingClientRect();
+                // Hide actual text and replace it with input box
+                const twoTextInstance = document.getElementById(`${text.id}`)
+                const getCoordOfBtnText =
+                    twoTextInstance.getBoundingClientRect()
+                twoTextInstance.style.display = 'none'
 
-      console.log("widthOfBox", rectangle.width);
-      const widthLimit =
-        parseInt(rectangle.width / 2) + parseInt(rectangle.width / 6);
-      twoTextInstance.style.display = "none";
+                const input = document.createElement('input')
+                const topBuffer = 2
+                input.type = 'text'
+                input.value = text.value
+                input.style.color = '#fff'
+                input.style.fontSize = '16px'
+                input.style.position = 'absolute'
+                input.style.top = `${getCoordOfBtnText.top - topBuffer}px`
+                input.style.left = `${getCoordOfBtnText.left}px`
+                input.style.width = `${
+                    rectTextGroup.getBoundingClientRect(true).width
+                }px`
+                input.className = 'temp-input-area'
 
-      input.style.position = "absolute";
-      input.style.top = `${getCoordOfBtnText.top}px`;
-      input.style.left = `${getCoordOfBtnText.left}px`;
-      input.style.width = `${widthLimit}px`;
-      input.className = "temp-textarea";
+                document.getElementById('main-two-root').append(input)
 
-      document.getElementById("main-two-root").append(input);
-      input.focus();
+                input.onfocus = function (e) {
+                    console.log('on input focus')
+                    selector.show()
+                    two.update()
+                }
+                input.focus()
 
-      let prevTextValue = input.value;
+                input.addEventListener('input', () => {
+                    let prevTextValue = text.value
+                    input.style.width = `${
+                        rectTextGroup.getBoundingClientRect(true).width + 4
+                    }px`
 
-      input.addEventListener("input", () => {
-        let diff = parseInt(input.value.length - prevTextValue.length);
+                    // Synchronously update selector tool's coordinates
+                    text.value = input.value
 
-        console.log(
-          "prevTextValue",
-          document.getElementById(`${externalSVG.id}`).getBoundingClientRect(),
-          input.getBoundingClientRect()
-        );
-        prevTextValue = input.value;
-        inputCharCounter = inputCharCounter + 1;
+                    // calculate difference to add to vertex's coordinates
+                    const diff = text.value.length - prevTextValue.length
 
-        rectangle.width = rectangle.width += 10 * diff;
-        externalSVG.translation.x = -parseInt(rectangle.width / 3);
+                    if (diff < -2) {
+                        rectangle.width = rectangle.width + diff * 8 + 20
+                    } else {
+                        rectangle.width =
+                            diff < 0
+                                ? rectangle.width + diff * 8
+                                : rectangle.width + diff * 14
+                    }
 
-        input.style.width = `${input.value.length * 10}px`;
-        input.style.left = `${
-          parseInt(externalSVG.getBoundingClientRect().right) - -30
-        }px`;
-        two.update();
-      });
+                    selector.update(
+                        rectTextGroup.getBoundingClientRect(true).left - 5,
+                        rectTextGroup.getBoundingClientRect(true).right + 5,
+                        rectTextGroup.getBoundingClientRect(true).top - 5,
+                        rectTextGroup.getBoundingClientRect(true).bottom + 5
+                    )
+                    two.update()
+                    input.style.left = `${
+                        document
+                            .getElementById(rectangle.id)
+                            .getBoundingClientRect().left + 20
+                    }px`
+                })
 
-      input.addEventListener("blur", () => {
-        console.log("on blur", input.value);
-        twoTextInstance.style.display = "block";
-        input.remove();
-        text.value = input.value;
-        externalSVG.translation.x = -parseInt(rectangle.width / 3);
-        externalSVG.translation.y = -parseInt(rectangle.height / 4);
-        text.translation.x = parseInt(rectangle.width / 9);
-        two.update();
-      });
-    });
+                input.addEventListener('blur', () => {
+                    twoTextInstance.style.display = 'block'
+                    text.value = input.value
+                    input.remove()
 
-    interact(`#${group.id}`).resizable({
-      edges: { right: true, left: true },
+                    // USE 4 LINES 4 CIRCLES
 
-      listeners: {
-        move(event) {
-          var target = event.target;
-          var rect = event.rect;
+                    selector.update(
+                        rectTextGroup.getBoundingClientRect(true).left - 5,
+                        rectTextGroup.getBoundingClientRect(true).right + 5,
+                        rectTextGroup.getBoundingClientRect(true).top - 5,
+                        rectTextGroup.getBoundingClientRect(true).bottom + 5
+                    )
+                    selector.hide()
+                    updateComponentInfo({
+                        variables: {
+                            id: props.id,
 
-          // update the element's style
-          //   resizeRect.width = rect.width;
-          rectangle.width = rect.width;
-          rectangle.height = rect.height;
-          // rectangle.radius = parseInt(rect.width / 2);
+                            updateObj: {
+                                width: parseInt(rectangle.width),
+                                children: {
+                                    ...props.children,
+                                    text: {
+                                        ...props.children?.text,
+                                        value: text.value,
+                                    },
+                                },
+                            },
+                        },
+                    })
+                    two.update()
+                })
+            })
 
-          const calcResizeRectWidth = rectangle.getBoundingClientRect().width;
-          const calcResizeRectHeight = rectangle.getBoundingClientRect().height;
+            interact(`#${group.id}`).resizable({
+                edges: { right: true, left: true },
 
-          resizeRect.width = calcResizeRectWidth;
-          resizeRect.height = calcResizeRectHeight;
-          //   target.style.width = rect.width + "px";
-          //   target.style.height = rect.height + "px";
+                listeners: {
+                    start() {
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
+                        )
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
+                    },
 
-          //   target.textContent = rect.width + "×" + rect.height;
-          two.update();
-        },
-        end(event) {
-          console.log("the end");
-        },
-      },
-    });
+                    move(event) {
+                        let target = event.target
+                        let rect = event.rect
 
-    interact(`#${group.id}`).draggable({
-      // enable inertial throwing
-      inertia: false,
+                        // Restrict width to shrink if it has reached point
+                        //  where it's width should be less than or equal to text's
+                        if (rect.width > text.getBoundingClientRect().width) {
+                            rectangle.width = rect.width
+                            selector.update(
+                                rectTextGroup.getBoundingClientRect(true).left -
+                                    5,
+                                rectTextGroup.getBoundingClientRect(true)
+                                    .right + 5,
+                                rectTextGroup.getBoundingClientRect(true).top -
+                                    5,
+                                rectTextGroup.getBoundingClientRect(true)
+                                    .bottom + 5
+                            )
+                        }
 
-      listeners: {
-        start(event) {
-          // console.log(event.type, event.target);
-        },
-        move(event) {
-          event.target.style.transform = `translate(${event.pageX}px, ${
-            event.pageY - offsetHeight
-          }px)`;
-        },
-        end(event) {
-          console.log(
-            "event x",
-            event.target.getBoundingClientRect(),
-            event.rect.left,
-            event.pageX,
-            event.clientX
-          );
-          // alternate -> take event.rect.left for x
-          localStorage.setItem("button_coordX", parseInt(event.pageX));
-          localStorage.setItem(
-            "button_coordY",
-            parseInt(event.pageY - offsetHeight)
-          );
-          dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
-        },
-      },
-    });
-  }
+                        two.update()
+                    },
+                    end(event) {
+                        console.log('the end')
+                        updateComponentInfo({
+                            variables: {
+                                id: props.id,
+                                updateObj: {
+                                    width: parseInt(rectangle.width),
+                                },
+                            },
+                        })
+                        getGroupElementFromDOM.removeAttribute('data-resize')
+                    },
+                },
+            })
 
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
-    let isMounted = true;
-    return () => {
-      console.log("UNMOUNTING", groupInstance);
-      const groupID = document.getElementById(`${groupInstance.id}`);
-      groupID.removeEventListener("blur", onBlurHandler);
-      groupID.removeEventListener("focus", onFocusHandler);
-      isMounted = false;
-    };
-  }, []);
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
 
-  return (
-    <React.Fragment>
-      <div id="two-button"></div>
-      <button>change button in group</button>
-    </React.Fragment>
-  );
+            //     listeners: {
+            //         start(event) {
+            //             // console.log(event.type, event.target);
+            //         },
+            //         move(event) {
+            //             event.target.style.transform = `translate(${
+            //                 event.pageX
+            //             }px, ${event.pageY - offsetHeight}px)`
+            //             two.update()
+            //         },
+            //         end(event) {
+            //             console.log(
+            //                 'event x',
+            //                 event.target.getBoundingClientRect(),
+            //                 event.rect.left,
+            //                 event.pageX,
+            //                 event.clientX
+            //             )
+            //             // alternate -> take event.rect.left for x
+            //             localStorage.setItem(
+            //                 'button_coordX',
+            //                 parseInt(event.pageX)
+            //             )
+            //             localStorage.setItem(
+            //                 'button_coordY',
+            //                 parseInt(event.pageY - offsetHeight)
+            //             )
+            //             dispatch(
+            //                 setPeronsalInformation('COMPLETE', { data: {} })
+            //             )
+            //         },
+            //     },
+            // })
+        }
+
+        return () => {
+            console.log('UNMOUNTING in Button', group)
+            // clean garbage by removing instance
+            // two.remove(group)
+        }
+    }, [])
+
+    useEffect(() => {
+        if (internalState?.group?.data) {
+            let groupInstance = internalState.group.data
+            groupInstance.translation.x = props.x
+            groupInstance.translation.y = props.y
+            two.update()
+        }
+
+        // update internal shape data
+        if (internalState?.shape?.data) {
+            let shapeInstance = internalState.shape.data
+
+            shapeInstance.width = props.width
+                ? props.width
+                : shapeInstance.width
+            shapeInstance.fill = props.fill ? props.fill : shapeInstance.fill
+
+            two.update()
+        }
+
+        // update external svg/icon data
+        if (internalState?.text?.data) {
+            let textInstance = internalState.text.data
+            let textGroupInstance = internalState.textGroup.data
+            textInstance.value = props.children?.text?.value
+                ? props.children?.text?.value
+                : textInstance.value
+            textGroupInstance.center()
+            two.update()
+        }
+    }, [
+        props.x,
+        props.y,
+        props.fill,
+        props.width,
+        props.height,
+        props.children,
+    ])
+
+    function closeToolbar() {
+        toggleToolbar(false)
+    }
+
+    return (
+        <React.Fragment>
+            <div id="two-button"></div>
+            {showToolbar ? (
+                <Toolbar
+                    toggle={showToolbar}
+                    componentState={internalState}
+                    closeToolbar={closeToolbar}
+                    componentId={props.id}
+                    postToolbarUpdate={() => {
+                        two.update()
+                    }}
+                />
+            ) : null}
+        </React.Fragment>
+    )
 }
 
-Button.propTypes = {
-  x: PropTypes.string,
-  y: PropTypes.string,
-};
-
-Button.defaultProps = {
-  x: 100,
-  y: 50,
-};
-
-export default Button;
-
-// class Button extends Component {
-//   constructor(props) {
-//     super(props);
-//     this.state = {
-//       groupInstance: null
-//     };
-//   }
-//   componentDidMount() {
-//     // this.canvas = new fabric.Canvas("main-canvas", {});
-
-//     if (this.props.twoJSInstance) {
-//       const two = this.props.twoJSInstance;
-//       // Calculate x and y through dividing width and height by 2 or vice versa
-//       // if x and y are given then multiply width and height into 2
-//       const rect = two.makeRectangle(55, 20, 110, 55);
-//       const text = new Two.Text("Button", 55, 20);
-//       const group = two.makeGroup(rect, text);
-
-//       rect.fill = "red";
-//       // rect.noStroke();
-//       console.log("rect", rect);
-//       two.update();
-//       this.setState({
-//         rectInstance: rect,
-//         textInstance: text,
-//         groupInstance: group
-//       });
-//     }
-//   }
-
-//   componentDidUpdate(prevProps, prevState) {
-//     console.log("CDU");
-//     if (prevState.groupInstance !== this.state.groupInstance) {
-//       const { groupInstance, rectInstance, textInstance } = this.state;
-//       const two = this.props.twoJSInstance;
-//       let thisRef = this;
-//       interact(`#${this.state.groupInstance.id}`).draggable({
-//         // enable inertial throwing
-//         inertia: true,
-//         // keep the element within the area of it's parent
-//         restrict: {
-//           restriction: "parent",
-//           endOnly: true
-//           // elementRect: { top: 0, left: 0, bottom: 1, right: 1 }
-//         },
-//         // enable autoScroll
-//         autoScroll: true,
-
-//         onstart: function(event) {
-//           console.log("onstart");
-//         },
-
-//         // call this function on every dragmove event
-//         onmove: dragMoveListener,
-//         // call this function on every dragend event
-//         onend: function(event) {
-//           console.log("onend", event);
-//           console.log("groupInstance", groupInstance.translation);
-//           var textEl = event.target.querySelector("p");
-//           // textInstance.translation.x = 500;
-
-//           groupInstance.translation.set(event.dx, event.dy);
-//           groupInstance.noStroke();
-//           // groupInstance.translation.y = event.dy;
-//           two.update();
-//           two.play();
-//           thisRef.setState({ groupInstance });
-//         }
-//       });
-//     }
-//   }
-
-//   render() {
-//     return (
-//       <React.Fragment>
-//         <div id="two-button"></div>
-//         <button>change button in group</button>
-//       </React.Fragment>
-//     );
-//   }
-// }
+export default Button

@@ -1,0 +1,27 @@
+#show-select-any-shape-btn::before {
+    position: absolute;
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: #00875a;
+    transform: rotate(45deg);
+    /* border: 10px solid transparent; */
+    margin: 0;
+    left: -5px;
+    top: 37px;
+    z-index: -1;
+}
+
+#show-select-any-element-btn::before {
+    position: absolute;
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: #00875a;
+    transform: rotate(45deg);
+    /* border: 10px solid transparent; */
+    margin: 0;
+    left: -5px;
+    top: 37px;
+    z-index: -1;
+}

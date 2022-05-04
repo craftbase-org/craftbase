@@ -1,171 +1,344 @@
-import React, { Component, useEffect } from "react";
-import PropTypes from "prop-types";
-import idx from "idx";
-import Two from "two.js";
-import interact from "interactjs";
-import {
-  createSelectorHook,
-  createDispatchHook,
-  useDispatch,
-  useSelector,
-} from "react-redux";
-import { ReactReduxContext } from "utils/misc";
-import { setPeronsalInformation } from "redux/actions/main";
+import React, { useEffect, useState } from 'react'
+import interact from 'interactjs'
+import { useMutation } from '@apollo/client'
+import { useImmer } from 'use-immer'
 
-// const useSelector = createSelectorHook(ReactReduxContext);
-// const useDispatch = createDispatchHook(ReactReduxContext);
+// import Panzoom from '@panzoom/panzoom'
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
+import { elementOnBlurHandler } from 'utils/misc'
+import getEditComponents from 'components/utils/editWrapper'
+import CircleFactory from 'factory/circle'
+import Toolbar from 'components/floatingToolbar'
 
 function Circle(props) {
-  const status = useSelector((state) => state.main.currentStatus);
-  const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
-  const dispatch = useDispatch();
-  console.log(
-    "useSelector",
-    useSelector((state) => state)
-  );
-  const two = props.twoJSInstance;
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
+    const selectedComponents = []
 
-  let circleInstance = null;
-  let resizeRectInstance = null;
-  let groupInstance = null;
+    const [showToolbar, toggleToolbar] = useState(false)
+    const [internalState, setInternalState] = useImmer({})
 
-  function onBlurHandler(e) {
-    resizeRectInstance.opacity = 0;
-    two.update();
-  }
+    const two = props.twoJSInstance
+    let selectorInstance = null
+    let toolbarInstance = null
+    let groupObject = null
 
-  function onFocusHandler(e) {
-    document.getElementById(`${groupInstance.id}`).style.outline = 0;
-  }
+    function onBlurHandler(e) {
+        elementOnBlurHandler(e, selectorInstance, two)
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
+    }
 
-  if (status === "construct" || lastAddedElement.id === props.id) {
-    // Calculate x and y through dividing width and height by 2 or vice versa
-    // if x and y are given then multiply width and height into 2
-    const offsetHeight = 0;
+    function handleKeyDown(e) {
+        if (e.keyCode === 8 || e.keyCode === 46) {
+            console.log('handle key down event', e)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            props.handleDeleteComponent &&
+                props.handleDeleteComponent(groupObject)
+            two.remove([groupObject])
+            two.update()
+        }
+    }
 
-    const prevX = localStorage.getItem("Circle_coordX");
-    const prevY = localStorage.getItem("Circle_coordY");
+    function onFocusHandler(e) {
+        document.getElementById(`${groupObject.id}`).style.outline = 0
+        document
+            .getElementById(`${groupObject.id}`)
+            .addEventListener('keydown', handleKeyDown)
+    }
 
-    const circle = new Two.Ellipse(0, 0, 70, 70);
-    circle.fill = "#EBECF0";
-    circle.noStroke();
-    circleInstance = circle;
+    // Using unmount phase to remove event listeners
+    useEffect(() => {
+        // Calculate x and y through dividing width and height by 2 or vice versa
+        // if x and y are given then multiply width and height into 2
+        const offsetHeight = 0
 
-    console.log("circle", circle.getBoundingClientRect());
-    const calcResizeRectWidth = circle.getBoundingClientRect().width;
-    const calcResizeRectHeight = circle.getBoundingClientRect().height;
-    const resizeRect = two.makeRectangle(
-      0,
-      0,
-      calcResizeRectWidth,
-      calcResizeRectHeight
-    );
-    resizeRect.opacity = 0;
-    resizeRectInstance = resizeRect;
+        const prevX = props.x
+        const prevY = props.y
 
-    const group = two.makeGroup(circle, resizeRect);
+        // Instantiate factory
+        const elementFactory = new CircleFactory(two, prevX, prevY, {
+            ...props,
+        })
+        // Get all instances of every sub child element
+        const { group, circle } = elementFactory.createElement()
+        group.elementData = { ...props.itemData, ...props }
 
-    group.translation.x = prevX || 500;
-    group.translation.y = prevY || 200;
-    groupInstance = group;
-    console.log("BUtton", props.twoJSInstance, resizeRectInstance.width);
-    two.update();
+        if (props.parentGroup) {
+            /** This element will be rendered and scoped in its parent group */
+            console.log('properties of circle', props)
+            const parentGroup = props.parentGroup
+            circle.translation.x = props.properties.x
+            circle.translation.y = props.properties.y
+            parentGroup.add(circle)
+            two.update()
+        } else {
+            /** This element will render by creating it's own group wrapper */
+            groupObject = group
 
-    const getGroupElementFromDOM = document.getElementById(`${group.id}`);
+            const { selector } = getEditComponents(two, group, 4)
+            selectorInstance = selector
 
-    interact(`#${group.id}`).on("click", () => {
-      console.log("on click ");
-      resizeRect.opacity = 1;
-      resizeRect.noFill();
-      two.update();
-    });
+            group.children.unshift(circle)
+            two.update()
 
-    getGroupElementFromDOM.addEventListener("focus", onFocusHandler);
-    getGroupElementFromDOM.addEventListener("blur", onBlurHandler);
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
 
-    interact(`#${group.id}`).resizable({
-      edges: { right: true, left: true, top: true, bottom: true },
+            // setting database's id in html attribute of element
+            document
+                .getElementById(group.id)
+                .setAttribute('data-component-id', props.id)
 
-      listeners: {
-        move(event) {
-          var target = event.target;
-          var rect = event.rect;
+            // console.log('two circle', group.id)
+            const initialSceneCoords = document
+                .getElementById(two.scene.id)
+                .getBoundingClientRect()
+            console.log('initialSceneCoords', initialSceneCoords)
 
-          // update the element's style
-          //   resizeRect.width = rect.width;
-          circle.width = rect.width;
-          circle.height = rect.height;
-          circle.radius = parseInt(rect.width / 2);
+            setInternalState((draft) => {
+                draft.element = {
+                    [circle.id]: circle,
+                    [group.id]: group,
+                    // [selector.id]: selector,
+                }
+                draft.group = {
+                    id: group.id,
+                    data: group,
+                }
+                draft.shape = {
+                    id: circle.id,
+                    data: circle,
+                }
+                draft.text = {
+                    data: {},
+                }
+                draft.icon = {
+                    data: {},
+                }
+            })
 
-          const calcResizeRectWidth = circle.getBoundingClientRect().width;
-          const calcResizeRectHeight = circle.getBoundingClientRect().height;
+            const getGroupElementFromDOM = document.getElementById(
+                `${group.id}`
+            )
+            getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-          resizeRect.width = calcResizeRectWidth;
-          resizeRect.height = calcResizeRectHeight;
-          //   target.style.width = rect.width + "px";
-          //   target.style.height = rect.height + "px";
+            // If component is in area of selection frame/tool, programmatically enable it's selector
+            if (selectedComponents.includes(props.id)) {
+                console.log('selectedComponents', selectedComponents)
 
-          //   target.textContent = rect.width + "×" + rect.height;
-          two.update();
-        },
-        end(event) {
-          console.log("the end");
-        },
-      },
-    });
+                // forcefully
+                // document.getElementById(`${group.id}`).focus();
 
-    interact(`#${group.id}`).draggable({
-      // enable inertial throwing
-      inertia: false,
+                selector.update(
+                    circle.getBoundingClientRect(true).left - 10,
+                    circle.getBoundingClientRect(true).right + 10,
+                    circle.getBoundingClientRect(true).top - 10,
+                    circle.getBoundingClientRect(true).bottom + 10
+                )
+            }
 
-      listeners: {
-        start(event) {
-          // console.log(event.type, event.target);
-        },
-        move(event) {
-          event.target.style.transform = `translate(${event.pageX}px, ${
-            event.pageY - offsetHeight
-          }px)`;
-        },
-        end(event) {
-          console.log(
-            "event x",
-            event.target.getBoundingClientRect(),
-            event.rect.left,
-            event.pageX,
-            event.clientX
-          );
-          // alternate -> take event.rect.left for x
-          localStorage.setItem("Circle_coordX", parseInt(event.pageX));
-          localStorage.setItem(
-            "Circle_coordY",
-            parseInt(event.pageY - offsetHeight)
-          );
-          dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
-        },
-      },
-    });
-  }
+            // const { mousemove, mouseup } = handleDrag(two, group, 'Circle')
 
-  // Using unmount phase to remove event listeners
-  useEffect(() => {
-    let isMounted = true;
-    return () => {
-      console.log("UNMOUNTING", groupInstance);
-      const groupID = document.getElementById(`${groupInstance.id}`);
-      groupID.removeEventListener("blur", onBlurHandler);
-      groupID.removeEventListener("focus", onFocusHandler);
-      isMounted = false;
-    };
-  }, []);
+            interact(`#${group.id}`).on('click', () => {
+                // two.scene.scale = 1
+                console.log('on click circle', group)
+                selector.update(
+                    circle.getBoundingClientRect(true).left - 10,
+                    circle.getBoundingClientRect(true).right + 10,
+                    circle.getBoundingClientRect(true).top - 10,
+                    circle.getBoundingClientRect(true).bottom + 10
+                )
+                two.update()
+                toggleToolbar(true)
+            })
 
-  return (
-    <React.Fragment>
-      <div id="two-Circle"></div>
+            // Apply resizable property to element
+            interact(`#${group.id}`).resizable({
+                edges: { right: true, left: true, top: true, bottom: true },
 
-      {/* <button>change button in group</button> */}
-    </React.Fragment>
-  );
+                listeners: {
+                    start(event) {
+                        console.log('start resize event', event)
+                        getGroupElementFromDOM.setAttribute(
+                            'data-resize',
+                            'true'
+                        )
+                        // window.removeEventListener(
+                        //     'mousemove',
+                        //     mousemove,
+                        //     false
+                        // )
+                        // window.removeEventListener('mouseup', mouseup, false)
+                    },
+                    move(event) {
+                        console.log('on resize event', event)
+                        const target = event.target
+                        const rect = event.rect
+                        event.stopPropagation()
+
+                        // update the element's style
+                        //   resizeRect.width = rect.width;
+                        circle.width = rect.width
+                        circle.height = rect.height
+
+                        selector.update(
+                            circle.getBoundingClientRect(true).left - 10,
+                            circle.getBoundingClientRect(true).right + 10,
+                            circle.getBoundingClientRect(true).top - 10,
+                            circle.getBoundingClientRect(true).bottom + 10
+                        )
+
+                        two.update()
+                    },
+                    end(event) {
+                        console.log('the end', circle)
+                        updateComponentInfo({
+                            variables: {
+                                id: props.id,
+                                updateObj: {
+                                    width: parseInt(circle.width),
+                                    height: parseInt(circle.height),
+                                },
+                            },
+                        })
+                        getGroupElementFromDOM.removeAttribute('data-resize')
+                    },
+                },
+            })
+
+            // Apply draggable property to element
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
+
+            //     listeners: {
+            //         start(event) {
+            //             // console.log(event.type, event.target);
+            //         },
+            //         move(event) {
+            //             // let newSceneCoords = document
+            //             //     .getElementById(two.scene.id)
+            //             //     .getBoundingClientRect()
+            //             console.log('drag event circle', event)
+            //             // let scaleDiff = (two.scene.scale - 1) / 0.2
+            //             // let newDim =
+            //             //     defaultScaleConstant * Math.floor(scaleDiff)
+            //             // console.log(
+            //             //     'two scene',
+            //             //     Math.floor(scaleDiff),
+            //             //     newDim,
+            //             //     Math.floor(two.scene.scale)
+            //             // )
+            //             if (props.selectCursorMode) {
+            //                 event.target.style.transform = `translate(${
+            //                     event.pageX
+            //                 }px, ${event.pageY - offsetHeight}px)`
+            //             } else {
+            //                 const newSceneX = two.scene.translation.x
+            //                 const newSceneY = two.scene.translation.y
+            //                 event.target.style.transform = `translate(${
+            //                     event.pageX - newSceneX
+            //                 }px, ${event.pageY - offsetHeight - newSceneY}px)`
+            //             }
+            //         },
+            //         end(event) {
+            //             const newSceneX = two.scene.translation.x
+            //             const newSceneY = two.scene.translation.y
+            //             console.log(
+            //                 'event x',
+            //                 event.target.getBoundingClientRect(),
+            //                 event.rect.left,
+            //                 event.pageX,
+            //                 event.clientX
+            //             )
+            //             // alternate -> take event.rect.left for x
+            //             if (props.selectCursorMode) {
+            //                 localStorage.setItem(
+            //                     'Circle_coordX',
+            //                     parseInt(event.pageX)
+            //                 )
+            //                 localStorage.setItem(
+            //                     'Circle_coordY',
+            //                     parseInt(event.pageY - offsetHeight)
+            //                 )
+            //             } else {
+            //                 localStorage.setItem(
+            //                     'Circle_coordX',
+            //                     parseInt(event.pageX - newSceneX)
+            //                 )
+            //                 localStorage.setItem(
+            //                     'Circle_coordY',
+            //                     parseInt(event.pageY - offsetHeight - newSceneY)
+            //                 )
+            //             }
+
+            //             group.translation.x = event.pageX
+            //             group.translation.y = event.pageY
+            //             two.update()
+            //             dispatch(
+            //                 setPeronsalInformation('COMPLETE', { data: {} })
+            //             )
+            //         },
+            //     },
+            // })
+        }
+
+        return () => {
+            console.log('UNMOUNTING in Circle', group)
+            // clean garbage by removing instance
+            // two.remove(group)
+        }
+    }, [])
+
+    useEffect(() => {
+        if (internalState?.group?.data) {
+            let groupInstance = internalState.group.data
+            groupInstance.translation.x = props.x
+            groupInstance.translation.y = props.y
+            two.update()
+        }
+        if (internalState?.shape?.data) {
+            let shapeInstance = internalState.shape.data
+
+            shapeInstance.width = props.width
+                ? props.width
+                : shapeInstance.width
+            shapeInstance.height = props.height
+                ? props.height
+                : shapeInstance.height
+            shapeInstance.fill = props.fill ? props.fill : shapeInstance.fill
+
+            two.update()
+        }
+    }, [props.x, props.y, props.fill, props.width, props.height])
+
+    function closeToolbar() {
+        toggleToolbar(false)
+    }
+
+    return (
+        <React.Fragment>
+            <div id="two-Circle"></div>
+            {/* <button>change button in group</button> */}
+            {showToolbar && (
+                <Toolbar
+                    toggle={showToolbar}
+                    componentState={internalState}
+                    closeToolbar={closeToolbar}
+                    componentId={props.id}
+                    postToolbarUpdate={() => {
+                        two.update()
+                    }}
+                />
+            )}
+        </React.Fragment>
+    )
 }
 
-export default Circle;
+export default Circle

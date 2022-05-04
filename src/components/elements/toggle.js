@@ -1,116 +1,249 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
-import idx from "idx";
-import Two from "two.js";
-import interact from "interactjs";
-import {
-  createSelectorHook,
-  createDispatchHook,
-  useDispatch,
-  useSelector,
-} from "react-redux";
-import { ReactReduxContext } from "utils/misc";
-import { setPeronsalInformation } from "redux/actions/main";
+import React, { useEffect, useState } from 'react'
+import interact from 'interactjs'
+import { useMutation } from '@apollo/client'
+import { useImmer } from 'use-immer'
 
-// const useSelector = createSelectorHook(ReactReduxContext);
-// const useDispatch = createDispatchHook(ReactReduxContext);
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
+import { elementOnBlurHandler } from 'utils/misc'
+import { color_blue } from 'utils/constants'
+import getEditComponents from 'components/utils/editWrapper'
+import Toolbar from 'components/floatingToolbar'
+import ElementCreator from 'factory/toggle'
 
 function Toggle(props) {
-  const status = useSelector((state) => state.main.currentStatus);
-  const lastAddedElement = useSelector((state) => state.main.lastAddedElement);
-  const dispatch = useDispatch();
-  console.log(
-    "useSelector",
-    useSelector((state) => state)
-  );
-  const two = props.twoJSInstance;
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
+        ignoreResults: true,
+    })
+    const [showToolbar, toggleToolbar] = useState(false)
+    const [internalState, setInternalState] = useImmer({
+        toggleState: true,
+    })
 
-  let toggleRect = null;
-  let toggleCircle = null;
+    const two = props.twoJSInstance
+    let selectorInstance = null
+    let groupObject = null
+    let isDragActive = false
 
-  if (status === "construct" || lastAddedElement.id === props.id) {
-    // Calculate x and y through dividing width and height by 2 or vice versa
-    // if x and y are given then multiply width and height into 2
-    const offsetHeight = 0;
+    function onBlurHandler(e) {
+        elementOnBlurHandler(e, selectorInstance, two)
+        document.getElementById(`${groupObject.id}`) &&
+            document
+                .getElementById(`${groupObject.id}`)
+                .removeEventListener('keydown', handleKeyDown)
+    }
 
-    const prevX = localStorage.getItem("toggle_coordX");
-    const prevY = localStorage.getItem("toggle_coordY");
+    function handleKeyDown(e) {
+        if (e.keyCode === 8 || e.keyCode === 46) {
+            console.log('handle key down event', e)
+            // DELETE/BACKSPACE KEY WAS PRESSED
+            props.handleDeleteComponent &&
+                props.handleDeleteComponent(groupObject)
+            two.remove([groupObject])
+            two.update()
+        }
+    }
 
-    const rect = two.makeRoundedRectangle(0, 0, 55, 30, 16);
-    rect.fill = "#0747A6";
-    rect.noStroke();
-    toggleRect = rect;
+    function onFocusHandler(e) {
+        document.getElementById(`${groupObject.id}`).style.outline = 0
+        document
+            .getElementById(`${groupObject.id}`)
+            .addEventListener('keydown', handleKeyDown)
+    }
 
-    const calcCirclePointX = parseInt(rect.width / 4);
+    // Using unmount phase to remove event listeners
+    useEffect(() => {
+        // Calculate x and y through dividing width and height by 2 or vice versa
+        // if x and y are given then multiply width and height into 2
+        const offsetHeight = 0
+        const prevX = props.x
+        const prevY = props.y
 
-    const circle = two.makeCircle(calcCirclePointX, 0, 10);
-    circle.noStroke();
-    toggleCircle = circle;
+        const elementFactory = new ElementCreator(two, prevX, prevY, {
+            ...props,
+        })
+        const { group, circle, rectCircleGroup, rect } =
+            elementFactory.createElement()
+        group.elementData = { ...props.itemData, ...props }
 
-    const group = two.makeGroup(rect, circle);
+        if (props.parentGroup) {
+            /** This element will be rendered and scoped in its parent group */
+            const parentGroup = props.parentGroup
+            parentGroup.add(rectCircleGroup)
+            two.update()
+        } else {
+            /** This element will render by creating it's own group wrapper */
+            groupObject = group
+            const { selector } = getEditComponents(two, group, 4)
+            selectorInstance = selector
 
-    // const calcX = parseInt(prevX) + (parseInt(rect.width / 2) - 10);
-    // const calcY = parseInt(prevY) - (parseInt(46) - parseInt(rect.height / 2));
-    // group.center();
-    group.translation.x = prevX || 500;
-    group.translation.y = prevY || 200;
-    console.log("BUtton", props.twoJSInstance);
-    two.update();
+            group.children.unshift(rectCircleGroup)
+            two.update()
 
-    interact(`#${group.id}`).draggable({
-      // enable inertial throwing
-      inertia: false,
+            document
+                .getElementById(group.id)
+                .setAttribute('class', 'dragger-picker')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-label', 'toggle_coord')
 
-      listeners: {
-        start(event) {
-          // console.log(event.type, event.target);
-        },
-        move(event) {
-          event.target.style.transform = `translate(${event.pageX}px, ${
-            event.pageY - offsetHeight
-          }px)`;
-        },
-        end(event) {
-          console.log(
-            "event x",
-            event.target.getBoundingClientRect(),
-            event.rect.left,
-            event.pageX,
-            event.clientX
-          );
-          // alternate -> take event.rect.left for x
-          localStorage.setItem("toggle_coordX", parseInt(event.pageX));
-          localStorage.setItem(
-            "toggle_coordY",
-            parseInt(event.pageY - offsetHeight)
-          );
-          dispatch(setPeronsalInformation("COMPLETE", { data: {} }));
-        },
-      },
-    });
-  }
+            setInternalState((draft) => {
+                draft.element = {
+                    [rect.id]: rect,
+                    [group.id]: group,
+                    [rectCircleGroup.id]: rectCircleGroup,
+                    // [selector.id]: selector,
+                }
+                draft.group = {
+                    id: group.id,
+                    data: group,
+                }
+                draft.shape = {
+                    id: rectCircleGroup.id,
+                    data: rectCircleGroup,
+                }
+                draft.text = {
+                    data: {},
+                }
+                draft.icon = {
+                    id: circle.id,
+                    data: circle,
+                }
+            })
 
-  function onToggleChange() {
-    console.log("on toggle change", toggleCircle);
-    const calcCirclePointX = parseInt(toggleRect.width / 4);
-    toggleCircle.translation.x = parseInt(-calcCirclePointX);
-    toggleRect.fill = "#ccc";
-    two.update();
-  }
+            const getGroupElementFromDOM = document.getElementById(
+                `${group.id}`
+            )
+            getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-  return (
-    <React.Fragment>
-      <div id="two-toggle"></div>
-      <button
-        onClick={() => {
-          onToggleChange();
-        }}
-      >
-        Toggle btn
-      </button>
-      {/* <button>change button in group</button> */}
-    </React.Fragment>
-  );
+            const toggleActiveFlagTrue = () => {
+                if (isDragActive === false) isDragActive = true
+            }
+
+            // const { mousemove, mouseup } = handleDrag(
+            //     two,
+            //     group,
+            //     'toggle',
+            //     toggleActiveFlagTrue
+            // )
+
+            // Does capture event of toggle me button rendered prior to this element rendering
+            document.getElementById(group.id).addEventListener('click', (e) => {
+                console.log('mouse event toggle ')
+                if (isDragActive) {
+                    isDragActive = false
+                } else {
+                    let toggleCircle = circle
+                    let toggleRect = rect
+                    const calcCirclePointX = parseInt(toggleRect.width / 4)
+                    console.log('isDragActive click', isDragActive)
+                    if (toggleCircle.translation.x > 0) {
+                        toggleCircle.translation.x = parseInt(-calcCirclePointX)
+                        toggleRect.fill = '#ccc'
+                        two.update()
+                    } else {
+                        toggleCircle.translation.x = parseInt(calcCirclePointX)
+                        toggleRect.fill = props.fill ? props.fill : color_blue
+                        two.update()
+                    }
+                }
+            })
+
+            interact(`#${group.id}`).on('click', () => {
+                selector.update(
+                    rectCircleGroup.getBoundingClientRect(true).left - 4,
+                    rectCircleGroup.getBoundingClientRect(true).right + 4,
+                    rectCircleGroup.getBoundingClientRect(true).top - 4,
+                    rectCircleGroup.getBoundingClientRect(true).bottom + 4
+                )
+                two.update()
+                toggleToolbar(true)
+            })
+
+            // Apply draggable property to element
+            // interact(`#${group.id}`).draggable({
+            //     // enable inertial throwing
+            //     inertia: false,
+
+            //     listeners: {
+            //         start(event) {
+            //             // console.log(event.type, event.target);
+            //         },
+            //         move(event) {
+            //             event.target.style.transform = `translate(${
+            //                 event.pageX
+            //             }px, ${event.pageY - offsetHeight}px)`
+            //         },
+            //         end(event) {
+            //             console.log(
+            //                 'event x',
+            //                 event.target.getBoundingClientRect(),
+            //                 event.rect.left,
+            //                 event.pageX,
+            //                 event.clientX
+            //             )
+            //             // alternate -> take event.rect.left for x
+            //             localStorage.setItem(
+            //                 'toggle_coordX',
+            //                 parseInt(event.pageX)
+            //             )
+            //             localStorage.setItem(
+            //                 'toggle_coordY',
+            //                 parseInt(event.pageY - offsetHeight)
+            //             )
+            //             isDragActive = true
+            //             dispatch(
+            //                 setPeronsalInformation('COMPLETE', { data: {} })
+            //             )
+            //         },
+            //     },
+            // })
+        }
+
+        return () => {
+            console.log('UNMOUNTING in Toggle', group)
+            // clean garbage by removing instance
+            // two.remove(group)
+        }
+    }, [])
+
+    useEffect(() => {
+        if (internalState?.group?.data) {
+            let groupInstance = internalState.group.data
+            groupInstance.translation.x = props.x
+            groupInstance.translation.y = props.y
+            two.update()
+        }
+    }, [props.x, props.y, props.metadata])
+
+    function closeToolbar() {
+        toggleToolbar(false)
+    }
+
+    return (
+        <React.Fragment>
+            <div id="two-toggle"></div>
+
+            {/* <button
+                id="add-1-2"
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                // onClick={() => this.addElements("circle")}
+            >
+                Toggle me
+            </button> */}
+            {showToolbar ? (
+                <Toolbar
+                    toggle={showToolbar}
+                    componentState={internalState}
+                    closeToolbar={closeToolbar}
+                    updateComponent={() => {
+                        two.update()
+                    }}
+                />
+            ) : null}
+            {/* <button>change button in group</button> */}
+        </React.Fragment>
+    )
 }
 
-export default Toggle;
+export default Toggle

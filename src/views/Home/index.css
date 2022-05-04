@@ -1,0 +1,59 @@
+.animate-fade {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.home-arrow-icon {
+    opacity: 0.4;
+    transition: all 0.2s ease;
+}
+.primary-btn-home:hover .home-arrow-icon {
+    opacity: 1;
+    transform: translateX(5px);
+}
+
+.home-page-main-video iframe {
+    z-index: 1 !important;
+}
+
+/* #banner-wave-svg {
+    transition: opacity 0.3s ease;
+    animation: fadeIn 0.3s;
+} */
+/* 
+#branding-imgs {
+    transition: transform 1s ease;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.4);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+} */
+/* 
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        
+    }
+
+    30% {
+        opacity: 0.2;
+        
+    }
+
+    60% {
+        opacity: 0.6;
+        
+    }
+
+    100% {
+        opacity: 1;
+    }
+} */

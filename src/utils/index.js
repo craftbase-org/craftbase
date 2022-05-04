@@ -26,3 +26,8 @@ export const getFourthValue = (x1, x2, y1) => {
   const output = divisor / dividend;
   return output;
 };
+
+export const getDiffForTwoValues = (x, y) => {
+  const result = Math.abs(parseInt(x) - parseInt(y));
+  return result;
+};
