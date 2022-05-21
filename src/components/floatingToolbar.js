@@ -78,6 +78,7 @@ const Accordion = ({
     hideColorText,
     hideColorIcon,
     hideColorBackground,
+    isLastIndex,
 }) => {
     // By using `AnimatePresence` to mount and unmount the contents, we can animate
     // them in and out while also only rendering the contents of open accordions
@@ -120,6 +121,11 @@ const Accordion = ({
                             duration: 0.3,
                             ease: [0.04, 0.62, 0.23, 0.98],
                         }}
+                        style={
+                            isLastIndex === true
+                                ? { paddingBottom: '30px' }
+                                : {}
+                        }
                     >
                         <div className="py-1">
                             {content(
@@ -380,10 +386,20 @@ const Toolbar = (props) => {
                 <OpacitySlider
                     title="Opacity"
                     currentOpacity={state.opacity}
-                    onChangeComplete={(arr) => {
+                    handleOnDrag={(arr) => {
                         setState((draft) => {
                             draft.opacity = arr[0]
                         })
+                        componentState.group.data.opacity = arr[0]
+                        postToolbarUpdate && postToolbarUpdate()
+                    }}
+                    handleOnChange={(arr) => {
+                        setState((draft) => {
+                            draft.opacity = arr[0]
+                        })
+                        componentState.group.data.opacity = arr[0]
+
+                        updateComponent && updateComponent('opacity', arr[0])
                     }}
                 />
             ),
@@ -442,6 +458,7 @@ const Toolbar = (props) => {
                     i.hide === true ? null : (
                         <Accordion
                             key={index}
+                            isLastIndex={index === allowedProperties.length - 1}
                             accordion={i.accordion}
                             toggleAccordion={i.toggleAccordion}
                             header={i.title}
