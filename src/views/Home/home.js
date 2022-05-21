@@ -72,6 +72,7 @@ const HomePage = (props) => {
         }
     }, [insertUserData])
 
+    // we listen for create board mutation success and trigger navigation
     useEffect(() => {
         if (createBoardData) {
             const boardId = createBoardData.board.id
@@ -185,14 +186,14 @@ const HomePage = (props) => {
                 </nav>
                 <div
                     className="w-full
-                mt-8
+                
                 h-full 
-                px-10 2xl:px-20 py-6 sm:py-16 big-desktop:py-32 
+                px-10 2xl:px-20 py-6 sm:py-32 desktop:py-40 big-desktop:py-56 
                 flex items-center  flex-wrap"
                 >
                     <div className="w-full lg:w-5/12 h-full flex items-center justify-center">
                         <div className="text-left transition-opacity duration-300 ease-in-out">
-                            <p className="text-base lg:text-4xl 2xl:text-5xl font-bold ">
+                            <p className="text-base lg:text-3xl 2xl:text-4xl font-bold ">
                                 Create wireframes and design with craftbase.
                             </p>
                             <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
@@ -315,8 +316,8 @@ const HomePage = (props) => {
                     </div>
                 </div>
 
-                <div className="mt-8 px-10 2xl:px-20 py-16 big-desktop:py-40">
-                    <div className="w-full flex items-center ">
+                <div className="mt-32 px-10 2xl:px-20">
+                    <div className="w-full flex  ">
                         <div className="w-1/2">
                             <div className=" pr-14 ">
                                 <div className="font-bold text-2xl text-left">
