@@ -114,7 +114,7 @@ const HomePage = (props) => {
         <>
             {/* <Redirect to={`/board/03a3706e-fe79-4df5-80f6-2f4040ade05f`} /> */}
             <div
-                className="home-page-container relative"
+                className="home-page-container relative bg-neutrals-n20"
                 // style={{ height: `${pageHeight}px` }}
             >
                 {/* <ModalContainer
@@ -143,8 +143,9 @@ const HomePage = (props) => {
                     </div>
                 </ModalContainer> */}
                 <nav
-                    className="flex items-center w-full px-10 py-1 lg:py-2 2xl:py-4
-                 bg-primary-blue"
+                    className="flex items-center w-full px-5 py-1 lg:py-2 2xl:py-4
+                 bg-white
+                 "
                 >
                     <div className="w-1/2 flex items-center ">
                         <div>
@@ -158,21 +159,43 @@ const HomePage = (props) => {
                         </div>
                         <div
                             className="pl-2 
-                        text-white text-base lg:text-xl 2xl:text-2xl font-bold"
+                        text-primary-blue text-base lg:text-xl 2xl:text-2xl font-bold"
                         >
                             craftbase
                         </div>
+                        <div className="text-primary-blue pl-2 text-sm">
+                            {' '}
+                            (still in early alpha stage)
+                        </div>
                     </div>
-                    <div className="pl-5 w-1/2 flex items-center justify-between ">
-                        <div className="text-lg"></div>
-                        <div className="pl-4">
+
+                    <div className="pl-5 w-1/2 flex items-center justify-end ">
+                        <div className="pl-4 flex items-center ">
+                            <div className=" flex items-center">
+                                <a href="https://twitter.com/craftbase_org">
+                                    <img
+                                        className="w-5 h-5"
+                                        src={TwitterLogoSVG}
+                                    />
+                                </a>
+                                <a
+                                    className="pl-2"
+                                    href="https://github.com/craftbase-org"
+                                >
+                                    <img
+                                        className="w-6 h-6"
+                                        src={GithubLogoSVG}
+                                    />
+                                </a>
+                            </div>
+
                             <Button
-                                intent="secondary"
+                                intent="primary"
                                 size="medium"
                                 name="create_board"
                                 label="Create Board"
                                 onClick={onCreateBoard}
-                                extendClass="font-semibold shadow-lg"
+                                extendClass="font-semibold shadow-lg ml-4"
                                 loading={
                                     btnId === 'create_board' &&
                                     (insertUserLoading || createBoardLoading)
@@ -194,7 +217,7 @@ const HomePage = (props) => {
                     <div className="w-full lg:w-5/12 h-full flex items-center justify-center">
                         <div className="text-left transition-opacity duration-300 ease-in-out">
                             <p className="text-base lg:text-3xl 2xl:text-4xl font-bold ">
-                                Create wireframes and design with craftbase.
+                                Online whiteboard tool for on-the-go people.
                             </p>
                             <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
                                 Craftbase is an open source whiteboard tool
