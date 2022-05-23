@@ -35,7 +35,7 @@ function getApolloClient() {
         headers: {
             // authorization: `Bearer ${accessToken}`,
             'content-type': 'application/json',
-            // 'x-hasura-admin-secret': process.env.REACT_APP_HASURA_ADMIN_SECRET,
+            'x-hasura-admin-secret': process.env.REACT_APP_HASURA_ADMIN_SECRET,
         },
     })
 
@@ -48,8 +48,7 @@ function getApolloClient() {
                 headers: {
                     // authorization: `Bearer ${accessToken}`,
                     'content-type': 'application/json',
-                    // 'x-hasura-admin-secret':
-                    //     process.env.REACT_APP_HASURA_ADMIN_SECRET,
+                    'x-hasura-admin-secret': process.env.REACT_APP_HASURA_ADMIN_SECRET,
                 },
             },
         },
