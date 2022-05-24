@@ -111,6 +111,7 @@ module.exports = {
                 // => @media (min-width: 1280px) { ... }
 
                 'big-desktop': '1536px',
+                'ultra-desktop': '1792px',
             },
         },
     },
