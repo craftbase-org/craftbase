@@ -157,7 +157,7 @@ function ButtonWithIcon(props) {
                 const topBuffer = 2
                 input.type = 'text'
                 input.value = text.value
-                input.style.color = '#fff'
+                input.style.color = props.textColor || '#fff'
                 input.style.fontSize = '18px'
                 input.style.position = 'absolute'
                 input.style.top = `${getCoordOfBtnText.top - topBuffer}px`

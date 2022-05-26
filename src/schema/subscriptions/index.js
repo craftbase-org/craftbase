@@ -40,6 +40,7 @@ export const GET_COMPONENT_INFO = gql`
             children
             updatedBy
             iconStroke
+            textColor
         }
     }
 `

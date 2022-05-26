@@ -10,7 +10,7 @@ export default class ButtonFactory extends Main {
             width = 70,
             height = 70,
             fill = color_blue,
-
+            textColor,
             stroke,
             linewidth,
             children = {},
@@ -28,7 +28,7 @@ export default class ButtonFactory extends Main {
 
         text.value = children?.text?.value || 'Button'
         text.size = children?.text?.size || '16'
-        text.fill = children?.text?.fill || '#fff'
+        text.fill = textColor || '#fff'
         text.weight = children?.text?.weight || '500'
 
         const textGroup = two.makeGroup(text)

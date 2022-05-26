@@ -110,38 +110,55 @@ const ElementsDropdown = (props) => {
                     className="w-full flex flex-wrap overflow-y-auto pr-2 pl-2"
                     style={{ height: '550px' }}
                 >
-                    {elementMetaJSON.map((element, index) => (
-                        <React.Fragment key={index}>
-                            <div className="w-full block p-2 ">
-                                <div
-                                    className="element-image-block tooltip-parent relative bg-neutrals-n20 
-                    hover:shadow-lg border border-transparent hover:border-primary-blue transition-all ease-in-out duration-300 cursor-pointer"
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        props.addElement(element.elementName)
-                                    }}
-                                >
-                                    <div className="w-full h-14">
-                                        <img
-                                            className="w-full h-14"
-                                            src={element.elementSVG}
-                                        />
-                                    </div>
-                                    <div className="mt-2 p-1 text-xs text-center text-gray-600">
-                                        {element.elementDisplayName}
-                                    </div>
+                    {elementMetaJSON.map((element, index) =>
+                        index === elementMetaJSON.length - 1 ? (
+                            <>
+                                <div className="w-full block p-2 ">
                                     <div
-                                        className="tooltip-child absolute text-center
+                                        className=" bg-neutrals-n20 
+                    border border-transparent  cursor-pointer"
+                                    >
+                                        <div className="mt-2 p-1 text-xs text-center text-gray-600">
+                                            ... and more to come
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <React.Fragment key={index}>
+                                <div className="w-full block p-2 ">
+                                    <div
+                                        className="element-image-block tooltip-parent relative bg-neutrals-n20 
+                    hover:shadow-lg border border-transparent hover:border-primary-blue transition-all ease-in-out duration-300 cursor-pointer"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            props.addElement(
+                                                element.elementName
+                                            )
+                                        }}
+                                    >
+                                        <div className="w-full h-14">
+                                            <img
+                                                className="w-full h-14"
+                                                src={element.elementSVG}
+                                            />
+                                        </div>
+                                        <div className="mt-2 p-1 text-xs text-center text-gray-600">
+                                            {element.elementDisplayName}
+                                        </div>
+                                        <div
+                                            className="tooltip-child absolute text-center
                                     w-36 left-2 -bottom-3  py-1 rounded-lg
                                      bg-neutrals-n300 text-white text-xs
                                      "
-                                    >
-                                        Click element to add
+                                        >
+                                            Click element to add
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </React.Fragment>
-                    ))}
+                            </React.Fragment>
+                        )
+                    )}
                 </div>
             )}
         </div>

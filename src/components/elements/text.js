@@ -50,6 +50,28 @@ function Text(props) {
             .addEventListener('keydown', handleKeyDown)
     }
 
+    const updateTextStylingViaDOM = (props, rectangle) => {
+        // perform styling via classname rather than component based due to text's foreign svg element
+        let getClassNamesFromDOM = document.getElementsByClassName(
+            `foreign-text-container-${props.id}`
+        )
+        if (getClassNamesFromDOM.length > 0) {
+            let linewidth = props.linewidth ? props.linewidth : 2
+            let color = props.stroke ? props.stroke : '#ccc'
+            let textColor = props.textColor
+            let fill = props.fill
+
+            getClassNamesFromDOM[0].style.color = textColor
+            getClassNamesFromDOM[0].style.background = fill
+            getClassNamesFromDOM[0].style.border = `${linewidth}px solid ${color} `
+
+            rectangle.textColor = textColor
+            rectangle.stroke = color
+            rectangle.linewidth = linewidth
+            two.update()
+        }
+    }
+
     // Using unmount phase to remove event listeners
     useEffect(() => {
         let textFontSize = 16
@@ -84,6 +106,8 @@ function Text(props) {
 
             group.children.unshift(rectTextGroup)
             two.update()
+
+            updateTextStylingViaDOM(props, rectangle)
 
             document
                 .getElementById(group.id)
@@ -135,10 +159,10 @@ function Text(props) {
                     rectTextGroup.getBoundingClientRect(true)
                 )
                 selector.update(
-                    rectTextGroup.getBoundingClientRect(true).left - 0,
-                    rectTextGroup.getBoundingClientRect(true).right + 0,
-                    rectTextGroup.getBoundingClientRect(true).top - 0,
-                    rectTextGroup.getBoundingClientRect(true).bottom + 0
+                    rectTextGroup.getBoundingClientRect(true).left - 4,
+                    rectTextGroup.getBoundingClientRect(true).right + 4,
+                    rectTextGroup.getBoundingClientRect(true).top - 4,
+                    rectTextGroup.getBoundingClientRect(true).bottom + 4
                 )
                 two.update()
                 toggleToolbar(true)
@@ -161,7 +185,8 @@ function Text(props) {
                 input.id = `two-temp-input-area-${randomNumber}`
                 input.value = props?.itemData?.text || textValue
                 input.rows = 3
-                input.style.border = '1px solid #000'
+                input.style.border = '2px solid #ccc'
+                input.style.background = '#fff'
                 input.style.padding = '6px'
                 input.style.color = props?.itemData?.color
                     ? props?.itemData?.color
@@ -274,13 +299,13 @@ function Text(props) {
                             rectangle.height = rect.height
                             selector.update(
                                 rectTextGroup.getBoundingClientRect(true).left -
-                                    0,
+                                    4,
                                 rectTextGroup.getBoundingClientRect(true)
-                                    .right + 0,
+                                    .right + 4,
                                 rectTextGroup.getBoundingClientRect(true).top -
-                                    0,
+                                    4,
                                 rectTextGroup.getBoundingClientRect(true)
-                                    .bottom + 0
+                                    .bottom + 4
                             )
 
                             svgElem.innerHTML = `
@@ -388,8 +413,18 @@ function Text(props) {
             if (props.height !== shapeInstance.height) {
                 shapeInstance.height = props.height
             }
+            updateTextStylingViaDOM(props, internalState.shape.data)
         }
-    }, [props.x, props.y, props.width, props.height, props.metadata])
+    }, [
+        props.stroke,
+        props.linewidth,
+        props.x,
+        props.y,
+        props.width,
+        props.height,
+        props.metadata,
+        props.textColor,
+    ])
 
     function closeToolbar() {
         toggleToolbar(false)
@@ -400,9 +435,13 @@ function Text(props) {
             <div id="two-text"></div>
             {showToolbar ? (
                 <Toolbar
+                    hideColorIcon={true}
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
+                    componentId={props.id}
+                    enableClassNameStyling={true}
+                    classNameLabel={`foreign-text-container-${props.id}`}
                     updateComponent={() => {
                         two.update()
                     }}

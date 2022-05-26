@@ -94,6 +94,8 @@ const PrimarySidebar = (props) => {
                         metadata: item.defaultMetaData,
                         width: item.width,
                         height: item.height,
+                        fill: item.fill,
+                        textColor: item.textColor,
                     }
                 }
             })

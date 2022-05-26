@@ -78,6 +78,7 @@ const Accordion = ({
     hideColorText,
     hideColorIcon,
     hideColorBackground,
+    isLastIndex,
 }) => {
     // By using `AnimatePresence` to mount and unmount the contents, we can animate
     // them in and out while also only rendering the contents of open accordions
@@ -120,6 +121,11 @@ const Accordion = ({
                             duration: 0.3,
                             ease: [0.04, 0.62, 0.23, 0.98],
                         }}
+                        style={
+                            isLastIndex === true
+                                ? { paddingBottom: '30px' }
+                                : {}
+                        }
                     >
                         <div className="py-1">
                             {content(
@@ -143,6 +149,8 @@ const Toolbar = (props) => {
         componentId,
         postToolbarUpdate,
         hideColorSection,
+        enableClassNameStyling,
+        classNameLabel,
     } = props
     console.log('Toolbar props', props)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
@@ -213,6 +221,19 @@ const Toolbar = (props) => {
                             // secondary element's fill property from the existing state
                             if (componentState.shape?.data?.fill)
                                 componentState.shape.data.fill = color
+
+                            // check if to apply style via class names
+                            if (enableClassNameStyling) {
+                                let getClassNamesFromDOM =
+                                    document.getElementsByClassName(
+                                        classNameLabel
+                                    )
+
+                                if (getClassNamesFromDOM.length > 0) {
+                                    getClassNamesFromDOM[0].style.background =
+                                        color
+                                }
+                            }
                             // componentState.icon.data.stroke = state.colorIcon
 
                             // if (componentState?.icon?.data?.stroke)
@@ -262,8 +283,19 @@ const Toolbar = (props) => {
                                     if (componentState?.text?.data?.fill)
                                         componentState.text.data.fill = color
 
+                                    if (enableClassNameStyling) {
+                                        let getClassNamesFromDOM =
+                                            document.getElementsByClassName(
+                                                classNameLabel
+                                            )
+
+                                        if (getClassNamesFromDOM.length > 0) {
+                                            getClassNamesFromDOM[0].style.color =
+                                                color
+                                        }
+                                    }
                                     updateComponent &&
-                                        updateComponent('fill', color)
+                                        updateComponent('textColor', color)
                                 }}
                             />
                         </>
@@ -348,6 +380,16 @@ const Toolbar = (props) => {
                             // componentState.shape.data.linewidth = 2
                         }
 
+                        // check if to apply style via class names
+                        if (enableClassNameStyling) {
+                            let getClassNamesFromDOM =
+                                document.getElementsByClassName(classNameLabel)
+
+                            if (getClassNamesFromDOM.length > 0) {
+                                getClassNamesFromDOM[0].style.border = `${state.linewidth}px solid ${color} `
+                            }
+                        }
+
                         updateComponent && updateComponent('stroke', color)
                         // updateComponent && updateComponent('linewidth', 2)
                     }}
@@ -358,6 +400,20 @@ const Toolbar = (props) => {
                         if (componentState.shape?.data?.stroke) {
                             componentState.shape.data.stroke = state.borderColor
                             componentState.shape.data.linewidth = width
+                        }
+
+                        if (enableClassNameStyling) {
+                            let getClassNamesFromDOM =
+                                document.getElementsByClassName(classNameLabel)
+
+                            if (getClassNamesFromDOM.length > 0) {
+                                console.log(
+                                    'get class name from dom',
+                                    width,
+                                    state.borderColor
+                                )
+                                getClassNamesFromDOM[0].style.border = `${width}px solid ${state.borderColor} `
+                            }
                         }
 
                         // updateComponent && updateComponent('stroke', color)
@@ -380,10 +436,20 @@ const Toolbar = (props) => {
                 <OpacitySlider
                     title="Opacity"
                     currentOpacity={state.opacity}
-                    onChangeComplete={(arr) => {
+                    handleOnDrag={(arr) => {
                         setState((draft) => {
                             draft.opacity = arr[0]
                         })
+                        componentState.group.data.opacity = arr[0]
+                        postToolbarUpdate && postToolbarUpdate()
+                    }}
+                    handleOnChange={(arr) => {
+                        setState((draft) => {
+                            draft.opacity = arr[0]
+                        })
+                        componentState.group.data.opacity = arr[0]
+
+                        updateComponent && updateComponent('opacity', arr[0])
                     }}
                 />
             ),
@@ -442,6 +508,7 @@ const Toolbar = (props) => {
                     i.hide === true ? null : (
                         <Accordion
                             key={index}
+                            isLastIndex={index === allowedProperties.length - 1}
                             accordion={i.accordion}
                             toggleAccordion={i.toggleAccordion}
                             header={i.title}

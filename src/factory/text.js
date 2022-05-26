@@ -5,7 +5,13 @@ export default class TextFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill = 'rgba(0,0,0,0)', width, height } = this.properties || {}
+        const {
+            fill = 'rgba(0,0,0,0)',
+            width,
+            height,
+            id,
+            textColor,
+        } = this.properties || {}
         const { content = '' } = this.properties.metadata || {}
 
         // pass width and height here for transparent rectangle container
@@ -26,7 +32,7 @@ export default class TextFactory extends Main {
     <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
             rectTextGroup.getBoundingClientRect(true).top
         } width=${rectangle.width} height=${height}>
-        <div class="foreign-text-container">${content}</div>
+        <div class="foreign-text-container-base foreign-text-container-${id}">${content}</div>
     </foreignObject>
     `
         rectTextGroup.center()

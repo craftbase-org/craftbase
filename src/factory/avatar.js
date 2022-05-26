@@ -43,6 +43,7 @@ export default class AvatarFactory extends Main {
             ? children?.icon?.iconScale
             : 1
         externalSVG.stroke = iconStroke ? iconStroke : '#fff'
+        externalSVG.fill = 'transparent'
 
         const externalSVGGroup = two.makeGroup(externalSVG)
         externalSVGGroup.center()

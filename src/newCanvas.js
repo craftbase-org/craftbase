@@ -87,14 +87,13 @@ function addZUI(
 
     function mousedown(e) {
         // initialize shape definition
-        console.log(
-            'e in ZUI mouse down',
-            mouse.x,
-            mouse.y,
-            e.clientX,
-            e.clientY
-        )
+        console.log('e in ZUI mouse down', e, e.clientX, e.clientY)
         const lastAddedElementId = localStorage.getItem('lastAddedElementId')
+
+        if (e?.srcElement?.lastChild?.id === 'two-0') {
+            let evt = new CustomEvent('clearSelector', {})
+            window.dispatchEvent(evt)
+        }
 
         if (lastAddedElementId !== null) {
             const clientToSurface = zui.clientToSurface(e.clientX, e.clientY)

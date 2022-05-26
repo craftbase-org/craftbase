@@ -27,7 +27,9 @@ iframe {
 }
 
 /* css for text wireframe element's foreign object */
-.foreign-text-container {
+.foreign-text-container-base {
+    background: #fff;
+    border: 2px solid #ccc;
     height: 100%;
     display: flex;
     align-items: center;
