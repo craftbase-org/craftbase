@@ -218,7 +218,8 @@ const HomePage = (props) => {
                         <div className="w-full lg:w-5/12 h-full flex items-center justify-center">
                             <div className="text-left transition-opacity duration-300 ease-in-out">
                                 <p className="text-base lg:text-3xl 2xl:text-4xl font-bold ">
-                                    Online whiteboard tool for on-the-go people.
+                                    Online whiteboarding tool for creative
+                                    people.
                                 </p>
                                 <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
                                     Craftbase is an open source whiteboard tool
