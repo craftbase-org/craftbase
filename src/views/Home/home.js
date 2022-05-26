@@ -345,8 +345,8 @@ const HomePage = (props) => {
                     </div>
 
                     <div className="mt-20 ">
-                        <div className="w-full flex  ">
-                            <div className="w-1/2">
+                        <div className="w-full flex flex-wrap ">
+                            <div className="w-full lg:w-1/2">
                                 <div className="  ">
                                     <div className="font-bold text-2xl text-left">
                                         Modify your wireframe elements the way
@@ -370,7 +370,7 @@ const HomePage = (props) => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="w-1/2 h-64">
+                            <div className="w-full lg:w-1/2 h-64 pt-4 lg:pt-0">
                                 <div className="w-auto h-full float-right ">
                                     <img
                                         className="w-auto  h-64 shadow-2xl"
@@ -383,8 +383,8 @@ const HomePage = (props) => {
                     </div>
 
                     <div className="mt-20 ">
-                        <div className="w-full flex  ">
-                            <div className="w-1/2 h-64">
+                        <div className="w-full flex flex-wrap ">
+                            <div className="w-full lg:w-1/2 h-64 ">
                                 <div className="w-auto h-full float-left">
                                     <img
                                         className="w-auto  h-64 shadow-2xl"
@@ -393,7 +393,7 @@ const HomePage = (props) => {
                                     />
                                 </div>
                             </div>
-                            <div className="w-1/2">
+                            <div className="w-full lg:w-1/2 pt-4 lg:pt-0">
                                 <div className="  ">
                                     <div className="font-bold text-2xl text-left">
                                         Support for most common used elements
@@ -420,8 +420,8 @@ const HomePage = (props) => {
                     </div>
 
                     <div className="mt-20 ">
-                        <div className="w-full flex ">
-                            <div className="w-1/2">
+                        <div className="w-full flex flex-wrap ">
+                            <div className="w-full lg:w-1/2 ">
                                 <div className="  ">
                                     <div className="font-bold text-2xl text-left">
                                         Back to the basics
@@ -439,7 +439,7 @@ const HomePage = (props) => {
                                 </div>
                             </div>
 
-                            <div className="w-1/2 h-64">
+                            <div className="w-full lg:w-1/2 pt-4 lg:pt-0 h-64">
                                 <div className="w-auto h-full float-right">
                                     <img
                                         className="w-auto  h-64 shadow-2xl"
