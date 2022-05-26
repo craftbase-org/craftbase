@@ -17,6 +17,8 @@ export const GET_COMPONENT_TYPES = gql`
             logo
             width
             height
+            fill
+            textColor
         }
     }
 `
