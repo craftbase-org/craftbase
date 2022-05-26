@@ -34,7 +34,7 @@ export default {
     },
     ICON_IMAGE_AVATAR_WHITE: {
         viewBox: '0 0 16 16',
-        data: '<svg role="img" xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" viewBox="0 0 24 24" aria-labelledby="personIconTitle" stroke="#FFFFFF" stroke-width="1" stroke-linecap="square" stroke-linejoin="miter" fill="none" color="#FFFFFF"> <title id="personIconTitle">Person</title> <path d="M4,20 C4,17 8,17 10,15 C11,14 8,14 8,9 C8,5.667 9.333,4 12,4 C14.667,4 16,5.667 16,9 C16,14 13,14 14,15 C16,17 20,17 20,20"/> </svg>',
+        data: '<svg role="img" xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" viewBox="0 0 24 24" aria-labelledby="personIconTitle" stroke="#FFFFFF" stroke-width="1" stroke-linecap="square" stroke-linejoin="miter" fill="transparent" color="#FFFFFF"> <title id="personIconTitle">Person</title> <path d="M4,20 C4,17 8,17 10,15 C11,14 8,14 8,9 C8,5.667 9.333,4 12,4 C14.667,4 16,5.667 16,9 C16,14 13,14 14,15 C16,17 20,17 20,20"/> </svg>',
     },
     ICON_IMAGE_PHONE_WHITE: {
         viewBox: '0 0 16 16',
