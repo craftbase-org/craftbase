@@ -149,6 +149,8 @@ const Toolbar = (props) => {
         componentId,
         postToolbarUpdate,
         hideColorSection,
+        enableClassNameStyling,
+        classNameLabel,
     } = props
     console.log('Toolbar props', props)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
@@ -219,6 +221,19 @@ const Toolbar = (props) => {
                             // secondary element's fill property from the existing state
                             if (componentState.shape?.data?.fill)
                                 componentState.shape.data.fill = color
+
+                            // check if to apply style via class names
+                            if (enableClassNameStyling) {
+                                let getClassNamesFromDOM =
+                                    document.getElementsByClassName(
+                                        classNameLabel
+                                    )
+
+                                if (getClassNamesFromDOM.length > 0) {
+                                    getClassNamesFromDOM[0].style.background =
+                                        color
+                                }
+                            }
                             // componentState.icon.data.stroke = state.colorIcon
 
                             // if (componentState?.icon?.data?.stroke)
@@ -268,8 +283,19 @@ const Toolbar = (props) => {
                                     if (componentState?.text?.data?.fill)
                                         componentState.text.data.fill = color
 
+                                    if (enableClassNameStyling) {
+                                        let getClassNamesFromDOM =
+                                            document.getElementsByClassName(
+                                                classNameLabel
+                                            )
+
+                                        if (getClassNamesFromDOM.length > 0) {
+                                            getClassNamesFromDOM[0].style.color =
+                                                color
+                                        }
+                                    }
                                     updateComponent &&
-                                        updateComponent('fill', color)
+                                        updateComponent('textColor', color)
                                 }}
                             />
                         </>
@@ -354,6 +380,16 @@ const Toolbar = (props) => {
                             // componentState.shape.data.linewidth = 2
                         }
 
+                        // check if to apply style via class names
+                        if (enableClassNameStyling) {
+                            let getClassNamesFromDOM =
+                                document.getElementsByClassName(classNameLabel)
+
+                            if (getClassNamesFromDOM.length > 0) {
+                                getClassNamesFromDOM[0].style.border = `${state.linewidth}px solid ${color} `
+                            }
+                        }
+
                         updateComponent && updateComponent('stroke', color)
                         // updateComponent && updateComponent('linewidth', 2)
                     }}
@@ -364,6 +400,20 @@ const Toolbar = (props) => {
                         if (componentState.shape?.data?.stroke) {
                             componentState.shape.data.stroke = state.borderColor
                             componentState.shape.data.linewidth = width
+                        }
+
+                        if (enableClassNameStyling) {
+                            let getClassNamesFromDOM =
+                                document.getElementsByClassName(classNameLabel)
+
+                            if (getClassNamesFromDOM.length > 0) {
+                                console.log(
+                                    'get class name from dom',
+                                    width,
+                                    state.borderColor
+                                )
+                                getClassNamesFromDOM[0].style.border = `${width}px solid ${state.borderColor} `
+                            }
                         }
 
                         // updateComponent && updateComponent('stroke', color)
