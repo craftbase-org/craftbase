@@ -36,7 +36,7 @@ function getComponentSchema(obj, boardId, parentGroupX, parentGroupY) {
 
 function GroupedObjectWrapper(props) {
     const history = useHistory()
-    console.log('history', history)
+    // console.log('history', history)
     const [
         insertComponents,
         {

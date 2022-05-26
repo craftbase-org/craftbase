@@ -81,9 +81,15 @@ export default class Selector {
         }
 
         const areaGroup = this.two.makeGroup(area, circleGroup)
+
         this.areaGroup = areaGroup
         this.group.add(areaGroup)
-        // this.two.udpate();
+        this.two.update()
+
+        const clearSelector = () => {
+            this.areaGroup.opacity = 0
+        }
+        window.addEventListener('clearSelector', clearSelector, false)
     }
 
     show() {
