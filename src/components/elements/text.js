@@ -249,9 +249,9 @@ function Text(props) {
           } y=${rectTextGroup.getBoundingClientRect(true).top} width=${
                         rectangle.width
                     } height=${rectangle.height}>
-              <div class="foreign-text-container" style="font-size:${
-                  textFontSize + 'px'
-              }">${textValue}</div>
+              <div class="foreign-text-container-base foreign-text-container-${
+                  props.id
+              }" style="font-size:${textFontSize + 'px'}">${textValue}</div>
           </foreignObject>
           `
                     two.update()
@@ -314,9 +314,9 @@ function Text(props) {
                             } width=${rectangle.width} height=${
                                 rectangle.height
                             }>
-        <div class="foreign-text-container" style="font-size:${
-            textFontSize + 'px'
-        }">${textValue}</div>
+        <div class="foreign-text-container-base foreign-text-container-${
+            props.id
+        }" style="font-size:${textFontSize + 'px'}">${textValue}</div>
     </foreignObject>
     `
 
