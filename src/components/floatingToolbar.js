@@ -158,10 +158,10 @@ const Toolbar = (props) => {
     })
 
     const [state, setState] = useImmer({
-        colorsAccordion: false,
+        colorsAccordion: true,
         fontAccordion: false,
-        borderAccordion: false,
-        opacityAccordion: false,
+        borderAccordion: true,
+        opacityAccordion: true,
         iconAccordion: false,
         colorBg: '#000',
         colorIcon: '#fff',
@@ -434,7 +434,7 @@ const Toolbar = (props) => {
                 }),
             content: () => (
                 <OpacitySlider
-                    title="Opacity"
+                    title="Transparency"
                     currentOpacity={state.opacity}
                     handleOnDrag={(arr) => {
                         setState((draft) => {
