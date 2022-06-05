@@ -56,7 +56,7 @@ function Text(props) {
             `foreign-text-container-${props.id}`
         )
         if (getClassNamesFromDOM.length > 0) {
-            let linewidth = props.linewidth ? props.linewidth : 2
+            let linewidth = props.linewidth ? props.linewidth : 0.1
             let color = props.stroke ? props.stroke : '#ccc'
             let textColor = props.textColor
             let fill = props.fill
@@ -235,8 +235,14 @@ function Text(props) {
                     //   );
                     selector.hide()
 
-                    rectTextGroup.height = input.scrollHeight
-                    rectangle.height = input.scrollHeight
+                    rectTextGroup.height =
+                        input.scrollHeight < 60
+                            ? input.scrollHeight
+                            : input.scrollHeight - 20
+                    rectangle.height =
+                        input.scrollHeight < 60
+                            ? input.scrollHeight
+                            : input.scrollHeight - 20
                     two.update()
                     console.log(
                         'rectangle.height',

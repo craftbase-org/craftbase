@@ -10,9 +10,15 @@ export default class RectangleFactory extends Main {
 
         // Implement core element
 
-        const rectangle = two.makeRectangle(0, 0, width || 210, height || 110)
-        rectangle.fill = fill ? fill : color_blue
+        const rectangle = two.makeRoundedRectangle(
+            0,
+            0,
+            width || 210,
+            height || 110,
+            5
+        )
 
+        rectangle.fill = fill ? fill : color_blue
         rectangle.stroke = stroke ? stroke : '#fff'
         rectangle.linewidth = linewidth ? linewidth : 0
 
