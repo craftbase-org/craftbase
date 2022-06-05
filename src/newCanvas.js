@@ -96,6 +96,8 @@ function addZUI(
         }
 
         if (lastAddedElementId !== null) {
+            // This block falls for the case when there is newly added element and we let user click
+            // anywhere to set last added element's position
             const clientToSurface = zui.clientToSurface(e.clientX, e.clientY)
 
             let twoJSElement = two.scene.children.find(
@@ -122,7 +124,7 @@ function addZUI(
             let avoidDragging = false
             let isGroupSelector = false
 
-            var path = e.path || (e.composedPath && e.composedPath())
+            let path = e.path || (e.composedPath && e.composedPath())
             // checks for path in event if it contains following element with condition
             path.forEach((item, index) => {
                 console.log(
@@ -243,6 +245,8 @@ function addZUI(
                 shape.position.x += dx / zui.scale
                 shape.position.y += dy / zui.scale
             } else if (shape.elementData.isGroupSelector) {
+                // this blocks falls for the case when user has clicked and
+                // is dragging to create a group selector
                 console.log('shape.position', shape)
                 let area = shape.children[0]
                 let x = e.clientX
@@ -326,8 +330,6 @@ function addZUI(
         // const getCoordLabel = document
         //     .getElementById(shape.id)
         //     .getAttribute('data-label')
-        // localStorage.setItem(`${getCoordLabel + 'X'}`, shape.translation.x)
-        // localStorage.setItem(`${getCoordLabel + 'Y'}`, shape.translation.y)
 
         // diff to check new x,y and prev x,y
         let oldShapeData = {}
@@ -387,7 +389,7 @@ function addZUI(
     }
 
     function mousewheel(e) {
-        if (e.ctrlKey === true || e.metaKey === true) {
+        if (e.shiftKey === true || e.metaKey === true) {
             let dy = (e.wheelDeltaY || -e.deltaY) / 1000
             zui.zoomBy(dy, e.clientX, e.clientY)
         } else {
@@ -636,8 +638,6 @@ const Canvas = (props) => {
 
     useEffect(() => {
         // setting pan displacement values to initial
-        // localStorage.setItem('displacement_x', 0)
-        // localStorage.setItem('displacement_y', 0)
 
         console.log('CANVAS CDM', props.selectPanMode)
         const elem = document.getElementById('main-two-root')

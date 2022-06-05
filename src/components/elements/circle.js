@@ -3,7 +3,6 @@ import interact from 'interactjs'
 import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
 
-// import Panzoom from '@panzoom/panzoom'
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
