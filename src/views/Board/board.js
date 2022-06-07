@@ -109,7 +109,7 @@ const BoardViewPage = (props) => {
 
     return (
         <>
-            {isDesktop || isLaptop || isTablet ? (
+            {!isMobile ? (
                 <div>
                     <div
                         id="show-select-any-shape-btn"
