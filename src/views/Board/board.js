@@ -183,8 +183,9 @@ const BoardViewPage = (props) => {
             {isMobile ? (
                 <div>
                     <div className="px-4 py-4 text-xl ">
-                        We don't support mobile screens yet. We only support
-                        tablet, laptop and desktop screens as of now.{' '}
+                        The mobile version isn't here yet. Please view Craftbase
+                        on your tablet or desktop (or on bigger screens) in the
+                        meantime.
                     </div>
                 </div>
             ) : null}
