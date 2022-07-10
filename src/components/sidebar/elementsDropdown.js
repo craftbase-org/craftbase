@@ -11,18 +11,21 @@ import RadioboxSVG from 'wireframeAssets/radiobox.svg'
 import CheckboxSVG from 'wireframeAssets/checkbox.svg'
 import FrameSVG from 'wireframeAssets/frame.svg'
 
-import CirclePNG from 'assets/circle.png'
+import CircleIcon from 'wireframeAssets/circle.svg'
+import RectangleIcon from 'wireframeAssets/rectangle.svg'
+import TextIcon from 'wireframeAssets/text.svg'
+import RightArrowIcon from 'assets/right_arrow.svg'
 
-import DropdownPNG from 'assets/dropdown.png'
-
-import LinkWithIconPNG from 'assets/linkwithicon.png'
 import OverlayPNG from 'assets/overlay.png'
 import Spinner from 'components/common/spinnerWithSize'
-import RectanglePNG from 'assets/rectangle.png'
-import TextPNG from 'assets/text.png'
-import TextInputPNG from 'assets/textinput.png'
+import { useState } from 'react'
 
-const elementMetaJSON = [
+const staticElementData = [
+    {
+        elementName: 'arrowLine',
+        elementDisplayName: 'Arrow',
+        elementSVG: RightArrowIcon,
+    },
     {
         elementName: 'avatar',
         elementDisplayName: 'Avatar',
@@ -38,6 +41,11 @@ const elementMetaJSON = [
         elementName: 'button',
         elementDisplayName: 'Button',
         elementSVG: ButtonSVG,
+    },
+    {
+        elementName: 'circle',
+        elementDisplayName: 'Circle',
+        elementSVG: CircleIcon,
     },
     {
         elementName: 'imageCard',
@@ -56,6 +64,11 @@ const elementMetaJSON = [
         elementSVG: DividerSVG,
     },
     {
+        elementName: 'rectangle',
+        elementDisplayName: 'Rectangle',
+        elementSVG: RectangleIcon,
+    },
+    {
         elementName: 'overlay',
         elementDisplayName: 'Overlay',
         elementSVG: OverlayPNG,
@@ -70,9 +83,31 @@ const elementMetaJSON = [
         elementDisplayName: 'Checkbox Control',
         elementSVG: CheckboxSVG,
     },
+    {
+        elementName: 'text',
+        elementDisplayName: 'Text',
+        elementSVG: TextIcon,
+    },
+    // { elementName: '---', elementDisplayName: '---', elementSVG: '---' },
 ]
 
 const ElementsDropdown = (props) => {
+    const [listElements, setListElements] = useState([...staticElementData])
+
+    const onChangeSearchBar = (e) => {
+        const value = e.target.value.trim().toLowerCase()
+        console.log('value', value)
+        const updatedList = staticElementData.filter((item) =>
+            item.elementDisplayName.toLowerCase().includes(value)
+        )
+        console.log('updatedList', updatedList)
+        if (value === '') {
+            setListElements([...staticElementData])
+        } else {
+            setListElements([...updatedList])
+        }
+    }
+
     return (
         <div
             tabIndex="-1"
@@ -82,7 +117,7 @@ const ElementsDropdown = (props) => {
           fixed
          
         w-48  bg-white block text-left
-         pt-2 pb-4
+          pb-4
          
          rounded-md shadow-lg
         "
@@ -97,6 +132,15 @@ const ElementsDropdown = (props) => {
                 // props.handleOnBlur()
             }}
         >
+            <div className="px-0 pb-2  ">
+                <input
+                    className="w-full  px-2 py-2 bg-neutrals-n20 rounded-t-md 
+                    border-b border-neutrals-n40 text-base focus:outline-none"
+                    type="text"
+                    onChange={onChangeSearchBar}
+                    placeholder="Search elements"
+                />
+            </div>
             {props.getComponentTypesLoading ? (
                 <div
                     className="w-full flex justify-center"
@@ -107,58 +151,45 @@ const ElementsDropdown = (props) => {
                 </div>
             ) : (
                 <div
-                    className="w-full flex flex-wrap overflow-y-auto pr-2 pl-2"
+                    className="w-full overflow-y-auto pr-2 pl-2"
                     style={{ height: '550px' }}
                 >
-                    {elementMetaJSON.map((element, index) =>
-                        index === elementMetaJSON.length - 1 ? (
-                            <>
-                                <div className="w-full block p-2 ">
-                                    <div
-                                        className=" bg-neutrals-n20 
-                    border border-transparent  cursor-pointer"
-                                    >
-                                        <div className="mt-2 p-1 text-xs text-center text-gray-600">
-                                            ... and more to come
-                                        </div>
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <React.Fragment key={index}>
-                                <div className="w-full block p-2 ">
-                                    <div
-                                        className="element-image-block tooltip-parent relative bg-neutrals-n20 
-                    hover:shadow-lg border border-transparent hover:border-primary-blue transition-all ease-in-out duration-300 cursor-pointer"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            props.addElement(
-                                                element.elementName
-                                            )
-                                        }}
-                                    >
-                                        <div className="w-full h-14">
-                                            <img
-                                                className="w-full h-14"
-                                                src={element.elementSVG}
-                                            />
-                                        </div>
-                                        <div className="mt-2 p-1 text-xs text-center text-gray-600">
-                                            {element.elementDisplayName}
-                                        </div>
-                                        <div
-                                            className="tooltip-child absolute text-center
-                                    w-36 left-2 -bottom-3  py-1 rounded-lg
-                                     bg-neutrals-n300 text-white text-xs
-                                     "
-                                        >
-                                            Click element to add
-                                        </div>
-                                    </div>
-                                </div>
-                            </React.Fragment>
-                        )
-                    )}
+                    {listElements.length > 0
+                        ? listElements.map((element, index) => (
+                              <React.Fragment key={index}>
+                                  <div className="w-full block p-2 ">
+                                      <div
+                                          className="element-image-block tooltip-parent relative bg-neutrals-n20 
+      hover:shadow-lg border border-transparent hover:border-primary-blue transition-all ease-in-out duration-300 cursor-pointer"
+                                          onClick={(e) => {
+                                              e.stopPropagation()
+                                              props.addElement(
+                                                  element.elementName
+                                              )
+                                          }}
+                                      >
+                                          <div className="w-full h-14">
+                                              <img
+                                                  className="w-full h-14"
+                                                  src={element.elementSVG}
+                                              />
+                                          </div>
+                                          <div className="mt-2 p-1 text-xs text-center text-gray-600">
+                                              {element.elementDisplayName}
+                                          </div>
+                                          <div
+                                              className="tooltip-child absolute text-center
+                      w-36 left-2 -bottom-3  py-1 rounded-lg
+                       bg-neutrals-n300 text-white text-xs
+                       "
+                                          >
+                                              Click element to add
+                                          </div>
+                                      </div>
+                                  </div>
+                              </React.Fragment>
+                          ))
+                        : null}
                 </div>
             )}
         </div>
