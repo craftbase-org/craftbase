@@ -9,7 +9,7 @@ export default class ArrowLineFactory extends Main {
 
         // console.log('arrow line factory x1, y1, x2, y2', x1, y1, x2, y2)
         let line = two.makeArrow(x1, y1, x2, y2, 10)
-        line.linewidth = 3
+        line.linewidth = 4
         // line.vertices[1].y = 200
 
         const pointCircle1 = two.makeEllipse(0, 0, 5, 5)

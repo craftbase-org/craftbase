@@ -276,7 +276,7 @@ function ArrowLine(props) {
                             updateX1Y1Vertices(line, x1, y1, pointCircle1)
                         }
 
-                        group.center()
+                        // group.center()
                         two.update()
                         // console.log('on move group translation ', group)
                         // pointCircle1.translation.x =
@@ -340,7 +340,7 @@ function ArrowLine(props) {
                             updateX2Y2Vertices(line, x2, y2, pointCircle2)
                         }
 
-                        group.center()
+                        // group.center()
                         two.update()
                         // console.log(
                         //     'on move group translation ',
