@@ -104,16 +104,19 @@ function addZUI(
                 (child) => child?.elementData?.id === lastAddedElementId
             )
 
-            twoJSElement.position.x = clientToSurface.x
-            twoJSElement.position.y = clientToSurface.y
+            if (twoJSElement?.position) {
+                twoJSElement.position.x = clientToSurface.x
+                twoJSElement.position.y = clientToSurface.y
 
-            two.update()
+                two.update()
 
-            updateComponentVertices(
-                lastAddedElementId,
-                clientToSurface.x,
-                clientToSurface.y
-            )
+                updateComponentVertices(
+                    lastAddedElementId,
+                    clientToSurface.x,
+                    clientToSurface.y
+                )
+            }
+
             localStorage.removeItem('lastAddedElementId')
 
             document.getElementById('main-two-root').style.cursor = 'auto'
