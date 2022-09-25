@@ -432,7 +432,7 @@ const HomePage = (props) => {
                                             work and just simply want to play
                                             with shapes. We already have a
                                             dedicated seperate toolbar for
-                                            shapes in the top-right corner where
+                                            shapes in the top-left corner where
                                             you can easily choose your shapes
                                         </p>
                                     </div>
