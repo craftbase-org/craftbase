@@ -22,6 +22,16 @@ import { useState } from 'react'
 
 const staticElementData = [
     {
+        elementName: 'circle',
+        elementDisplayName: 'Circle',
+        elementSVG: CircleIcon,
+    },
+    {
+        elementName: 'rectangle',
+        elementDisplayName: 'Rectangle / Square',
+        elementSVG: RectangleIcon,
+    },
+    {
         elementName: 'arrowLine',
         elementDisplayName: 'Arrow',
         elementSVG: RightArrowIcon,
@@ -42,11 +52,7 @@ const staticElementData = [
         elementDisplayName: 'Button',
         elementSVG: ButtonSVG,
     },
-    {
-        elementName: 'circle',
-        elementDisplayName: 'Circle',
-        elementSVG: CircleIcon,
-    },
+
     {
         elementName: 'imageCard',
         elementDisplayName: 'Image Card',
@@ -63,11 +69,7 @@ const staticElementData = [
         elementDisplayName: 'Divider',
         elementSVG: DividerSVG,
     },
-    {
-        elementName: 'rectangle',
-        elementDisplayName: 'Rectangle',
-        elementSVG: RectangleIcon,
-    },
+
     {
         elementName: 'overlay',
         elementDisplayName: 'Overlay',
