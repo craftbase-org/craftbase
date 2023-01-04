@@ -62,8 +62,9 @@ function Text(props) {
             let fill = props.fill
 
             getClassNamesFromDOM[0].style.color = textColor
-            getClassNamesFromDOM[0].style.background = fill
-            getClassNamesFromDOM[0].style.border = `${linewidth}px solid ${color} `
+            // commenting this code for temporary basis. This would be responsible for updating rectangle style
+            // getClassNamesFromDOM[0].style.background = fill
+            // getClassNamesFromDOM[0].style.border = `${linewidth}px solid ${color} `
 
             rectangle.textColor = textColor
             rectangle.stroke = color
@@ -447,7 +448,7 @@ function Text(props) {
                     closeToolbar={closeToolbar}
                     componentId={props.id}
                     enableClassNameStyling={true}
-                    classNameLabel={`foreign-text-container-${props.id}`}
+                    // classNameLabel={`foreign-text-container-${props.id}`}
                     updateComponent={() => {
                         two.update()
                     }}

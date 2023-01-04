@@ -16,7 +16,7 @@ export default class TextFactory extends Main {
 
         // pass width and height here for transparent rectangle container
         const rectangle = two.makeRoundedRectangle(0, 0, width, height, 5)
-        rectangle.fill = fill
+        rectangle.noFill()
         rectangle.noStroke()
 
         const rectTextGroup = two.makeGroup(rectangle)
