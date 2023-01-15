@@ -1,147 +1,131 @@
-import React, { Component } from 'react'
+import React, { useState, Component } from 'react'
+import Proptypes from 'prop-types'
+import classnames from 'classnames'
 
-import Icon from 'icons/icon'
-import AvatarSVG from 'wireframeAssets/avatar.svg'
-import ButtonSVG from 'wireframeAssets/btn.svg'
-import ButtonWithIconSVG from 'wireframeAssets/btnWithIcon.svg'
-import ImageCardSVG from 'wireframeAssets/imageCard.svg'
-import ToggleSVG from 'wireframeAssets/toggle.svg'
-import DividerSVG from 'wireframeAssets/divider.svg'
-import RadioboxSVG from 'wireframeAssets/radiobox.svg'
-import CheckboxSVG from 'wireframeAssets/checkbox.svg'
-import FrameSVG from 'wireframeAssets/frame.svg'
-
-import CircleIcon from 'wireframeAssets/circle.svg'
-import RectangleIcon from 'wireframeAssets/rectangle.svg'
-import TextIcon from 'wireframeAssets/text.svg'
-import RightArrowIcon from 'assets/right_arrow.svg'
-
-import OverlayPNG from 'assets/overlay.png'
+import { staticDrawerData, staticPrimaryElementData } from 'utils/constants'
 import Spinner from 'components/common/spinnerWithSize'
-import { useState } from 'react'
+import RightArrowBlackSVG from 'assets/right_arrow.svg'
+import Button from 'components/common/button'
 
-const staticElementData = [
-    {
-        elementName: 'arrowLine',
-        elementDisplayName: 'Arrow',
-        elementSVG: RightArrowIcon,
-    },
-    {
-        elementName: 'avatar',
-        elementDisplayName: 'Avatar',
-        elementSVG: AvatarSVG,
-    },
-    {
-        elementName: 'toggle',
-        elementDisplayName: 'Toggle',
-        elementSVG: ToggleSVG,
-    },
+const ElementsDropdown = ({ addElement, getComponentTypesLoading }) => {
+    const [listElements, setListElements] = useState([
+        ...staticPrimaryElementData,
+    ])
 
-    {
-        elementName: 'button',
-        elementDisplayName: 'Button',
-        elementSVG: ButtonSVG,
-    },
-    {
-        elementName: 'circle',
-        elementDisplayName: 'Circle',
-        elementSVG: CircleIcon,
-    },
-    {
-        elementName: 'imageCard',
-        elementDisplayName: 'Image Card',
-        elementSVG: ImageCardSVG,
-    },
-    { elementName: 'frame', elementDisplayName: 'Frame', elementSVG: FrameSVG },
-    {
-        elementName: 'buttonWithIcon',
-        elementDisplayName: 'Button With Icon',
-        elementSVG: ButtonWithIconSVG,
-    },
-    {
-        elementName: 'divider',
-        elementDisplayName: 'Divider',
-        elementSVG: DividerSVG,
-    },
-    {
-        elementName: 'rectangle',
-        elementDisplayName: 'Rectangle',
-        elementSVG: RectangleIcon,
-    },
-    {
-        elementName: 'overlay',
-        elementDisplayName: 'Overlay',
-        elementSVG: OverlayPNG,
-    },
-    {
-        elementName: 'radiobox',
-        elementDisplayName: 'Radio Control',
-        elementSVG: RadioboxSVG,
-    },
-    {
-        elementName: 'checkbox',
-        elementDisplayName: 'Checkbox Control',
-        elementSVG: CheckboxSVG,
-    },
-    {
-        elementName: 'text',
-        elementDisplayName: 'Text',
-        elementSVG: TextIcon,
-    },
-    // { elementName: '---', elementDisplayName: '---', elementSVG: '---' },
-]
+    const [toggleDrawer, setToggleDrawer] = useState(false)
 
-const ElementsDropdown = (props) => {
-    const [listElements, setListElements] = useState([...staticElementData])
-
-    const onChangeSearchBar = (e) => {
-        const value = e.target.value.trim().toLowerCase()
-        console.log('value', value)
-        const updatedList = staticElementData.filter((item) =>
-            item.elementDisplayName.toLowerCase().includes(value)
+    const renderPrimaryStack = (element) => {
+        return (
+            <>
+                <div className="w-1/2 grid place-items-center p-2 ">
+                    <div
+                        className="w-auto hover:bg-blues-b50 py-1 px-1
+       border border-transparent  
+      transition-all ease-in-out duration-300 cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            if (element.hasDrawer) {
+                                setToggleDrawer(true)
+                                setListElements(element.drawerData)
+                            } else {
+                                addElement(element.elementName)
+                            }
+                        }}
+                    >
+                        <div className="w-full h-6">
+                            <img
+                                className="w-full h-6"
+                                src={element.elementSVG}
+                            />
+                        </div>
+                        {/* <div className="mt-2 p-1 text-xs text-center text-gray-600">
+                        {element.elementDisplayName}
+                    </div> */}
+                        {/* <div
+                        className="tooltip-child absolute text-center
+                      w-36 left-2 -bottom-3  py-1 rounded-lg
+                       bg-neutrals-n300 text-white text-xs
+                       "
+                    >
+                        Click element to add
+                    </div> */}
+                    </div>
+                </div>
+            </>
         )
-        console.log('updatedList', updatedList)
-        if (value === '') {
-            setListElements([...staticElementData])
-        } else {
-            setListElements([...updatedList])
-        }
     }
 
+    const renderDrawerStack = (element) => {
+        return (
+            <>
+                <div className="w-full block p-2 h-full overflow-y-auto pr-2 pl-2 ">
+                    <div
+                        className="element-image-block tooltip-parent relative bg-neutrals-n20 
+      hover:shadow-lg border border-transparent hover:border-primary-blue transition-all ease-in-out duration-300 cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            if (element.hasDrawer) {
+                                setToggleDrawer(true)
+                            } else {
+                                addElement(element.elementName)
+                            }
+                        }}
+                    >
+                        <div className="w-full h-14">
+                            <img
+                                className="w-full h-14"
+                                src={element.elementSVG}
+                            />
+                        </div>
+                        <div className="mt-2 p-1 text-xs text-center text-gray-600">
+                            {element.elementDisplayName}
+                        </div>
+                        <div
+                            className="tooltip-child absolute text-center
+                      w-36 left-2 -bottom-3  py-1 rounded-lg
+                       bg-neutrals-n300 text-white text-xs
+                       "
+                        >
+                            Click element to add
+                        </div>
+                    </div>
+                </div>
+            </>
+        )
+    }
+
+    const unsetToggleDrawer = () => {
+        setToggleDrawer(false)
+        setListElements(staticPrimaryElementData)
+    }
+
+    let secondarySidebarClass = classnames(
+        'transition-all ease-in-out duration-300 secondary-sidebar-content fixed bg-white block text-left pb-4 rounded-md shadow-lg',
+        {
+            'w-48': toggleDrawer === true,
+            'w-24': toggleDrawer === false,
+        }
+    )
     return (
         <div
             tabIndex="-1"
             id="sec-sidebar"
-            className=" transition-all ease-in-out duration-300 
-        secondary-sidebar-content 
-          fixed
-         
-        w-48  bg-white block text-left
-          pb-4
-         
-         rounded-md shadow-lg
-        "
+            className={secondarySidebarClass}
             style={{
-                top: '64px',
-
-                // opacity: this.props.showMenu ? 1 : 0,
-                left: props.showMenu ? '18px' : '-400px',
-                // display: this.props.showMenu ? 'block' : 'none',
-            }}
-            onBlur={() => {
-                // props.handleOnBlur()
+                // top: '64px',
+                left: '10px',
             }}
         >
             <div className="px-0 pb-2  ">
-                <input
+                {/* <input
                     className="w-full  px-2 py-2 bg-neutrals-n20 rounded-t-md 
                     border-b border-neutrals-n40 text-base focus:outline-none"
                     type="text"
                     onChange={onChangeSearchBar}
                     placeholder="Search elements"
-                />
+                /> */}
             </div>
-            {props.getComponentTypesLoading ? (
+            {getComponentTypesLoading ? (
                 <div
                     className="w-full flex justify-center"
                     style={{ minHeight: '550px' }}
@@ -150,50 +134,45 @@ const ElementsDropdown = (props) => {
                     <Spinner />
                 </div>
             ) : (
-                <div
-                    className="w-full overflow-y-auto pr-2 pl-2"
-                    style={{ height: '550px' }}
-                >
-                    {listElements.length > 0
-                        ? listElements.map((element, index) => (
-                              <React.Fragment key={index}>
-                                  <div className="w-full block p-2 ">
-                                      <div
-                                          className="element-image-block tooltip-parent relative bg-neutrals-n20 
-      hover:shadow-lg border border-transparent hover:border-primary-blue transition-all ease-in-out duration-300 cursor-pointer"
-                                          onClick={(e) => {
-                                              e.stopPropagation()
-                                              props.addElement(
-                                                  element.elementName
-                                              )
-                                          }}
-                                      >
-                                          <div className="w-full h-14">
-                                              <img
-                                                  className="w-full h-14"
-                                                  src={element.elementSVG}
-                                              />
-                                          </div>
-                                          <div className="mt-2 p-1 text-xs text-center text-gray-600">
-                                              {element.elementDisplayName}
-                                          </div>
-                                          <div
-                                              className="tooltip-child absolute text-center
-                      w-36 left-2 -bottom-3  py-1 rounded-lg
-                       bg-neutrals-n300 text-white text-xs
-                       "
-                                          >
-                                              Click element to add
-                                          </div>
-                                      </div>
-                                  </div>
-                              </React.Fragment>
-                          ))
-                        : null}
+                <div className="w-full " style={{ height: '550px' }}>
+                    {toggleDrawer ? (
+                        <Button
+                            intent="secondary"
+                            size="small"
+                            onClick={unsetToggleDrawer}
+                            extendClass="font-semibold "
+                        >
+                            <div className="flex items-center ">
+                                <img
+                                    className="w-6 h-6 transform-rotate-180"
+                                    src={RightArrowBlackSVG}
+                                />
+                            </div>
+                        </Button>
+                    ) : null}
+
+                    <div className="flex flex-wrap">
+                        {listElements.length > 0
+                            ? listElements.map((element, index) => (
+                                  <React.Fragment key={index}>
+                                      <>
+                                          {toggleDrawer
+                                              ? renderDrawerStack(element)
+                                              : renderPrimaryStack(element)}
+                                      </>
+                                  </React.Fragment>
+                              ))
+                            : null}
+                    </div>
                 </div>
             )}
         </div>
     )
+}
+
+ElementsDropdown.propTypes = {
+    getComponentTypesLoading: Proptypes.bool,
+    addElement: Proptypes.func,
 }
 
 export default ElementsDropdown
