@@ -386,6 +386,7 @@ function Button(props) {
             <div id="two-button"></div>
             {showToolbar ? (
                 <Toolbar
+                    hideColorIcon={true}
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
