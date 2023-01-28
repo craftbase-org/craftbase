@@ -194,41 +194,91 @@ export const staticDrawerData = {
     ],
 }
 
+// export const staticPrimaryElementData = [
+//     {
+//         elementName: 'circle',
+//         elementDisplayName: 'Circle',
+//         elementSVG: CircleIcon,
+//         hasDrawer: true,
+//         drawerData: staticDrawerData.shapes,
+//     },
+//     {
+//         elementName: 'arrowLine',
+//         elementDisplayName: 'Arrow',
+//         elementSVG: RightArrowIcon,
+//         hasDrawer: false,
+//         drawerData: [],
+//     },
+//     {
+//         elementName: 'avatar',
+//         elementDisplayName: 'Avatar',
+//         elementSVG: MiniAvatarSVG,
+//         hasDrawer: true,
+//         drawerData: staticDrawerData.mocks,
+//     },
+//     {
+//         elementName: 'divider',
+//         elementDisplayName: 'Divider',
+//         elementSVG: DividerSVG,
+//         hasDrawer: false,
+//         drawerData: [],
+//     },
+//     {
+//         elementName: 'text',
+//         elementDisplayName: 'Text',
+//         elementSVG: TextIcon,
+//         hasDrawer: false,
+//         drawerData: [],
+//     },
+//     // { elementName: '---', elementDisplayName: '---', elementSVG: '---' },
+// ]
+
 export const staticPrimaryElementData = [
     {
-        elementName: 'circle',
-        elementDisplayName: 'Circle',
-        elementSVG: CircleIcon,
-        hasDrawer: true,
-        drawerData: staticDrawerData.shapes,
+        sectionName: 'Basic',
+        elements: [
+            {
+                elementName: 'circle',
+                elementDisplayName: 'Circle',
+                elementSVG: CircleIcon,
+                hasDrawer: true,
+                drawerData: staticDrawerData.shapes,
+            },
+            {
+                elementName: 'arrowLine',
+                elementDisplayName: 'Arrow',
+                elementSVG: RightArrowIcon,
+                hasDrawer: false,
+                drawerData: [],
+            },
+            {
+                elementName: 'divider',
+                elementDisplayName: 'Divider',
+                elementSVG: DividerSVG,
+                hasDrawer: false,
+                drawerData: [],
+            },
+            {
+                elementName: 'text',
+                elementDisplayName: 'Text',
+                elementSVG: TextIcon,
+                hasDrawer: false,
+                drawerData: [],
+            },
+        ],
     },
     {
-        elementName: 'arrowLine',
-        elementDisplayName: 'Arrow',
-        elementSVG: RightArrowIcon,
-        hasDrawer: false,
-        drawerData: [],
+        sectionName: 'Mocks',
+        elements: [
+            {
+                elementName: 'avatar',
+                elementDisplayName: 'Avatar',
+                elementSVG: MiniAvatarSVG,
+                hasDrawer: true,
+                drawerData: staticDrawerData.mocks,
+            },
+        ],
     },
-    {
-        elementName: 'avatar',
-        elementDisplayName: 'Avatar',
-        elementSVG: MiniAvatarSVG,
-        hasDrawer: true,
-        drawerData: staticDrawerData.mocks,
-    },
-    {
-        elementName: 'divider',
-        elementDisplayName: 'Divider',
-        elementSVG: DividerSVG,
-        hasDrawer: false,
-        drawerData: [],
-    },
-    {
-        elementName: 'text',
-        elementDisplayName: 'Text',
-        elementSVG: TextIcon,
-        hasDrawer: false,
-        drawerData: [],
-    },
+
     // { elementName: '---', elementDisplayName: '---', elementSVG: '---' },
 ]

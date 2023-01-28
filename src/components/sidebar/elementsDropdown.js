@@ -58,7 +58,7 @@ const ElementsDropdown = ({ addElement, getComponentTypesLoading }) => {
     const renderDrawerStack = (element) => {
         return (
             <>
-                <div className="w-full block p-2 h-full overflow-y-auto pr-2 pl-2 ">
+                <div className="w-full block p-2 h-full pr-2 pl-2 ">
                     <div
                         className="element-image-block tooltip-parent relative bg-neutrals-n20 
       hover:shadow-lg border border-transparent hover:border-primary-blue transition-all ease-in-out duration-300 cursor-pointer"
@@ -116,49 +116,64 @@ const ElementsDropdown = ({ addElement, getComponentTypesLoading }) => {
                 left: '10px',
             }}
         >
-            <div className="px-0 pb-2  ">
-                {/* <input
-                    className="w-full  px-2 py-2 bg-neutrals-n20 rounded-t-md 
-                    border-b border-neutrals-n40 text-base focus:outline-none"
-                    type="text"
-                    onChange={onChangeSearchBar}
-                    placeholder="Search elements"
-                /> */}
-            </div>
             {getComponentTypesLoading ? (
                 <div
-                    className="w-full flex justify-center"
+                    className="w-full flex justify-center "
                     style={{ minHeight: '550px' }}
                 >
                     {' '}
                     <Spinner />
                 </div>
             ) : (
-                <div className="w-full " style={{ height: '550px' }}>
+                <div
+                    className="w-full overflow-y-auto "
+                    style={{ height: '550px' }}
+                >
                     {toggleDrawer ? (
                         <Button
                             intent="secondary"
                             size="small"
                             onClick={unsetToggleDrawer}
-                            extendClass="font-semibold "
+                            extendClass="font-semibold border-none hover:shadow-none"
                         >
                             <div className="flex items-center ">
                                 <img
-                                    className="w-6 h-6 transform-rotate-180"
+                                    className="w-6 h-6 transform-rotate-180 "
                                     src={RightArrowBlackSVG}
                                 />
                             </div>
                         </Button>
                     ) : null}
 
-                    <div className="flex flex-wrap">
+                    <div className="">
                         {listElements.length > 0
-                            ? listElements.map((element, index) => (
+                            ? listElements.map((stack, index) => (
                                   <React.Fragment key={index}>
                                       <>
-                                          {toggleDrawer
-                                              ? renderDrawerStack(element)
-                                              : renderPrimaryStack(element)}
+                                          {toggleDrawer ? (
+                                              renderDrawerStack(stack)
+                                          ) : (
+                                              <>
+                                                  <div className="pt-2 border-b border-neutrals-n60">
+                                                      <div className="w-full text-black font-normal text-sm pl-2">
+                                                          {stack.sectionName}
+                                                      </div>
+
+                                                      <div className="flex flex-wrap">
+                                                          {stack.elements.map(
+                                                              (element) => (
+                                                                  <>
+                                                                      {' '}
+                                                                      {renderPrimaryStack(
+                                                                          element
+                                                                      )}
+                                                                  </>
+                                                              )
+                                                          )}
+                                                      </div>
+                                                  </div>
+                                              </>
+                                          )}
                                       </>
                                   </React.Fragment>
                               ))
