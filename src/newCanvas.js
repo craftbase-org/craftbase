@@ -187,19 +187,10 @@ function addZUI(
 
                 let newSelectorGroup = two.makeGroup(area)
 
-                // let dx = e.clientX - mouse.x
-                // let dy = e.clientY - mouse.y
-                // shape.position.x += dx / zui.scale
-                // shape.position.y += dy / zui.scale
-
                 const m = zui.clientToSurface(e.clientX, e.clientY)
                 mouse.copy(m)
                 newSelectorGroup.position.copy(mouse)
-                // console.log(
-                //     'mouse in selector group',
-                //     mouse,
-                //     mouse.getBoundingClientRect()
-                // )
+
                 two.update()
                 shape = newSelectorGroup
                 isGroupSelector = true
@@ -237,8 +228,6 @@ function addZUI(
             window.removeEventListener('mousemove', mousemove, false)
             window.removeEventListener('mouseup', mouseup, false)
         } else {
-            // console.log('inside mousemove', dragging)
-
             // check if while dragging, the shape does not point to root element (two-0)
             if (
                 dragging &&
@@ -255,53 +244,6 @@ function addZUI(
                 let x = e.clientX
                 let y = e.clientY
 
-                // let x1 = area.vertices[0].x
-                // let x2 = area.vertices[2].x
-                // x2 += dx / zui.scale
-
-                // let y1 = area.vertices[0].y
-                // let y2 = area.vertices[3].y
-                // y2 += dy / zui.scale
-
-                // area.vertices = [
-                //     new Two.Anchor(
-                //         x1,
-                //         y1,
-                //         null,
-                //         null,
-                //         null,
-                //         null,
-                //         Two.Commands.line
-                //     ),
-                //     new Two.Anchor(
-                //         x2,
-                //         y1,
-                //         null,
-                //         null,
-                //         null,
-                //         null,
-                //         Two.Commands.line
-                //     ),
-
-                //     new Two.Anchor(
-                //         x2,
-                //         y2,
-                //         null,
-                //         null,
-                //         null,
-                //         null,
-                //         Two.Commands.line
-                //     ),
-                //     new Two.Anchor(
-                //         x1,
-                //         y2,
-                //         null,
-                //         null,
-                //         null,
-                //         null,
-                //         Two.Commands.line
-                //     ),
-                // ]
                 const m = zui.clientToSurface(x, y)
                 mouse.copy(m)
 
@@ -330,9 +272,6 @@ function addZUI(
         console.log('e in ZUI mouse up')
 
         // old school logic here
-        // const getCoordLabel = document
-        //     .getElementById(shape.id)
-        //     .getAttribute('data-label')
 
         // diff to check new x,y and prev x,y
         let oldShapeData = {}
@@ -513,22 +452,6 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
         ] = useMutation(DELETE_COMPONENT_BY_ID)
 
         useEffect(() => {
-            // console.log(
-            //     'CDM with getComponentInfoData Element from wrapper',
-            //     !getComponentInfoData?.component && componentData === null,
-            //     data.itemData.isDummy
-            // )
-            // if (!getComponentInfoData?.component && componentData === null) {
-            //     if (data.itemData.isDummy) {
-            //         /** PATCH */
-            //         //Patch for considering components who are just released from group
-            //         // that means we render them initially without their server data
-            //         // and when server data becomes available we ignore this patch
-            //         setComponentData(data.itemData)
-            //         /** PATCH */
-            //     }
-            // } else
-
             if (getComponentInfoData?.component && componentData === null) {
                 setComponentData(getComponentInfoData?.component)
             } else if (
@@ -555,20 +478,8 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
                         // console.log('update element wrapper on nothing')
                     }
                 }
-
-                // if (getComponentInfoData?.component.updatedBy != userId) {
-                //     setComponentData(getComponentInfoData?.component)
-                // }
             }
         }, [getComponentInfoData])
-
-        // console.log(
-        //     'while render',
-        //     data.twoJSInstance,
-        //     componentData,
-        //     getComponentInfoLoading,
-        //     getComponentInfoError
-        // )
 
         if (getComponentInfoLoading && data?.itemData?.isDummy !== true) {
             return <></>
@@ -692,67 +603,29 @@ const Canvas = (props) => {
     useEffect(() => {
         // Logic for capturing events in empty space in drawing area
         if (twoJSInstance !== null && zuiInstance !== null) {
-            // document
-            //     .getElementById('main-two-root')
-            //     .addEventListener('mousedown', handleSelectorRectInitialization)
-            // document
-            //     .getElementById('selector-rect')
-            //     .addEventListener('drag', handleSelectorRectDrag)
-            // document
-            //     .getElementById('selector-rect')
-            //     .addEventListener('dragend', handleSelectorRectDragEnd)
+            // keeping empty here for future space
         }
     }, [twoJSInstance])
 
     useEffect(() => {
-        // console.log(
-        //     'on change props.componentData',
-        //     props.componentData,
-        //     prevElements,
-        //     twoJSInstance
-        // )
-
         if (props.componentData?.length > 0 && twoJSInstance) {
-            // setCurrentComponents(props.componentData)
             handleSetComponentsToRender(props.componentData)
         }
-
-        // setComponentsToRender()
     }, [props.componentData, twoJSInstance])
 
     useEffect(() => {
         // console.log('on change props.lastAddedElement')
 
         if (props.lastAddedElement !== null) {
-            // let oldComponentData = currentComponents
-            // setCurrentComponents([
-            //     ...oldComponentData,
-            //     {
-            //         ...props.lastAddedElement,
-            //         isDummy: true,
-            //         // x: 500,
-            //         // y: 100,
-            //     },
-            // ])
             let newArr = [
                 {
                     ...props.lastAddedElement,
                     isDummy: true,
-                    // x: 500,
-                    // y: 100,
                 },
             ]
             handleSetComponentsToRender(newArr)
         }
-
-        // setComponentsToRender()
     }, [props.lastAddedElement])
-
-    // useEffect(() => {
-    //     console.log('on change currentComponents', currentComponents)
-
-    //     // setComponentsToRender()
-    // }, [currentComponents])
 
     const handleSetComponentsToRender = (currentComponents) => {
         let arr = [...prevElements]
@@ -760,7 +633,7 @@ const Canvas = (props) => {
         if (currentComponents && twoJSInstance) {
             currentComponents.forEach((item, index) => {
                 if (prevElements.includes(item.id)) {
-                    // nothing
+                    // do nothing
                 } else {
                     arr.push(item.id)
                     const ElementToRender = Loadable({
@@ -826,31 +699,12 @@ const Canvas = (props) => {
             // )
 
             allComponentCoords.forEach((item, index) => {
-                // console.log('item', item)
-                // console.log('area_selection item', item)
                 if (
                     item.x > x1Coord &&
                     item.x < x2Coord &&
                     item.y > y1Coord &&
                     item.y < y2Coord
                 ) {
-                    // console.log(
-                    //     'area_selection a match',
-                    //     twoJSInstance.scene.children
-                    // )
-
-                    // let findTwoShapeIndex =
-                    //     twoJSInstance.scene.children.findIndex(
-                    //         (child) => child?.elementData?.id === item.id
-                    //     )
-
-                    // // console.log('findTwoShapeIndex', findTwoShapeIndex)
-                    // if (findTwoShapeIndex !== -1) {
-                    //     let shape =
-                    //         twoJSInstance.scene.children[findTwoShapeIndex]
-                    //     twoJSInstance.remove([shape])
-                    // }
-
                     selectedComponentArr.push(item.id)
 
                     let relativeX = item.x - xMid
@@ -883,18 +737,9 @@ const Canvas = (props) => {
 
             newGroup.children = newChildren
 
-            // console.log('newGroup', newGroup)
-
             // filter out those selected children (which are now grouped into one) from main current components array
             // that means we dont render those components as seperate rather they
             // are now children of this new group
-            // let newComponents = prevElements.filter((item, index) => {
-            //     if (selectedComponentArr.includes(item)) {
-            //         return false
-            //     } else {
-            //         return true
-            //     }
-            // })
 
             twoJSInstance.scene.children.forEach((child) => {
                 if (selectedComponentArr.includes(child?.elementData?.id)) {
@@ -903,7 +748,6 @@ const Canvas = (props) => {
                 }
             })
 
-            // setCurrentComponents([...newComponents, newGroup])
             handleSetComponentsToRender([newGroup])
         }
     }, [onGroup])
@@ -962,8 +806,6 @@ const Canvas = (props) => {
                 },
             })
         }
-
-        // props.getElementsData('UPDATE_ELEMENT_DATA', newItem)
     }
 
     const updateComponentVertices = (id, x, y) => {
@@ -979,8 +821,6 @@ const Canvas = (props) => {
             },
         })
         document.getElementById('show-click-anywhere-btn').style.opacity = 0
-
-        // props.getElementsData('UPDATE_ELEMENT_DATA', newItem)
     }
 
     // console.log('componentsToRender', componentsToRender)

@@ -135,97 +135,12 @@ const PrimarySidebar = (props) => {
                 id="sidebar-container"
                 className="sidebar-container flex items-center "
             >
-                <div
-                    className="flex items-center  
-                 w-48 h-12 px-2 py-2 mx-4
-                 bg-white rounded-md shadow-xl"
-                >
-                    <>
-                        {' '}
-                        <div className="  relative ">
-                            <ElementsDropdown
-                                selectedItem={'elements'}
-                                getComponentTypesLoading={
-                                    getComponentTypesLoading
-                                }
-                                addElement={addElement}
-                                showMenu={secondaryMenu}
-                                handleOnBlur={toggleSecondaryMenuFn}
-                            />
-                        </div>
-                        <div className="relative transition-transform">
-                            <button
-                                className={`hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                                onClick={() => addElement('rectangle')}
-                            >
-                                <img className="w-6 h-6" src={RectangleIcon} />
-                            </button>
-                        </div>
-                        <div className="relative">
-                            {' '}
-                            <button
-                                className={`hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                                onClick={() => addElement('circle')}
-                            >
-                                <img className="w-6 h-6" src={CircleIcon} />
-                            </button>
-                        </div>
-                        {/* <div className="relative">
-                        <button
-                            className={`${
-                                this.state.selectedItem === 'frames'
-                                    ? ''
-                                    : 'icon-frame'
-                            }  hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                            onClick={this.handleMenuClick}
-                        >
-                            <Icon icon="SIDEBAR_ICON_FRAME" />
-                        </button>
-                    </div> */}
-                        <div className="relative">
-                            <button
-                                className={`hover:bg-blues-b50 bg-transparent px-2 py-2 block`}
-                                onClick={() => addElement('arrowLine')}
-                            >
-                                <img className="w-6 h-6" src={RightArrowIcon} />
-                            </button>
-                        </div>
-                        <div className="relative">
-                            <button
-                                className={`hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                                onClick={() => addElement('text')}
-                            >
-                                <Icon
-                                    width="23"
-                                    height="23"
-                                    icon="SIDEBAR_ICON_TEXT"
-                                />
-                            </button>
-                        </div>
-                        {/* <div className="relative">
-                        {' '}
-                        <button
-                            className={`${
-                                this.state.selectedItem === 'draw'
-                                    ? ''
-                                    : 'icon-pencil'
-                            }  hover:bg-blues-b50 bg-transparent px-2  py-2 block`}
-                            onClick={this.handleMenuClick}
-                        >
-                            <Icon icon="SIDEBAR_ICON_PENCIL" />
-                        </button>
-                    </div> */}
-                        {/* <div className="relative">
-                            <button
-                                className={` hover:bg-blues-b50 bg-transparent px-2 py-2 block`}
-                                onClick={() =>
-                                    toggleSecondaryMenuFn(!secondaryMenu)
-                                }
-                            >
-                                <img className="w-6 h-6" src={LayersIcon} />
-                            </button>
-                        </div> */}
-                    </>
+                <div className="  relative ">
+                    <ElementsDropdown
+                        getComponentTypesLoading={getComponentTypesLoading}
+                        addElement={addElement}
+                        showMenu={secondaryMenu}
+                    />
                 </div>
             </div>
             <div
