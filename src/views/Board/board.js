@@ -3,7 +3,7 @@ import { useSubscription, useMutation } from '@apollo/client'
 
 import { useMediaQueryUtils } from 'constants/exportHooks'
 import { GET_BOARD_DATA } from 'schema/subscriptions'
-import { INSERT_USER_ONE } from 'schema/mutations'
+import { INSERT_USER_ONE, UPDATE_USER_REVISIT_COUNT } from 'schema/mutations'
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Spinner from 'components/common/spinnerWithSize'
@@ -28,6 +28,15 @@ const BoardViewPage = (props) => {
             reset: resetInsertUserMutation,
         },
     ] = useMutation(INSERT_USER_ONE)
+    const [
+        updateUserRevisit,
+        {
+            loading: updateUserRevisitLoading,
+            data: updateUserRevisitData,
+            error: updateUserRevisitError,
+        },
+    ] = useMutation(UPDATE_USER_REVISIT_COUNT)
+
     const [lastAddedElement, setLastAddedElement] = useState(null)
     const [showHelperTooltip, setShowHelperTooltip] = useState(true)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
@@ -43,6 +52,12 @@ const BoardViewPage = (props) => {
                         firstName,
                         lastName,
                     },
+                },
+            })
+        } else if (userId !== null || userId !== undefined) {
+            updateUserRevisit({
+                variables: {
+                    userId: userId,
                 },
             })
         }

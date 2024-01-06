@@ -82,3 +82,15 @@ export const DELETE_BULK_COMPONENTS = gql`
         }
     }
 `
+
+export const UPDATE_USER_REVISIT_COUNT = gql`
+    mutation updateUserRevisitCount($userId: String!) {
+        update_users_user_revisits_by_pk(
+            pk_columns: { user_id: $userId }
+            _inc: { count: "1" }
+        ) {
+            count
+            user_id
+        }
+    }
+`
