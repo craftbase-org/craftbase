@@ -496,7 +496,7 @@ const HomePage = (props) => {
                 flex items-center justify-between"
                 >
                     <div className="text-sm big-desktop:text-base">
-                        © 2023 Craftbase. All rights reserved.
+                        © 2024 Craftbase. All rights reserved.
                     </div>
                     <div className=" flex items-center">
                         <a href="https://twitter.com/craftbase_org">
