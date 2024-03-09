@@ -241,8 +241,15 @@ export const staticPrimaryElementData = [
                 elementName: 'circle',
                 elementDisplayName: 'Circle',
                 elementSVG: CircleIcon,
-                hasDrawer: true,
+                hasDrawer: false,
                 drawerData: staticDrawerData.shapes,
+            },
+            {
+                elementName: 'rectangle',
+                elementDisplayName: 'Rectangle / Square',
+                elementSVG: RectangleIcon,
+                hasDrawer: false,
+                drawerData: [],
             },
             {
                 elementName: 'arrowLine',
