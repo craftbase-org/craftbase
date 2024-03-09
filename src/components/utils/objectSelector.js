@@ -142,5 +142,6 @@ export default class Selector {
         }
 
         this.areaGroup.opacity = 1
+        this.two.update()
     }
 }

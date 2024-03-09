@@ -60,6 +60,7 @@
     "devDependencies": {
         "autoprefixer": "^9",
         "postcss": "^7",
-        "tailwindcss": "npm:@tailwindcss/postcss7-compat"
+        "tailwindcss": "npm:@tailwindcss/postcss7-compat",
+        "@babel/plugin-proposal-private-property-in-object": "^7.14.5"
     }
 }

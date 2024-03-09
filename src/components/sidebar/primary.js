@@ -67,6 +67,13 @@ const PrimarySidebar = (props) => {
     // }, [insertComponentSuccess])
 
     const addElement = (label) => {
+        setTimeout(() => {
+            document.getElementById('show-click-anywhere-btn').style.opacity = 1
+            let el = document.getElementById('show-saving-loader')
+            el.style.opacity = 0
+            el.style.zIndex = -1
+        }, 100)
+
         let el = document.getElementById('show-saving-loader')
         el.style.opacity = 1
         el.style.zIndex = 1
@@ -108,13 +115,6 @@ const PrimarySidebar = (props) => {
 
         // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
         shapeData && insertComponent({ variables: { object: shapeData } })
-
-        setTimeout(() => {
-            document.getElementById('show-click-anywhere-btn').style.opacity = 1
-            let el = document.getElementById('show-saving-loader')
-            el.style.opacity = 0
-            el.style.zIndex = -1
-        }, 400)
     }
 
     const toggleSecondaryMenuFn = (bool) => {

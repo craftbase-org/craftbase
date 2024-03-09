@@ -59,6 +59,7 @@ function addZUI(
 
     zui.addLimits(0.06, 8)
 
+    domElement.addEventListener('mousemove', mousemove, false)
     domElement.addEventListener('mousedown', mousedown, false)
     domElement.addEventListener('mousewheel', mousewheel, false)
     domElement.addEventListener('wheel', mousewheel, false)
@@ -118,6 +119,9 @@ function addZUI(
             }
 
             localStorage.removeItem('lastAddedElementId')
+
+            // remove event listeners for mousemove
+            domElement.removeEventListener('mousemove', mousemove, false)
 
             document.getElementById('main-two-root').style.cursor = 'auto'
         } else {
@@ -211,23 +215,42 @@ function addZUI(
                 mouse.y > rect.top &&
                 mouse.y < rect.bottom
 
-            window.addEventListener('mousemove', mousemove, false)
-            window.addEventListener('mouseup', mouseup, false)
+            domElement.addEventListener('mousemove', mousemove, false)
+            domElement.addEventListener('mouseup', mouseup, false)
             two.update()
         }
     }
 
     function mousemove(e) {
-        console.log('mouse move event', shape.elementData)
-        let dx = e.clientX - mouse.x
-        let dy = e.clientY - mouse.y
+        console.log('mouse move event', shape?.elementData)
         // console.log('shape in mousemove', e, shape, props.selectPanMode)
+        const lastAddedElementId = localStorage.getItem('lastAddedElementId')
+        if (lastAddedElementId !== null) {
+            // This block falls for the case when there is newly added element and we let user click
+            // anywhere to set last added element's position
+            const clientToSurface = zui.clientToSurface(e.clientX, e.clientY)
 
-        if (document.getElementById(shape.id).hasAttribute('data-resize')) {
+            let twoJSElement = two.scene.children.find(
+                (child) => child?.elementData?.id === lastAddedElementId
+            )
+
+            if (twoJSElement?.position) {
+                twoJSElement.position.x = clientToSurface.x
+                twoJSElement.position.y = clientToSurface.y
+
+                two.update()
+            }
+        } else if (
+            shape?.id &&
+            document.getElementById(shape.id).hasAttribute('data-resize')
+        ) {
             console.log('element resize is being performed')
-            window.removeEventListener('mousemove', mousemove, false)
-            window.removeEventListener('mouseup', mouseup, false)
-        } else {
+            domElement.removeEventListener('mousemove', mousemove, false)
+            domElement.removeEventListener('mouseup', mouseup, false)
+        } else if (shape?.id || shape?.elementData) {
+            let dx = e.clientX - mouse.x
+            let dy = e.clientY - mouse.y
+
             // check if while dragging, the shape does not point to root element (two-0)
             if (
                 dragging &&
@@ -270,7 +293,6 @@ function addZUI(
 
     function mouseup(e) {
         console.log('e in ZUI mouse up')
-
         // old school logic here
 
         // diff to check new x,y and prev x,y
@@ -325,8 +347,12 @@ function addZUI(
         // }
         console.log('shape.elementData.writable', newShapeData)
 
-        window.removeEventListener('mousemove', mousemove, false)
-        window.removeEventListener('mouseup', mouseup, false)
+        domElement.removeEventListener('mousemove', mousemove, false)
+        domElement.removeEventListener('mouseup', mouseup, false)
+
+        // reset shape to object or null after mouseup event
+        shape = {}
+
         two.update()
     }
 
@@ -418,7 +444,7 @@ function addZUI(
         distance = d
     }
 
-    return zui
+    return { zui, mousemove }
 }
 
 const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
@@ -566,7 +592,7 @@ const Canvas = (props) => {
         console.log('two', two.scene)
 
         // two.scene.translation.x = -50
-        let zuiInstance = addZUI(
+        let zui_instance = addZUI(
             props,
             two,
             updateToGlobalState,
@@ -576,7 +602,7 @@ const Canvas = (props) => {
         )
 
         // this.props.getElementsData('CONSTRUCT', arr)
-        setZuiInstance(zuiInstance)
+        setZuiInstance(zui_instance)
         setTwoJSInstance(two)
 
         const boardId = props.boardId
@@ -606,6 +632,21 @@ const Canvas = (props) => {
             // keeping empty here for future space
         }
     }, [twoJSInstance])
+
+    useEffect(() => {
+        if (twoJSInstance !== null && zuiInstance !== null) {
+            // listening to the change in components in DB
+            // this is especially for capturing INSERT operation
+            // where I can assign mousemove event listener to the new component
+            let domElement = twoJSInstance?.renderer?.domElement
+
+            domElement.addEventListener(
+                'mousemove',
+                zuiInstance.mousemove,
+                false
+            )
+        }
+    }, [getComponentsForBoardData])
 
     useEffect(() => {
         if (props.componentData?.length > 0 && twoJSInstance) {
