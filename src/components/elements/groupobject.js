@@ -1,7 +1,7 @@
 import React, { useEffect, useState, Fragment } from 'react'
 import interact from 'interactjs'
 import { useMutation } from '@apollo/client'
-import { useHistory } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import {
     UPDATE_COMPONENT_INFO,
@@ -35,7 +35,7 @@ function getComponentSchema(obj, boardId, parentGroupX, parentGroupY) {
 }
 
 function GroupedObjectWrapper(props) {
-    const history = useHistory()
+    const history = useNavigate()
     // console.log('history', history)
     const [
         insertComponents,

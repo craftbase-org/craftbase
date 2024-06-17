@@ -1,5 +1,5 @@
 export default {
     home: '/',
-    board: '/board/:boardId',
+    board: '/board/:id',
     about: '/about',
 }

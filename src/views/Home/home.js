@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Redirect, useHistory } from 'react-router-dom'
+import { Redirect, useNavigate } from 'react-router-dom'
 import { useMutation } from '@apollo/client'
 
 import { INSERT_USER_ONE, CREATE_BOARD } from 'schema/mutations'
@@ -49,7 +49,7 @@ const HomePage = (props) => {
 
     const [pageHeight, setPageHeight] = useState(0)
     const [btnId, setBtnId] = useState(null)
-    const history = useHistory()
+    const navigate = useNavigate()
 
     useEffect(() => {
         console.log('window.innerHeight', window.innerHeight)
@@ -78,7 +78,7 @@ const HomePage = (props) => {
         if (createBoardData) {
             const boardId = createBoardData.board.id
             console.log('createBoardData', createBoardData)
-            history.push(`/board/${boardId}`)
+            navigate(`/board/${boardId}`)
             // resetCreateBoardMutation()
         }
     }, [createBoardData])
@@ -131,7 +131,7 @@ const HomePage = (props) => {
                             label="Yes"
                             size="large"
                             onClick={() => {
-                                history.push(`/board/${lastOpenBoard}`)
+                                navigate.push(`/board/${lastOpenBoard}`)
                             }}
                         />
                         <Button

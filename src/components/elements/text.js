@@ -173,7 +173,7 @@ function Text(props) {
             // and generates temporary textarea support for it
             rectTextGroup._renderer.elem.addEventListener('dblclick', () => {
                 // console.log('on click for texy', text.id);
-
+                console.log('textValue', textValue)
                 // Hide actual text and replace it with input box
                 const twoTextInstance = document.getElementById(`${group.id}`)
                 const getCoordOfBtnText =
@@ -181,13 +181,14 @@ function Text(props) {
                 twoTextInstance.style.display = 'none'
 
                 const input = document.createElement('textarea')
+
                 const topBuffer = 2
                 const randomNumber = Math.floor(Math.random() * 90 + 10)
                 input.id = `two-temp-input-area-${randomNumber}`
                 input.value = props?.itemData?.text || textValue
-                input.rows = 3
+                // input.rows = 1
                 input.style.border = '2px solid #ccc'
-                input.style.background = '#fff'
+                input.style.background = 'transparent'
                 input.style.padding = '6px'
                 input.style.color = props?.itemData?.color
                     ? props?.itemData?.color
@@ -196,21 +197,36 @@ function Text(props) {
                 input.style.position = 'absolute'
                 input.style.top = `${getCoordOfBtnText.top - topBuffer}px`
                 input.style.left = `${getCoordOfBtnText.left}px`
-                input.style.width = `${
-                    rectTextGroup.getBoundingClientRect(true).width
-                }px`
+                // input.style.width = `${
+                //     rectTextGroup.getBoundingClientRect(true).width
+                // }px`
                 input.className = 'temp-input-area'
 
                 document.getElementById('main-two-root').append(input)
 
                 input.onfocus = function (e) {
-                    console.log('on input focus')
+                    // console.log('on input focus')
                     selector.show()
                     two.update()
                 }
+
                 input.focus()
 
-                input.addEventListener('input', (event) => {})
+                input.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                        input.rows = input.rows + 1
+                        // console.log('Enter key pressed!')
+                        // Your code to handle the "Enter" key press goes here
+                    }
+                    if (event.key === ' ') {
+                        console.log('space key pressed!')
+                        input.style.width = input.style.width + 5
+                        rectangle.width = rectangle.width + 5
+                        two.update()
+
+                        // Your code to handle the "Enter" key press goes here
+                    }
+                })
 
                 input.addEventListener('blur', () => {
                     console.log(
@@ -228,12 +244,7 @@ function Text(props) {
                     textValue = input.value
 
                     // USE 4 LINES 4 CIRCLES
-                    //   selector.update(
-                    //     rectTextGroup.getBoundingClientRect(true).left - 5,
-                    //     rectTextGroup.getBoundingClientRect(true).right + 5,
-                    //     rectTextGroup.getBoundingClientRect(true).top - 5,
-                    //     rectTextGroup.getBoundingClientRect(true).bottom + 5
-                    //   );
+                    selector.update(0, rectangle.width, 0, rectangle.height)
                     selector.hide()
 
                     rectTextGroup.height =

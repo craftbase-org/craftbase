@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { useQuery, useMutation, useSubscription } from '@apollo/client'
 import Two from 'two.js'
-import { useHistory } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import Loadable from 'react-loadable'
-import ZUI from 'two.js/extras/jsm/zui'
+import { ZUI } from 'two.js/extras/jsm/zui'
 
 import {
     UPDATE_COMPONENT_INFO,
@@ -132,7 +132,11 @@ function addZUI(
             let isGroupSelector = false
 
             let path = e.path || (e.composedPath && e.composedPath())
-            // checks for path in event if it contains following element with condition
+            // checks for path in event if it contains following element with id attr which matches with similar two.js children group
+            // and assigns that specific two.js child(group) to shape object
+
+            // wiki: two.js has base level group (scene which hosts all the objects in instance), so it's lile two.js group
+            // inside two.js base level group
             path.forEach((item, index) => {
                 console.log(
                     'item?.classList?.value',
@@ -142,9 +146,13 @@ function addZUI(
                         !item?.classList?.value.includes('avoid-dragging') &&
                         item.tagName === 'g'
                 )
+
                 if (item?.classList?.value.includes('avoid-dragging')) {
                     avoidDragging = true
                 }
+
+                // this does not select path component
+                // since you mention in condition that only pick with "g" tag name, i.e. group element
                 if (
                     item?.classList?.value &&
                     item?.classList?.value.includes('dragger-picker') &&
@@ -157,6 +165,7 @@ function addZUI(
                         two.scene.children,
                         two.scene.children.find((child) => child.id === item.id)
                     )
+
                     shape = two.scene.children.find(
                         (child) => child.id === item.id
                     )
@@ -174,6 +183,7 @@ function addZUI(
             // then only perform the mutation
 
             console.log('props.selectPanMode', props.selectPanMode)
+            // in case if it's a group selector, it falls under below condition
             if (shape === null) {
                 // shape = two.scene
                 const { x1, x2, y1, y2 } = {
@@ -244,7 +254,8 @@ function addZUI(
             shape?.id &&
             document.getElementById(shape.id).hasAttribute('data-resize')
         ) {
-            console.log('element resize is being performed')
+            // element resize is being performed
+            // console.log('element resize is being performed')
             domElement.removeEventListener('mousemove', mousemove, false)
             domElement.removeEventListener('mouseup', mouseup, false)
         } else if (shape?.id || shape?.elementData) {

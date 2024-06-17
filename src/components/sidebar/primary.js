@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
-import { useHistory } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import ElementsDropdown from './elementsDropdown'
@@ -29,8 +29,9 @@ const PrimarySidebar = (props) => {
         data: getComponentTypesData,
         error: getComponentTypesError,
     } = useQuery(GET_COMPONENT_TYPES)
-    const history = useHistory()
-    console.log('boardId', props.match.params.boardId)
+    const history = useNavigate()
+    const routeParams = useParams()
+    console.log('boardId', routeParams.id)
     const [insertComponent] = useMutation(INSERT_COMPONENT, {
         ignoreResults: true,
     })
@@ -97,7 +98,7 @@ const PrimarySidebar = (props) => {
                                 (randomNumber * window.outerHeight) / 100
                         ),
                         x2: label.includes('divider') ? 100 : 0,
-                        boardId: props.match.params.boardId,
+                        boardId: routeParams.id,
                         metadata: item.defaultMetaData,
                         width: item.width,
                         height: item.height,
