@@ -21,10 +21,13 @@ function ArrowLine(props) {
     let groupObject = null
 
     function onBlurHandler(e) {
-        console.log('on blur arrow line', selectorInstance.pointCircle1.opacity)
+        console.log(
+            'on blur arrow line',
+            selectorInstance.pointCircle1Group.opacity
+        )
         // elementOnBlurHandler(e, selectorInstance, two)
-        selectorInstance.pointCircle1.opacity = 0
-        selectorInstance.pointCircle2.opacity = 0
+        // selectorInstance.pointCircle1Group.opacity = 0
+        // selectorInstance.pointCircle2Group.opacity = 0
         two.update()
         document.getElementById(`${groupObject.id}`) &&
             document
@@ -67,8 +70,14 @@ function ArrowLine(props) {
             y2: props.y2 || 100,
         })
         // Get all instances of every sub child element
-        const { group, pointCircle1, pointCircle2, line } =
-            elementFactory.createElement()
+        const {
+            group,
+            pointCircle1Group,
+            pointCircle2Group,
+            pointCircle1,
+            pointCircle2,
+            line,
+        } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
 
         if (props.parentGroup) {
@@ -82,8 +91,8 @@ function ArrowLine(props) {
             // resizeLineInstance = resizeLine
             // const { selector } = getEditComponents(two, group, 4)
             selectorInstance = {
-                pointCircle1,
-                pointCircle2,
+                pointCircle1Group,
+                pointCircle2Group,
             }
 
             two.update()
@@ -94,8 +103,10 @@ function ArrowLine(props) {
             // )
             // some styling
             document.getElementById(line.id).style.cursor = 'pointer'
-            document.getElementById(pointCircle1.id).style.cursor = 'pointer'
-            document.getElementById(pointCircle2.id).style.cursor = 'pointer'
+            document.getElementById(pointCircle1Group.id).style.cursor =
+                'pointer'
+            document.getElementById(pointCircle2Group.id).style.cursor =
+                'pointer'
 
             // document
             //     .getElementById(pointCircle2.id)
@@ -105,9 +116,39 @@ function ArrowLine(props) {
                 .getElementById(group.id)
                 .setAttribute('class', 'dragger-picker')
 
+            // 1. for point circle 1
             document
-                .getElementById(pointCircle1.id)
-                .setAttribute('class', 'dragger-picker')
+                .getElementById(pointCircle1Group.id)
+                .setAttribute('class', 'dragger-picker is-line-circle')
+
+            document
+                .getElementById(pointCircle1Group.id)
+                .setAttribute('data-parent-id', group.id)
+
+            document
+                .getElementById(pointCircle1Group.id)
+                .setAttribute('data-line-id', line.id)
+
+            document
+                .getElementById(pointCircle1Group.id)
+                .setAttribute('data-direction', 'left')
+
+            // 2. for point circle 2
+            document
+                .getElementById(pointCircle2Group.id)
+                .setAttribute('class', 'dragger-picker is-line-circle')
+
+            document
+                .getElementById(pointCircle2Group.id)
+                .setAttribute('data-parent-id', group.id)
+
+            document
+                .getElementById(pointCircle2Group.id)
+                .setAttribute('data-line-id', line.id)
+
+            document
+                .getElementById(pointCircle2Group.id)
+                .setAttribute('data-direction', 'right')
 
             // setting database's id in html attribute of element
             // document
@@ -134,13 +175,13 @@ function ArrowLine(props) {
                     id: line.id,
                     data: line,
                 }
-                draft.pointCircle1 = {
-                    id: pointCircle1.id,
-                    data: pointCircle1,
+                draft.pointCircle1Group = {
+                    id: pointCircle1Group.id,
+                    data: pointCircle1Group,
                 }
-                draft.pointCircle2 = {
-                    id: pointCircle2.id,
-                    data: pointCircle2,
+                draft.pointCircle2Group = {
+                    id: pointCircle2Group.id,
+                    data: pointCircle2Group,
                 }
                 draft.text = {
                     data: {},
@@ -175,21 +216,21 @@ function ArrowLine(props) {
                 console.log('on click group', e)
                 // pointCircle1.opacity = 0
                 // resizeLine.opacity = 1
-                pointCircle1.opacity = 1
-                pointCircle1.opacity = 1
-                pointCircle2.opacity = 1
-                pointCircle2.opacity = 1
+                pointCircle1Group.opacity = 1
+                pointCircle1Group.opacity = 1
+                pointCircle2Group.opacity = 1
+                pointCircle2Group.opacity = 1
 
-                pointCircle1.translation.x = line.vertices[0].x - 0
-                pointCircle1.translation.y =
+                pointCircle1Group.translation.x = line.vertices[0].x - 0
+                pointCircle1Group.translation.y =
                     line.vertices[0].y + parseInt(line.linewidth)
 
                 // here due to x2 being a arrow head, we need some offset.
-                pointCircle2.translation.x =
+                pointCircle2Group.translation.x =
                     line.vertices[1].x < line.vertices[0].x
                         ? line.vertices[1].x - 6
                         : line.vertices[1].x + 6
-                pointCircle2.translation.y =
+                pointCircle2Group.translation.y =
                     line.vertices[1].y + parseInt(line.linewidth)
                 // selector.update(
                 //     line.getBoundingClientRect(true).left - 10,
@@ -543,19 +584,17 @@ function ArrowLine(props) {
     }
 
     useEffect(() => {
-        if (internalState?.group?.data) {
-            let groupInstance = internalState.group.data
-            let lineInstance = internalState.line.data
-            let pointCircle1 = internalState.pointCircle1.data
-            let pointCircle2 = internalState.pointCircle2.data
-
-            groupInstance.translation.x = props.x
-            groupInstance.translation.y = props.y
-            two.update()
-
-            updateX1Y1Vertices(lineInstance, props.x1, props.y1, pointCircle1)
-            updateX2Y2Vertices(lineInstance, props.x2, props.y2, pointCircle2)
-        }
+        // if (internalState?.group?.data) {
+        //     let groupInstance = internalState.group.data
+        //     let lineInstance = internalState.line.data
+        //     let pointCircle1Group = internalState.pointCircle1Group.data
+        //     let pointCircle2Group = internalState.pointCircle2Group.data
+        //     groupInstance.translation.x = props.x
+        //     groupInstance.translation.y = props.y
+        //     two.update()
+        //     // updateX1Y1Vertices(lineInstance, props.x1, props.y1, pointCircle1Group)
+        //     // updateX2Y2Vertices(lineInstance, props.x2, props.y2, pointCircle2Group)
+        // }
     }, [
         props.x,
         props.y,

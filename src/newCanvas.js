@@ -19,6 +19,7 @@ import {
     GET_COMPONENTS_FOR_BOARD,
 } from 'schema/subscriptions'
 import Loader from 'components/utils/loader'
+import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 
 function getComponentSchema(obj, boardId) {
     return {
@@ -135,7 +136,7 @@ function addZUI(
             // checks for path in event if it contains following element with id attr which matches with similar two.js children group
             // and assigns that specific two.js child(group) to shape object
 
-            // wiki: two.js has base level group (scene which hosts all the objects in instance), so it's lile two.js group
+            // wiki: two.js has base level group (scene which hosts all the objects in instance), so it's like two.js group
             // inside two.js base level group
             path.forEach((item, index) => {
                 console.log(
@@ -151,24 +152,84 @@ function addZUI(
                     avoidDragging = true
                 }
 
-                // this does not select path component
+                // this does not select path or any inner component
                 // since you mention in condition that only pick with "g" tag name, i.e. group element
                 if (
                     item?.classList?.value &&
                     item?.classList?.value.includes('dragger-picker') &&
                     !item?.classList?.value.includes('avoid-dragging') &&
-                    item.tagName === 'g'
+                    item.tagName === 'g' &&
+                    shape == null
                 ) {
-                    console.log('iterating through path', item.id)
+                    console.log('iterating through path', item.id, shape)
                     console.log(
                         'two scene children',
                         two.scene.children,
                         two.scene.children.find((child) => child.id === item.id)
                     )
 
-                    shape = two.scene.children.find(
-                        (child) => child.id === item.id
-                    )
+                    // if its a arrowLine component and check for class
+                    // because we don't want to select top level group id
+                    if (item?.classList?.value.includes('is-line-circle')) {
+                        console.log('is arrowLine circle ')
+                        console.log(
+                            'get attr of parent id',
+                            document
+                                .getElementById(item.id)
+                                .getAttribute('data-parent-id')
+                        )
+                        let parentId = document
+                            .getElementById(item.id)
+                            .getAttribute('data-parent-id')
+
+                        let lineId = document
+                            .getElementById(item.id)
+                            .getAttribute('data-line-id')
+
+                        let direction = document
+                            .getElementById(item.id)
+                            .getAttribute('data-direction')
+
+                        let getParentTwoData = two.scene.children.find(
+                            (child) => child.id === parentId
+                        )
+
+                        console.log(
+                            'getParentTwoData and its children',
+                            getParentTwoData,
+                            getParentTwoData.children
+                        )
+
+                        let getChildTwoData = getParentTwoData.children.find(
+                            (child) => child.id === item.id
+                        )
+                        let getSiblingChild = getParentTwoData.children.find(
+                            (child) =>
+                                child.id !== item.id &&
+                                child?.children?.length > 0
+                        )
+                        let getLineTwoData = getParentTwoData.children.find(
+                            (child) => child.id === lineId
+                        )
+                        console.log(
+                            'getChildTwoData',
+                            getChildTwoData,
+                            getChildTwoData.type,
+                            ' getSiblingChild',
+                            getSiblingChild
+                        )
+                        shape = getChildTwoData
+
+                        // setting custom properties to existing two properties
+                        shape.lineData = getLineTwoData
+                        shape.direction = direction
+                        shape.siblingCircle = getSiblingChild
+                        // let getChildTwoData =
+                    } else {
+                        shape = two.scene.children.find(
+                            (child) => child.id === item.id
+                        )
+                    }
                 }
             })
 
@@ -232,7 +293,12 @@ function addZUI(
     }
 
     function mousemove(e) {
-        console.log('mouse move event', shape?.elementData)
+        console.log(
+            'mouse move event',
+            shape?.elementData,
+            ' shape lineData',
+            shape?.lineData
+        )
         // console.log('shape in mousemove', e, shape, props.selectPanMode)
         const lastAddedElementId = localStorage.getItem('lastAddedElementId')
         if (lastAddedElementId !== null) {
@@ -268,8 +334,62 @@ function addZUI(
                 shape.id !== 'two-0' &&
                 !shape.elementData.isGroupSelector
             ) {
-                shape.position.x += dx / zui.scale
-                shape.position.y += dy / zui.scale
+                // code block condition to handle arrow line circle component's dragging
+                // it roughly translates -> does shape === line/arrow line ?
+                if (shape?.lineData) {
+                    let line = shape?.lineData
+
+                    if (shape.direction === 'left') {
+                        if (e.shiftKey == true) {
+                            let x1 = (line.vertices[0].x += dx / zui.scale)
+                            let y1 = (line.vertices[0].y += dy / zui.scale)
+                            updateX1Y1Vertices(Two, line, x1, y1, shape, two)
+
+                            /* update x2,y2 vertices acc. to shift key press event */
+                            let x2 = line.vertices[1].x
+                            let y2 = y1
+                            updateX2Y2Vertices(
+                                Two,
+                                line,
+                                x2,
+                                y2,
+                                shape.siblingCircle,
+                                two
+                            )
+                        } else {
+                            let x1 = (line.vertices[0].x += dx / zui.scale)
+                            let y1 = (line.vertices[0].y += dy / zui.scale)
+                            updateX1Y1Vertices(Two, line, x1, y1, shape, two)
+                        }
+                    } else if (shape.direction === 'right') {
+                        if (e.shiftKey === true) {
+                            let x2 = (line.vertices[1].x += dx / zui.scale)
+                            let y2 = (line.vertices[1].y += dy / zui.scale)
+                            updateX2Y2Vertices(Two, line, x2, y2, shape, two)
+
+                            /* update x1,y1 vertices acc. to shift key press event */
+                            let x1 = line.vertices[0].x
+                            let y1 = y2
+                            updateX1Y1Vertices(
+                                Two,
+                                line,
+                                x1,
+                                y1,
+                                shape.siblingCircle,
+                                two
+                            )
+                        } else {
+                            let x2 = (line.vertices[1].x += dx / zui.scale)
+                            let y2 = (line.vertices[1].y += dy / zui.scale)
+                            updateX2Y2Vertices(Two, line, x2, y2, shape, two)
+                        }
+                    }
+                }
+                // code block condition to handle normal component's dragging
+                else {
+                    shape.position.x += dx / zui.scale
+                    shape.position.y += dy / zui.scale
+                }
             } else if (shape.elementData.isGroupSelector) {
                 // this blocks falls for the case when user has clicked and
                 // is dragging to create a group selector
