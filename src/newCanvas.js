@@ -41,6 +41,27 @@ function getComponentSchema(obj, boardId) {
     }
 }
 
+/**
+ * @typedef {Object} elementData
+ * @property {string} boardId
+ * @property {string} componentType
+ * @property {string} fill
+ * @property {Object} handleDeleteComponent //function
+ * @property {number} height
+ * @property {number} id // component's id
+ * @property {boolean} isDummy
+ * @property {boolean} isGroupSelector
+ * @property {Object} itemData // the data which we recieve from database
+ * @property {Object} metadata
+ * @property {number} prevY // the value of prev Y coordinate used to diff
+ * @property {number} prevX // the value of prev X coordinate used to diff
+ * @property {string} textColor
+ * @property {Object} twoJSInstance // the main Two.js instance
+ * @property {number} width
+ * @property {number} x
+ * @property {number} y
+ */
+
 function addZUI(
     props,
     two,
@@ -224,6 +245,13 @@ function addZUI(
                         shape.lineData = getLineTwoData
                         shape.direction = direction
                         shape.siblingCircle = getSiblingChild
+                        shape.elementData = {
+                            // ...shape.elementData,
+                            isGroupSelector: false,
+                            isLineCircle: true,
+                            lineData: getLineTwoData,
+                            parentData: getParentTwoData,
+                        }
                         // let getChildTwoData =
                     } else {
                         shape = two.scene.children.find(
@@ -454,21 +482,43 @@ function addZUI(
             ) {
                 // console.log('no need to update')
             } else {
-                // updating already created two.js scene groups to new x,y set
-                shape.elementData.x = shape.translation.x
-                shape.elementData.y = shape.translation.y
+                if (shape?.elementData?.isLineCircle === true) {
+                    console.log(' is element a Line Circle ? ')
+                    // updating already created two.js scene groups to new x,y set
+                    shape.elementData.x = shape.translation.x
+                    shape.elementData.y = shape.translation.y
 
-                oldShapeData = { ...shape.elementData }
+                    oldShapeData = { ...shape.elementData }
 
-                newShapeData = Object.assign({}, shape.elementData, {
-                    data: {
-                        x: parseInt(shape.translation.x),
-                        y: parseInt(shape.translation.y),
-                    },
-                })
+                    newShapeData = Object.assign({}, shape.elementData, {
+                        data: {
+                            x: parseInt(shape.lineData.translation.x),
+                            y: parseInt(shape.lineData.translation.y),
+                            x1: parseInt(shape.lineData.vertices[0].x),
+                            y1: parseInt(shape.lineData.vertices[0].y),
+                            x2: parseInt(shape.lineData.vertices[1].x),
+                            y2: parseInt(shape.lineData.vertices[1].y),
+                        },
+                    })
 
-                if (shape.elementData.componentType !== 'groupobject') {
                     updateToGlobalState(newShapeData, oldShapeData)
+                } else {
+                    // updating already created two.js scene groups to new x,y set
+                    shape.elementData.x = shape.translation.x
+                    shape.elementData.y = shape.translation.y
+
+                    oldShapeData = { ...shape.elementData }
+
+                    newShapeData = Object.assign({}, shape.elementData, {
+                        data: {
+                            x: parseInt(shape.translation.x),
+                            y: parseInt(shape.translation.y),
+                        },
+                    })
+
+                    if (shape.elementData.componentType !== 'groupobject') {
+                        updateToGlobalState(newShapeData, oldShapeData)
+                    }
                 }
             }
         }
@@ -973,6 +1023,23 @@ const Canvas = (props) => {
                     updateObj: {
                         x: parseInt(newShapeData.data.x),
                         y: parseInt(newShapeData.data.y),
+                        updatedBy: userId,
+                    },
+                },
+            })
+        }
+
+        if (newShapeData?.isLineCircle === true) {
+            updateComponentInfo({
+                variables: {
+                    id: newShapeData.parentData.elementData.id,
+                    updateObj: {
+                        x: parseInt(newShapeData.data.x),
+                        y: parseInt(newShapeData.data.y),
+                        x1: parseInt(newShapeData.data.x1),
+                        x2: parseInt(newShapeData.data.x2),
+                        y1: parseInt(newShapeData.data.y1),
+                        y2: parseInt(newShapeData.data.y2),
                         updatedBy: userId,
                     },
                 },
