@@ -9,6 +9,8 @@ import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import Toolbar from 'components/floatingToolbar'
 import ElementCreator from 'factory/arrowLine'
 
+import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
+
 function ArrowLine(props) {
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
@@ -21,13 +23,10 @@ function ArrowLine(props) {
     let groupObject = null
 
     function onBlurHandler(e) {
-        console.log(
-            'on blur arrow line',
-            selectorInstance.pointCircle1Group.opacity
-        )
+        console.log('on blur arrow line', e)
         // elementOnBlurHandler(e, selectorInstance, two)
-        // selectorInstance.pointCircle1Group.opacity = 0
-        // selectorInstance.pointCircle2Group.opacity = 0
+        selectorInstance.pointCircle1Group.opacity = 0
+        selectorInstance.pointCircle2Group.opacity = 0
         two.update()
         document.getElementById(`${groupObject.id}`) &&
             document
@@ -64,10 +63,10 @@ function ArrowLine(props) {
         // console.log('arrowLine props', props)
         // Instantiate factory
         const elementFactory = new ElementCreator(two, prevX, prevY, {
-            x1: props.x1 || 100,
-            x2: props.x2 || 400,
-            y1: props.y1 || 100,
-            y2: props.y2 || 100,
+            x1: props.x1 || 20,
+            x2: props.x2 || 100,
+            y1: props.y1 || 10,
+            y2: props.y2 || 10,
         })
         // Get all instances of every sub child element
         const {
@@ -196,7 +195,6 @@ function ArrowLine(props) {
             )
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
-
             // const { mousemove, mouseup } = handleDrag(two, group, 'line')
 
             // interact(`#${group.id}`).on('click', () => {
@@ -217,21 +215,19 @@ function ArrowLine(props) {
                 // pointCircle1.opacity = 0
                 // resizeLine.opacity = 1
                 pointCircle1Group.opacity = 1
-                pointCircle1Group.opacity = 1
-                pointCircle2Group.opacity = 1
                 pointCircle2Group.opacity = 1
 
-                pointCircle1Group.translation.x = line.vertices[0].x - 0
-                pointCircle1Group.translation.y =
-                    line.vertices[0].y + parseInt(line.linewidth)
+                // pointCircle1Group.translation.x = line.vertices[0].x - 0
+                // pointCircle1Group.translation.y =
+                //     line.vertices[0].y + parseInt(line.linewidth)
 
                 // here due to x2 being a arrow head, we need some offset.
-                pointCircle2Group.translation.x =
-                    line.vertices[1].x < line.vertices[0].x
-                        ? line.vertices[1].x - 6
-                        : line.vertices[1].x + 6
-                pointCircle2Group.translation.y =
-                    line.vertices[1].y + parseInt(line.linewidth)
+                // pointCircle2Group.translation.x =
+                //     line.vertices[1].x < line.vertices[0].x
+                //         ? line.vertices[1].x - 6
+                //         : line.vertices[1].x + 6
+                // pointCircle2Group.translation.y =
+                //     line.vertices[1].y + parseInt(line.linewidth)
                 // selector.update(
                 //     line.getBoundingClientRect(true).left - 10,
                 //     line.getBoundingClientRect(true).right + 10,
@@ -454,156 +450,169 @@ function ArrowLine(props) {
         }
     }, [])
 
-    const updateX2Y2Vertices = (line, x2, y2, pointCircle2) => {
-        pointCircle2.translation.x =
-            line.vertices[1].x < line.vertices[0].x
-                ? line.vertices[1].x
-                : line.vertices[1].x + 6
-        pointCircle2.translation.y =
-            line.vertices[1].y + parseInt(line.linewidth)
+    // const updateX2Y2Vertices = (line, x2, y2, pointCircle2) => {
+    //     pointCircle2.translation.x =
+    //         line.vertices[1].x < line.vertices[0].x
+    //             ? line.vertices[1].x
+    //             : line.vertices[1].x + 6
+    //     pointCircle2.translation.y =
+    //         line.vertices[1].y + parseInt(line.linewidth)
 
-        // copied code from definition of makeArrow
-        let headlen = 10
+    //     // copied code from definition of makeArrow
+    //     let headlen = 10
 
-        let angle = Math.atan2(y2 - line.vertices[0].y, x2 - line.vertices[0].x)
+    //     let angle = Math.atan2(y2 - line.vertices[0].y, x2 - line.vertices[0].x)
 
-        let vertices = [
-            new Two.Anchor(
-                line.vertices[0].x,
-                line.vertices[0].y,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Two.Commands.move
-            ),
-            new Two.Anchor(
-                x2,
-                y2,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Two.Commands.line
-            ),
-            new Two.Anchor(
-                x2 - headlen * Math.cos(angle - Math.PI / 4),
-                y2 - headlen * Math.sin(angle - Math.PI / 4),
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Two.Commands.line
-            ),
+    //     let vertices = [
+    //         new Two.Anchor(
+    //             line.vertices[0].x,
+    //             line.vertices[0].y,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             Two.Commands.move
+    //         ),
+    //         new Two.Anchor(
+    //             x2,
+    //             y2,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             Two.Commands.line
+    //         ),
+    //         new Two.Anchor(
+    //             x2 - headlen * Math.cos(angle - Math.PI / 4),
+    //             y2 - headlen * Math.sin(angle - Math.PI / 4),
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             Two.Commands.line
+    //         ),
 
-            new Two.Anchor(
-                x2,
-                y2,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Two.Commands.move
-            ),
-            new Two.Anchor(
-                x2 - headlen * Math.cos(angle + Math.PI / 4),
-                y2 - headlen * Math.sin(angle + Math.PI / 4),
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Two.Commands.line
-            ),
-        ]
-        line.vertices = vertices
+    //         new Two.Anchor(
+    //             x2,
+    //             y2,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             Two.Commands.move
+    //         ),
+    //         new Two.Anchor(
+    //             x2 - headlen * Math.cos(angle + Math.PI / 4),
+    //             y2 - headlen * Math.sin(angle + Math.PI / 4),
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             Two.Commands.line
+    //         ),
+    //     ]
+    //     line.vertices = vertices
 
-        two.update()
-    }
+    //     two.update()
+    // }
 
-    const updateX1Y1Vertices = (line, x1, y1, pointCircle1) => {
-        pointCircle1.translation.x = line.vertices[0].x + 0
-        pointCircle1.translation.y =
-            line.vertices[0].y + parseInt(line.linewidth)
+    // const updateX1Y1Vertices = (line, x1, y1, pointCircle1) => {
+    //     pointCircle1.translation.x = line.vertices[0].x + 0
+    //     pointCircle1.translation.y =
+    //         line.vertices[0].y + parseInt(line.linewidth)
 
-        // copied code from definition of makeArrow
-        let headlen = 10
+    //     // copied code from definition of makeArrow
+    //     let headlen = 10
 
-        let angle = Math.atan2(line.vertices[1].y - y1, line.vertices[1].x - x1)
+    //     let angle = Math.atan2(line.vertices[1].y - y1, line.vertices[1].x - x1)
 
-        let vertices = [
-            new Two.Anchor(
-                x1,
-                y1,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Two.Commands.move
-            ),
-            new Two.Anchor(
-                line.vertices[1].x,
-                line.vertices[1].y,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Two.Commands.line
-            ),
-            new Two.Anchor(
-                line.vertices[1].x - headlen * Math.cos(angle - Math.PI / 4),
-                line.vertices[1].y - headlen * Math.sin(angle - Math.PI / 4),
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Two.Commands.line
-            ),
+    //     let vertices = [
+    //         new Two.Anchor(
+    //             x1,
+    //             y1,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             Two.Commands.move
+    //         ),
+    //         new Two.Anchor(
+    //             line.vertices[1].x,
+    //             line.vertices[1].y,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             Two.Commands.line
+    //         ),
+    //         new Two.Anchor(
+    //             line.vertices[1].x - headlen * Math.cos(angle - Math.PI / 4),
+    //             line.vertices[1].y - headlen * Math.sin(angle - Math.PI / 4),
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             Two.Commands.line
+    //         ),
 
-            new Two.Anchor(
-                line.vertices[1].x,
-                line.vertices[1].y,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Two.Commands.move
-            ),
-            new Two.Anchor(
-                line.vertices[1].x - headlen * Math.cos(angle + Math.PI / 4),
-                line.vertices[1].y - headlen * Math.sin(angle + Math.PI / 4),
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                Two.Commands.line
-            ),
-        ]
-        line.vertices = vertices
+    //         new Two.Anchor(
+    //             line.vertices[1].x,
+    //             line.vertices[1].y,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             Two.Commands.move
+    //         ),
+    //         new Two.Anchor(
+    //             line.vertices[1].x - headlen * Math.cos(angle + Math.PI / 4),
+    //             line.vertices[1].y - headlen * Math.sin(angle + Math.PI / 4),
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             undefined,
+    //             Two.Commands.line
+    //         ),
+    //     ]
+    //     line.vertices = vertices
 
-        two.update()
-    }
+    //     two.update()
+    // }
 
     useEffect(() => {
-        // if (internalState?.group?.data) {
-        //     let groupInstance = internalState.group.data
-        //     let lineInstance = internalState.line.data
-        //     let pointCircle1Group = internalState.pointCircle1Group.data
-        //     let pointCircle2Group = internalState.pointCircle2Group.data
-        //     groupInstance.translation.x = props.x
-        //     groupInstance.translation.y = props.y
-        //     two.update()
-        //     // updateX1Y1Vertices(lineInstance, props.x1, props.y1, pointCircle1Group)
-        //     // updateX2Y2Vertices(lineInstance, props.x2, props.y2, pointCircle2Group)
-        // }
-    }, [
-        props.x,
-        props.y,
-        props.metadata,
-        props.x1,
-        props.x2,
-        props.y1,
-        props.y2,
-    ])
+        if (internalState?.group?.data) {
+            let groupInstance = internalState.group.data
+            let lineInstance = internalState.line.data
+            let pointCircle1Group = internalState.pointCircle1Group.data
+            let pointCircle2Group = internalState.pointCircle2Group.data
+            groupInstance.translation.x = props.x
+            groupInstance.translation.y = props.y
+            two.update()
+            // updateX1Y1Vertices(lineInstance, props.x1, props.y1, pointCircle1Group)
+            // updateX2Y2Vertices(lineInstance, props.x2, props.y2, pointCircle2Group)
+        }
+    }, [props.x, props.y, props.metadata])
+
+    useEffect(() => {
+        if (internalState?.group?.data) {
+            updateX1Y1Vertices(
+                Two,
+                internalState.line.data,
+                props.x1,
+                props.y1,
+                internalState.pointCircle1Group.data,
+                two
+            )
+            updateX2Y2Vertices(
+                Two,
+                internalState.line.data,
+                props.x2,
+                props.y2,
+                internalState.pointCircle2Group.data,
+                two
+            )
+        }
+    }, [props.x1, props.x2, props.y1, props.y2])
 
     function closeToolbar() {
         toggleToolbar(false)

@@ -245,6 +245,10 @@ function addZUI(
                         shape.lineData = getLineTwoData
                         shape.direction = direction
                         shape.siblingCircle = getSiblingChild
+
+                        shape.opacity = 1
+                        shape.siblingCircle.opacity = 1
+
                         shape.elementData = {
                             // ...shape.elementData,
                             isGroupSelector: false,
@@ -483,17 +487,19 @@ function addZUI(
                 // console.log('no need to update')
             } else {
                 if (shape?.elementData?.isLineCircle === true) {
-                    console.log(' is element a Line Circle ? ')
+                    console.log('Element is a Line Circle')
                     // updating already created two.js scene groups to new x,y set
-                    shape.elementData.x = shape.translation.x
-                    shape.elementData.y = shape.translation.y
+                    // shape.elementData.x = shape.translation.x
+                    // shape.elementData.y = shape.translation.y
+                    shape.opacity = 0
+                    shape.siblingCircle.opacity = 0
 
                     oldShapeData = { ...shape.elementData }
 
                     newShapeData = Object.assign({}, shape.elementData, {
                         data: {
-                            x: parseInt(shape.lineData.translation.x),
-                            y: parseInt(shape.lineData.translation.y),
+                            // x: parseInt(shape.lineData.translation.x),
+                            // y: parseInt(shape.lineData.translation.y),
                             x1: parseInt(shape.lineData.vertices[0].x),
                             y1: parseInt(shape.lineData.vertices[0].y),
                             x2: parseInt(shape.lineData.vertices[1].x),
@@ -1034,8 +1040,8 @@ const Canvas = (props) => {
                 variables: {
                     id: newShapeData.parentData.elementData.id,
                     updateObj: {
-                        x: parseInt(newShapeData.data.x),
-                        y: parseInt(newShapeData.data.y),
+                        // x: parseInt(newShapeData.data.x),
+                        // y: parseInt(newShapeData.data.y),
                         x1: parseInt(newShapeData.data.x1),
                         x2: parseInt(newShapeData.data.x2),
                         y1: parseInt(newShapeData.data.y1),
