@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { Switch, Route, BrowserRouter } from 'react-router-dom'
+import { Routes, Route, BrowserRouter } from 'react-router-dom'
 
 import {
     ApolloClient,
@@ -13,7 +13,7 @@ import { WebSocketLink } from '@apollo/client/link/ws'
 
 import BoardViewContainer from 'views/Board'
 import HomePageViewContainer from 'views/Home'
-import reducers from 'store/reducers'
+
 import routes from './routes'
 
 import './App.css'
@@ -48,7 +48,8 @@ function getApolloClient() {
                 headers: {
                     // authorization: `Bearer ${accessToken}`,
                     'content-type': 'application/json',
-                    'x-hasura-admin-secret': process.env.REACT_APP_HASURA_ADMIN_SECRET,
+                    'x-hasura-admin-secret':
+                        process.env.REACT_APP_HASURA_ADMIN_SECRET,
                 },
             },
         },
@@ -89,18 +90,16 @@ class App extends Component {
             <BrowserRouter>
                 <ApolloProvider client={apolloClient}>
                     <div className="App ">
-                        <Switch>
+                        <Routes>
                             <Route
-                                exact
                                 path={routes.home}
-                                component={HomePageViewContainer}
+                                element={<HomePageViewContainer />}
                             />
                             <Route
-                                exact
                                 path={routes.board}
-                                component={BoardViewContainer}
+                                element={<BoardViewContainer />}
                             />
-                        </Switch>
+                        </Routes>
                     </div>
                 </ApolloProvider>
             </BrowserRouter>

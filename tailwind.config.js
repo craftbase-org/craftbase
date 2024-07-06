@@ -1,5 +1,5 @@
 module.exports = {
-    purge: ['./src/**/*.html', './src/**/*.js'],
+    content: ['./src/**/*.html', './src/**/*.js'],
     future: {
         removeDeprecatedGapUtilities: true,
     },

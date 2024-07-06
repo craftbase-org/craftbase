@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useSubscription, useMutation } from '@apollo/client'
-
+import { useParams } from 'react-router-dom'
 import { useMediaQueryUtils } from 'constants/exportHooks'
 import { GET_BOARD_DATA } from 'schema/subscriptions'
 import { INSERT_USER_ONE, UPDATE_USER_REVISIT_COUNT } from 'schema/mutations'
@@ -10,7 +10,9 @@ import Spinner from 'components/common/spinnerWithSize'
 import { generateRandomUsernames } from 'utils/misc'
 
 const BoardViewPage = (props) => {
-    const boardId = props.match.params.boardId
+    const routeParams = useParams()
+    console.log('params in board', routeParams)
+    const boardId = routeParams.id
     const {
         loading: getBoardDataLoading,
         error: getBoardDataError,
@@ -61,7 +63,7 @@ const BoardViewPage = (props) => {
                 },
             })
         }
-        localStorage.setItem('lastOpenBoard', props.match.params.boardId)
+        localStorage.setItem('lastOpenBoard', routeParams.id)
     }, [])
 
     if (getBoardDataLoading) {
