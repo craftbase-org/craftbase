@@ -41,6 +41,8 @@ const BoardViewPage = (props) => {
 
     const [lastAddedElement, setLastAddedElement] = useState(null)
     const [showHelperTooltip, setShowHelperTooltip] = useState(true)
+    const [pointerToggle, setPointerToggle] = useState(false)
+    const [isPencilMode, setPencilMode] = useState(false)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     useEffect(() => {
@@ -124,6 +126,15 @@ const BoardViewPage = (props) => {
         document.getElementById('main-two-root').style.cursor = 'grabbing'
     }
 
+    const togglePointer = (pointerVal) => {
+        setPointerToggle(pointerVal)
+        setPencilMode(false)
+    }
+
+    const togglePencilMode = (value) => {
+        setPencilMode(value)
+    }
+
     return (
         <>
             {!isMobile ? (
@@ -176,6 +187,8 @@ const BoardViewPage = (props) => {
                     <Sidebar
                         selectCursorMode={false}
                         {...props}
+                        togglePencilMode={togglePencilMode}
+                        togglePointer={togglePointer}
                         updateLastAddedElement={updateLastAddedElement}
                         boardData={getBoardData?.components}
                     />
@@ -190,6 +203,8 @@ const BoardViewPage = (props) => {
                     </div>
                 </div> */}
                     <Canvas
+                        pointerToggle={pointerToggle}
+                        isPencilMode={isPencilMode}
                         selectPanMode={false}
                         boardId={boardId}
                         lastAddedElement={lastAddedElement}

@@ -21,7 +21,11 @@ import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
 import UserDetailsPopup from './userDetailsPopup'
 
-const PrimarySidebar = (props) => {
+const PrimarySidebar = ({
+    updateLastAddedElement,
+    togglePointer,
+    togglePencilMode,
+}) => {
     // const [showAddShapeLoader, setShowAddShapeLoader] = useState(false)
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const {
@@ -68,54 +72,75 @@ const PrimarySidebar = (props) => {
     // }, [insertComponentSuccess])
 
     const addElement = (label) => {
-        setTimeout(() => {
-            document.getElementById('show-click-anywhere-btn').style.opacity = 1
-            let el = document.getElementById('show-saving-loader')
-            el.style.opacity = 0
-            el.style.zIndex = -1
-        }, 100)
+        switch (label) {
+            case 'pointer':
+                togglePointer(true)
+                break
+            case 'pencil':
+                togglePencilMode(true)
+                break
+            default:
+                setTimeout(() => {
+                    document.getElementById(
+                        'show-click-anywhere-btn'
+                    ).style.opacity = 1
+                    let el = document.getElementById('show-saving-loader')
+                    el.style.opacity = 0
+                    el.style.zIndex = -1
+                }, 100)
 
-        let el = document.getElementById('show-saving-loader')
-        el.style.opacity = 1
-        el.style.zIndex = 1
+                let el = document.getElementById('show-saving-loader')
+                el.style.opacity = 1
+                el.style.zIndex = 1
 
-        let shapeData = null
-        let randomNumber = Math.floor(Math.random() * 80 + 30)
-        let generateId = generateUUID()
-        console.log('getComponentTypesData', getComponentTypesData, label)
-        if (getComponentTypesData) {
-            getComponentTypesData.componentTypes.forEach((item, index) => {
-                if (item.label === label) {
-                    shapeData = {
-                        id: generateId,
-                        componentType: label,
-                        x: parseInt(
-                            window.outerWidth -
-                                (randomNumber * window.outerWidth) / 100
-                        ),
-                        y: parseInt(
-                            window.outerHeight -
-                                (randomNumber * window.outerHeight) / 100
-                        ),
-                        x2: label.includes('divider') ? 100 : 0,
-                        boardId: routeParams.id,
-                        metadata: item.defaultMetaData,
-                        width: item.width,
-                        height: item.height,
-                        fill: item.fill,
-                        textColor: item.textColor,
-                    }
+                let shapeData = null
+                let randomNumber = Math.floor(Math.random() * 80 + 30)
+                let generateId = generateUUID()
+                console.log(
+                    'getComponentTypesData',
+                    getComponentTypesData,
+                    label
+                )
+                if (getComponentTypesData) {
+                    getComponentTypesData.componentTypes.forEach(
+                        (item, index) => {
+                            if (item.label === label) {
+                                shapeData = {
+                                    id: generateId,
+                                    componentType: label,
+                                    x: parseInt(
+                                        window.outerWidth -
+                                            (randomNumber * window.outerWidth) /
+                                                100
+                                    ),
+                                    y: parseInt(
+                                        window.outerHeight -
+                                            (randomNumber *
+                                                window.outerHeight) /
+                                                100
+                                    ),
+                                    x2: label.includes('divider') ? 100 : 0,
+                                    boardId: routeParams.id,
+                                    metadata: item.metadata,
+                                    width: item.width,
+                                    height: item.height,
+                                    fill: item.fill,
+                                    textColor: item.textColor,
+                                }
+                            }
+                        }
+                    )
                 }
-            })
+                console.log('shapeData', shapeData)
+                updateLastAddedElement(shapeData)
+
+                // setShowAddShapeLoader(true)
+                localStorage.setItem('lastAddedElementId', generateId)
+
+                // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
+                shapeData &&
+                    insertComponent({ variables: { object: shapeData } })
         }
-        console.log('shapeData', shapeData)
-        props.updateLastAddedElement(shapeData)
-
-        // setShowAddShapeLoader(true)
-        localStorage.setItem('lastAddedElementId', generateId)
-
-        // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
-        shapeData && insertComponent({ variables: { object: shapeData } })
     }
 
     const toggleSecondaryMenuFn = (bool) => {

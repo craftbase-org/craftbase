@@ -12,8 +12,10 @@ import FrameSVG from 'wireframeAssets/frame.svg'
 import CircleIcon from 'wireframeAssets/circle.svg'
 import RectangleIcon from 'wireframeAssets/rectangle.svg'
 import TextIcon from 'wireframeAssets/text.svg'
-import RightArrowIcon from 'assets/right_arrow.svg'
+import PencilIcon from 'wireframeAssets/pencil.svg'
+import PointerIcon from 'wireframeAssets/cursor.svg'
 
+import RightArrowIcon from 'assets/right_arrow.svg'
 import OverlayPNG from 'assets/overlay.png'
 
 export const color_blue = '#0052CC'
@@ -115,6 +117,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Circle',
             elementSVG: CircleIcon,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
         {
@@ -122,6 +125,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Rectangle / Square',
             elementSVG: RectangleIcon,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
     ],
@@ -131,6 +135,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Avatar',
             elementSVG: AvatarSVG,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
         {
@@ -138,6 +143,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Toggle',
             elementSVG: ToggleSVG,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
         {
@@ -145,6 +151,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Button',
             elementSVG: ButtonSVG,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
 
@@ -153,6 +160,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Image Card',
             elementSVG: ImageCardSVG,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
         {
@@ -160,6 +168,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Frame',
             elementSVG: FrameSVG,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
         {
@@ -167,6 +176,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Button With Icon',
             elementSVG: ButtonWithIconSVG,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
 
@@ -175,6 +185,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Overlay',
             elementSVG: OverlayPNG,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
         {
@@ -182,6 +193,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Radio Control',
             elementSVG: RadioboxSVG,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
         {
@@ -189,6 +201,7 @@ export const staticDrawerData = {
             elementDisplayName: 'Checkbox Control',
             elementSVG: CheckboxSVG,
             hasDrawer: false,
+            noAction: false,
             drawerData: [],
         },
     ],
@@ -242,13 +255,15 @@ export const staticPrimaryElementData = [
                 elementDisplayName: 'Circle',
                 elementSVG: CircleIcon,
                 hasDrawer: false,
-                drawerData: staticDrawerData.shapes,
+                noAction: false,
+                drawerData: [],
             },
             {
                 elementName: 'rectangle',
                 elementDisplayName: 'Rectangle / Square',
                 elementSVG: RectangleIcon,
                 hasDrawer: false,
+                noAction: false,
                 drawerData: [],
             },
             {
@@ -256,6 +271,7 @@ export const staticPrimaryElementData = [
                 elementDisplayName: 'Arrow',
                 elementSVG: RightArrowIcon,
                 hasDrawer: false,
+                noAction: false,
                 drawerData: [],
             },
             {
@@ -263,6 +279,23 @@ export const staticPrimaryElementData = [
                 elementDisplayName: 'Divider',
                 elementSVG: DividerSVG,
                 hasDrawer: false,
+                noAction: false,
+                drawerData: [],
+            },
+            {
+                elementName: 'pencil',
+                elementDisplayName: 'Pencil',
+                elementSVG: PencilIcon,
+                hasDrawer: false,
+                noAction: false,
+                drawerData: [],
+            },
+            {
+                elementName: 'pointer',
+                elementDisplayName: 'Pointer',
+                elementSVG: PointerIcon,
+                hasDrawer: false,
+                noAction: true,
                 drawerData: [],
             },
             {
@@ -270,6 +303,7 @@ export const staticPrimaryElementData = [
                 elementDisplayName: 'Text',
                 elementSVG: TextIcon,
                 hasDrawer: false,
+                noAction: false,
                 drawerData: [],
             },
         ],
