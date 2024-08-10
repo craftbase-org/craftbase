@@ -78,10 +78,15 @@ function addZUI(
     let touches = {}
     let distance = 0
     let dragging = false
+    let isResizeEvent = false
+
+    let scenario = null
+    let SCENARIO_JUST_ADDED_ELEMENT = 'justAddedElement'
+    let SCENARIO_PENCIL_MODE = 'pencilMode'
+    let SCENARIO_DEFAULT = null
 
     zui.addLimits(0.06, 8)
 
-    domElement.addEventListener('mousemove', mousemove, false)
     domElement.addEventListener('mousedown', mousedown, false)
     domElement.addEventListener('mousewheel', mousewheel, false)
     domElement.addEventListener('wheel', mousewheel, false)
@@ -118,209 +123,238 @@ function addZUI(
             window.dispatchEvent(evt)
         }
 
+        if (props.isPencilMode) {
+            scenario = SCENARIO_PENCIL_MODE
+        }
+
         if (lastAddedElementId !== null) {
-            // This block falls for the case when there is newly added element and we let user click
-            // anywhere to set last added element's position
-            const clientToSurface = zui.clientToSurface(e.clientX, e.clientY)
+            scenario = SCENARIO_JUST_ADDED_ELEMENT
+        }
 
-            let twoJSElement = two.scene.children.find(
-                (child) => child?.elementData?.id === lastAddedElementId
-            )
+        console.log('scenario', scenario)
+        switch (scenario) {
+            case SCENARIO_JUST_ADDED_ELEMENT:
+                domElement.addEventListener('mousemove', mousemove, false)
 
-            if (twoJSElement?.position) {
-                twoJSElement.position.x = clientToSurface.x
-                twoJSElement.position.y = clientToSurface.y
-
-                two.update()
-
-                updateComponentVertices(
-                    lastAddedElementId,
-                    clientToSurface.x,
-                    clientToSurface.y
-                )
-            }
-
-            localStorage.removeItem('lastAddedElementId')
-
-            // remove event listeners for mousemove
-            domElement.removeEventListener('mousemove', mousemove, false)
-
-            document.getElementById('main-two-root').style.cursor = 'auto'
-        } else {
-            shape = null
-            mouse.x = e.clientX
-            mouse.y = e.clientY
-            let avoidDragging = false
-            let isGroupSelector = false
-
-            let path = e.path || (e.composedPath && e.composedPath())
-            // checks for path in event if it contains following element with id attr which matches with similar two.js children group
-            // and assigns that specific two.js child(group) to shape object
-
-            // wiki: two.js has base level group (scene which hosts all the objects in instance), so it's like two.js group
-            // inside two.js base level group
-            path.forEach((item, index) => {
-                console.log(
-                    'item?.classList?.value',
-                    item?.classList?.value,
-                    item?.classList?.value &&
-                        item?.classList?.value.includes('dragger-picker') &&
-                        !item?.classList?.value.includes('avoid-dragging') &&
-                        item.tagName === 'g'
+                // This block falls for the case when there is newly added element and we let user click
+                // anywhere to set last added element's position
+                const clientToSurface = zui.clientToSurface(
+                    e.clientX,
+                    e.clientY
                 )
 
-                if (item?.classList?.value.includes('avoid-dragging')) {
-                    avoidDragging = true
+                let twoJSElement = two.scene.children.find(
+                    (child) => child?.elementData?.id === lastAddedElementId
+                )
+
+                if (twoJSElement?.position) {
+                    twoJSElement.position.x = clientToSurface.x
+                    twoJSElement.position.y = clientToSurface.y
+
+                    two.update()
+
+                    updateComponentVertices(
+                        lastAddedElementId,
+                        clientToSurface.x,
+                        clientToSurface.y
+                    )
                 }
 
-                // this does not select path or any inner component
-                // since you mention in condition that only pick with "g" tag name, i.e. group element
-                if (
-                    item?.classList?.value &&
-                    item?.classList?.value.includes('dragger-picker') &&
-                    !item?.classList?.value.includes('avoid-dragging') &&
-                    item.tagName === 'g' &&
-                    shape == null
-                ) {
-                    console.log('iterating through path', item.id, shape)
+                localStorage.removeItem('lastAddedElementId')
+
+                // remove event listeners for mousemove
+                // domElement.removeEventListener('mousemove', mousemove, false)
+
+                domElement.addEventListener('mousemove', mousemove, false)
+                domElement.addEventListener('mouseup', mouseup, false)
+
+                document.getElementById('main-two-root').style.cursor = 'auto'
+                break
+            case SCENARIO_PENCIL_MODE:
+                // do here
+                break
+            default:
+                shape = null
+                mouse.x = e.clientX
+                mouse.y = e.clientY
+                let avoidDragging = false
+                let isGroupSelector = false
+
+                let path = e.path || (e.composedPath && e.composedPath())
+                // checks for path obj in DOM event obj if it contains following element with id attr which matches with similar two.js children group
+                // and assigns that specific two.js child(group) to the shape object
+
+                // wiki: two.js has base level group ('scene' which hosts all the objects in instance), so it's like two.js group
+                // inside two.js base level group
+                path.forEach((item, index) => {
                     console.log(
-                        'two scene children',
-                        two.scene.children,
-                        two.scene.children.find((child) => child.id === item.id)
+                        'item?.classList?.value',
+                        item?.classList?.value,
+                        item?.classList?.value &&
+                            item?.classList?.value.includes('dragger-picker') &&
+                            !item?.classList?.value.includes(
+                                'avoid-dragging'
+                            ) &&
+                            item.tagName === 'g'
                     )
 
-                    // if its a arrowLine component and check for class
-                    // because we don't want to select top level group id
-                    if (item?.classList?.value.includes('is-line-circle')) {
-                        console.log('is arrowLine circle ')
+                    if (item?.classList?.value.includes('avoid-dragging')) {
+                        avoidDragging = true
+                    }
+
+                    // this does not select path or any inner component
+                    // since you mention in condition that only pick with "g" tag name, i.e. group element
+                    if (
+                        item.tagName === 'g' &&
+                        item?.classList?.value.includes('dragger-picker') &&
+                        shape == null
+                    ) {
+                        console.log('iterating through path', item.id, shape)
                         console.log(
-                            'get attr of parent id',
-                            document
+                            'two scene children',
+                            two.scene.children,
+                            two.scene.children.find(
+                                (child) => child.id === item.id
+                            )
+                        )
+
+                        // if its a arrowLine component and check for class
+                        // because we don't want to select top level group id
+                        if (item?.classList?.value.includes('is-line-circle')) {
+                            console.log('is arrowLine circle ')
+                            console.log(
+                                'get attr of parent id',
+                                document
+                                    .getElementById(item.id)
+                                    .getAttribute('data-parent-id')
+                            )
+                            let parentId = document
                                 .getElementById(item.id)
                                 .getAttribute('data-parent-id')
-                        )
-                        let parentId = document
-                            .getElementById(item.id)
-                            .getAttribute('data-parent-id')
 
-                        let lineId = document
-                            .getElementById(item.id)
-                            .getAttribute('data-line-id')
+                            let lineId = document
+                                .getElementById(item.id)
+                                .getAttribute('data-line-id')
 
-                        let direction = document
-                            .getElementById(item.id)
-                            .getAttribute('data-direction')
+                            let direction = document
+                                .getElementById(item.id)
+                                .getAttribute('data-direction')
 
-                        let getParentTwoData = two.scene.children.find(
-                            (child) => child.id === parentId
-                        )
+                            let getParentTwoData = two.scene.children.find(
+                                (child) => child.id === parentId
+                            )
 
-                        console.log(
-                            'getParentTwoData and its children',
-                            getParentTwoData,
-                            getParentTwoData.children
-                        )
+                            console.log(
+                                'getParentTwoData and its children',
+                                getParentTwoData,
+                                getParentTwoData.children
+                            )
 
-                        let getChildTwoData = getParentTwoData.children.find(
-                            (child) => child.id === item.id
-                        )
-                        let getSiblingChild = getParentTwoData.children.find(
-                            (child) =>
-                                child.id !== item.id &&
-                                child?.children?.length > 0
-                        )
-                        let getLineTwoData = getParentTwoData.children.find(
-                            (child) => child.id === lineId
-                        )
-                        console.log(
-                            'getChildTwoData',
-                            getChildTwoData,
-                            getChildTwoData.type,
-                            ' getSiblingChild',
-                            getSiblingChild
-                        )
-                        shape = getChildTwoData
+                            let getChildTwoData =
+                                getParentTwoData.children.find(
+                                    (child) => child.id === item.id
+                                )
+                            let getSiblingChild =
+                                getParentTwoData.children.find(
+                                    (child) =>
+                                        child.id !== item.id &&
+                                        child?.children?.length > 0
+                                )
+                            let getLineTwoData = getParentTwoData.children.find(
+                                (child) => child.id === lineId
+                            )
+                            console.log(
+                                'getChildTwoData',
+                                getChildTwoData,
+                                getChildTwoData.type,
+                                ' getSiblingChild',
+                                getSiblingChild
+                            )
+                            shape = getChildTwoData
 
-                        // setting custom properties to existing two properties
-                        shape.lineData = getLineTwoData
-                        shape.direction = direction
-                        shape.siblingCircle = getSiblingChild
+                            // setting custom properties to existing two properties
+                            shape.lineData = getLineTwoData
+                            shape.direction = direction
+                            shape.siblingCircle = getSiblingChild
 
-                        shape.opacity = 1
-                        shape.siblingCircle.opacity = 1
+                            shape.opacity = 1
+                            shape.siblingCircle.opacity = 1
 
-                        shape.elementData = {
-                            // ...shape.elementData,
-                            isGroupSelector: false,
-                            isLineCircle: true,
-                            lineData: getLineTwoData,
-                            parentData: getParentTwoData,
+                            shape.elementData = {
+                                // ...shape.elementData,
+                                isGroupSelector: false,
+                                isLineCircle: true,
+                                lineData: getLineTwoData,
+                                parentData: getParentTwoData,
+                            }
+                            // let getChildTwoData =
+                        } else {
+                            shape = two.scene.children.find(
+                                (child) => child.id === item.id
+                            )
                         }
-                        // let getChildTwoData =
-                    } else {
-                        shape = two.scene.children.find(
-                            (child) => child.id === item.id
-                        )
                     }
+                })
+
+                if (avoidDragging) {
+                    shape = {}
                 }
-            })
 
-            if (avoidDragging) {
-                shape = {}
-            }
+                // if shape is null, we initialize it with root element
 
-            // if shape is null, we initialize it with root element
+                // inserting prevX and prevY to diff at updateToGlobalState function
+                // checking if new x,y are not equal to prev x,y
+                // then only perform the mutation
 
-            // inserting prevX and prevY to diff at updateToGlobalState function
-            // checking if new x,y are not equal to prev x,y
-            // then only perform the mutation
+                console.log('props.selectPanMode', props.selectPanMode)
 
-            console.log('props.selectPanMode', props.selectPanMode)
-            // in case if it's a group selector, it falls under below condition
-            if (shape === null) {
-                // shape = two.scene
-                const { x1, x2, y1, y2 } = {
-                    x1: 0,
-                    x2: 10,
-                    y1: 0,
-                    y2: 10,
+                // in case if it's a group selector, it falls under below condition
+                if (shape === null) {
+                    // shape = two.scene
+                    const { x1, x2, y1, y2 } = {
+                        x1: 0,
+                        x2: 10,
+                        y1: 0,
+                        y2: 10,
+                    }
+                    const area = two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
+                    area.fill = 'rgba(0,0,0,0)'
+                    area.opacity = 1
+                    area.linewidth = 1
+                    area.dashes[0] = 4
+                    area.stroke = '#505F79'
+
+                    let newSelectorGroup = two.makeGroup(area)
+
+                    const m = zui.clientToSurface(e.clientX, e.clientY)
+                    mouse.copy(m)
+                    newSelectorGroup.position.copy(mouse)
+
+                    two.update()
+                    shape = newSelectorGroup
+                    isGroupSelector = true
                 }
-                const area = two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
-                area.fill = 'rgba(0,0,0,0)'
-                area.opacity = 1
-                area.linewidth = 1
-                area.dashes[0] = 4
-                area.stroke = '#505F79'
+                shape.elementData = {
+                    ...shape?.elementData,
+                    isGroupSelector: isGroupSelector,
+                    prevX: parseInt(shape.translation.x),
+                    prevY: parseInt(shape.translation.y),
+                }
 
-                let newSelectorGroup = two.makeGroup(area)
+                console.log('on mouse down')
+                let rect = document
+                    .getElementById(shape.id)
+                    .getBoundingClientRect()
 
-                const m = zui.clientToSurface(e.clientX, e.clientY)
-                mouse.copy(m)
-                newSelectorGroup.position.copy(mouse)
+                dragging =
+                    mouse.x > rect.left &&
+                    mouse.x < rect.right &&
+                    mouse.y > rect.top &&
+                    mouse.y < rect.bottom
 
+                domElement.addEventListener('mousemove', mousemove, false)
+                domElement.addEventListener('mouseup', mouseup, false)
                 two.update()
-                shape = newSelectorGroup
-                isGroupSelector = true
-            }
-            shape.elementData = {
-                ...shape?.elementData,
-                isGroupSelector: isGroupSelector,
-                prevX: parseInt(shape.translation.x),
-                prevY: parseInt(shape.translation.y),
-            }
-
-            console.log('on mouse down')
-            let rect = document.getElementById(shape.id).getBoundingClientRect()
-
-            dragging =
-                mouse.x > rect.left &&
-                mouse.x < rect.right &&
-                mouse.y > rect.top &&
-                mouse.y < rect.bottom
-
-            domElement.addEventListener('mousemove', mousemove, false)
-            domElement.addEventListener('mouseup', mouseup, false)
-            two.update()
         }
     }
 
@@ -333,212 +367,312 @@ function addZUI(
         )
         // console.log('shape in mousemove', e, shape, props.selectPanMode)
         const lastAddedElementId = localStorage.getItem('lastAddedElementId')
+
         if (lastAddedElementId !== null) {
-            // This block falls for the case when there is newly added element and we let user click
-            // anywhere to set last added element's position
-            const clientToSurface = zui.clientToSurface(e.clientX, e.clientY)
+            scenario = SCENARIO_JUST_ADDED_ELEMENT
+        }
 
-            let twoJSElement = two.scene.children.find(
-                (child) => child?.elementData?.id === lastAddedElementId
-            )
+        switch (scenario) {
+            case SCENARIO_JUST_ADDED_ELEMENT:
+                // This block falls for the case when there is newly added element and we let user click
+                // anywhere to set last added element's position
+                const clientToSurface = zui.clientToSurface(
+                    e.clientX,
+                    e.clientY
+                )
 
-            if (twoJSElement?.position) {
-                twoJSElement.position.x = clientToSurface.x
-                twoJSElement.position.y = clientToSurface.y
+                let twoJSElement = two.scene.children.find(
+                    (child) => child?.elementData?.id === lastAddedElementId
+                )
 
-                two.update()
-            }
-        } else if (
-            shape?.id &&
-            document.getElementById(shape.id).hasAttribute('data-resize')
-        ) {
-            // element resize is being performed
-            // console.log('element resize is being performed')
-            domElement.removeEventListener('mousemove', mousemove, false)
-            domElement.removeEventListener('mouseup', mouseup, false)
-        } else if (shape?.id || shape?.elementData) {
-            let dx = e.clientX - mouse.x
-            let dy = e.clientY - mouse.y
+                if (twoJSElement?.position) {
+                    twoJSElement.position.x = clientToSurface.x
+                    twoJSElement.position.y = clientToSurface.y
 
-            // check if while dragging, the shape does not point to root element (two-0)
-            if (
-                dragging &&
-                shape.id !== 'two-0' &&
-                !shape.elementData.isGroupSelector
-            ) {
-                // code block condition to handle arrow line circle component's dragging
-                // it roughly translates -> does shape === line/arrow line ?
-                if (shape?.lineData) {
-                    let line = shape?.lineData
+                    two.update()
+                }
+                break
+            case SCENARIO_PENCIL_MODE:
+                break
+            default:
+                /**
+                    Currently "resize" event handling is at component level.  
+                    Once I shift that handling to this one main component,
+                    I'll remove this first if condition block
+                */
 
-                    if (shape.direction === 'left') {
-                        if (e.shiftKey == true) {
-                            let x1 = (line.vertices[0].x += dx / zui.scale)
-                            let y1 = (line.vertices[0].y += dy / zui.scale)
-                            updateX1Y1Vertices(Two, line, x1, y1, shape, two)
+                if (isResizeEvent === true) {
+                    domElement.removeEventListener(
+                        'mousemove',
+                        mousemove,
+                        false
+                    )
+                    domElement.removeEventListener('mouseup', mouseup, false)
+                    isResizeEvent = false
+                } else if (
+                    shape?.id &&
+                    document
+                        .getElementById(shape.id)
+                        .hasAttribute('data-resize')
+                ) {
+                    // element resize is being performed
+                    // console.log('element resize is being performed')
+                    isResizeEvent = true
+                    domElement.removeEventListener(
+                        'mousemove',
+                        mousemove,
+                        false
+                    )
+                    domElement.removeEventListener('mouseup', mouseup, false)
+                } else if (shape?.id || shape?.elementData) {
+                    // console.log('element move operation is being performed')
+                    let dx = e.clientX - mouse.x
+                    let dy = e.clientY - mouse.y
 
-                            /* update x2,y2 vertices acc. to shift key press event */
-                            let x2 = line.vertices[1].x
-                            let y2 = y1
-                            updateX2Y2Vertices(
-                                Two,
-                                line,
-                                x2,
-                                y2,
-                                shape.siblingCircle,
-                                two
-                            )
-                        } else {
-                            let x1 = (line.vertices[0].x += dx / zui.scale)
-                            let y1 = (line.vertices[0].y += dy / zui.scale)
-                            updateX1Y1Vertices(Two, line, x1, y1, shape, two)
+                    // check if while dragging, the shape does not point to root element (two-0)
+                    if (
+                        dragging &&
+                        shape.id !== 'two-0' &&
+                        !shape.elementData.isGroupSelector
+                    ) {
+                        // code block condition to handle arrow line circle component's dragging
+                        // it roughly translates -> does shape === line/arrow line ?
+                        if (shape?.lineData) {
+                            let line = shape?.lineData
+
+                            if (shape.direction === 'left') {
+                                if (e.shiftKey == true) {
+                                    let x1 = (line.vertices[0].x +=
+                                        dx / zui.scale)
+                                    let y1 = (line.vertices[0].y +=
+                                        dy / zui.scale)
+                                    updateX1Y1Vertices(
+                                        Two,
+                                        line,
+                                        x1,
+                                        y1,
+                                        shape,
+                                        two
+                                    )
+
+                                    /* update x2,y2 vertices acc. to shift key press event */
+                                    let x2 = line.vertices[1].x
+                                    let y2 = y1
+                                    updateX2Y2Vertices(
+                                        Two,
+                                        line,
+                                        x2,
+                                        y2,
+                                        shape.siblingCircle,
+                                        two
+                                    )
+                                } else {
+                                    let x1 = (line.vertices[0].x +=
+                                        dx / zui.scale)
+                                    let y1 = (line.vertices[0].y +=
+                                        dy / zui.scale)
+                                    updateX1Y1Vertices(
+                                        Two,
+                                        line,
+                                        x1,
+                                        y1,
+                                        shape,
+                                        two
+                                    )
+                                }
+                            } else if (shape.direction === 'right') {
+                                if (e.shiftKey === true) {
+                                    let x2 = (line.vertices[1].x +=
+                                        dx / zui.scale)
+                                    let y2 = (line.vertices[1].y +=
+                                        dy / zui.scale)
+                                    updateX2Y2Vertices(
+                                        Two,
+                                        line,
+                                        x2,
+                                        y2,
+                                        shape,
+                                        two
+                                    )
+
+                                    /* update x1,y1 vertices acc. to shift key press event */
+                                    let x1 = line.vertices[0].x
+                                    let y1 = y2
+                                    updateX1Y1Vertices(
+                                        Two,
+                                        line,
+                                        x1,
+                                        y1,
+                                        shape.siblingCircle,
+                                        two
+                                    )
+                                } else {
+                                    let x2 = (line.vertices[1].x +=
+                                        dx / zui.scale)
+                                    let y2 = (line.vertices[1].y +=
+                                        dy / zui.scale)
+                                    updateX2Y2Vertices(
+                                        Two,
+                                        line,
+                                        x2,
+                                        y2,
+                                        shape,
+                                        two
+                                    )
+                                }
+                            }
                         }
-                    } else if (shape.direction === 'right') {
-                        if (e.shiftKey === true) {
-                            let x2 = (line.vertices[1].x += dx / zui.scale)
-                            let y2 = (line.vertices[1].y += dy / zui.scale)
-                            updateX2Y2Vertices(Two, line, x2, y2, shape, two)
+                        // code block condition to handle normal component's dragging
+                        else {
+                            shape.position.x += dx / zui.scale
+                            shape.position.y += dy / zui.scale
+                        }
+                    } else if (shape.elementData.isGroupSelector) {
+                        // this blocks falls for the case when user has clicked and
+                        // is dragging to create a group selector
+                        console.log('shape.position', shape)
+                        let area = shape.children[0]
+                        let x = e.clientX
+                        let y = e.clientY
 
-                            /* update x1,y1 vertices acc. to shift key press event */
-                            let x1 = line.vertices[0].x
-                            let y1 = y2
-                            updateX1Y1Vertices(
-                                Two,
-                                line,
-                                x1,
-                                y1,
-                                shape.siblingCircle,
-                                two
-                            )
+                        const m = zui.clientToSurface(x, y)
+                        mouse.copy(m)
+
+                        const width = mouse.x - shape.position.x
+                        const height = mouse.y - shape.position.y
+
+                        area.vertices[1].x = width
+                        area.vertices[2].x = width
+                        area.vertices[2].y = height
+                        area.vertices[3].y = height
+
+                        two.update()
+                    } else {
+                        if (!props.selectPanMode) {
+                            // nothing
                         } else {
-                            let x2 = (line.vertices[1].x += dx / zui.scale)
-                            let y2 = (line.vertices[1].y += dy / zui.scale)
-                            updateX2Y2Vertices(Two, line, x2, y2, shape, two)
+                            // zui.translateSurface(dx, dy)
                         }
                     }
+                    mouse.set(e.clientX, e.clientY)
+                    two.update()
                 }
-                // code block condition to handle normal component's dragging
-                else {
-                    shape.position.x += dx / zui.scale
-                    shape.position.y += dy / zui.scale
-                }
-            } else if (shape.elementData.isGroupSelector) {
-                // this blocks falls for the case when user has clicked and
-                // is dragging to create a group selector
-                console.log('shape.position', shape)
-                let area = shape.children[0]
-                let x = e.clientX
-                let y = e.clientY
-
-                const m = zui.clientToSurface(x, y)
-                mouse.copy(m)
-
-                const width = mouse.x - shape.position.x
-                const height = mouse.y - shape.position.y
-
-                area.vertices[1].x = width
-                area.vertices[2].x = width
-                area.vertices[2].y = height
-                area.vertices[3].y = height
-
-                two.update()
-            } else {
-                if (!props.selectPanMode) {
-                    // nothing
-                } else {
-                    // zui.translateSurface(dx, dy)
-                }
-            }
-            mouse.set(e.clientX, e.clientY)
-            two.update()
         }
     }
 
     function mouseup(e) {
-        console.log('e in ZUI mouse up')
+        console.log('e in ZUI mouse up', scenario)
         // old school logic here
 
-        // diff to check new x,y and prev x,y
-        let oldShapeData = {}
-        let newShapeData = {}
-        if (shape?.elementData?.isGroupSelector) {
-            // check on mouse up if shape's a group selector or not
-            // if yes, then call setOnGroup for adding a group in two.js space
-            let area = shape.children[0]
-            let obj = {
-                x: area.vertices[0].x + shape.translation.x,
-                y: area.vertices[0].y + shape.translation.y,
-                left: area.vertices[0].x + shape.translation.x,
-                right: area.vertices[1].x + shape.translation.x,
-                top: area.vertices[0].y + shape.translation.y,
-                bottom: area.vertices[3].y + shape.translation.y,
-                width: area.vertices[2].x - area.vertices[0].x,
-                height: area.vertices[3].y - area.vertices[0].y,
-            }
-            // console.log('shape group obj', obj)
-            two.remove(shape)
-            setOnGroup(obj)
-        } else {
-            // else shape is not a group selector then update shape's properties
-            if (
-                shape.elementData.x == shape.translation.x &&
-                shape.elementData.y == shape.translation.y
-            ) {
-                // console.log('no need to update')
-            } else {
-                if (shape?.elementData?.isLineCircle === true) {
-                    console.log('Element is a Line Circle')
-                    // updating already created two.js scene groups to new x,y set
-                    // shape.elementData.x = shape.translation.x
-                    // shape.elementData.y = shape.translation.y
-                    shape.opacity = 0
-                    shape.siblingCircle.opacity = 0
-
-                    oldShapeData = { ...shape.elementData }
-
-                    newShapeData = Object.assign({}, shape.elementData, {
-                        data: {
-                            // x: parseInt(shape.lineData.translation.x),
-                            // y: parseInt(shape.lineData.translation.y),
-                            x1: parseInt(shape.lineData.vertices[0].x),
-                            y1: parseInt(shape.lineData.vertices[0].y),
-                            x2: parseInt(shape.lineData.vertices[1].x),
-                            y2: parseInt(shape.lineData.vertices[1].y),
-                        },
-                    })
-
-                    updateToGlobalState(newShapeData, oldShapeData)
+        switch (scenario) {
+            case SCENARIO_JUST_ADDED_ELEMENT:
+                break
+            case SCENARIO_PENCIL_MODE:
+                break
+            default:
+                // diff to check new x,y and prev x,y
+                let oldShapeData = {}
+                let newShapeData = {}
+                if (shape?.elementData?.isGroupSelector) {
+                    // check on mouse up if shape's a group selector or not
+                    // if yes, then call setOnGroup for adding a group in two.js space
+                    let area = shape.children[0]
+                    let obj = {
+                        x: area.vertices[0].x + shape.translation.x,
+                        y: area.vertices[0].y + shape.translation.y,
+                        left: area.vertices[0].x + shape.translation.x,
+                        right: area.vertices[1].x + shape.translation.x,
+                        top: area.vertices[0].y + shape.translation.y,
+                        bottom: area.vertices[3].y + shape.translation.y,
+                        width: area.vertices[2].x - area.vertices[0].x,
+                        height: area.vertices[3].y - area.vertices[0].y,
+                    }
+                    // console.log('shape group obj', obj)
+                    two.remove(shape)
+                    setOnGroup(obj)
                 } else {
-                    // updating already created two.js scene groups to new x,y set
-                    shape.elementData.x = shape.translation.x
-                    shape.elementData.y = shape.translation.y
+                    // else shape is not a group selector then update shape's properties
+                    if (
+                        shape.elementData.x == shape.translation.x &&
+                        shape.elementData.y == shape.translation.y
+                    ) {
+                        // console.log('no need to update')
+                    } else {
+                        if (shape?.elementData?.isLineCircle === true) {
+                            console.log('Element is a Line Circle')
+                            // updating already created two.js scene groups to new x,y set
+                            // shape.elementData.x = shape.translation.x
+                            // shape.elementData.y = shape.translation.y
+                            shape.opacity = 0
+                            shape.siblingCircle.opacity = 0
 
-                    oldShapeData = { ...shape.elementData }
+                            oldShapeData = { ...shape.elementData }
 
-                    newShapeData = Object.assign({}, shape.elementData, {
-                        data: {
-                            x: parseInt(shape.translation.x),
-                            y: parseInt(shape.translation.y),
-                        },
-                    })
+                            newShapeData = Object.assign(
+                                {},
+                                shape.elementData,
+                                {
+                                    data: {
+                                        // x: parseInt(shape.lineData.translation.x),
+                                        // y: parseInt(shape.lineData.translation.y),
+                                        x1: parseInt(
+                                            shape.lineData.vertices[0].x
+                                        ),
+                                        y1: parseInt(
+                                            shape.lineData.vertices[0].y
+                                        ),
+                                        x2: parseInt(
+                                            shape.lineData.vertices[1].x
+                                        ),
+                                        y2: parseInt(
+                                            shape.lineData.vertices[1].y
+                                        ),
+                                    },
+                                }
+                            )
 
-                    if (shape.elementData.componentType !== 'groupobject') {
-                        updateToGlobalState(newShapeData, oldShapeData)
+                            updateToGlobalState(newShapeData, oldShapeData)
+                        } else {
+                            // updating already created two.js scene groups to new x,y set
+                            shape.elementData.x = shape.translation.x
+                            shape.elementData.y = shape.translation.y
+
+                            oldShapeData = { ...shape.elementData }
+
+                            newShapeData = Object.assign(
+                                {},
+                                shape.elementData,
+                                {
+                                    data: {
+                                        x: parseInt(shape.translation.x),
+                                        y: parseInt(shape.translation.y),
+                                    },
+                                }
+                            )
+
+                            if (
+                                shape.elementData.componentType !==
+                                'groupobject'
+                            ) {
+                                updateToGlobalState(newShapeData, oldShapeData)
+                            }
+                        }
                     }
                 }
-            }
+                console.log('shape.elementData.writable', newShapeData)
         }
+
         // let item = {
         //     elementId: shape.elementData.elementId,
         //     data: { x: shape.translation.x, y: shape.translation.y },
         // }
-        console.log('shape.elementData.writable', newShapeData)
 
         domElement.removeEventListener('mousemove', mousemove, false)
         domElement.removeEventListener('mouseup', mouseup, false)
 
         // reset shape to object or null after mouseup event
         shape = {}
+        scenario = null
 
         two.update()
     }

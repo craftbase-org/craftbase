@@ -13,15 +13,22 @@ const ElementsDropdown = ({ addElement, getComponentTypesLoading }) => {
     ])
 
     const [toggleDrawer, setToggleDrawer] = useState(false)
+    const [currentElement, setCurrentElement] = useState(null)
 
     const renderPrimaryStack = (element) => {
         return (
             <>
                 <div className="w-1/2 grid place-items-center p-2 ">
                     <div
-                        className="w-auto hover:bg-blues-b50 py-1 px-1
+                        className={`
+                            ${
+                                element.elementName === currentElement
+                                    ? `bg-blues-b50`
+                                    : ``
+                            }
+                            w-auto hover:bg-blues-b50 py-1 px-1
        border border-transparent  
-      transition-all ease-in-out duration-300 cursor-pointer"
+      transition-all ease-in-out duration-300 cursor-pointer`}
                         onClick={(e) => {
                             e.stopPropagation()
                             if (element.hasDrawer) {
@@ -29,6 +36,7 @@ const ElementsDropdown = ({ addElement, getComponentTypesLoading }) => {
                                 setListElements(element.drawerData)
                             } else {
                                 addElement(element.elementName)
+                                setCurrentElement(element.elementName)
                             }
                         }}
                     >
@@ -60,7 +68,7 @@ const ElementsDropdown = ({ addElement, getComponentTypesLoading }) => {
             <>
                 <div className="w-full block p-2 h-full pr-2 pl-2 ">
                     <div
-                        className="element-image-block tooltip-parent relative bg-neutrals-n20 
+                        className="bg-neutrals-n20 element-image-block tooltip-parent relative  
       hover:shadow-lg border border-transparent hover:border-primary-blue transition-all ease-in-out duration-300 cursor-pointer"
                         onClick={(e) => {
                             e.stopPropagation()

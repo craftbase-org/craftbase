@@ -196,7 +196,7 @@ function Circle(props) {
                         two.update()
                     },
                     end(event) {
-                        console.log('the end', circle)
+                        console.log('resize event end', circle)
                         updateComponentInfo({
                             variables: {
                                 id: props.id,
