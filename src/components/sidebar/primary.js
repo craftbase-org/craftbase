@@ -80,6 +80,9 @@ const PrimarySidebar = ({
                 togglePencilMode(true)
                 break
             default:
+                togglePencilMode(false)
+                togglePointer(false)
+
                 setTimeout(() => {
                     document.getElementById(
                         'show-click-anywhere-btn'

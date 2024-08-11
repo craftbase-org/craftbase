@@ -14,21 +14,22 @@ export default class PencilFactory extends Main {
         let path = two.makePath()
         if (metadata.length > 0) {
             metadata.forEach(function (point) {
-                path.vertices.push(new Two.Vector(point.x, point.y))
+                path.vertices.push(
+                    new Two.Vector(point.x - prevX, point.y - prevY)
+                )
             })
             path.noFill()
             path.stroke = '#000'
-            two.add(path)
+            path.closed = false
+            // two.add(path)
             // paths.push(path)
         }
 
-        path.fill = fill ? fill : color_blue
+        // path.fill = fill ? fill : color_blue
 
-        path.stroke = stroke ? stroke : '#fff'
-        path.linewidth = linewidth ? linewidth : 0
+        // path.linewidth = linewidth ? linewidth : 0
 
         this.path = path
-
         // Create group and take children elements as a parameter
         const group = two.makeGroup(path)
         group.translation.x = parseInt(prevX)

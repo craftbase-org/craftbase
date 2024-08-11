@@ -133,6 +133,8 @@ const BoardViewPage = (props) => {
 
     const togglePencilMode = (value) => {
         setPencilMode(value)
+        value === true && localStorage.setItem('pencilMode', 'TRUE')
+        value === false && localStorage.removeItem('pencilMode')
     }
 
     return (

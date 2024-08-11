@@ -62,13 +62,16 @@ function getComponentSchema(obj, boardId) {
  * @property {number} y
  */
 
+var isDrawing
+
 function addZUI(
     props,
     two,
     updateToGlobalState,
     updateComponentVertices,
     customEventListener,
-    setOnGroup
+    setOnGroup,
+    insertComponent
 ) {
     console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
@@ -79,6 +82,9 @@ function addZUI(
     let distance = 0
     let dragging = false
     let isResizeEvent = false
+    let currentPath
+    let lastAddedPath
+    let paths = []
 
     let scenario = null
     let SCENARIO_JUST_ADDED_ELEMENT = 'justAddedElement'
@@ -123,7 +129,7 @@ function addZUI(
             window.dispatchEvent(evt)
         }
 
-        if (props.isPencilMode) {
+        if (isDrawing === true) {
             scenario = SCENARIO_PENCIL_MODE
         }
 
@@ -172,6 +178,13 @@ function addZUI(
                 break
             case SCENARIO_PENCIL_MODE:
                 // do here
+                domElement.addEventListener('mousemove', mousemove, false)
+                domElement.addEventListener('mouseup', mouseup, false)
+
+                currentPath = two.makePath()
+                currentPath.closed = false
+                two.add(currentPath)
+                paths.push(currentPath)
                 break
             default:
                 shape = null
@@ -302,10 +315,6 @@ function addZUI(
 
                 // if shape is null, we initialize it with root element
 
-                // inserting prevX and prevY to diff at updateToGlobalState function
-                // checking if new x,y are not equal to prev x,y
-                // then only perform the mutation
-
                 console.log('props.selectPanMode', props.selectPanMode)
 
                 // in case if it's a group selector, it falls under below condition
@@ -334,26 +343,33 @@ function addZUI(
                     shape = newSelectorGroup
                     isGroupSelector = true
                 }
-                shape.elementData = {
-                    ...shape?.elementData,
-                    isGroupSelector: isGroupSelector,
-                    prevX: parseInt(shape.translation.x),
-                    prevY: parseInt(shape.translation.y),
+
+                // inserting prevX and prevY to diff at updateToGlobalState function
+                // checking if new x,y are not equal to prev x,y
+                // then only perform the mutation
+                if (!avoidDragging) {
+                    shape.elementData = {
+                        ...shape?.elementData,
+                        isGroupSelector: isGroupSelector,
+                        prevX: parseInt(shape.translation.x),
+                        prevY: parseInt(shape.translation.y),
+                    }
+
+                    console.log('on mouse down')
+                    let rect = document
+                        .getElementById(shape.id)
+                        .getBoundingClientRect()
+
+                    dragging =
+                        mouse.x > rect.left &&
+                        mouse.x < rect.right &&
+                        mouse.y > rect.top &&
+                        mouse.y < rect.bottom
+
+                    domElement.addEventListener('mousemove', mousemove, false)
+                    domElement.addEventListener('mouseup', mouseup, false)
                 }
 
-                console.log('on mouse down')
-                let rect = document
-                    .getElementById(shape.id)
-                    .getBoundingClientRect()
-
-                dragging =
-                    mouse.x > rect.left &&
-                    mouse.x < rect.right &&
-                    mouse.y > rect.top &&
-                    mouse.y < rect.bottom
-
-                domElement.addEventListener('mousemove', mousemove, false)
-                domElement.addEventListener('mouseup', mouseup, false)
                 two.update()
         }
     }
@@ -363,7 +379,8 @@ function addZUI(
             'mouse move event',
             shape?.elementData,
             ' shape lineData',
-            shape?.lineData
+            shape?.lineData,
+            scenario
         )
         // console.log('shape in mousemove', e, shape, props.selectPanMode)
         const lastAddedElementId = localStorage.getItem('lastAddedElementId')
@@ -393,6 +410,16 @@ function addZUI(
                 }
                 break
             case SCENARIO_PENCIL_MODE:
+                let getCoordinate = zui.clientToSurface(e.clientX, e.clientY)
+
+                currentPath.vertices.push(
+                    new Two.Vector(getCoordinate.x, getCoordinate.y)
+                )
+                currentPath.vertices[currentPath.vertices.length - 1].command =
+                    'L'
+                currentPath.noFill()
+                currentPath.stroke = '#000'
+                two.update()
                 break
             default:
                 /**
@@ -566,8 +593,43 @@ function addZUI(
 
         switch (scenario) {
             case SCENARIO_JUST_ADDED_ELEMENT:
+                domElement.removeEventListener('mousemove', mousemove, false)
+                domElement.removeEventListener('mouseup', mouseup, false)
                 break
             case SCENARIO_PENCIL_MODE:
+                // isDrawing = false
+                console.log(
+                    'on mouse up pencil mode',
+                    paths,
+                    currentPath.vertices,
+                    currentPath.translation
+                )
+
+                let componentData = {
+                    boardId: props.boardId,
+                    componentType: 'pencil',
+                    children: {},
+                    metadata: {},
+                    x: 0,
+                    y: 0,
+                    linewidth: currentPath.linewidth,
+                    stroke: currentPath.stroke,
+                }
+                componentData.metadata = currentPath.vertices.map(function (
+                    vertex
+                ) {
+                    return { x: vertex.x, y: vertex.y }
+                })
+
+                componentData.x = Math.floor(componentData.metadata[0]?.x || 0)
+                componentData.y = Math.floor(componentData.metadata[0]?.y || 0)
+                insertComponent({ variables: { object: componentData } })
+
+                let currentPathRef = currentPath
+                setTimeout(() => {
+                    two.remove(currentPathRef)
+                    two.update()
+                }, 5000)
                 break
             default:
                 // diff to check new x,y and prev x,y
@@ -666,15 +728,15 @@ function addZUI(
         //     elementId: shape.elementData.elementId,
         //     data: { x: shape.translation.x, y: shape.translation.y },
         // }
+        shape = {}
+        scenario = null
+
+        two.update()
 
         domElement.removeEventListener('mousemove', mousemove, false)
         domElement.removeEventListener('mouseup', mouseup, false)
 
         // reset shape to object or null after mouseup event
-        shape = {}
-        scenario = null
-
-        two.update()
     }
 
     function mousewheel(e) {
@@ -888,6 +950,7 @@ const Canvas = (props) => {
     // console.log('getComponentsForBoardData', getComponentsForBoardData)
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
+    const [lastAddedPathId, setLastAddedPathId] = useState(null)
     const [zuiInstance, setZuiInstance] = useState(null)
     const [prevElements, setPrevElements] = useState([])
     const [onGroup, setOnGroup] = useState(null)
@@ -896,6 +959,8 @@ const Canvas = (props) => {
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
+
+    // useEffect(()=>{},[insertComponentSuccess])
 
     useEffect(() => {
         // setting pan displacement values to initial
@@ -919,7 +984,8 @@ const Canvas = (props) => {
             updateToGlobalState,
             updateComponentVertices,
             customEventListener,
-            setOnGroup
+            setOnGroup,
+            insertComponent
         )
 
         // this.props.getElementsData('CONSTRUCT', arr)
@@ -988,6 +1054,16 @@ const Canvas = (props) => {
             handleSetComponentsToRender(newArr)
         }
     }, [props.lastAddedElement])
+
+    useEffect(() => {
+        if (props.isPencilMode === true) {
+            isDrawing = true
+            document.getElementById('main-two-root').style.cursor = 'crosshair'
+        } else {
+            isDrawing = false
+            document.getElementById('main-two-root').style.cursor = 'auto'
+        }
+    }, [props.isPencilMode])
 
     const handleSetComponentsToRender = (currentComponents) => {
         let arr = [...prevElements]

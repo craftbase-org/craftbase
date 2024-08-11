@@ -23,31 +23,31 @@ function Pencil(props) {
     let toolbarInstance = null
     let groupObject = null
 
-    function onBlurHandler(e) {
-        elementOnBlurHandler(e, selectorInstance, two)
-        document.getElementById(`${groupObject.id}`) &&
-            document
-                .getElementById(`${groupObject.id}`)
-                .removeEventListener('keydown', handleKeyDown)
-    }
+    // function onBlurHandler(e) {
+    //     elementOnBlurHandler(e, selectorInstance, two)
+    //     document.getElementById(`${groupObject.id}`) &&
+    //         document
+    //             .getElementById(`${groupObject.id}`)
+    //             .removeEventListener('keydown', handleKeyDown)
+    // }
 
-    function handleKeyDown(e) {
-        if (e.keyCode === 8 || e.keyCode === 46) {
-            console.log('handle key down event', e)
-            // DELETE/BACKSPACE KEY WAS PRESSED
-            props.handleDeleteComponent &&
-                props.handleDeleteComponent(groupObject)
-            two.remove([groupObject])
-            two.update()
-        }
-    }
+    // function handleKeyDown(e) {
+    //     if (e.keyCode === 8 || e.keyCode === 46) {
+    //         console.log('handle key down event', e)
+    //         // DELETE/BACKSPACE KEY WAS PRESSED
+    //         props.handleDeleteComponent &&
+    //             props.handleDeleteComponent(groupObject)
+    //         two.remove([groupObject])
+    //         two.update()
+    //     }
+    // }
 
-    function onFocusHandler(e) {
-        document.getElementById(`${groupObject.id}`).style.outline = 0
-        document
-            .getElementById(`${groupObject.id}`)
-            .addEventListener('keydown', handleKeyDown)
-    }
+    // function onFocusHandler(e) {
+    //     document.getElementById(`${groupObject.id}`).style.outline = 0
+    //     document
+    //         .getElementById(`${groupObject.id}`)
+    //         .addEventListener('keydown', handleKeyDown)
+    // }
 
     // Using unmount phase to remove event listeners
     useEffect(() => {
@@ -84,9 +84,13 @@ function Pencil(props) {
             group.children.unshift(path)
             two.update()
 
+            // document
+            //     .getElementById(group.id)
+            //     .setAttribute('class', 'dragger-picker')
+
             document
                 .getElementById(group.id)
-                .setAttribute('class', 'dragger-picker')
+                .setAttribute('class', 'avoid-dragging')
 
             // setting database's id in html attribute of element
             document
@@ -124,8 +128,8 @@ function Pencil(props) {
             const getGroupElementFromDOM = document.getElementById(
                 `${group.id}`
             )
-            getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
-            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+            // getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
+            // getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
             // If component is in area of selection frame/tool, programmatically enable it's selector
             // if (selectedComponents.includes(props.id)) {
