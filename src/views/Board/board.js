@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { useSubscription, useMutation } from '@apollo/client'
+import { useSubscription, useMutation, useQuery } from '@apollo/client'
 import { useParams } from 'react-router-dom'
 import { useMediaQueryUtils } from 'constants/exportHooks'
-import { GET_BOARD_DATA } from 'schema/subscriptions'
+import { GET_BOARD_DATA_QUERY } from 'schema/subscriptions'
 import { INSERT_USER_ONE, UPDATE_USER_REVISIT_COUNT } from 'schema/mutations'
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
@@ -17,7 +17,7 @@ const BoardViewPage = (props) => {
         loading: getBoardDataLoading,
         error: getBoardDataError,
         data: getBoardData,
-    } = useSubscription(GET_BOARD_DATA, {
+    } = useQuery(GET_BOARD_DATA_QUERY, {
         variables: { boardId: boardId },
         fetchPolicy: 'cache-first',
     })
@@ -39,12 +39,14 @@ const BoardViewPage = (props) => {
         },
     ] = useMutation(UPDATE_USER_REVISIT_COUNT)
 
+    const [boardData, setBoardData] = useState({ components: [] })
     const [lastAddedElement, setLastAddedElement] = useState(null)
     const [showHelperTooltip, setShowHelperTooltip] = useState(true)
     const [pointerToggle, setPointerToggle] = useState(false)
     const [isPencilMode, setPencilMode] = useState(false)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
+    // check if user exists or not
     useEffect(() => {
         const userId = localStorage.getItem('userId')
         if (userId === null) {

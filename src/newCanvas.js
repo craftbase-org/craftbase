@@ -15,8 +15,8 @@ import Zoomer from 'components/utils/zoomer'
 import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
 import {
-    GET_COMPONENT_INFO,
-    GET_COMPONENTS_FOR_BOARD,
+    GET_COMPONENT_INFO_QUERY,
+    GET_COMPONENTS_FOR_BOARD_QUERY,
 } from 'schema/subscriptions'
 import Loader from 'components/utils/loader'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
@@ -849,7 +849,7 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
             loading: getComponentInfoLoading,
             data: getComponentInfoData,
             error: getComponentInfoError,
-        } = useSubscription(GET_COMPONENT_INFO, { variables: { id: data.id } })
+        } = useQuery(GET_COMPONENT_INFO_QUERY, { variables: { id: data.id } })
         // console.log('in render Element', data, getComponentInfoData?.component)
         const [
             deleteComponent,
@@ -935,7 +935,7 @@ const Canvas = (props) => {
         loading: getComponentsForBoardLoading,
         data: getComponentsForBoardData,
         error: getComponentsForBoardError,
-    } = useSubscription(GET_COMPONENTS_FOR_BOARD, {
+    } = useQuery(GET_COMPONENTS_FOR_BOARD_QUERY, {
         variables: { boardId: props.boardId },
     })
     const [
