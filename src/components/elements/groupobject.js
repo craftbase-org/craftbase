@@ -92,6 +92,7 @@ function GroupedObjectWrapper(props) {
                         }
                     })
 
+                    console.log('groupInstance', groupInstance)
                     let newX =
                         parseInt(groupInstance.translation.x) +
                         parseInt(findRelativeDataForChild.x)

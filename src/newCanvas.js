@@ -17,13 +17,16 @@ import Spinner from 'components/common/spinner'
 import {
     GET_COMPONENT_INFO_QUERY,
     GET_COMPONENTS_FOR_BOARD_QUERY,
-} from 'schema/subscriptions'
+} from 'schema/queries'
 import Loader from 'components/utils/loader'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
+import { generateUUID } from 'utils/misc'
 
 function getComponentSchema(obj, boardId) {
+    let generateId = generateUUID()
     return {
         boardId: boardId,
+        id: generateId,
         componentType: obj.componentType,
         fill: obj.fill,
         children: obj?.children ? obj.children : {},
@@ -71,7 +74,7 @@ function addZUI(
     updateComponentVertices,
     customEventListener,
     setOnGroup,
-    insertComponent
+    addToLocalComponentStore
 ) {
     console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
@@ -375,13 +378,13 @@ function addZUI(
     }
 
     function mousemove(e) {
-        console.log(
-            'mouse move event',
-            shape?.elementData,
-            ' shape lineData',
-            shape?.lineData,
-            scenario
-        )
+        // console.log(
+        //     'mouse move event',
+        //     shape?.elementData,
+        //     ' shape lineData',
+        //     shape?.lineData,
+        //     scenario
+        // )
         // console.log('shape in mousemove', e, shape, props.selectPanMode)
         const lastAddedElementId = localStorage.getItem('lastAddedElementId')
 
@@ -557,7 +560,7 @@ function addZUI(
                     } else if (shape.elementData.isGroupSelector) {
                         // this blocks falls for the case when user has clicked and
                         // is dragging to create a group selector
-                        console.log('shape.position', shape)
+                        // console.log('shape.position', shape)
                         let area = shape.children[0]
                         let x = e.clientX
                         let y = e.clientY
@@ -605,7 +608,9 @@ function addZUI(
                     currentPath.translation
                 )
 
+                let generateId = generateUUID()
                 let componentData = {
+                    id: generateId,
                     boardId: props.boardId,
                     componentType: 'pencil',
                     children: {},
@@ -623,7 +628,12 @@ function addZUI(
 
                 componentData.x = Math.floor(componentData.metadata[0]?.x || 0)
                 componentData.y = Math.floor(componentData.metadata[0]?.y || 0)
-                insertComponent({ variables: { object: componentData } })
+
+                addToLocalComponentStore(
+                    componentData.id,
+                    componentData.componentType,
+                    componentData
+                )
 
                 let currentPathRef = currentPath
                 setTimeout(() => {
@@ -830,7 +840,11 @@ function addZUI(
     return { zui, mousemove }
 }
 
-const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
+const ElementRenderWrapper = (
+    ElementToRender,
+    data,
+    deleteComponentFromLocalStore
+) => {
     const RenderElement = () => {
         useEffect(() => {
             console.log('CDM Element from wrapper')
@@ -851,14 +865,6 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
             error: getComponentInfoError,
         } = useQuery(GET_COMPONENT_INFO_QUERY, { variables: { id: data.id } })
         // console.log('in render Element', data, getComponentInfoData?.component)
-        const [
-            deleteComponent,
-            {
-                loading: deleteComponentLoading,
-                data: deleteComponentData,
-                error: deleteComponentError,
-            },
-        ] = useMutation(DELETE_COMPONENT_BY_ID)
 
         useEffect(() => {
             if (getComponentInfoData?.component && componentData === null) {
@@ -899,10 +905,7 @@ const ElementRenderWrapper = (ElementToRender, data, twoJSInstance) => {
         }
 
         const handleDeleteComponent = (twoJSShape) => {
-            deleteComponent({
-                variables: { id: data.id },
-                errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
-            })
+            deleteComponentFromLocalStore(data.id)
         }
 
         return data.twoJSInstance ? (
@@ -930,23 +933,6 @@ const GroupRenderWrapper = (ElementToRender, data) => {
 }
 
 const Canvas = (props) => {
-    // use this data for calculating coordinate graph for grouping
-    const {
-        loading: getComponentsForBoardLoading,
-        data: getComponentsForBoardData,
-        error: getComponentsForBoardError,
-    } = useQuery(GET_COMPONENTS_FOR_BOARD_QUERY, {
-        variables: { boardId: props.boardId },
-    })
-    const [
-        insertComponent,
-        {
-            loading: insertComponentLoading,
-            data: insertComponentSuccess,
-            error: insertComponentError,
-        },
-    ] = useMutation(INSERT_COMPONENT)
-
     // console.log('getComponentsForBoardData', getComponentsForBoardData)
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
@@ -985,7 +971,7 @@ const Canvas = (props) => {
             updateComponentVertices,
             customEventListener,
             setOnGroup,
-            insertComponent
+            props.addToLocalComponentStore
         )
 
         // this.props.getElementsData('CONSTRUCT', arr)
@@ -1033,13 +1019,13 @@ const Canvas = (props) => {
                 false
             )
         }
-    }, [getComponentsForBoardData])
+    }, [props.componentStore])
 
     useEffect(() => {
-        if (props.componentData?.length > 0 && twoJSInstance) {
-            handleSetComponentsToRender(props.componentData)
+        if (props.boardData.components.length > 0 && twoJSInstance) {
+            handleSetComponentsToRender(props.boardData.components)
         }
-    }, [props.componentData, twoJSInstance])
+    }, [props.boardData, twoJSInstance])
 
     useEffect(() => {
         // console.log('on change props.lastAddedElement')
@@ -1098,7 +1084,7 @@ const Canvas = (props) => {
                         component = ElementRenderWrapper(
                             ElementToRender,
                             data,
-                            twoJSInstance
+                            props.deleteComponentFromLocalStore
                         )
                     }
                     components.push(component)
@@ -1127,8 +1113,8 @@ const Canvas = (props) => {
             const newChildren = []
             const selectedComponentArr = []
             let twoShapesToDelete = []
-            const allComponentCoords =
-                getComponentsForBoardData?.components || []
+
+            const allComponentCoords = Object.values(props.componentStore) || []
             // console.log(
             //     'area_selection allComponentCoords',
             //     xMid,
@@ -1208,8 +1194,12 @@ const Canvas = (props) => {
                     cloneElement,
                     props.boardId
                 )
-
-                insertComponent({ variables: { object: newComponent } })
+                props.addToLocalComponentStore(
+                    newComponent.id,
+                    newComponent.componentType,
+                    newComponent
+                )
+                // insertComponent({ variables: { object: newComponent } })
                 setCloneElement(null)
                 // alert(`Ctrl+V was pressed ${cloneElement.prevX}`)
             }

@@ -2,8 +2,16 @@ import React, { useState, useEffect } from 'react'
 import { useSubscription, useMutation, useQuery } from '@apollo/client'
 import { useParams } from 'react-router-dom'
 import { useMediaQueryUtils } from 'constants/exportHooks'
-import { GET_BOARD_DATA_QUERY } from 'schema/subscriptions'
-import { INSERT_USER_ONE, UPDATE_USER_REVISIT_COUNT } from 'schema/mutations'
+import {
+    GET_BOARD_DATA_QUERY,
+    GET_COMPONENTS_FOR_BOARD_QUERY,
+} from 'schema/queries'
+import {
+    INSERT_USER_ONE,
+    UPDATE_USER_REVISIT_COUNT,
+    INSERT_COMPONENT,
+    DELETE_COMPONENT_BY_ID,
+} from 'schema/mutations'
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Spinner from 'components/common/spinnerWithSize'
@@ -21,6 +29,28 @@ const BoardViewPage = (props) => {
         variables: { boardId: boardId },
         fetchPolicy: 'cache-first',
     })
+
+    const {
+        loading: getComponentsForBoardLoading,
+        data: getComponentsForBoardData,
+        error: getComponentsForBoardError,
+    } = useQuery(GET_COMPONENTS_FOR_BOARD_QUERY, {
+        variables: { boardId },
+    })
+
+    const [insertComponent] = useMutation(INSERT_COMPONENT, {
+        ignoreResults: true,
+    })
+
+    const [
+        deleteComponent,
+        {
+            loading: deleteComponentLoading,
+            data: deleteComponentData,
+            error: deleteComponentError,
+        },
+    ] = useMutation(DELETE_COMPONENT_BY_ID)
+
     const [
         insertUser,
         {
@@ -40,6 +70,7 @@ const BoardViewPage = (props) => {
     ] = useMutation(UPDATE_USER_REVISIT_COUNT)
 
     const [boardData, setBoardData] = useState({ components: [] })
+    const [componentStore, setComponentStore] = useState({})
     const [lastAddedElement, setLastAddedElement] = useState(null)
     const [showHelperTooltip, setShowHelperTooltip] = useState(true)
     const [pointerToggle, setPointerToggle] = useState(false)
@@ -70,6 +101,43 @@ const BoardViewPage = (props) => {
         localStorage.setItem('lastOpenBoard', routeParams.id)
     }, [])
 
+    useEffect(() => {
+        console.log('listen for componentStore change', componentStore)
+    }, [componentStore])
+
+    useEffect(() => {
+        console.log('listen for boardData change', boardData)
+    }, [boardData])
+
+    useEffect(() => {
+        if (
+            !getComponentsForBoardLoading &&
+            getComponentsForBoardData &&
+            getComponentsForBoardData.components
+        ) {
+            console.log(
+                'getComponentsForBoardData',
+                getComponentsForBoardData.components
+            )
+
+            if (getComponentsForBoardData.components.length > 0) {
+                let baseComponentStore = { ...componentStore }
+                getComponentsForBoardData.components.forEach((item) => {
+                    baseComponentStore[item.id] = item
+                })
+                setComponentStore(baseComponentStore)
+            }
+        }
+    }, [getComponentsForBoardData])
+
+    useEffect(() => {
+        if (!getBoardDataLoading && getBoardData && getBoardData.components) {
+            if (getBoardData.components.length > 0) {
+                setBoardData({ components: getBoardData.components })
+            }
+        }
+    }, [getBoardData])
+
     if (getBoardDataLoading) {
         return (
             <>
@@ -94,29 +162,6 @@ const BoardViewPage = (props) => {
         // window.location.reload()
     }
 
-    // if (getBoardDataError) {
-    //     return (
-    //         <>
-    //             <div>Something went wrong while rendering board</div>
-    //         </>
-    //     )
-    // }
-
-    let dummyComponentData = [
-        {
-            id: '2d599d5e-dc89-4d92-83e8-5ad6dc06bd4d',
-            componentType: 'circle',
-        },
-        // {
-        //     id: '9021dad1-cc07-4462-9c7d-04599427c088',
-        //     componentType: 'rectangle',
-        // },
-        {
-            id: 'ab357112-d505-4512-8550-e24888217221',
-            componentType: 'arrowLine',
-        },
-    ]
-
     console.log(
         'getBoardData.components',
         getBoardData?.components
@@ -137,6 +182,48 @@ const BoardViewPage = (props) => {
         setPencilMode(value)
         value === true && localStorage.setItem('pencilMode', 'TRUE')
         value === false && localStorage.removeItem('pencilMode')
+    }
+
+    const addToLocalComponentStore = (id, type, componentInfo) => {
+        console.log('addToLocalComponentStore', id, type, componentInfo)
+
+        // update local store and state
+        setBoardData({
+            components: [
+                ...boardData.components,
+                {
+                    id,
+                    componentType: type,
+                },
+            ],
+        })
+
+        setComponentStore({ ...componentStore, [id]: componentInfo })
+
+        // update the upstream DB
+        componentInfo &&
+            insertComponent({ variables: { object: componentInfo } })
+    }
+
+    const deleteComponentFromLocalStore = (id) => {
+        console.log('deleteComponentFromLocalStore', id)
+
+        // update local store and state
+        let updatedBoardDataComponents = [...boardData.components]
+        updatedBoardDataComponents.filter((item) => item.id !== id)
+        setBoardData({
+            components: updatedBoardDataComponents,
+        })
+
+        let updatedComponentStore = { ...componentStore }
+        delete updatedComponentStore[id]
+        setComponentStore(updatedComponentStore)
+
+        // update the upstream DB
+        deleteComponent({
+            variables: { id },
+            errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
+        })
     }
 
     return (
@@ -166,53 +253,25 @@ const BoardViewPage = (props) => {
                         </div>
                     </div>
 
-                    {/* <div
-                    id="show-select-any-element-btn"
-                    className="fixed w-40 top-20 left-56 
-                transition-all ease-out duration-300"
-                    style={{
-                        opacity: showHelperTooltip ? 1 : 0,
-                        zIndex: showHelperTooltip ? 1 : -1,
-                    }}
-                >
-                    <div
-                        className="w-auto mt-2
-                          bg-greens-g400 text-white  
-                            px-4 py-2 rounded-md shadow-md
-                            "
-                    >
-                        <div className="flex items-center  ">
-                            <div className="w-auto text-sm text-left">
-                                Or any element(s) from here
-                            </div>
-                        </div>
-                    </div>
-                </div> */}
                     <Sidebar
-                        selectCursorMode={false}
-                        {...props}
                         togglePencilMode={togglePencilMode}
                         togglePointer={togglePointer}
                         updateLastAddedElement={updateLastAddedElement}
-                        boardData={getBoardData?.components}
+                        addToLocalComponentStore={addToLocalComponentStore}
                     />
-                    {/* <div className="w-full relative flex items-center justify-center">
-                    <div
-                        className=" fixed top-4  w-64 h-10 bg-neutrals-n900 text-white 
-                px-2 py-2
-                rounded-md text-base
-                "
-                    >
-                        Click anywhere to insert element{' '}
-                    </div>
-                </div> */}
+
                     <Canvas
                         pointerToggle={pointerToggle}
                         isPencilMode={isPencilMode}
                         selectPanMode={false}
                         boardId={boardId}
                         lastAddedElement={lastAddedElement}
-                        componentData={getBoardData?.components}
+                        boardData={boardData}
+                        componentStore={componentStore}
+                        addToLocalComponentStore={addToLocalComponentStore}
+                        deleteComponentFromLocalStore={
+                            deleteComponentFromLocalStore
+                        }
                     />
                 </div>
             ) : null}
@@ -228,32 +287,5 @@ const BoardViewPage = (props) => {
         </>
     )
 }
-
-// class Dashboard extends Component {
-//     constructor(props) {
-//         super(props)
-//         this.state = {
-//             selectPanMode: false,
-//         }
-//     }
-
-//     changeSelectMode = () => {
-//         console.log('on change select mode', this.state.selectPanMode)
-
-//         this.setState({ selectPanMode: !this.state.selectPanMode })
-//     }
-
-//     render() {
-//         return (
-//             <div>
-//                 <Sidebar
-//                     selectCursorMode={this.state.selectPanMode}
-//                     changeSelectMode={this.changeSelectMode}
-//                 />
-//                 <Canvas selectPanMode={this.state.selectPanMode} />
-//             </div>
-//         )
-//     }
-// }
 
 export default BoardViewPage
