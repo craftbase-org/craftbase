@@ -728,9 +728,9 @@ Checkbox.propTypes = {
     y: PropTypes.string,
 }
 
-Checkbox.defaultProps = {
-    x: 100,
-    y: 50,
-}
+// Checkbox.defaultProps = {
+//     x: 100,
+//     y: 50,
+// }
 
 export default Checkbox

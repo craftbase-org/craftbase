@@ -77,15 +77,15 @@ const Button = (props) => {
     )
 }
 
-Button.defaultProps = {
-    disabled: false,
-    loading: false,
-    onClick: () => {},
-    intent: '',
-    size: '',
-    label: '',
-    customClass: null,
-    extendClass: null,
-}
+// Button.defaultProps = {
+//     disabled: false,
+//     loading: false,
+//     onClick: () => {},
+//     intent: '',
+//     size: '',
+//     label: '',
+//     customClass: null,
+//     extendClass: null,
+// }
 
 export default Button

@@ -168,13 +168,14 @@ const ElementsDropdown = ({ addElement, getComponentTypesLoading }) => {
 
                                                   <div className="flex flex-wrap">
                                                       {stack.elements.map(
-                                                          (element) => (
-                                                              <>
-                                                                  {' '}
+                                                          (element, i) => (
+                                                              <React.Fragment
+                                                                  key={i}
+                                                              >
                                                                   {renderPrimaryStack(
                                                                       element
                                                                   )}
-                                                              </>
+                                                              </React.Fragment>
                                                           )
                                                       )}
                                                   </div>

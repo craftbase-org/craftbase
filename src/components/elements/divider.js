@@ -487,9 +487,9 @@ Divider.propTypes = {
     y: PropTypes.string,
 }
 
-Divider.defaultProps = {
-    x: 100,
-    y: 50,
-}
+// Divider.defaultProps = {
+//     x: 100,
+//     y: 50,
+// }
 
 export default Divider

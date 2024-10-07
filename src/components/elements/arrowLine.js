@@ -643,9 +643,9 @@ ArrowLine.propTypes = {
     y: PropTypes.number,
 }
 
-ArrowLine.defaultProps = {
-    x: 100,
-    y: 50,
-}
+// ArrowLine.defaultProps = {
+//     x: 100,
+//     y: 50,
+// }
 
 export default ArrowLine
