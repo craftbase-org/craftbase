@@ -1,8 +1,8 @@
 import React, { useEffect, useState, Fragment } from 'react'
+import Two from 'two.js'
 import interact from 'interactjs'
 import { useMutation } from '@apollo/client'
 import { useNavigate } from 'react-router-dom'
-
 import {
     UPDATE_COMPONENT_INFO,
     INSERT_BULK_COMPONENTS,
@@ -73,25 +73,26 @@ function GroupedObjectWrapper(props) {
         //     groupInstance.translation.y
         // )
         elementOnBlurHandler(e, selectorInstance, two)
-
         // on un-group, these components will return back to their individual state
         // with their new positions depending on group's x,y was changed
         if (deleteGroupElements === null) {
             const userId = localStorage.getItem('userId')
             let childrenIds = props.children.map((item) => item.id)
-
             two.scene.children.forEach((child) => {
                 if (childrenIds.includes(child?.elementData?.id)) {
                     // here child refers to twoJS shape instead of element data from DB
                     child.opacity = 1
-
                     let findRelativeDataForChild = {}
                     props.children.forEach((item) => {
                         if (item.id === child?.elementData?.id) {
                             findRelativeDataForChild = item
                         }
                     })
-
+                    // console.log(
+                    //     'child?.elementData in group on blur',
+                    //     child?.elementData,
+                    // )
+                    console.log('child two.js object', child)
                     console.log('groupInstance', groupInstance)
                     let newX =
                         parseInt(groupInstance.translation.x) +
@@ -99,28 +100,80 @@ function GroupedObjectWrapper(props) {
                     let newY =
                         parseInt(groupInstance.translation.y) +
                         parseInt(findRelativeDataForChild.y)
-
                     child.translation.x = newX
                     child.translation.y = newY
 
-                    // update those component's properties
-                    updateComponentInfo({
-                        variables: {
-                            id: child?.elementData?.id,
-                            updateObj: {
-                                x: child.translation.x,
-                                y: child.translation.y,
-                                updatedBy: userId,
-                            },
-                        },
+                    let newMetadata = []
+                    if (child.elementData.componentType === 'pencil') {
+                        newMetadata = child.elementData.metadata.map(
+                            (vert, index) => {
+                                if (index === 0) {
+                                    return { x: newX, y: newY }
+                                } else if (index > 0) {
+                                    // here the logic is to get relative vertex coordinates to the original metadata
+                                    // so we want to get result of ( relative coordinate + orginal_vert(x) - originalX )
+                                    // here originalX means the coordinates of first set of vertices
+                                    // since they were the first coordinates to start a path
+                                    return {
+                                        x:
+                                            newX +
+                                            parseInt(
+                                                vert.x -
+                                                    child.elementData
+                                                        .metadata[0].x
+                                            ),
+                                        y:
+                                            newY +
+                                            parseInt(
+                                                vert.y -
+                                                    child.elementData
+                                                        .metadata[0].y
+                                            ),
+                                    }
+                                }
+                            }
+                        )
+                    }
+
+                    child.children.forEach((eachChild, index) => {
+                        if (eachChild.vertices) {
+                            console.log(
+                                'For each in child.children ... is a Path'
+                            )
+
+                            console.log(
+                                'child.elementData.metadata',
+                                child.elementData.metadata
+                            )
+                            console.log('newMetadata', newMetadata)
+                            eachChild.vertices = []
+
+                            newMetadata.forEach(function (point) {
+                                eachChild.vertices.push(
+                                    new Two.Vector(
+                                        point.x - newX,
+                                        point.y - newY
+                                    )
+                                )
+                            })
+                        }
                     })
+                    // update those component's properties
+                    // updateComponentInfo({
+                    //     variables: {
+                    //         id: child?.elementData?.id,
+                    //         updateObj: {
+                    //             x: child.translation.x,
+                    //             y: child.translation.y,
+                    //             updatedBy: userId,
+                    //         },
+                    //     },
+                    // })
                     two.update()
                 }
             })
-
             // props.unGroup && props.unGroup(groupInstance)
         }
-
         two.remove([groupInstance])
         two.update()
     }
@@ -257,9 +310,8 @@ function GroupedObjectWrapper(props) {
 
         for (let index = 0; index < props.children.length; index++) {
             const item = props.children[index]
-            // console.log('item in children', item)
+            console.log('item in children', item)
             import(`factory/${item.componentType}`).then((component) => {
-                // console.log('component', component)
                 const componentFactory = new component.default(
                     two,
                     item.x,
@@ -272,11 +324,19 @@ function GroupedObjectWrapper(props) {
                 // set component's coordinates
                 coreObject.translation.x = item.x
                 coreObject.translation.y = item.y
+                console.log(
+                    'component coreObject generation in group wrapper',
+                    item.componentType,
+                    item.x,
+                    item.y
+                )
                 group.add(coreObject)
-                group.children.unshift(coreObject)
+                // group.children.unshift(coreObject)
                 two.update()
             })
         }
+
+        console.log('after group children has been added', group.children)
 
         groupInstance = group
 

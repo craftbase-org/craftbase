@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import { useQuery } from '@apollo/client'
 import { useNavigate, useParams } from 'react-router-dom'
 
@@ -6,16 +6,18 @@ import ElementsDropdown from './elementsDropdown'
 import { GET_COMPONENT_TYPES } from 'schema/queries'
 import SpinnerWithSize from 'components/common/spinnerWithSize'
 import { generateUUID } from 'utils/misc'
+import { useBoardContexnt } from 'views/Board/board'
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
 
-const PrimarySidebar = ({
-    updateLastAddedElement,
-    togglePointer,
-    togglePencilMode,
-    addToLocalComponentStore,
-}) => {
+const PrimarySidebar = () => {
+    const {
+        updateLastAddedElement,
+        togglePointer,
+        togglePencilMode,
+        addToLocalComponentStore,
+    } = useBoardContexnt()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const {
         loading: getComponentTypesLoading,
@@ -25,7 +27,7 @@ const PrimarySidebar = ({
 
     const history = useNavigate()
     const routeParams = useParams()
-    console.log('boardId', routeParams.id)
+    // console.log('boardId', routeParams.id)
 
     // A check to see if the component types seeds are already populated in DB.
     // We need all the component types being inserted as DB seeds otherwise we insert component functionality will be affected
@@ -69,18 +71,23 @@ const PrimarySidebar = ({
                 let shapeData = null
                 let randomNumber = Math.floor(Math.random() * 80 + 30)
                 let generateId = generateUUID()
-                console.log(
-                    'getComponentTypesData',
-                    getComponentTypesData,
-                    label
-                )
+                // console.log(
+                //     'getComponentTypesData',
+                //     getComponentTypesData,
+                //     label
+                // )
                 if (getComponentTypesData) {
                     getComponentTypesData.componentTypes.forEach(
                         (item, index) => {
                             if (item.label === label) {
+                                const userId = localStorage.getItem('userId')
                                 shapeData = {
                                     id: generateId,
                                     componentType: label,
+                                    // stroke: '#000',
+                                    // linewidth: 1,
+                                    children: {},
+                                    metadata: [],
                                     x: parseInt(
                                         window.outerWidth -
                                             (randomNumber * window.outerWidth) /
@@ -99,12 +106,13 @@ const PrimarySidebar = ({
                                     height: item.height,
                                     fill: item.fill,
                                     textColor: item.textColor,
+                                    updatedBy: userId,
                                 }
                             }
                         }
                     )
                 }
-                console.log('shapeData', shapeData)
+                // console.log('shapeData', shapeData)
                 updateLastAddedElement(shapeData)
 
                 // setShowAddShapeLoader(true)

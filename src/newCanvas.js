@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useQuery, useMutation, useSubscription } from '@apollo/client'
 import Two from 'two.js'
 import { useNavigate } from 'react-router-dom'
@@ -73,10 +73,10 @@ function addZUI(
     updateToGlobalState,
     updateComponentVertices,
     customEventListener,
-    setOnGroup,
+    setOnGroupHandler,
     addToLocalComponentStore
 ) {
-    console.log('two.renderer.domElement', two.renderer.domElement)
+    // console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
     let domElement = two.renderer.domElement
     let zui = new ZUI(two.scene, domElement)
@@ -111,10 +111,10 @@ function addZUI(
     function onKeyDown(evt) {
         // unclosed event listener (temp)
         if (evt.key === 'c' && (evt.ctrlKey || evt.metaKey)) {
-            console.log('shape.elementData', shape.elementData)
+            // console.log('shape.elementData', shape.elementData)
             if (shape.elementData?.id !== undefined) {
                 // alert('Ctrl + c pressed')
-                console.log('ctrl + c', shape)
+                // console.log('ctrl + c', shape)
                 customEventListener('COPY', shape.elementData)
             }
 
@@ -124,7 +124,7 @@ function addZUI(
 
     function mousedown(e) {
         // initialize shape definition
-        console.log('e in ZUI mouse down', e, e.clientX, e.clientY)
+        // console.log('e in ZUI mouse down', e, e.clientX, e.clientY)
         const lastAddedElementId = localStorage.getItem('lastAddedElementId')
 
         if (e?.srcElement?.lastChild?.id === 'two-0') {
@@ -203,16 +203,16 @@ function addZUI(
                 // wiki: two.js has base level group ('scene' which hosts all the objects in instance), so it's like two.js group
                 // inside two.js base level group
                 path.forEach((item, index) => {
-                    console.log(
-                        'item?.classList?.value',
-                        item?.classList?.value,
-                        item?.classList?.value &&
-                            item?.classList?.value.includes('dragger-picker') &&
-                            !item?.classList?.value.includes(
-                                'avoid-dragging'
-                            ) &&
-                            item.tagName === 'g'
-                    )
+                    // console.log(
+                    //     'item?.classList?.value',
+                    //     item?.classList?.value,
+                    //     item?.classList?.value &&
+                    //         item?.classList?.value.includes('dragger-picker') &&
+                    //         !item?.classList?.value.includes(
+                    //             'avoid-dragging'
+                    //         ) &&
+                    //         item.tagName === 'g'
+                    // )
 
                     if (item?.classList?.value.includes('avoid-dragging')) {
                         avoidDragging = true
@@ -225,25 +225,25 @@ function addZUI(
                         item?.classList?.value.includes('dragger-picker') &&
                         shape == null
                     ) {
-                        console.log('iterating through path', item.id, shape)
-                        console.log(
-                            'two scene children',
-                            two.scene.children,
-                            two.scene.children.find(
-                                (child) => child.id === item.id
-                            )
-                        )
+                        // console.log('iterating through path', item.id, shape)
+                        // console.log(
+                        //     'two scene children',
+                        //     two.scene.children,
+                        //     two.scene.children.find(
+                        //         (child) => child.id === item.id
+                        //     )
+                        // )
 
                         // if its a arrowLine component and check for class
                         // because we don't want to select top level group id
                         if (item?.classList?.value.includes('is-line-circle')) {
-                            console.log('is arrowLine circle ')
-                            console.log(
-                                'get attr of parent id',
-                                document
-                                    .getElementById(item.id)
-                                    .getAttribute('data-parent-id')
-                            )
+                            // console.log('is arrowLine circle ')
+                            // console.log(
+                            //     'get attr of parent id',
+                            //     document
+                            //         .getElementById(item.id)
+                            //         .getAttribute('data-parent-id')
+                            // )
                             let parentId = document
                                 .getElementById(item.id)
                                 .getAttribute('data-parent-id')
@@ -260,11 +260,11 @@ function addZUI(
                                 (child) => child.id === parentId
                             )
 
-                            console.log(
-                                'getParentTwoData and its children',
-                                getParentTwoData,
-                                getParentTwoData.children
-                            )
+                            // console.log(
+                            //     'getParentTwoData and its children',
+                            //     getParentTwoData,
+                            //     getParentTwoData.children
+                            // )
 
                             let getChildTwoData =
                                 getParentTwoData.children.find(
@@ -279,13 +279,13 @@ function addZUI(
                             let getLineTwoData = getParentTwoData.children.find(
                                 (child) => child.id === lineId
                             )
-                            console.log(
-                                'getChildTwoData',
-                                getChildTwoData,
-                                getChildTwoData.type,
-                                ' getSiblingChild',
-                                getSiblingChild
-                            )
+                            // console.log(
+                            //     'getChildTwoData',
+                            //     getChildTwoData,
+                            //     getChildTwoData.type,
+                            //     ' getSiblingChild',
+                            //     getSiblingChild
+                            // )
                             shape = getChildTwoData
 
                             // setting custom properties to existing two properties
@@ -318,7 +318,7 @@ function addZUI(
 
                 // if shape is null, we initialize it with root element
 
-                console.log('props.selectPanMode', props.selectPanMode)
+                // console.log('props.selectPanMode', props.selectPanMode)
 
                 // in case if it's a group selector, it falls under below condition
                 if (shape === null) {
@@ -358,7 +358,7 @@ function addZUI(
                         prevY: parseInt(shape.translation.y),
                     }
 
-                    console.log('on mouse down')
+                    // console.log('on mouse down')
                     let rect = document
                         .getElementById(shape.id)
                         .getBoundingClientRect()
@@ -591,7 +591,7 @@ function addZUI(
     }
 
     function mouseup(e) {
-        console.log('e in ZUI mouse up', scenario)
+        // console.log('e in ZUI mouse up', scenario)
         // old school logic here
 
         switch (scenario) {
@@ -601,12 +601,12 @@ function addZUI(
                 break
             case SCENARIO_PENCIL_MODE:
                 // isDrawing = false
-                console.log(
-                    'on mouse up pencil mode',
-                    paths,
-                    currentPath.vertices,
-                    currentPath.translation
-                )
+                // console.log(
+                //     'on mouse up pencil mode',
+                //     paths,
+                //     currentPath.vertices,
+                //     currentPath.translation
+                // )
 
                 let generateId = generateUUID()
                 let componentData = {
@@ -614,7 +614,7 @@ function addZUI(
                     boardId: props.boardId,
                     componentType: 'pencil',
                     children: {},
-                    metadata: {},
+                    metadata: [],
                     x: 0,
                     y: 0,
                     linewidth: currentPath.linewidth,
@@ -635,11 +635,11 @@ function addZUI(
                     componentData
                 )
 
-                let currentPathRef = currentPath
-                setTimeout(() => {
-                    two.remove(currentPathRef)
-                    two.update()
-                }, 5000)
+                // let currentPathRef = currentPath
+                // setTimeout(() => {
+                //     two.remove(currentPathRef)
+                //     two.update()
+                // }, 5000)
                 break
             default:
                 // diff to check new x,y and prev x,y
@@ -661,7 +661,7 @@ function addZUI(
                     }
                     // console.log('shape group obj', obj)
                     two.remove(shape)
-                    setOnGroup(obj)
+                    setOnGroupHandler(obj)
                 } else {
                     // else shape is not a group selector then update shape's properties
                     if (
@@ -671,7 +671,7 @@ function addZUI(
                         // console.log('no need to update')
                     } else {
                         if (shape?.elementData?.isLineCircle === true) {
-                            console.log('Element is a Line Circle')
+                            // console.log('Element is a Line Circle')
                             // updating already created two.js scene groups to new x,y set
                             // shape.elementData.x = shape.translation.x
                             // shape.elementData.y = shape.translation.y
@@ -731,7 +731,7 @@ function addZUI(
                         }
                     }
                 }
-                console.log('shape.elementData.writable', newShapeData)
+            // console.log('shape.elementData.writable', newShapeData)
         }
 
         // let item = {
@@ -843,11 +843,21 @@ function addZUI(
 const ElementRenderWrapper = (
     ElementToRender,
     data,
-    deleteComponentFromLocalStore
+    deleteComponentFromLocalStore,
+    componentStore
 ) => {
     const RenderElement = () => {
+        const [twoJSShape, setTwoJSShape] = useState(null)
+        const [componentData, setComponentData] = useState(null)
+        const {
+            loading: getComponentInfoLoading,
+            data: getComponentInfoData,
+            error: getComponentInfoError,
+        } = useQuery(GET_COMPONENT_INFO_QUERY, { variables: { id: data.id } })
+        // console.log('in render Element', data, getComponentInfoData?.component)
+
         useEffect(() => {
-            console.log('CDM Element from wrapper')
+            // console.log('CDM Element from wrapper')
             if (data.itemData.isDummy) {
                 /** PATCH */
                 //Patch for considering components who are just released from group
@@ -857,14 +867,17 @@ const ElementRenderWrapper = (
                 /** PATCH */
             }
         }, [])
-        const [twoJSShape, setTwoJSShape] = useState(null)
-        const [componentData, setComponentData] = useState(null)
-        const {
-            loading: getComponentInfoLoading,
-            data: getComponentInfoData,
-            error: getComponentInfoError,
-        } = useQuery(GET_COMPONENT_INFO_QUERY, { variables: { id: data.id } })
-        // console.log('in render Element', data, getComponentInfoData?.component)
+
+        useEffect(() => {
+            let allComponents = Object.values(componentStore)
+            if (allComponents.length > 0) {
+                let componentData = allComponents.find(
+                    (item) => data.id === item.id
+                )
+                // console.log('find component from componentStore', componentData)
+                componentData && setComponentData(componentData)
+            }
+        }, [componentStore])
 
         useEffect(() => {
             if (getComponentInfoData?.component && componentData === null) {
@@ -889,8 +902,6 @@ const ElementRenderWrapper = (
                     ) {
                         // console.log('update element wrapper on tabs open')
                         setComponentData(getComponentInfoData?.component)
-                    } else {
-                        // console.log('update element wrapper on nothing')
                     }
                 }
             }
@@ -946,12 +957,14 @@ const Canvas = (props) => {
         ignoreResults: true,
     })
 
+    const stateRefForComponentStore = useRef()
+
     // useEffect(()=>{},[insertComponentSuccess])
 
     useEffect(() => {
         // setting pan displacement values to initial
 
-        console.log('CANVAS CDM', props.selectPanMode)
+        // console.log('CANVAS CDM', props.selectPanMode)
         const elem = document.getElementById('main-two-root')
 
         const two = new Two({
@@ -961,7 +974,7 @@ const Canvas = (props) => {
 
         two.update()
 
-        console.log('two', two.scene)
+        // console.log('two', two.scene)
 
         // two.scene.translation.x = -50
         let zui_instance = addZUI(
@@ -970,7 +983,7 @@ const Canvas = (props) => {
             updateToGlobalState,
             updateComponentVertices,
             customEventListener,
-            setOnGroup,
+            setOnGroupHandler,
             props.addToLocalComponentStore
         )
 
@@ -980,7 +993,7 @@ const Canvas = (props) => {
 
         const boardId = props.boardId
         const tabsOpen = localStorage.getItem(`tabs_open_${boardId}`)
-        console.log(`tabs_open_${boardId}`, tabsOpen)
+        // console.log(`tabs_open_${boardId}`, tabsOpen)
         if (tabsOpen == null) {
             localStorage.setItem(`tabs_open_${boardId}`, 1)
         } else {
@@ -1007,6 +1020,8 @@ const Canvas = (props) => {
     }, [twoJSInstance])
 
     useEffect(() => {
+        stateRefForComponentStore.current = props.componentStore
+
         if (twoJSInstance !== null && zuiInstance !== null) {
             // listening to the change in components in DB
             // this is especially for capturing INSERT operation
@@ -1051,6 +1066,10 @@ const Canvas = (props) => {
         }
     }, [props.isPencilMode])
 
+    const setOnGroupHandler = (obj) => {
+        setOnGroup(obj)
+    }
+
     const handleSetComponentsToRender = (currentComponents) => {
         let arr = [...prevElements]
         let components = [...componentsToRender]
@@ -1084,7 +1103,8 @@ const Canvas = (props) => {
                         component = ElementRenderWrapper(
                             ElementToRender,
                             data,
-                            props.deleteComponentFromLocalStore
+                            props.deleteComponentFromLocalStore,
+                            props.componentStore
                         )
                     }
                     components.push(component)
@@ -1114,14 +1134,21 @@ const Canvas = (props) => {
             const selectedComponentArr = []
             let twoShapesToDelete = []
 
-            const allComponentCoords = Object.values(props.componentStore) || []
+            // console.log(
+            //     'onGroup get componentStore',
+            //     stateRefForComponentStore.current
+            // )
+            // console.log('x1Coord,x2Coord', x1Coord, x2Coord)
+            // console.log('y1Coord,y2Coord', y1Coord, y2Coord)
+            const allComponentCoords =
+                Object.values(stateRefForComponentStore.current) || []
             // console.log(
             //     'area_selection allComponentCoords',
             //     xMid,
             //     yMid,
             //     state.getCoordGraph
             // )
-
+            // console.log('allComponentCoords', allComponentCoords)
             allComponentCoords.forEach((item, index) => {
                 if (
                     item.x > x1Coord &&
@@ -1129,13 +1156,37 @@ const Canvas = (props) => {
                     item.y > y1Coord &&
                     item.y < y2Coord
                 ) {
+                    // console.log('inside component coords condition')
                     selectedComponentArr.push(item.id)
 
                     let relativeX = item.x - xMid
                     let relativeY = item.y - yMid
 
+                    let newMetadata = []
+                    if (item.componentType === 'pencil') {
+                        newMetadata = item.metadata.map((vert, index) => {
+                            if (index === 0) {
+                                return { x: relativeX, y: relativeY }
+                            } else if (index > 0) {
+                                // here the logic is to get relative vertex coordinates to the original metadata
+                                // so we want to get result of ( relative coordinate + orginal_vert(x) - originalX )
+                                // here originalX means the coordinates of first set of vertices
+                                // since they were the first coordinates to start a path
+                                return {
+                                    x:
+                                        relativeX +
+                                        parseInt(vert.x - item.metadata[0].x),
+                                    y:
+                                        relativeY +
+                                        parseInt(vert.y - item.metadata[0].y),
+                                }
+                            }
+                        })
+                    }
+                    // console.log('newMetadata', newMetadata)
                     let obj = {
                         ...item,
+                        metadata: newMetadata,
                         id: item.id,
                         componentType: item.componentType,
                         x: relativeX,
@@ -1161,6 +1212,7 @@ const Canvas = (props) => {
 
             newGroup.children = newChildren
 
+            // console.log('newGroup.children', newGroup.children)
             // filter out those selected children (which are now grouped into one) from main current components array
             // that means we dont render those components as seperate rather they
             // are now children of this new group
@@ -1189,7 +1241,7 @@ const Canvas = (props) => {
                 cloneElement?.id !== undefined &&
                 cloneElement.componentType !== 'groupobject'
             ) {
-                console.log('ctrl + v', cloneElement)
+                // console.log('ctrl + v', cloneElement)
                 let newComponent = getComponentSchema(
                     cloneElement,
                     props.boardId
@@ -1214,7 +1266,7 @@ const Canvas = (props) => {
 
     const updateToGlobalState = (newShapeData, oldShapeData) => {
         const userId = localStorage.getItem('userId')
-        console.log('updateToGlobalState', newShapeData, oldShapeData)
+        // console.log('updateToGlobalState', newShapeData, oldShapeData)
 
         // also check that new x,y is updated or not by comparing to prev x,y
         // then only perform mutation
@@ -1254,17 +1306,7 @@ const Canvas = (props) => {
     }
 
     const updateComponentVertices = (id, x, y) => {
-        const userId = localStorage.getItem('userId')
-        updateComponentInfo({
-            variables: {
-                id: id,
-                updateObj: {
-                    x: parseInt(x),
-                    y: parseInt(y),
-                    updatedBy: null,
-                },
-            },
-        })
+        props.updateComponentInfoInLocalStore(id, x, y)
         document.getElementById('show-click-anywhere-btn').style.opacity = 0
     }
 

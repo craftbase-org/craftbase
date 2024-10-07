@@ -1,4 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, {
+    useState,
+    useEffect,
+    useRef,
+    useContext,
+    createContext,
+} from 'react'
 import { useSubscription, useMutation, useQuery } from '@apollo/client'
 import { useParams } from 'react-router-dom'
 import { useMediaQueryUtils } from 'constants/exportHooks'
@@ -11,16 +17,20 @@ import {
     UPDATE_USER_REVISIT_COUNT,
     INSERT_COMPONENT,
     DELETE_COMPONENT_BY_ID,
+    UPDATE_COMPONENT_INFO,
 } from 'schema/mutations'
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Spinner from 'components/common/spinnerWithSize'
 import { generateRandomUsernames } from 'utils/misc'
 
+const BoardContext = createContext()
+
 const BoardViewPage = (props) => {
     const routeParams = useParams()
-    console.log('params in board', routeParams)
+    // console.log('params in board', routeParams)
     const boardId = routeParams.id
+
     const {
         loading: getBoardDataLoading,
         error: getBoardDataError,
@@ -39,6 +49,10 @@ const BoardViewPage = (props) => {
     })
 
     const [insertComponent] = useMutation(INSERT_COMPONENT, {
+        ignoreResults: true,
+    })
+
+    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
 
@@ -77,6 +91,7 @@ const BoardViewPage = (props) => {
     const [isPencilMode, setPencilMode] = useState(false)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
+    const stateRefForComponentStore = useRef()
     // check if user exists or not
     useEffect(() => {
         const userId = localStorage.getItem('userId')
@@ -102,11 +117,11 @@ const BoardViewPage = (props) => {
     }, [])
 
     useEffect(() => {
-        console.log('listen for componentStore change', componentStore)
+        // console.log('listen for componentStore change', componentStore)
     }, [componentStore])
 
     useEffect(() => {
-        console.log('listen for boardData change', boardData)
+        // console.log('listen for boardData change', boardData)
     }, [boardData])
 
     useEffect(() => {
@@ -115,16 +130,17 @@ const BoardViewPage = (props) => {
             getComponentsForBoardData &&
             getComponentsForBoardData.components
         ) {
-            console.log(
-                'getComponentsForBoardData',
-                getComponentsForBoardData.components
-            )
+            // console.log(
+            //     'getComponentsForBoardData',
+            //     getComponentsForBoardData.components
+            // )
 
             if (getComponentsForBoardData.components.length > 0) {
                 let baseComponentStore = { ...componentStore }
                 getComponentsForBoardData.components.forEach((item) => {
                     baseComponentStore[item.id] = item
                 })
+                // console.log('updating component store when get components')
                 setComponentStore(baseComponentStore)
             }
         }
@@ -137,6 +153,11 @@ const BoardViewPage = (props) => {
             }
         }
     }, [getBoardData])
+
+    useEffect(() => {
+        // console.log('change in componentStore', componentStore)
+        stateRefForComponentStore.current = componentStore
+    }, [componentStore])
 
     if (getBoardDataLoading) {
         return (
@@ -158,15 +179,15 @@ const BoardViewPage = (props) => {
         const userId = insertUserData.user.id
 
         localStorage.setItem('userId', userId)
-        console.log('insertUserData', insertUserData)
+        // console.log('insertUserData', insertUserData)
         // window.location.reload()
     }
 
-    console.log(
-        'getBoardData.components',
-        getBoardData?.components
-        // getBoardData.boardData.components
-    )
+    // console.log(
+    //     'getBoardData.components',
+    //     getBoardData?.components
+    //     // getBoardData.boardData.components
+    // )
 
     const updateLastAddedElement = (obj) => {
         setLastAddedElement(obj)
@@ -185,7 +206,7 @@ const BoardViewPage = (props) => {
     }
 
     const addToLocalComponentStore = (id, type, componentInfo) => {
-        console.log('addToLocalComponentStore', id, type, componentInfo)
+        // console.log('addToLocalComponentStore', id, type, componentInfo)
 
         // update local store and state
         setBoardData({
@@ -198,6 +219,7 @@ const BoardViewPage = (props) => {
             ],
         })
 
+        // console.log('updating component store in add to local store')
         setComponentStore({ ...componentStore, [id]: componentInfo })
 
         // update the upstream DB
@@ -205,8 +227,59 @@ const BoardViewPage = (props) => {
             insertComponent({ variables: { object: componentInfo } })
     }
 
+    const updateComponentPropertyInLocalStore = (id, name, value) => {
+        const userId = localStorage.getItem('userId')
+
+        let updatedComponentStore = stateRefForComponentStore.current
+        // console.log('updatedComponentStore[id]', updatedComponentStore[id])
+        updatedComponentStore[id] = {
+            ...updatedComponentStore[id],
+            [name]: value,
+            updatedBy: userId,
+        }
+        setComponentStore(updatedComponentStore)
+
+        updateComponentInfo({
+            variables: {
+                id: id,
+                updateObj: {
+                    [name]: value,
+                    updatedBy: userId,
+                },
+            },
+        })
+    }
+
+    const updateComponentInfoInLocalStore = (id, x, y) => {
+        const userId = localStorage.getItem('userId')
+
+        let updatedComponentStore = stateRefForComponentStore.current
+        // console.log('updatedComponentStore[id]', updatedComponentStore[id])
+        updatedComponentStore[id] = {
+            ...updatedComponentStore[id],
+            x: parseInt(x),
+            y: parseInt(y),
+            updatedBy: userId,
+        }
+
+        // console.log('updating component store in update vertices')
+        setComponentStore(updatedComponentStore)
+
+        // update the upstream DB
+        updateComponentInfo({
+            variables: {
+                id: id,
+                updateObj: {
+                    x: parseInt(x),
+                    y: parseInt(y),
+                    updatedBy: userId,
+                },
+            },
+        })
+    }
+
     const deleteComponentFromLocalStore = (id) => {
-        console.log('deleteComponentFromLocalStore', id)
+        // console.log('deleteComponentFromLocalStore', id)
 
         // update local store and state
         let updatedBoardDataComponents = [...boardData.components]
@@ -215,8 +288,12 @@ const BoardViewPage = (props) => {
             components: updatedBoardDataComponents,
         })
 
-        let updatedComponentStore = { ...componentStore }
+        let updatedComponentStore = stateRefForComponentStore.current
         delete updatedComponentStore[id]
+        // console.log(
+        //     'updating component store in delete component handler',
+        //     updatedComponentStore
+        // )
         setComponentStore(updatedComponentStore)
 
         // update the upstream DB
@@ -224,6 +301,15 @@ const BoardViewPage = (props) => {
             variables: { id },
             errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
         })
+    }
+
+    const contextValueForSidebar = {
+        togglePencilMode,
+        togglePointer,
+        updateLastAddedElement,
+        addToLocalComponentStore,
+        updateComponentInfoInLocalStore,
+        updateComponentPropertyInLocalStore,
     }
 
     return (
@@ -253,12 +339,9 @@ const BoardViewPage = (props) => {
                         </div>
                     </div>
 
-                    <Sidebar
-                        togglePencilMode={togglePencilMode}
-                        togglePointer={togglePointer}
-                        updateLastAddedElement={updateLastAddedElement}
-                        addToLocalComponentStore={addToLocalComponentStore}
-                    />
+                    <BoardContext.Provider value={contextValueForSidebar}>
+                        <Sidebar />
+                    </BoardContext.Provider>
 
                     <Canvas
                         pointerToggle={pointerToggle}
@@ -271,6 +354,9 @@ const BoardViewPage = (props) => {
                         addToLocalComponentStore={addToLocalComponentStore}
                         deleteComponentFromLocalStore={
                             deleteComponentFromLocalStore
+                        }
+                        updateComponentInfoInLocalStore={
+                            updateComponentInfoInLocalStore
                         }
                     />
                 </div>
@@ -286,6 +372,9 @@ const BoardViewPage = (props) => {
             ) : null}
         </>
     )
+}
+export const useBoardContexnt = () => {
+    return useContext(BoardContext)
 }
 
 export default BoardViewPage
