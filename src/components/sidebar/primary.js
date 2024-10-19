@@ -6,7 +6,7 @@ import ElementsDropdown from './elementsDropdown'
 import { GET_COMPONENT_TYPES } from 'schema/queries'
 import SpinnerWithSize from 'components/common/spinnerWithSize'
 import { generateUUID } from 'utils/misc'
-import { useBoardContexnt } from 'views/Board/board'
+import { useBoardContext } from 'views/Board/board'
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
@@ -17,7 +17,7 @@ const PrimarySidebar = () => {
         togglePointer,
         togglePencilMode,
         addToLocalComponentStore,
-    } = useBoardContexnt()
+    } = useBoardContext()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const {
         loading: getComponentTypesLoading,

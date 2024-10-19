@@ -373,7 +373,8 @@ const BoardViewPage = (props) => {
         </>
     )
 }
-export const useBoardContexnt = () => {
+
+export const useBoardContext = () => {
     return useContext(BoardContext)
 }
 
