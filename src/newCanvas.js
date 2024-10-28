@@ -1306,7 +1306,7 @@ const Canvas = (props) => {
     }
 
     const updateComponentVertices = (id, x, y) => {
-        props.updateComponentInfoInLocalStore(id, x, y)
+        props.updateComponentVerticesInLocalStore(id, x, y)
         document.getElementById('show-click-anywhere-btn').style.opacity = 0
     }
 

@@ -227,6 +227,29 @@ const BoardViewPage = (props) => {
             insertComponent({ variables: { object: componentInfo } })
     }
 
+    const updateComponentBulkPropertiesInLocalStore = (id, bulkObj) => {
+        const userId = localStorage.getItem('userId')
+
+        let updatedComponentStore = stateRefForComponentStore.current
+        // console.log('updatedComponentStore[id]', updatedComponentStore[id])
+        updatedComponentStore[id] = {
+            ...updatedComponentStore[id],
+            ...bulkObj,
+            updatedBy: userId,
+        }
+        setComponentStore(updatedComponentStore)
+
+        updateComponentInfo({
+            variables: {
+                id: id,
+                updateObj: {
+                    ...bulkObj,
+                    updatedBy: userId,
+                },
+            },
+        })
+    }
+
     const updateComponentPropertyInLocalStore = (id, name, value) => {
         const userId = localStorage.getItem('userId')
 
@@ -250,7 +273,7 @@ const BoardViewPage = (props) => {
         })
     }
 
-    const updateComponentInfoInLocalStore = (id, x, y) => {
+    const updateComponentVerticesInLocalStore = (id, x, y) => {
         const userId = localStorage.getItem('userId')
 
         let updatedComponentStore = stateRefForComponentStore.current
@@ -308,58 +331,59 @@ const BoardViewPage = (props) => {
         togglePointer,
         updateLastAddedElement,
         addToLocalComponentStore,
-        updateComponentInfoInLocalStore,
+        updateComponentVerticesInLocalStore,
         updateComponentPropertyInLocalStore,
+        updateComponentBulkPropertiesInLocalStore,
     }
 
     return (
         <>
             {!isMobile ? (
-                <div>
-                    <div
-                        id="show-select-any-shape-btn"
-                        className="fixed w-40 top-0 left-60 
-                transition-all ease-out duration-300"
-                        style={{
-                            opacity: showHelperTooltip ? 1 : 0,
-                            zIndex: showHelperTooltip ? 1 : -1,
-                        }}
-                    >
+                <BoardContext.Provider value={contextValueForSidebar}>
+                    <div>
                         <div
-                            className="w-auto mt-2
+                            id="show-select-any-shape-btn"
+                            className="fixed w-40 top-0 left-60 
+                transition-all ease-out duration-300"
+                            style={{
+                                opacity: showHelperTooltip ? 1 : 0,
+                                zIndex: showHelperTooltip ? 1 : -1,
+                            }}
+                        >
+                            <div
+                                className="w-auto mt-2
                           bg-greens-g400 text-white  
                             px-4 py-2 rounded-md shadow-md
                             "
-                        >
-                            <div className="flex items-center  ">
-                                <div className="w-auto text-sm text-left">
-                                    You can select any shape(s) from here
+                            >
+                                <div className="flex items-center  ">
+                                    <div className="w-auto text-sm text-left">
+                                        You can select any shape(s) from here
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <BoardContext.Provider value={contextValueForSidebar}>
                         <Sidebar />
-                    </BoardContext.Provider>
 
-                    <Canvas
-                        pointerToggle={pointerToggle}
-                        isPencilMode={isPencilMode}
-                        selectPanMode={false}
-                        boardId={boardId}
-                        lastAddedElement={lastAddedElement}
-                        boardData={boardData}
-                        componentStore={componentStore}
-                        addToLocalComponentStore={addToLocalComponentStore}
-                        deleteComponentFromLocalStore={
-                            deleteComponentFromLocalStore
-                        }
-                        updateComponentInfoInLocalStore={
-                            updateComponentInfoInLocalStore
-                        }
-                    />
-                </div>
+                        <Canvas
+                            pointerToggle={pointerToggle}
+                            isPencilMode={isPencilMode}
+                            selectPanMode={false}
+                            boardId={boardId}
+                            lastAddedElement={lastAddedElement}
+                            boardData={boardData}
+                            componentStore={componentStore}
+                            addToLocalComponentStore={addToLocalComponentStore}
+                            deleteComponentFromLocalStore={
+                                deleteComponentFromLocalStore
+                            }
+                            updateComponentVerticesInLocalStore={
+                                updateComponentVerticesInLocalStore
+                            }
+                        />
+                    </div>
+                </BoardContext.Provider>
             ) : null}
             {isMobile ? (
                 <div>

@@ -3,9 +3,8 @@ import PropTypes from 'prop-types'
 import Two from 'two.js'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
-import { useMutation } from '@apollo/client'
+import { useBoardContext } from 'views/Board/board'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import Toolbar from 'components/floatingToolbar'
@@ -14,9 +13,11 @@ import Icon from 'icons/icons'
 import AddIcon from 'assets/add.svg'
 
 function Checkbox(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
+
     const [showToolbar, toggleToolbar] = useState(false)
 
     const [internalState, setInternalState] = useImmer({
@@ -91,17 +92,12 @@ function Checkbox(props) {
         let newCheckboxArr = [...props.metadata?.checkboxArr]
         newCheckboxArr.splice(findIndex, 1)
 
-        updateComponentInfo({
-            variables: {
-                id: props.id,
-
-                updateObj: {
-                    metadata: {
-                        checkboxArr: newCheckboxArr,
-                    },
-                },
+        let updateObj = {
+            metadata: {
+                checkboxArr: newCheckboxArr,
             },
-        })
+        }
+        updateComponentBulkPropertiesInLocalStore(props.id, updateObj)
     }
 
     // Using unmount phase to remove event listeners
@@ -304,17 +300,16 @@ function Checkbox(props) {
                 if (e.isTrusted === true) {
                     let newCheckboxArr = [...props.metadata?.checkboxArr]
                     newCheckboxArr.push(group.elementData)
-                    updateComponentInfo({
-                        variables: {
-                            id: props.id,
 
-                            updateObj: {
-                                metadata: {
-                                    checkboxArr: newCheckboxArr,
-                                },
-                            },
+                    let updateObj = {
+                        metadata: {
+                            checkboxArr: newCheckboxArr,
                         },
-                    })
+                    }
+                    updateComponentBulkPropertiesInLocalStore(
+                        props.id,
+                        updateObj
+                    )
                 }
 
                 // updateCheckboxState(checkboxGroup)
@@ -367,17 +362,12 @@ function Checkbox(props) {
                     }
                 }
 
-                updateComponentInfo({
-                    variables: {
-                        id: props.id,
-
-                        updateObj: {
-                            metadata: {
-                                checkboxArr: newCheckboxArr,
-                            },
-                        },
+                let updateObj = {
+                    metadata: {
+                        checkboxArr: newCheckboxArr,
                     },
-                })
+                }
+                updateComponentBulkPropertiesInLocalStore(props.id, updateObj)
             }
 
             // update checkbox array data after updating item's checked value
@@ -395,17 +385,12 @@ function Checkbox(props) {
                     }
                 }
 
-                updateComponentInfo({
-                    variables: {
-                        id: props.id,
-
-                        updateObj: {
-                            metadata: {
-                                checkboxArr: newCheckboxArr,
-                            },
-                        },
+                let updateObj = {
+                    metadata: {
+                        checkboxArr: newCheckboxArr,
                     },
-                })
+                }
+                updateComponentBulkPropertiesInLocalStore(props.id, updateObj)
             }
 
             // Loop and attach event listeners to all elements
