@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import Two from 'two.js'
 import interact from 'interactjs'
-import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
+import { useBoardContext } from 'views/Board/board'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import Toolbar from 'components/floatingToolbar'
 import Icon from 'icons/icons'
@@ -13,9 +12,11 @@ import ObjectSelector from 'components/utils/objectSelector'
 import AddIcon from 'assets/add.svg'
 
 function RadioBox(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
+
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({
         mainElement: null,
@@ -88,17 +89,12 @@ function RadioBox(props) {
         let newRadioboxArr = [...props.metadata?.radioboxArr]
         newRadioboxArr.splice(findIndex, 1)
 
-        updateComponentInfo({
-            variables: {
-                id: props.id,
-
-                updateObj: {
-                    metadata: {
-                        radioboxArr: newRadioboxArr,
-                    },
-                },
+        let updateObj = {
+            metadata: {
+                radioboxArr: newRadioboxArr,
             },
-        })
+        }
+        updateComponentBulkPropertiesInLocalStore(props.id, updateObj)
     }
 
     // Using unmount phase to remove event listeners
@@ -297,17 +293,16 @@ function RadioBox(props) {
                 if (e.isTrusted === true) {
                     let newRadioboxArr = [...props.metadata?.radioboxArr]
                     newRadioboxArr.push(group.elementData)
-                    updateComponentInfo({
-                        variables: {
-                            id: props.id,
 
-                            updateObj: {
-                                metadata: {
-                                    radioboxArr: newRadioboxArr,
-                                },
-                            },
+                    let updateObj = {
+                        metadata: {
+                            radioboxArr: newRadioboxArr,
                         },
-                    })
+                    }
+                    updateComponentBulkPropertiesInLocalStore(
+                        props.id,
+                        updateObj
+                    )
                 }
 
                 // updateRadioBoxState(radioboxGroup)
@@ -364,17 +359,12 @@ function RadioBox(props) {
                     }
                 }
 
-                updateComponentInfo({
-                    variables: {
-                        id: props.id,
-
-                        updateObj: {
-                            metadata: {
-                                radioboxArr: newRadioboxArr,
-                            },
-                        },
+                let updateObj = {
+                    metadata: {
+                        radioboxArr: newRadioboxArr,
                     },
-                })
+                }
+                updateComponentBulkPropertiesInLocalStore(props.id, updateObj)
             }
 
             // update checkbox array data after updating item's checked value
@@ -392,17 +382,12 @@ function RadioBox(props) {
                     }
                 }
 
-                updateComponentInfo({
-                    variables: {
-                        id: props.id,
-
-                        updateObj: {
-                            metadata: {
-                                radioboxArr: newRadioboxArr,
-                            },
-                        },
+                let updateObj = {
+                    metadata: {
+                        radioboxArr: newRadioboxArr,
                     },
-                })
+                }
+                updateComponentBulkPropertiesInLocalStore(props.id, updateObj)
             }
 
             // Loop and attach event listeners to all elements

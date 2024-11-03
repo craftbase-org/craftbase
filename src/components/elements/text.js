@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import { useMutation } from '@apollo/client'
 import interact from 'interactjs'
-
 import { useImmer } from 'use-immer'
+import { useBoardContext } from 'views/Board/board'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import handleDrag from 'components/utils/dragger'
@@ -14,9 +12,11 @@ import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/text'
 
 function Text(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
+
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({ textFontSize: 16 })
 
@@ -273,19 +273,19 @@ function Text(props) {
           </foreignObject>
           `
                     two.update()
-                    updateComponentInfo({
-                        variables: {
-                            id: props.id,
-                            updateObj: {
-                                width: rectangle.width,
-                                height: rectangle.height,
-                                metadata: {
-                                    ...props.metadata,
-                                    content: textValue,
-                                },
-                            },
+
+                    let updateObj = {
+                        width: rectangle.width,
+                        height: rectangle.height,
+                        metadata: {
+                            ...props.metadata,
+                            content: textValue,
                         },
-                    })
+                    }
+                    updateComponentBulkPropertiesInLocalStore(
+                        props.id,
+                        updateObj
+                    )
                     input.remove()
                 })
             })
@@ -356,15 +356,14 @@ function Text(props) {
                         // }
                     },
                     end(event) {
-                        updateComponentInfo({
-                            variables: {
-                                id: props.id,
-                                updateObj: {
-                                    width: parseInt(rectangle.width),
-                                    height: parseInt(rectangle.height),
-                                },
-                            },
-                        })
+                        let updateObj = {
+                            width: parseInt(rectangle.width),
+                            height: parseInt(rectangle.height),
+                        }
+                        updateComponentBulkPropertiesInLocalStore(
+                            props.id,
+                            updateObj
+                        )
                         getGroupElementFromDOM.removeAttribute('data-resize')
                         console.log('the end', event)
                     },

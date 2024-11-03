@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import { color_blue } from 'utils/constants'
 import getEditComponents from 'components/utils/editWrapper'
@@ -11,9 +9,6 @@ import Toolbar from 'components/floatingToolbar'
 import ElementCreator from 'factory/toggle'
 
 function Toggle(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({
         toggleState: true,
