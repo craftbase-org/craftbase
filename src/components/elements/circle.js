@@ -98,7 +98,7 @@ function Circle(props) {
             const initialSceneCoords = document
                 .getElementById(two.scene.id)
                 .getBoundingClientRect()
-            console.log('initialSceneCoords', initialSceneCoords)
+            // console.log('initialSceneCoords', initialSceneCoords)
 
             setInternalState((draft) => {
                 draft.element = {
@@ -289,7 +289,7 @@ function Circle(props) {
         }
 
         return () => {
-            console.log('UNMOUNTING in Circle', group)
+            // console.log('UNMOUNTING in Circle', group)
             // clean garbage by removing instance
             // two.remove(group)
         }

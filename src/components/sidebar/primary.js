@@ -126,7 +126,7 @@ const PrimarySidebar = () => {
                 )
         }
     }
-
+    let isLiveSession = false
     return (
         <>
             <div
@@ -191,20 +191,22 @@ const PrimarySidebar = () => {
                         </div>
                     </div>
 
-                    <div className="text-sm pr-2">
-                        <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
-                            <span className="text-sm ">Live</span>
+                    {isLiveSession ? (
+                        <>
+                            <div className="text-sm pr-2">
+                                <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
+                                    <span className="text-sm ">Live</span>
 
-                            <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
-                                <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
+                                    <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
+                                        <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
+                                    </div>
+                                </a>
                             </div>
+                        </>
+                    ) : (
+                        <></>
+                    )}
 
-                            {/* <img
-                                src={RadioWhiteIcon}
-                                className="ml-2 w-5 h-5"
-                            /> */}
-                        </a>
-                    </div>
                     <ShareLinkPopup />
                     {/* <UserDetailsPopup /> */}
                 </div>
