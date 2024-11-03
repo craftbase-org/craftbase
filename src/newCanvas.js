@@ -1,16 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { useQuery, useMutation, useSubscription } from '@apollo/client'
+import { useQuery, useSubscription } from '@apollo/client'
 import Two from 'two.js'
 import { useNavigate } from 'react-router-dom'
 
 import Loadable from 'react-loadable'
 import { ZUI } from 'two.js/extras/jsm/zui'
+import { useBoardContext } from 'views/Board/board'
 
-import {
-    UPDATE_COMPONENT_INFO,
-    DELETE_COMPONENT_BY_ID,
-    INSERT_COMPONENT,
-} from 'schema/mutations'
 import Zoomer from 'components/utils/zoomer'
 import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
@@ -946,6 +942,13 @@ const GroupRenderWrapper = (ElementToRender, data) => {
 const Canvas = (props) => {
     // console.log('getComponentsForBoardData', getComponentsForBoardData)
 
+    const {
+        addToLocalComponentStore,
+        deleteComponentFromLocalStore,
+        updateComponentVerticesInLocalStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
+
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [lastAddedPathId, setLastAddedPathId] = useState(null)
     const [zuiInstance, setZuiInstance] = useState(null)
@@ -953,9 +956,6 @@ const Canvas = (props) => {
     const [onGroup, setOnGroup] = useState(null)
     const [componentsToRender, setComponentsToRender] = useState([])
     const [cloneElement, setCloneElement] = useState(null)
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
 
     const stateRefForComponentStore = useRef()
 
@@ -984,7 +984,7 @@ const Canvas = (props) => {
             updateComponentVertices,
             customEventListener,
             setOnGroupHandler,
-            props.addToLocalComponentStore
+            addToLocalComponentStore
         )
 
         // this.props.getElementsData('CONSTRUCT', arr)
@@ -1021,7 +1021,10 @@ const Canvas = (props) => {
 
     useEffect(() => {
         stateRefForComponentStore.current = props.componentStore
-
+        // console.log(
+        //     'change in componentStore in NewCanvas',
+        //     stateRefForComponentStore.current
+        // )
         if (twoJSInstance !== null && zuiInstance !== null) {
             // listening to the change in components in DB
             // this is especially for capturing INSERT operation
@@ -1103,7 +1106,7 @@ const Canvas = (props) => {
                         component = ElementRenderWrapper(
                             ElementToRender,
                             data,
-                            props.deleteComponentFromLocalStore,
+                            deleteComponentFromLocalStore,
                             props.componentStore
                         )
                     }
@@ -1246,7 +1249,7 @@ const Canvas = (props) => {
                     cloneElement,
                     props.boardId
                 )
-                props.addToLocalComponentStore(
+                addToLocalComponentStore(
                     newComponent.id,
                     newComponent.componentType,
                     newComponent
@@ -1275,38 +1278,34 @@ const Canvas = (props) => {
             (newShapeData.data.x != newShapeData.prevX ||
                 newShapeData.data.y != newShapeData.prevY)
         ) {
-            updateComponentInfo({
-                variables: {
-                    id: newShapeData.id,
-                    updateObj: {
-                        x: parseInt(newShapeData.data.x),
-                        y: parseInt(newShapeData.data.y),
-                        updatedBy: userId,
-                    },
-                },
-            })
+            let updateObj = {
+                x: parseInt(newShapeData.data.x),
+                y: parseInt(newShapeData.data.y),
+                updatedBy: userId,
+            }
+            updateComponentBulkPropertiesInLocalStore(
+                newShapeData.id,
+                updateObj
+            )
         }
 
         if (newShapeData?.isLineCircle === true) {
-            updateComponentInfo({
-                variables: {
-                    id: newShapeData.parentData.elementData.id,
-                    updateObj: {
-                        // x: parseInt(newShapeData.data.x),
-                        // y: parseInt(newShapeData.data.y),
-                        x1: parseInt(newShapeData.data.x1),
-                        x2: parseInt(newShapeData.data.x2),
-                        y1: parseInt(newShapeData.data.y1),
-                        y2: parseInt(newShapeData.data.y2),
-                        updatedBy: userId,
-                    },
-                },
-            })
+            let updateObj = {
+                x1: parseInt(newShapeData.data.x1),
+                x2: parseInt(newShapeData.data.x2),
+                y1: parseInt(newShapeData.data.y1),
+                y2: parseInt(newShapeData.data.y2),
+                updatedBy: userId,
+            }
+            updateComponentBulkPropertiesInLocalStore(
+                newShapeData.parentData.elementData.id,
+                updateObj
+            )
         }
     }
 
     const updateComponentVertices = (id, x, y) => {
-        props.updateComponentVerticesInLocalStore(id, x, y)
+        updateComponentVerticesInLocalStore(id, x, y)
         document.getElementById('show-click-anywhere-btn').style.opacity = 0
     }
 

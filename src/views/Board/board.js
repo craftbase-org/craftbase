@@ -92,6 +92,7 @@ const BoardViewPage = (props) => {
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef()
+    const stateRefForBoardData = useRef()
     // check if user exists or not
     useEffect(() => {
         const userId = localStorage.getItem('userId')
@@ -115,14 +116,6 @@ const BoardViewPage = (props) => {
         }
         localStorage.setItem('lastOpenBoard', routeParams.id)
     }, [])
-
-    useEffect(() => {
-        // console.log('listen for componentStore change', componentStore)
-    }, [componentStore])
-
-    useEffect(() => {
-        // console.log('listen for boardData change', boardData)
-    }, [boardData])
 
     useEffect(() => {
         if (
@@ -155,9 +148,14 @@ const BoardViewPage = (props) => {
     }, [getBoardData])
 
     useEffect(() => {
-        // console.log('change in componentStore', componentStore)
+        console.log('change in componentStore in Board', componentStore)
         stateRefForComponentStore.current = componentStore
     }, [componentStore])
+
+    useEffect(() => {
+        // console.log('listen for boardData change', boardData)
+        stateRefForBoardData.current = boardData
+    }, [boardData])
 
     if (getBoardDataLoading) {
         return (
@@ -208,10 +206,12 @@ const BoardViewPage = (props) => {
     const addToLocalComponentStore = (id, type, componentInfo) => {
         // console.log('addToLocalComponentStore', id, type, componentInfo)
 
+        let updatedBoardData = stateRefForBoardData.current
+        let updatedComponentStore = stateRefForComponentStore.current
         // update local store and state
         setBoardData({
             components: [
-                ...boardData.components,
+                ...updatedBoardData.components,
                 {
                     id,
                     componentType: type,
@@ -220,7 +220,7 @@ const BoardViewPage = (props) => {
         })
 
         // console.log('updating component store in add to local store')
-        setComponentStore({ ...componentStore, [id]: componentInfo })
+        setComponentStore({ ...updatedComponentStore, [id]: componentInfo })
 
         // update the upstream DB
         componentInfo &&
@@ -230,6 +230,7 @@ const BoardViewPage = (props) => {
     const updateComponentBulkPropertiesInLocalStore = (id, bulkObj) => {
         const userId = localStorage.getItem('userId')
 
+        // console.log('update component bulk properties in local store')
         let updatedComponentStore = stateRefForComponentStore.current
         // console.log('updatedComponentStore[id]', updatedComponentStore[id])
         updatedComponentStore[id] = {
@@ -334,6 +335,7 @@ const BoardViewPage = (props) => {
         updateComponentVerticesInLocalStore,
         updateComponentPropertyInLocalStore,
         updateComponentBulkPropertiesInLocalStore,
+        deleteComponentFromLocalStore,
     }
 
     return (
@@ -374,13 +376,6 @@ const BoardViewPage = (props) => {
                             lastAddedElement={lastAddedElement}
                             boardData={boardData}
                             componentStore={componentStore}
-                            addToLocalComponentStore={addToLocalComponentStore}
-                            deleteComponentFromLocalStore={
-                                deleteComponentFromLocalStore
-                            }
-                            updateComponentVerticesInLocalStore={
-                                updateComponentVerticesInLocalStore
-                            }
                         />
                     </div>
                 </BoardContext.Provider>
