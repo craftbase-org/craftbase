@@ -157,32 +157,31 @@ const ElementsDropdown = ({ addElement, getComponentTypesLoading }) => {
                         {listElements.length > 0
                             ? listElements.map((stack, index) => (
                                   <React.Fragment key={index}>
-                                      <>
-                                          {toggleDrawer ? (
-                                              renderDrawerStack(stack)
-                                          ) : (
-                                              <>
-                                                  <div className="pt-2 border-b border-neutrals-n60">
-                                                      <div className="w-full text-black font-normal text-sm pl-2">
-                                                          {stack.sectionName}
-                                                      </div>
-
-                                                      <div className="flex flex-wrap">
-                                                          {stack.elements.map(
-                                                              (element) => (
-                                                                  <>
-                                                                      {' '}
-                                                                      {renderPrimaryStack(
-                                                                          element
-                                                                      )}
-                                                                  </>
-                                                              )
-                                                          )}
-                                                      </div>
+                                      {toggleDrawer ? (
+                                          renderDrawerStack(stack)
+                                      ) : (
+                                          <>
+                                              <div className="pt-2 border-b border-neutrals-n60">
+                                                  <div className="w-full text-black font-normal text-sm pl-2">
+                                                      {stack.sectionName}
                                                   </div>
-                                              </>
-                                          )}
-                                      </>
+
+                                                  <div className="flex flex-wrap">
+                                                      {stack.elements.map(
+                                                          (element, i) => (
+                                                              <React.Fragment
+                                                                  key={i}
+                                                              >
+                                                                  {renderPrimaryStack(
+                                                                      element
+                                                                  )}
+                                                              </React.Fragment>
+                                                          )
+                                                      )}
+                                                  </div>
+                                              </div>
+                                          </>
+                                      )}
                                   </React.Fragment>
                               ))
                             : null}

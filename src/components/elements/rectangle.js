@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
+import { useBoardContext } from 'views/Board/board'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import getEditComponents from 'components/utils/editWrapper'
 import ElementFactory from 'factory/rectangle'
 import { elementOnBlurHandler } from 'utils/misc'
 import Toolbar from 'components/floatingToolbar'
 
 function Rectangle(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
+
     const selectedComponents = []
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
@@ -187,15 +188,15 @@ function Rectangle(props) {
                     },
                     end(event) {
                         getGroupElementFromDOM.removeAttribute('data-resize')
-                        updateComponentInfo({
-                            variables: {
-                                id: props.id,
-                                updateObj: {
-                                    height: parseInt(rectangle.height),
-                                    width: parseInt(rectangle.width),
-                                },
-                            },
-                        })
+
+                        let updateObj = {
+                            width: parseInt(rectangle.width),
+                            height: parseInt(rectangle.height),
+                        }
+                        updateComponentBulkPropertiesInLocalStore(
+                            props.id,
+                            updateObj
+                        )
                         console.log(
                             'rect event end',
                             event.pageX,

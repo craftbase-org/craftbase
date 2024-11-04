@@ -16,18 +16,21 @@ const ColorPickerContainer = styled.div`
 const ColorSelector = styled(motion.button)`
     border-radius: 50%;
     ${(props) =>
-        props.colorPaint &&
+        props.colorpaint &&
         css`
-            background: ${props.colorPaint};
-        `};
+            background: ${props.colorpaint};
+            border: ${props.colorpaint === `#FFFFFF`
+                ? `1px solid #000`
+                : `1px solid transparent`};
+        `}
 `
 
 const CurrentColorIndicator = styled.div`
     border-radius: 50%;
     ${(props) =>
-        props.colorPaint &&
+        props.colorpaint &&
         css`
-            background: ${props.colorPaint};
+            background: ${props.colorpaint};
         `};
 `
 
@@ -40,22 +43,31 @@ const ColorPicker = ({ title, onChangeComplete, currentColor }) => {
             return (
                 <Fragment key={index}>
                     <AnimatePresence>
-                        <ColorSelector
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            title={
-                                color == 'rgba(0,0,0,0.0)'
-                                    ? 'transparent'
-                                    : color
-                            }
-                            data-parent="floating-toolbar"
-                            className={`m-1 w-4 h-4 shadow-md`}
-                            colorPaint={color}
-                            onClick={() => {
-                                onChangeComplete(color)
-                            }}
-                        />
+                        <div
+                            className={`${
+                                currentColor === color
+                                    ? `inline-block bg-slate-300`
+                                    : `inline-block`
+                            }`}
+                        >
+                            <ColorSelector
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                title={
+                                    color == 'rgba(0,0,0,0.0)'
+                                        ? 'transparent'
+                                        : color
+                                }
+                                data-parent="floating-toolbar"
+                                className={`m-1 w-4 h-4`}
+                                colorpaint={color}
+                                currentColor={currentColor}
+                                onClick={() => {
+                                    onChangeComplete(color)
+                                }}
+                            />
+                        </div>
                     </AnimatePresence>
                 </Fragment>
             )
@@ -71,7 +83,7 @@ const ColorPicker = ({ title, onChangeComplete, currentColor }) => {
                 data-parent="floating-toolbar"
                 className={`p-0 `}
             >
-                <div className="flex justify-start items-center my-2">
+                {/* <div className="flex justify-start items-center my-2">
                     <div className="border-2 border-radius-50 border-gray-500">
                         {' '}
                         <CurrentColorIndicator
@@ -82,7 +94,7 @@ const ColorPicker = ({ title, onChangeComplete, currentColor }) => {
                             }
                             data-parent="floating-toolbar"
                             className={`m-1 w-4 h-4 `}
-                            colorPaint={currentColor}
+                            colorpaint={currentColor}
                             // onClick={() => {
                             //   onChangeComplete(color);
                             // }}
@@ -101,28 +113,30 @@ const ColorPicker = ({ title, onChangeComplete, currentColor }) => {
                         }
                         disabled
                     />
-                </div>
+                </div> */}
 
                 <div className="mt-2 mb-1">
-                    {renderColorBtns()}
-                    <button
-                        className={`m-1  transition duration-300 ${
-                            showAllColors && `transform-rotate-45`
-                        }`}
-                        onClick={() => ToggleShowAllColors(!showAllColors)}
-                    >
-                        <Icon icon="ICON_ADD" width={18} height={18} />
-                    </button>
+                    <div className=" inline w-full">
+                        {renderColorBtns()}{' '}
+                        <button
+                            className={`mb-1 inline-block transition duration-300 ${
+                                showAllColors && `transform-rotate-45`
+                            }`}
+                            onClick={() => ToggleShowAllColors(!showAllColors)}
+                        >
+                            <Icon icon="ICON_ADD" width={18} height={18} />
+                        </button>
+                    </div>
                 </div>
             </ColorPickerContainer>
         </Fragment>
     )
 }
 
-ColorPicker.defaultProps = {
-    leftPos: 4,
-    currentColor: '#fff',
-}
+// ColorPicker.defaultProps = {
+//     leftPos: 4,
+//     currentColor: '#fff',
+// }
 
 ColorPicker.propTypes = {
     leftPos: PropTypes.number,

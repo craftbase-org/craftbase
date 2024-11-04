@@ -48,10 +48,10 @@ const SpinnerWithSize = (props) => {
     return <Fragment>{renderLoader()}</Fragment>
 }
 
-SpinnerWithSize.defaultProps = {
-    loaderSize: 'lg',
-    color: '#2F98D0',
-    customStyles: {},
-}
+// SpinnerWithSize.defaultProps = {
+//     loaderSize: 'lg',
+//     color: '#2F98D0',
+//     customStyles: {},
+// }
 
 export default SpinnerWithSize

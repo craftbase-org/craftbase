@@ -8,7 +8,6 @@ import { useImmer } from 'use-immer'
 import ColorPicker from 'components/utils/colorPicker'
 import BorderStyleBox from 'components/utils/borderStyleBox'
 import OpacitySlider from 'components/utils/opacitySlider'
-import FontSizeSlider from 'components/utils/fontSizeSlider'
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { properties } from 'utils/constants'
 import Icon from 'icons/icon'
@@ -79,33 +78,36 @@ const Accordion = ({
     hideColorIcon,
     hideColorBackground,
     isLastIndex,
+    showButton,
 }) => {
     // By using `AnimatePresence` to mount and unmount the contents, we can animate
     // them in and out while also only rendering the contents of open accordions
     return (
         <Fragment>
-            <button
-                className={`flex transition duration-200 flex-row justify-start items-center
+            {showButton && (
+                <button
+                    className={`flex transition duration-200 flex-row justify-start items-center
           py-2 w-11/12 shadow my-2  ${
               accordion ? `bg-gray-300` : `bg-transparent`
           }  hover:bg-gray-300`}
-                // animate={{ backgroundColor: isOpen ? "#FF0088" : "#0055FF" }}
-                onClick={() => {
-                    toggleAccordion(!accordion)
-                }}
-            >
-                <Fragment>
-                    <div className="flex w-full px-2">
-                        {/* <div className="flex-none w-1/3 ">{renderSvg()}</div> */}
-                        <div className="flex-grow w-10/12 text-left text-sm">
-                            <span className=" text-black  ">{header}</span>
+                    // animate={{ backgroundColor: isOpen ? "#FF0088" : "#0055FF" }}
+                    onClick={() => {
+                        toggleAccordion(!accordion)
+                    }}
+                >
+                    <Fragment>
+                        <div className="flex w-full px-2">
+                            {/* <div className="flex-none w-1/3 ">{renderSvg()}</div> */}
+                            <div className="flex-grow w-10/12 text-left text-sm">
+                                <span className=" text-black  ">{header}</span>
+                            </div>
+                            <div className="flex-none w-1/12 text-left ">
+                                {renderSvg()}
+                            </div>
                         </div>
-                        <div className="flex-none w-1/12 text-left ">
-                            {renderSvg()}
-                        </div>
-                    </div>
-                </Fragment>
-            </button>
+                    </Fragment>
+                </button>
+            )}
             <AnimatePresence initial={false}>
                 {accordion && (
                     <motion.section
@@ -200,13 +202,13 @@ const Toolbar = (props) => {
     const allowedProperties = [
         {
             key: properties.colorBg,
-            hide: state.hideColorSection,
+            // hide: state.hideColorSection,
             title: 'Color',
-            accordion: state.colorsAccordion,
-            toggleAccordion: () =>
-                setState((draft) => {
-                    draft.colorsAccordion = !state.colorsAccordion
-                }),
+            // accordion: state.colorsAccordion,
+            // toggleAccordion: () =>
+            //     setState((draft) => {
+            //         draft.colorsAccordion = !state.colorsAccordion
+            //     }),
             content: (hideColorText, hideColorIcon, hideColorBackground) => (
                 <Fragment>
                     <ColorPicker
@@ -434,7 +436,7 @@ const Toolbar = (props) => {
                 }),
             content: () => (
                 <OpacitySlider
-                    title="Transparency"
+                    title="Opacity"
                     currentOpacity={state.opacity}
                     handleOnDrag={(arr) => {
                         setState((draft) => {
@@ -449,7 +451,7 @@ const Toolbar = (props) => {
                         })
                         componentState.group.data.opacity = arr[0]
 
-                        updateComponent && updateComponent('opacity', arr[0])
+                        // updateComponent && updateComponent('opacity', arr[0])
                     }}
                 />
             ),
@@ -500,7 +502,7 @@ const Toolbar = (props) => {
                 animate="closed"
                 transition={{ duration: 0.01 }}
                 variants={variants}
-                toggleToolbar={toggle}
+                // toggleToolbar={toggle}
                 id="floating-toolbar"
                 // tabIndex="1"
             >
@@ -508,8 +510,9 @@ const Toolbar = (props) => {
                     i.hide === true ? null : (
                         <Accordion
                             key={index}
+                            showButton={false}
                             isLastIndex={index === allowedProperties.length - 1}
-                            accordion={i.accordion}
+                            accordion={true}
                             toggleAccordion={i.toggleAccordion}
                             header={i.title}
                             content={i.content}

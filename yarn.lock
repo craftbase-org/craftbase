@@ -1924,6 +1924,18 @@
     "@svgr/plugin-svgo" "^5.5.0"
     loader-utils "^2.0.0"
 
+"@tanstack/ranger@0.0.3":
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/@tanstack/ranger/-/ranger-0.0.3.tgz#3fb287dea26d6ed88eb405f1d77982f5cfd3ec8f"
+  integrity sha512-RYpW7MnEMxKLuskfadeyBfxpU8cUTGrtp5TnCV9PKEgMfrR6vwlk9/1/eU2EvJfYZbDAr1inphL4TGWCcRLAXQ==
+
+"@tanstack/react-ranger@^0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@tanstack/react-ranger/-/react-ranger-0.0.4.tgz#65bb9bf22e75288f9c2609b8bdfd909c5bb592c1"
+  integrity sha512-3re8xKJ6t3j8eKp6pdKi92FQegsxHipTgsvg7k0DP+SRWt/iJ2F8GSm8DuQVLHiE3R7kX1Q42fQhmku1PdcWOA==
+  dependencies:
+    "@tanstack/ranger" "0.0.3"
+
 "@testing-library/jest-dom@^6.4.5":
   version "6.4.6"
   resolved "https://registry.yarnpkg.com/@testing-library/jest-dom/-/jest-dom-6.4.6.tgz#ec1df8108651bed5475534955565bed88c6732ce"

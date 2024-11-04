@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
+import { useBoardContext } from 'views/Board/board'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import CircleFactory from 'factory/circle'
 import Toolbar from 'components/floatingToolbar'
 
 function Circle(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
+
     const selectedComponents = []
 
     const [showToolbar, toggleToolbar] = useState(false)
@@ -97,7 +98,7 @@ function Circle(props) {
             const initialSceneCoords = document
                 .getElementById(two.scene.id)
                 .getBoundingClientRect()
-            console.log('initialSceneCoords', initialSceneCoords)
+            // console.log('initialSceneCoords', initialSceneCoords)
 
             setInternalState((draft) => {
                 draft.element = {
@@ -197,15 +198,14 @@ function Circle(props) {
                     },
                     end(event) {
                         console.log('resize event end', circle)
-                        updateComponentInfo({
-                            variables: {
-                                id: props.id,
-                                updateObj: {
-                                    width: parseInt(circle.width),
-                                    height: parseInt(circle.height),
-                                },
-                            },
-                        })
+                        let updateObj = {
+                            width: parseInt(circle.width),
+                            height: parseInt(circle.height),
+                        }
+                        updateComponentBulkPropertiesInLocalStore(
+                            props.id,
+                            updateObj
+                        )
                         getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },
@@ -289,7 +289,7 @@ function Circle(props) {
         }
 
         return () => {
-            console.log('UNMOUNTING in Circle', group)
+            // console.log('UNMOUNTING in Circle', group)
             // clean garbage by removing instance
             // two.remove(group)
         }

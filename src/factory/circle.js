@@ -25,7 +25,7 @@ export default class CircleFactory extends Main {
         group.translation.x = parseInt(prevX)
         group.translation.y = parseInt(prevY)
         this.group = group
-        console.log('group.id circle', group.id)
+        // console.log('group.id circle', group.id)
         return { group: this.group, circle: this.circle }
     }
 }
