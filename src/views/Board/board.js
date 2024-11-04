@@ -133,7 +133,10 @@ const BoardViewPage = (props) => {
                 getComponentsForBoardData.components.forEach((item) => {
                     baseComponentStore[item.id] = item
                 })
-                // console.log('updating component store when get components')
+                // console.log(
+                //     'updating component store when get components',
+                //     baseComponentStore
+                // )
                 setComponentStore(baseComponentStore)
             }
         }

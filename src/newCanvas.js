@@ -865,6 +865,10 @@ const ElementRenderWrapper = (
         }, [])
 
         useEffect(() => {
+            // console.log(
+            //     'componentStore change in element render wrapper',
+            //     componentStore
+            // )
             let allComponents = Object.values(componentStore)
             if (allComponents.length > 0) {
                 let componentData = allComponents.find(
@@ -875,39 +879,43 @@ const ElementRenderWrapper = (
             }
         }, [componentStore])
 
-        useEffect(() => {
-            if (getComponentInfoData?.component && componentData === null) {
-                setComponentData(getComponentInfoData?.component)
-            } else if (
-                getComponentInfoData?.component &&
-                componentData !== null
-            ) {
-                const boardId = data.boardId
-                const userId = localStorage.getItem('userId')
-                const tabsOpen = parseInt(
-                    localStorage.getItem(`tabs_open_${boardId}`)
-                )
+        // useEffect(() => {
+        //     if (getComponentInfoData?.component && componentData === null) {
+        //         setComponentData(getComponentInfoData?.component)
+        //     } else if (
+        //         getComponentInfoData?.component &&
+        //         componentData !== null
+        //     ) {
+        //         const boardId = data.boardId
+        //         const userId = localStorage.getItem('userId')
+        //         const tabsOpen = parseInt(
+        //             localStorage.getItem(`tabs_open_${boardId}`)
+        //         )
 
-                if (getComponentInfoData?.component.updatedBy !== null) {
-                    if (getComponentInfoData?.component.updatedBy != userId) {
-                        // console.log('update element wrapper on updatedBy change')
-                        setComponentData(getComponentInfoData?.component)
-                    } else if (
-                        getComponentInfoData?.component.updatedBy == userId &&
-                        tabsOpen > 1
-                    ) {
-                        // console.log('update element wrapper on tabs open')
-                        setComponentData(getComponentInfoData?.component)
-                    }
-                }
-            }
-        }, [getComponentInfoData])
+        //         if (getComponentInfoData?.component.updatedBy !== null) {
+        //             if (getComponentInfoData?.component.updatedBy != userId) {
+        //                 // console.log('update element wrapper on updatedBy change')
+        //                 setComponentData(getComponentInfoData?.component)
+        //             } else if (
+        //                 getComponentInfoData?.component.updatedBy == userId &&
+        //                 tabsOpen > 1
+        //             ) {
+        //                 // console.log('update element wrapper on tabs open')
+        //                 setComponentData(getComponentInfoData?.component)
+        //             }
+        //         }
+        //     }
+        // }, [getComponentInfoData])
 
-        if (getComponentInfoLoading && data?.itemData?.isDummy !== true) {
-            return <></>
-        }
+        // if (getComponentInfoLoading && data?.itemData?.isDummy !== true) {
+        //     return <></>
+        // }
 
-        if (getComponentInfoError) {
+        // if (getComponentInfoError) {
+        //     return <></>
+        // }
+
+        if (componentData === null) {
             return <></>
         }
 
@@ -1037,13 +1045,16 @@ const Canvas = (props) => {
                 false
             )
         }
-    }, [props.componentStore])
-
-    useEffect(() => {
-        if (props.boardData.components.length > 0 && twoJSInstance) {
+        if (Object.values(props.componentStore).length > 0 && twoJSInstance) {
             handleSetComponentsToRender(props.boardData.components)
         }
-    }, [props.boardData, twoJSInstance])
+    }, [props.componentStore])
+
+    // useEffect(() => {
+    //     if (props.boardData.components.length > 0 && twoJSInstance) {
+    //         handleSetComponentsToRender(props.boardData.components)
+    //     }
+    // }, [props.boardData, twoJSInstance])
 
     useEffect(() => {
         // console.log('on change props.lastAddedElement')
@@ -1075,6 +1086,7 @@ const Canvas = (props) => {
 
     const handleSetComponentsToRender = (currentComponents) => {
         let arr = [...prevElements]
+        // console.log('prevElements', prevElements)
         let components = [...componentsToRender]
         if (currentComponents && twoJSInstance) {
             currentComponents.forEach((item, index) => {
@@ -1097,6 +1109,11 @@ const Canvas = (props) => {
 
                     // Different render wrapper for components and group
                     let component = null
+                    // console.log(
+                    //     'in current components to render logic',
+                    //     currentComponents,
+                    //     props.componentStore
+                    // )
                     if (item.componentType === GROUP_COMPONENT) {
                         component = GroupRenderWrapper(ElementToRender, {
                             ...item,
