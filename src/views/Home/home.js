@@ -222,9 +222,11 @@ const HomePage = (props) => {
                                     people.
                                 </p>
                                 <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
-                                    Craftbase is an open source whiteboard tool
-                                    where you can create wireframe design,
-                                    diagrams and collaborate with your peers.
+                                    Craftbase is online whiteboarding tool where
+                                    user(s) can brainstorm using various objects
+                                    such as shapes, pencil and to name a few,
+                                    with themselves as well share it with other
+                                    users.
                                 </p>
                                 {/* <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
                                     With real-time updates across all devices,
