@@ -226,12 +226,12 @@ const HomePage = (props) => {
                                     where you can create wireframe design,
                                     diagrams and collaborate with your peers.
                                 </p>
-                                <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
+                                {/* <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
                                     With real-time updates across all devices,
                                     you can collaborate with your peers in
                                     real-time just by sharing them the board
                                     link.
-                                </p>
+                                </p> */}
                                 <div className="mt-4">
                                     <Button
                                         intent="primary"
