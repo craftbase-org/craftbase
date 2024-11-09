@@ -49,7 +49,7 @@ export const GET_COMPONENTS_FOR_BOARD_QUERY = gql`
 `
 
 export const GET_COMPONENT_INFO_QUERY = gql`
-    query getComponentInfoSubscription($id: uuid = "") {
+    query getComponentInfoQuery($id: uuid = "") {
         component: components_component_by_pk(id: $id) {
             metadata
             width
