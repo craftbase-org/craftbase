@@ -12,7 +12,7 @@ Please expect some bugs and glitches as I am working on it (mostly on weekends).
 
 ## Craftbase and its architecture
 
-![Architecture][https://raw.githubusercontent.com/craftbase-org/craftbase/refs/heads/main/src/assets/craftbase_frontend_architecture.png]
+![Architecture](https://raw.githubusercontent.com/craftbase-org/craftbase/refs/heads/main/src/assets/craftbase_frontend_architecture.png)
 
 Craftbase underneath uses [two.js](https://github.com/jonobr1/two.js) library to render scene graph which is developed by awesome [Jono brandel](https://github.com/jonobr1)
 
