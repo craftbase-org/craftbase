@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { useQuery, useSubscription } from '@apollo/client'
 import Two from 'two.js'
 import { useNavigate } from 'react-router-dom'
 
@@ -845,11 +844,7 @@ const ElementRenderWrapper = (
     const RenderElement = () => {
         const [twoJSShape, setTwoJSShape] = useState(null)
         const [componentData, setComponentData] = useState(null)
-        const {
-            loading: getComponentInfoLoading,
-            data: getComponentInfoData,
-            error: getComponentInfoError,
-        } = useQuery(GET_COMPONENT_INFO_QUERY, { variables: { id: data.id } })
+
         // console.log('in render Element', data, getComponentInfoData?.component)
 
         useEffect(() => {
