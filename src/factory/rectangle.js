@@ -23,7 +23,7 @@ export default class RectangleFactory extends Main {
         rectangle.linewidth = linewidth ? linewidth : 0
 
         // console.trace('rectangle trace')
-        console.log('rectangle', rectangle.getBoundingClientRect())
+        // console.log('rectangle', rectangle.getBoundingClientRect())
 
         const group = two.makeGroup(rectangle)
 

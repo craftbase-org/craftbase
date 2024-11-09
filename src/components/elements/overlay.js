@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
-import { useMutation } from '@apollo/client'
+import { useBoardContext } from 'views/Board/board'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import Toolbar from 'components/floatingToolbar'
 import ElementFactory from 'factory/overlay'
 
 function Overlay(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
+
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
 
@@ -171,15 +172,15 @@ function Overlay(props) {
                     },
                     end(event) {
                         getGroupElementFromDOM.removeAttribute('data-resize')
-                        updateComponentInfo({
-                            variables: {
-                                id: props.id,
-                                updateObj: {
-                                    height: parseInt(rectangle.height),
-                                    width: parseInt(rectangle.width),
-                                },
-                            },
-                        })
+
+                        let updateObj = {
+                            height: parseInt(rectangle.height),
+                            width: parseInt(rectangle.width),
+                        }
+                        updateComponentBulkPropertiesInLocalStore(
+                            props.id,
+                            updateObj
+                        )
                         console.log('the end')
                     },
                 },

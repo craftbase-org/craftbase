@@ -2,18 +2,19 @@ import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
-import { useMutation } from '@apollo/client'
+import { useBoardContext } from 'views/Board/board'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import ElementFactory from 'factory/button'
 import getEditComponents from 'components/utils/editWrapper'
 import Toolbar from 'components/floatingToolbar'
 
 function Button(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
+
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
 
@@ -218,22 +219,21 @@ function Button(props) {
                         rectTextGroup.getBoundingClientRect(true).bottom + 5
                     )
                     selector.hide()
-                    updateComponentInfo({
-                        variables: {
-                            id: props.id,
 
-                            updateObj: {
-                                width: parseInt(rectangle.width),
-                                children: {
-                                    ...props.children,
-                                    text: {
-                                        ...props.children?.text,
-                                        value: text.value,
-                                    },
-                                },
+                    let updateObj = {
+                        width: parseInt(rectangle.width),
+                        children: {
+                            ...props.children,
+                            text: {
+                                ...props.children?.text,
+                                value: text.value,
                             },
                         },
-                    })
+                    }
+                    updateComponentBulkPropertiesInLocalStore(
+                        props.id,
+                        updateObj
+                    )
                     two.update()
                 })
             })
@@ -279,14 +279,14 @@ function Button(props) {
                     },
                     end(event) {
                         console.log('the end')
-                        updateComponentInfo({
-                            variables: {
-                                id: props.id,
-                                updateObj: {
-                                    width: parseInt(rectangle.width),
-                                },
-                            },
-                        })
+
+                        let updateObj = {
+                            width: parseInt(rectangle.width),
+                        }
+                        updateComponentBulkPropertiesInLocalStore(
+                            props.id,
+                            updateObj
+                        )
                         getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },

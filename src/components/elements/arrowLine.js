@@ -1,20 +1,16 @@
 import React, { useEffect, useState } from 'react'
-import { useQuery, useMutation } from '@apollo/client'
+
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 import Two from 'two.js'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import Toolbar from 'components/floatingToolbar'
 import ElementCreator from 'factory/arrowLine'
 
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 
 function ArrowLine(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
 
@@ -643,9 +639,9 @@ ArrowLine.propTypes = {
     y: PropTypes.number,
 }
 
-ArrowLine.defaultProps = {
-    x: 100,
-    y: 50,
-}
+// ArrowLine.defaultProps = {
+//     x: 100,
+//     y: 50,
+// }
 
 export default ArrowLine

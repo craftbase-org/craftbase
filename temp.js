@@ -1,90 +1,63 @@
-import Two from 'https://cdn.skypack.dev/two.js@latest'
-// Reference to the drawing area div
-var drawingArea = document.getElementById('drawing-area')
-
-// Create a Two.js instance within the specific div
-var params = {
-    width: drawingArea.clientWidth,
-    height: drawingArea.clientHeight,
+let sampleBoardData = {
+    data: {
+        components: [
+            {
+                id: '456e5b31-b7ec-4e1c-bdfc-13bc10aa5eeb',
+                componentType: 'rectangle',
+            },
+            {
+                id: 'c0738fa5-7769-406e-aa08-7860fc392cd3',
+                componentType: 'circle',
+            },
+            {
+                id: '416b6286-e936-42fd-bce4-fe168216eeef',
+                componentType: 'rectangle',
+            },
+        ],
+    },
 }
-var two = new Two(params).appendTo(drawingArea)
 
-var isDrawing = false
-var currentPath
-var paths = []
+/**
+ * @typedef {Object} componentInfo
+ * @property {object} metadata
+ * @property {number} width
+ * @property {number} height
+ * @property {text} fill
+ * @property {text} id
+ * @property {text} stroke
+ * @property {number} linewidth
+ * @property {text} fill
+ * @property {number} x
+ * @property {number} y
+ * @property {number} x1
+ * @property {number} x2
+ * @property {number} y1
+ * @property {number} y2
+ * @property {text} componentType
+ * @property {object} children
+ * @property {text} updatedBy
+ * @property {text} iconStroke
+ * @property {text} textColor
+ */
 
-// Handle drawing on the drawing area
-drawingArea.addEventListener('mousedown', function (event) {
-    isDrawing = true
-    currentPath = new Two.Path()
-    two.add(currentPath)
-    paths.push(currentPath)
-})
-
-drawingArea.addEventListener('mousemove', function (event) {
-    if (!isDrawing) return
-
-    // Calculate the mouse position relative to the drawing area
-    var rect = drawingArea.getBoundingClientRect()
-    var x = event.clientX - rect.left
-    var y = event.clientY - rect.top
-
-    currentPath.vertices.push(new Two.Vector(x, y))
-    currentPath.vertices[currentPath.vertices.length - 1].command = 'L'
-    currentPath.noFill()
-    currentPath.stroke = '#000'
-    two.update()
-})
-
-drawingArea.addEventListener('mouseup', function (event) {
-    isDrawing = false
-})
-
-// Save drawing to local storage
-document.getElementById('save').addEventListener('click', function () {
-    try {
-        var drawingData = paths.map(function (path) {
-            return path.vertices.map(function (vertex) {
-                return { x: vertex.x, y: vertex.y }
-            })
-        })
-        localStorage.setItem('drawing', JSON.stringify(drawingData))
-        console.log('Drawing saved:', drawingData)
-        alert('Drawing saved!')
-    } catch (error) {
-        console.error('Error saving drawing:', error)
-        alert('Failed to save drawing.')
-    }
-})
-
-// Load drawing from local storage
-document.getElementById('load').addEventListener('click', function () {
-    try {
-        var drawingData = JSON.parse(localStorage.getItem('drawing'))
-        if (!drawingData) {
-            alert('No saved drawing found.')
-            return
-        }
-
-        two.clear() // Clear existing paths
-        paths = [] // Reset paths array
-
-        drawingData.forEach(function (pathData) {
-            var path = new Two.Path()
-            pathData.forEach(function (point) {
-                path.vertices.push(new Two.Vector(point.x, point.y))
-            })
-            path.noFill()
-            path.stroke = '#000'
-            two.add(path)
-            paths.push(path)
-        })
-
-        two.update()
-        console.log('Drawing loaded:', drawingData)
-        alert('Drawing loaded!')
-    } catch (error) {
-        console.error('Error loading drawing:', error)
-        alert('Failed to load drawing.')
-    }
-})
+/** @type {componentInfo} */
+let componentInfo = {
+    metadata: {},
+    width: 120,
+    height: 120,
+    fill: '#0052CC',
+    id: null,
+    stroke: null,
+    linewidth: null,
+    x: 0,
+    y: 0,
+    x1: 100,
+    x2: 400,
+    y1: 100,
+    y2: 100,
+    componentType: '',
+    children: {},
+    updatedBy: null,
+    iconStroke: null,
+    textColor: null,
+}

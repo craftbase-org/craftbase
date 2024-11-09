@@ -1,8 +1,9 @@
 import React, { useEffect, useState, Fragment } from 'react'
+import Two from 'two.js'
 import interact from 'interactjs'
+import { useBoardContext } from 'views/Board/board'
 import { useMutation } from '@apollo/client'
 import { useNavigate } from 'react-router-dom'
-
 import {
     UPDATE_COMPONENT_INFO,
     INSERT_BULK_COMPONENTS,
@@ -56,6 +57,10 @@ function GroupedObjectWrapper(props) {
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
 
     const two = props.twoJSInstance
     const [cloneGroupElements, setCloneGroupElements] = useState(null)
@@ -73,59 +78,127 @@ function GroupedObjectWrapper(props) {
         //     groupInstance.translation.y
         // )
         elementOnBlurHandler(e, selectorInstance, two)
-
         // on un-group, these components will return back to their individual state
         // with their new positions depending on group's x,y was changed
         if (deleteGroupElements === null) {
             const userId = localStorage.getItem('userId')
-            let childrenIds = props.children.map((item) => item.id)
+            let childrenIdsOfTheGroup = props.children.map((item) => item.id)
 
-            two.scene.children.forEach((child) => {
-                if (childrenIds.includes(child?.elementData?.id)) {
-                    // here child refers to twoJS shape instead of element data from DB
-                    child.opacity = 1
-
+            // two.scene.children means all the elements you see in canvas drawing area
+            two.scene.children.forEach((element) => {
+                if (childrenIdsOfTheGroup.includes(element?.elementData?.id)) {
+                    // here element refers to twoJS shape instead of element data from DB
+                    element.opacity = 1
                     let findRelativeDataForChild = {}
                     props.children.forEach((item) => {
-                        if (item.id === child?.elementData?.id) {
+                        if (item.id === element?.elementData?.id) {
                             findRelativeDataForChild = item
                         }
                     })
-
+                    // console.log(
+                    //     'element?.elementData in group on blur',
+                    //     element?.elementData,
+                    // )
+                    // console.log('element two.js object', element)
+                    // console.log('groupInstance', groupInstance)
                     let newX =
                         parseInt(groupInstance.translation.x) +
                         parseInt(findRelativeDataForChild.x)
                     let newY =
                         parseInt(groupInstance.translation.y) +
                         parseInt(findRelativeDataForChild.y)
+                    // console.log('element data', element)
+                    element.translation.x = newX
+                    element.translation.y = newY
 
-                    child.translation.x = newX
-                    child.translation.y = newY
+                    let newMetadata = []
+                    if (element.elementData.componentType === 'pencil') {
+                        newMetadata = element.elementData.metadata.map(
+                            (vert, index) => {
+                                if (index === 0) {
+                                    return { x: newX, y: newY }
+                                } else if (index > 0) {
+                                    // here the logic is to get relative vertex coordinates to the original metadata
+                                    // so we want to get result of ( relative coordinate + orginal_vert(x) - originalX )
+                                    // here originalX means the coordinates of first set of vertices
+                                    // since they were the first coordinates to start a path
+                                    return {
+                                        x:
+                                            newX +
+                                            parseInt(
+                                                vert.x -
+                                                    element.elementData
+                                                        .metadata[0].x
+                                            ),
+                                        y:
+                                            newY +
+                                            parseInt(
+                                                vert.y -
+                                                    element.elementData
+                                                        .metadata[0].y
+                                            ),
+                                    }
+                                }
+                            }
+                        )
+                        element.children.forEach((eachChild, index) => {
+                            if (eachChild.vertices) {
+                                // console.log(
+                                //     'For each in element.children ... is a Path'
+                                // )
+
+                                // console.log(
+                                //     'element.elementData.metadata',
+                                //     element.elementData.metadata
+                                // )
+                                // console.log('newMetadata', newMetadata)
+                                eachChild.vertices = []
+
+                                newMetadata.forEach(function (point) {
+                                    eachChild.vertices.push(
+                                        new Two.Vector(
+                                            point.x - newX,
+                                            point.y - newY
+                                        )
+                                    )
+                                })
+                            }
+                        })
+                    }
 
                     // update those component's properties
-                    updateComponentInfo({
-                        variables: {
-                            id: child?.elementData?.id,
-                            updateObj: {
-                                x: child.translation.x,
-                                y: child.translation.y,
-                                updatedBy: userId,
-                            },
-                        },
-                    })
+                    // updateComponentInfo({
+                    //     variables: {
+                    //         id: element?.elementData?.id,
+                    //         updateObj: {
+                    //             x: element.translation.x,
+                    //             y: element.translation.y,
+                    //             updatedBy: userId,
+                    //         },
+                    //     },
+                    // })
+
+                    let updateObj = {
+                        metadata: newMetadata,
+                        x: element.translation.x,
+                        y: element.translation.y,
+                        updatedBy: userId,
+                    }
+                    updateComponentBulkPropertiesInLocalStore(
+                        element?.elementData?.id,
+                        updateObj
+                    )
                     two.update()
                 }
             })
-
             // props.unGroup && props.unGroup(groupInstance)
         }
-
         two.remove([groupInstance])
         two.update()
     }
 
     function onFocusHandler(e) {
-        console.log('on groupobject focus')
+        // console.log('on groupobject focus')
         document.getElementById(`${groupInstance.id}`).style.outline = 0
     }
 
@@ -146,7 +219,7 @@ function GroupedObjectWrapper(props) {
         }
 
         if (evt.keyCode === 8 || evt.keyCode === 46) {
-            console.log('handle key down event', evt)
+            // console.log('handle key down event', evt)
             // DELETE/BACKSPACE KEY WAS PRESSED
             // props.handleDeleteComponent &&
             //     props.handleDeleteComponent(groupObject)
@@ -160,7 +233,7 @@ function GroupedObjectWrapper(props) {
     const onPasteEvent = (evt) => {
         if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
             if (cloneGroupElements?.id !== undefined) {
-                console.log('clone element', cloneGroupElements)
+                // console.log('clone element', cloneGroupElements)
 
                 let objects = cloneGroupElements.children.map((item, index) => {
                     let component = getComponentSchema(
@@ -171,7 +244,7 @@ function GroupedObjectWrapper(props) {
                     )
                     return component
                 })
-                console.log('objects for insert component bulk', objects)
+                // console.log('objects for insert component bulk', objects)
                 insertComponents({
                     variables: {
                         objects: objects,
@@ -186,7 +259,7 @@ function GroupedObjectWrapper(props) {
 
     const handleOnDeleteGroupElements = () => {
         if (deleteGroupElements?.id !== undefined) {
-            console.log('delete element', deleteGroupElements)
+            // console.log('delete element', deleteGroupElements)
 
             let idsArr = deleteGroupElements.children.map((item, index) => {
                 return item.id
@@ -218,7 +291,7 @@ function GroupedObjectWrapper(props) {
     }, [deleteGroupElements])
 
     useEffect(() => {
-        console.log('group object props', props)
+        // console.log('group object props', props)
         // Calculate x and y through dividing width and height by 2 or vice versa
         // if x and y are given then multiply width and height into 2
         const offsetHeight = 0
@@ -258,7 +331,6 @@ function GroupedObjectWrapper(props) {
             const item = props.children[index]
             // console.log('item in children', item)
             import(`factory/${item.componentType}`).then((component) => {
-                // console.log('component', component)
                 const componentFactory = new component.default(
                     two,
                     item.x,
@@ -271,11 +343,19 @@ function GroupedObjectWrapper(props) {
                 // set component's coordinates
                 coreObject.translation.x = item.x
                 coreObject.translation.y = item.y
+                // console.log(
+                //     'component coreObject generation in group wrapper',
+                //     item.componentType,
+                //     item.x,
+                //     item.y
+                // )
                 group.add(coreObject)
-                group.children.unshift(coreObject)
+                // group.children.unshift(coreObject)
                 two.update()
             })
         }
+
+        // console.log('after group children has been added', group.children)
 
         groupInstance = group
 
@@ -285,11 +365,11 @@ function GroupedObjectWrapper(props) {
         selectorInstance = selector
 
         two.update()
-        console.log(
-            'group object translation',
-            group.translation.x,
-            group.translation.y
-        )
+        // console.log(
+        //     'group object translation',
+        //     group.translation.x,
+        //     group.translation.y
+        // )
 
         document
             .getElementById(group.id)
@@ -331,18 +411,18 @@ function GroupedObjectWrapper(props) {
         //     // console.log("group dblclick handler", group.children[1].id);
 
         //     // loop through all children of group
-        //     props.childrenArr.forEach((child, index) => {
+        //     props.childrenArr.forEach((element, index) => {
         //         // This is DOM element's id not the actual data's id
         //         const childDOMNode = document.getElementById(
         //             group.children[index + 1].id
         //         )
         //         console.log('childDOMNode', childDOMNode)
         //         localStorage.setItem(
-        //             `${child.name}_coordX`,
+        //             `${element.name}_coordX`,
         //             childDOMNode.getBoundingClientRect().x
         //         )
         //         localStorage.setItem(
-        //             `${child.name}_coordY`,
+        //             `${element.name}_coordY`,
         //             childDOMNode.getBoundingClientRect().y
         //         )
         //     })

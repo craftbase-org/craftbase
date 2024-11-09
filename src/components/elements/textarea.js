@@ -312,9 +312,9 @@ Textarea.propTypes = {
     y: PropTypes.string,
 }
 
-Textarea.defaultProps = {
-    x: 100,
-    y: 50,
-}
+// Textarea.defaultProps = {
+//     x: 100,
+//     y: 50,
+// }
 
 export default Textarea

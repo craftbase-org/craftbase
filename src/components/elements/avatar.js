@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 import { useMutation } from '@apollo/client'
+import { useBoardContext } from 'views/Board/board'
 
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
@@ -10,6 +11,10 @@ import ElementFactory from 'factory/avatar'
 import Toolbar from 'components/floatingToolbar'
 
 function Avatar(props) {
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
@@ -182,28 +187,27 @@ function Avatar(props) {
                     end(event) {
                         const userId = localStorage.getItem('userId')
                         console.log('the end')
-                        updateComponentInfo({
-                            variables: {
-                                id: props.id,
-                                updateObj: {
-                                    width: parseInt(circle.width),
-                                    height: parseInt(circle.height),
-                                    updatedBy: userId,
-                                    children: {
-                                        ...props.children,
-                                        icon: {
-                                            iconType:
-                                                props.children?.icon
-                                                    ?.iconType || null,
-                                            iconStroke:
-                                                props.children?.icon
-                                                    ?.iconStroke || null,
-                                            iconScale: externalSVG.scale,
-                                        },
-                                    },
+
+                        let updateObj = {
+                            width: parseInt(circle.width),
+                            height: parseInt(circle.height),
+                            updatedBy: userId,
+                            children: {
+                                ...props.children,
+                                icon: {
+                                    iconType:
+                                        props.children?.icon?.iconType || null,
+                                    iconStroke:
+                                        props.children?.icon?.iconStroke ||
+                                        null,
+                                    iconScale: externalSVG.scale,
                                 },
                             },
-                        })
+                        }
+                        updateComponentBulkPropertiesInLocalStore(
+                            props.id,
+                            updateObj
+                        )
                         getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },

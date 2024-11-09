@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
+import { useBoardContext } from 'views/Board/board'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import Toolbar from 'components/floatingToolbar'
 import ElementFactory from 'factory/imagecard'
 
 function ImageCard(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
+
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({ externalSVG: null })
 
@@ -204,27 +205,27 @@ function ImageCard(props) {
                     },
                     end(event) {
                         console.log('the end')
-                        updateComponentInfo({
-                            variables: {
-                                id: props.id,
-                                updateObj: {
-                                    width: parseInt(rectangle.width),
-                                    height: parseInt(rectangle.height),
-                                    children: {
-                                        ...props.children,
-                                        icon: {
-                                            iconType:
-                                                props.children?.icon
-                                                    ?.iconType || null,
-                                            iconStroke:
-                                                props.children?.icon
-                                                    ?.iconStroke || null,
-                                            iconScale: externalSVG.scale,
-                                        },
-                                    },
+
+                        let updateObj = {
+                            width: parseInt(rectangle.width),
+                            height: parseInt(rectangle.height),
+                            children: {
+                                ...props.children,
+                                icon: {
+                                    iconType:
+                                        props.children?.icon?.iconType || null,
+                                    iconStroke:
+                                        props.children?.icon?.iconStroke ||
+                                        null,
+                                    iconScale: externalSVG.scale,
                                 },
                             },
-                        })
+                        }
+                        updateComponentBulkPropertiesInLocalStore(
+                            props.id,
+                            updateObj
+                        )
+
                         getGroupElementFromDOM.removeAttribute('data-resize')
                     },
                 },

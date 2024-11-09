@@ -99,9 +99,9 @@ const BorderStyleBox = ({
     )
 }
 
-BorderStyleBox.defaultProps = {
-    currentType: 'solid',
-    currentWidth: '',
-}
+// BorderStyleBox.defaultProps = {
+//     currentType: 'solid',
+//     currentWidth: '',
+// }
 
 export default BorderStyleBox

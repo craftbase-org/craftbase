@@ -309,7 +309,7 @@ export const staticPrimaryElementData = [
         ],
     },
     {
-        sectionName: 'Mocks',
+        sectionName: 'Mocks (WIP)',
         elements: [
             {
                 elementName: 'avatar',

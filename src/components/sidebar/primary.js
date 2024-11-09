@@ -1,75 +1,47 @@
-import React, { useState, useEffect } from 'react'
-import { useMutation, useQuery } from '@apollo/client'
+import React, { useState, useEffect, useContext } from 'react'
+import { useQuery } from '@apollo/client'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 
 import ElementsDropdown from './elementsDropdown'
-import CircleIcon from 'wireframeAssets/circle.svg'
-import RectangleIcon from 'wireframeAssets/rectangle.svg'
-import LayersIcon from 'assets/layers_toolbar_icon.svg'
-import RightArrowIcon from 'assets/right_arrow.svg'
-
-import RadioWhiteIcon from 'assets/radio_white.svg'
-import Icon from 'icons/icon'
-import { INSERT_COMPONENT, UPDATE_BOARD_COMPONENTS } from 'schema/mutations'
 import { GET_COMPONENT_TYPES } from 'schema/queries'
 import SpinnerWithSize from 'components/common/spinnerWithSize'
-import Button from 'components/common/button'
 import { generateUUID } from 'utils/misc'
+import { useBoardContext } from 'views/Board/board'
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
-import UserDetailsPopup from './userDetailsPopup'
 
-const PrimarySidebar = ({
-    updateLastAddedElement,
-    togglePointer,
-    togglePencilMode,
-}) => {
-    // const [showAddShapeLoader, setShowAddShapeLoader] = useState(false)
+const PrimarySidebar = () => {
+    const {
+        updateLastAddedElement,
+        togglePointer,
+        togglePencilMode,
+        addToLocalComponentStore,
+    } = useBoardContext()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const {
         loading: getComponentTypesLoading,
         data: getComponentTypesData,
         error: getComponentTypesError,
     } = useQuery(GET_COMPONENT_TYPES)
+
     const history = useNavigate()
     const routeParams = useParams()
-    console.log('boardId', routeParams.id)
-    const [insertComponent] = useMutation(INSERT_COMPONENT, {
-        ignoreResults: true,
-    })
-    // const [
-    //     updateBoardComponents,
-    //     {
-    //         loading: updateBoardComponentsLoading,
-    //         data: updateBoardComponentsSuccess,
-    //         error: updateBoardComponentsError,
-    //     },
-    // ] = useMutation(UPDATE_BOARD_COMPONENTS)
+    // console.log('boardId', routeParams.id)
 
-    // useEffect(() => {
-    //     if (insertComponentSuccess) {
-    //         // setShowAddShapeLoader(false)
-    //         document.getElementById('show-click-anywhere-btn').style.opacity = 1
-    //         // let insertComponentData = insertComponentSuccess.component
-    //         // props.updateLastAddedElementId(insertComponentData.id)
-    //         // let newBoardData = [
-    //         //     ...props.boardData,
-    //         //     {
-    //         //         componentType: insertComponentData.componentType,
-    //         //         id: insertComponentData.id,
-    //         //     },
-    //         // ]
-    //         // updateBoardComponents({
-    //         //     variables: {
-    //         //         id: props.match.params.boardId,
-    //         //         components: newBoardData,
-    //         //     },
-    //         // })
-    //         console.log('insertComponentSuccess', insertComponentSuccess)
-    //     }
-    // }, [insertComponentSuccess])
+    // A check to see if the component types seeds are already populated in DB.
+    // We need all the component types being inserted as DB seeds otherwise we insert component functionality will be affected
+    useEffect(() => {
+        if (
+            !getComponentTypesLoading &&
+            getComponentTypesData &&
+            getComponentTypesData.componentTypes.length < 1
+        ) {
+            console.error(
+                'Error : The component types are not available from the DB. Hint: Please check if component types seeds are already populated in component type table in DB '
+            )
+        }
+    }, [getComponentTypesData])
 
     const addElement = (label) => {
         switch (label) {
@@ -99,18 +71,23 @@ const PrimarySidebar = ({
                 let shapeData = null
                 let randomNumber = Math.floor(Math.random() * 80 + 30)
                 let generateId = generateUUID()
-                console.log(
-                    'getComponentTypesData',
-                    getComponentTypesData,
-                    label
-                )
+                // console.log(
+                //     'getComponentTypesData',
+                //     getComponentTypesData,
+                //     label
+                // )
                 if (getComponentTypesData) {
                     getComponentTypesData.componentTypes.forEach(
                         (item, index) => {
                             if (item.label === label) {
+                                const userId = localStorage.getItem('userId')
                                 shapeData = {
                                     id: generateId,
                                     componentType: label,
+                                    // stroke: '#000',
+                                    // linewidth: 1,
+                                    children: {},
+                                    metadata: [],
                                     x: parseInt(
                                         window.outerWidth -
                                             (randomNumber * window.outerWidth) /
@@ -129,35 +106,27 @@ const PrimarySidebar = ({
                                     height: item.height,
                                     fill: item.fill,
                                     textColor: item.textColor,
+                                    updatedBy: userId,
                                 }
                             }
                         }
                     )
                 }
-                console.log('shapeData', shapeData)
+                // console.log('shapeData', shapeData)
                 updateLastAddedElement(shapeData)
 
                 // setShowAddShapeLoader(true)
                 localStorage.setItem('lastAddedElementId', generateId)
 
                 // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
-                shapeData &&
-                    insertComponent({ variables: { object: shapeData } })
+                addToLocalComponentStore(
+                    shapeData.id,
+                    shapeData.componentType,
+                    shapeData
+                )
         }
     }
-
-    const toggleSecondaryMenuFn = (bool) => {
-        if (secondaryMenu === false) {
-            document.getElementById('sec-sidebar').focus()
-        }
-
-        if (bool) {
-            toggleSecondaryMenu(bool)
-        } else {
-            toggleSecondaryMenu(!secondaryMenu)
-        }
-    }
-
+    let isLiveSession = false
     return (
         <>
             <div
@@ -222,20 +191,22 @@ const PrimarySidebar = ({
                         </div>
                     </div>
 
-                    <div className="text-sm pr-2">
-                        <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
-                            <span className="text-sm ">Live</span>
+                    {isLiveSession ? (
+                        <>
+                            <div className="text-sm pr-2">
+                                <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
+                                    <span className="text-sm ">Live</span>
 
-                            <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
-                                <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
+                                    <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
+                                        <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
+                                    </div>
+                                </a>
                             </div>
+                        </>
+                    ) : (
+                        <></>
+                    )}
 
-                            {/* <img
-                                src={RadioWhiteIcon}
-                                className="ml-2 w-5 h-5"
-                            /> */}
-                        </a>
-                    </div>
                     <ShareLinkPopup />
                     {/* <UserDetailsPopup /> */}
                 </div>

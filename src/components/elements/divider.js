@@ -1,9 +1,10 @@
+import Two from 'two.js'
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
 import { useQuery, useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
-import Two from 'two.js'
+import { useBoardContext } from 'views/Board/board'
 
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
@@ -13,6 +14,10 @@ import Toolbar from 'components/floatingToolbar'
 import ElementCreator from 'factory/divider'
 
 function Divider(props) {
+    const {
+        addToLocalComponentStore,
+        updateComponentBulkPropertiesInLocalStore,
+    } = useBoardContext()
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
@@ -205,17 +210,17 @@ function Divider(props) {
                     end(event) {
                         // Had to use mutation as seperate here in this component due to
                         // no control of pointcircle available in canvas component
-                        updateComponentInfo({
-                            variables: {
-                                id: props.id,
-                                updateObj: {
-                                    x: group.translation.x,
-                                    y: group.translation.y,
-                                    x1: parseInt(line.vertices[0].x),
-                                    y1: parseInt(line.vertices[0].y),
-                                },
-                            },
-                        })
+
+                        let updateObj = {
+                            x: group.translation.x,
+                            y: group.translation.y,
+                            x1: parseInt(line.vertices[0].x),
+                            y1: parseInt(line.vertices[0].y),
+                        }
+                        updateComponentBulkPropertiesInLocalStore(
+                            props.id,
+                            updateObj
+                        )
                     },
                 },
             })
@@ -248,17 +253,17 @@ function Divider(props) {
                     end(event) {
                         // Had to use mutation as seperate here in this component due to
                         // no control of pointcircle available in canvas component
-                        updateComponentInfo({
-                            variables: {
-                                id: props.id,
-                                updateObj: {
-                                    x: group.translation.x,
-                                    y: group.translation.y,
-                                    x2: parseInt(line.vertices[1].x),
-                                    y2: parseInt(line.vertices[1].y),
-                                },
-                            },
-                        })
+
+                        let updateObj = {
+                            x: group.translation.x,
+                            y: group.translation.y,
+                            x2: parseInt(line.vertices[1].x),
+                            y2: parseInt(line.vertices[1].y),
+                        }
+                        updateComponentBulkPropertiesInLocalStore(
+                            props.id,
+                            updateObj
+                        )
                     },
                 },
             })
@@ -487,9 +492,9 @@ Divider.propTypes = {
     y: PropTypes.string,
 }
 
-Divider.defaultProps = {
-    x: 100,
-    y: 50,
-}
+// Divider.defaultProps = {
+//     x: 100,
+//     y: 50,
+// }
 
 export default Divider

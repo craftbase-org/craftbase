@@ -1,18 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
-import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import PencilFactory from 'factory/pencil'
 import Toolbar from 'components/floatingToolbar'
 
 function Pencil(props) {
-    const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
-        ignoreResults: true,
-    })
     const selectedComponents = []
 
     const [showToolbar, toggleToolbar] = useState(false)

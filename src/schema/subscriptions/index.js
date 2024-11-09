@@ -9,7 +9,7 @@ export const GET_USER_DETAILS = gql`
     }
 `
 
-export const GET_BOARD_DATA = gql`
+export const GET_BOARD_DATA_SUBSCRIPTION = gql`
     subscription getBoardComponents($boardId: String! = "") {
         components: components_component(
             where: { boardId: { _eq: $boardId } }
@@ -20,7 +20,7 @@ export const GET_BOARD_DATA = gql`
     }
 `
 
-export const GET_COMPONENT_INFO = gql`
+export const GET_COMPONENT_INFO_SUBSCRIPTION = gql`
     subscription getComponentInfoSubscription($id: uuid = "") {
         component: components_component_by_pk(id: $id) {
             metadata
@@ -45,22 +45,7 @@ export const GET_COMPONENT_INFO = gql`
     }
 `
 
-export const GET_COMPONENT_INFO_QUERY = gql`
-    query getComponentInfoQuery($id: uuid = "") {
-        component: components_component_by_pk(id: $id) {
-            metadata
-            x
-            y
-            x1
-            y1
-            x2
-            y2
-            componentType
-        }
-    }
-`
-
-export const GET_COMPONENTS_FOR_BOARD = gql`
+export const GET_COMPONENTS_FOR_BOARD_SUBSCRIPTION = gql`
     subscription getComponentsForBoard($boardId: String = "") {
         components: components_component(
             where: { boardId: { _eq: $boardId } }
