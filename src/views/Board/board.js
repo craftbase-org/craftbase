@@ -8,10 +8,7 @@ import React, {
 import { useSubscription, useMutation, useQuery } from '@apollo/client'
 import { useParams } from 'react-router-dom'
 import { useMediaQueryUtils } from 'constants/exportHooks'
-import {
-    GET_BOARD_DATA_QUERY,
-    GET_COMPONENTS_FOR_BOARD_QUERY,
-} from 'schema/queries'
+import { GET_COMPONENTS_FOR_BOARD_QUERY } from 'schema/queries'
 import {
     INSERT_USER_ONE,
     UPDATE_USER_REVISIT_COUNT,
@@ -32,20 +29,12 @@ const BoardViewPage = (props) => {
     const boardId = routeParams.id
 
     const {
-        loading: getBoardDataLoading,
-        error: getBoardDataError,
-        data: getBoardData,
-    } = useQuery(GET_BOARD_DATA_QUERY, {
-        variables: { boardId: boardId },
-        fetchPolicy: 'cache-first',
-    })
-
-    const {
         loading: getComponentsForBoardLoading,
         data: getComponentsForBoardData,
         error: getComponentsForBoardError,
     } = useQuery(GET_COMPONENTS_FOR_BOARD_QUERY, {
         variables: { boardId },
+        fetchPolicy: 'cache-first',
     })
 
     const [insertComponent] = useMutation(INSERT_COMPONENT, {
@@ -83,7 +72,6 @@ const BoardViewPage = (props) => {
         },
     ] = useMutation(UPDATE_USER_REVISIT_COUNT)
 
-    const [boardData, setBoardData] = useState({ components: [] })
     const [componentStore, setComponentStore] = useState({})
     const [lastAddedElement, setLastAddedElement] = useState(null)
     const [showHelperTooltip, setShowHelperTooltip] = useState(true)
@@ -92,7 +80,6 @@ const BoardViewPage = (props) => {
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef()
-    const stateRefForBoardData = useRef()
     // check if user exists or not
     useEffect(() => {
         const userId = localStorage.getItem('userId')
@@ -143,24 +130,11 @@ const BoardViewPage = (props) => {
     }, [getComponentsForBoardData])
 
     useEffect(() => {
-        if (!getBoardDataLoading && getBoardData && getBoardData.components) {
-            if (getBoardData.components.length > 0) {
-                setBoardData({ components: getBoardData.components })
-            }
-        }
-    }, [getBoardData])
-
-    useEffect(() => {
         console.log('change in componentStore in Board', componentStore)
         stateRefForComponentStore.current = componentStore
     }, [componentStore])
 
-    useEffect(() => {
-        // console.log('listen for boardData change', boardData)
-        stateRefForBoardData.current = boardData
-    }, [boardData])
-
-    if (getBoardDataLoading) {
+    if (getComponentsForBoardLoading) {
         return (
             <>
                 <div className="w-full h-full flex items-center justify-center">
@@ -170,7 +144,7 @@ const BoardViewPage = (props) => {
         )
     }
 
-    if (getBoardData) {
+    if (getComponentsForBoardData) {
         setTimeout(() => {
             setShowHelperTooltip(false)
         }, 2500)
@@ -183,12 +157,6 @@ const BoardViewPage = (props) => {
         // console.log('insertUserData', insertUserData)
         // window.location.reload()
     }
-
-    // console.log(
-    //     'getBoardData.components',
-    //     getBoardData?.components
-    //     // getBoardData.boardData.components
-    // )
 
     const updateLastAddedElement = (obj) => {
         setLastAddedElement(obj)
@@ -208,19 +176,7 @@ const BoardViewPage = (props) => {
 
     const addToLocalComponentStore = (id, type, componentInfo) => {
         // console.log('addToLocalComponentStore', id, type, componentInfo)
-
-        let updatedBoardData = stateRefForBoardData.current
         let updatedComponentStore = stateRefForComponentStore.current
-        // update local store and state
-        setBoardData({
-            components: [
-                ...updatedBoardData.components,
-                {
-                    id,
-                    componentType: type,
-                },
-            ],
-        })
 
         // console.log('updating component store in add to local store')
         setComponentStore({ ...updatedComponentStore, [id]: componentInfo })
@@ -308,13 +264,6 @@ const BoardViewPage = (props) => {
     const deleteComponentFromLocalStore = (id) => {
         // console.log('deleteComponentFromLocalStore', id)
 
-        // update local store and state
-        let updatedBoardDataComponents = [...boardData.components]
-        updatedBoardDataComponents.filter((item) => item.id !== id)
-        setBoardData({
-            components: updatedBoardDataComponents,
-        })
-
         let updatedComponentStore = stateRefForComponentStore.current
         delete updatedComponentStore[id]
         // console.log(
@@ -377,7 +326,6 @@ const BoardViewPage = (props) => {
                             selectPanMode={false}
                             boardId={boardId}
                             lastAddedElement={lastAddedElement}
-                            boardData={boardData}
                             componentStore={componentStore}
                         />
                     </div>
