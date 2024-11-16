@@ -9,10 +9,7 @@ import { useBoardContext } from 'views/Board/board'
 import Zoomer from 'components/utils/zoomer'
 import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
-import {
-    GET_COMPONENT_INFO_QUERY,
-    GET_COMPONENTS_FOR_BOARD_QUERY,
-} from 'schema/queries'
+
 import Loader from 'components/utils/loader'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 import { generateUUID } from 'utils/misc'
@@ -848,18 +845,6 @@ const ElementRenderWrapper = (
         // console.log('in render Element', data, getComponentInfoData?.component)
 
         useEffect(() => {
-            // console.log('CDM Element from wrapper')
-            if (data.itemData.isDummy) {
-                /** PATCH */
-                //Patch for considering components who are just released from group
-                // that means we render them initially without their server data
-                // and when server data becomes available we ignore this patch
-                setComponentData(data.itemData)
-                /** PATCH */
-            }
-        }, [])
-
-        useEffect(() => {
             // console.log(
             //     'componentStore change in element render wrapper',
             //     componentStore
@@ -873,42 +858,6 @@ const ElementRenderWrapper = (
                 componentData && setComponentData(componentData)
             }
         }, [componentStore])
-
-        // useEffect(() => {
-        //     if (getComponentInfoData?.component && componentData === null) {
-        //         setComponentData(getComponentInfoData?.component)
-        //     } else if (
-        //         getComponentInfoData?.component &&
-        //         componentData !== null
-        //     ) {
-        //         const boardId = data.boardId
-        //         const userId = localStorage.getItem('userId')
-        //         const tabsOpen = parseInt(
-        //             localStorage.getItem(`tabs_open_${boardId}`)
-        //         )
-
-        //         if (getComponentInfoData?.component.updatedBy !== null) {
-        //             if (getComponentInfoData?.component.updatedBy != userId) {
-        //                 // console.log('update element wrapper on updatedBy change')
-        //                 setComponentData(getComponentInfoData?.component)
-        //             } else if (
-        //                 getComponentInfoData?.component.updatedBy == userId &&
-        //                 tabsOpen > 1
-        //             ) {
-        //                 // console.log('update element wrapper on tabs open')
-        //                 setComponentData(getComponentInfoData?.component)
-        //             }
-        //         }
-        //     }
-        // }, [getComponentInfoData])
-
-        // if (getComponentInfoLoading && data?.itemData?.isDummy !== true) {
-        //     return <></>
-        // }
-
-        // if (getComponentInfoError) {
-        //     return <></>
-        // }
 
         if (componentData === null) {
             return <></>
@@ -1014,14 +963,6 @@ const Canvas = (props) => {
         }
     }, [])
 
-    // once two.js instance is stored in state, attach event listeners
-    useEffect(() => {
-        // Logic for capturing events in empty space in drawing area
-        if (twoJSInstance !== null && zuiInstance !== null) {
-            // keeping empty here for future space
-        }
-    }, [twoJSInstance])
-
     useEffect(() => {
         stateRefForComponentStore.current = props.componentStore
         // console.log(
@@ -1040,16 +981,11 @@ const Canvas = (props) => {
                 false
             )
         }
+
         if (Object.values(props.componentStore).length > 0 && twoJSInstance) {
-            handleSetComponentsToRender(props.boardData.components)
+            handleSetComponentsToRender(Object.values(props.componentStore))
         }
     }, [props.componentStore])
-
-    // useEffect(() => {
-    //     if (props.boardData.components.length > 0 && twoJSInstance) {
-    //         handleSetComponentsToRender(props.boardData.components)
-    //     }
-    // }, [props.boardData, twoJSInstance])
 
     useEffect(() => {
         // console.log('on change props.lastAddedElement')
@@ -1074,61 +1010,6 @@ const Canvas = (props) => {
             document.getElementById('main-two-root').style.cursor = 'auto'
         }
     }, [props.isPencilMode])
-
-    const setOnGroupHandler = (obj) => {
-        setOnGroup(obj)
-    }
-
-    const handleSetComponentsToRender = (currentComponents) => {
-        let arr = [...prevElements]
-        // console.log('prevElements', prevElements)
-        let components = [...componentsToRender]
-        if (currentComponents && twoJSInstance) {
-            currentComponents.forEach((item, index) => {
-                if (prevElements.includes(item.id)) {
-                    // do nothing
-                } else {
-                    arr.push(item.id)
-                    const ElementToRender = Loadable({
-                        loader: () =>
-                            import(`components/elements/${item.componentType}`),
-                        loading: Loader,
-                    })
-                    const data = {
-                        twoJSInstance: twoJSInstance,
-                        id: item.id,
-                        boardId: props.boardId,
-                        // childrenArr: item.children,
-                        itemData: item,
-                    }
-
-                    // Different render wrapper for components and group
-                    let component = null
-                    // console.log(
-                    //     'in current components to render logic',
-                    //     currentComponents,
-                    //     props.componentStore
-                    // )
-                    if (item.componentType === GROUP_COMPONENT) {
-                        component = GroupRenderWrapper(ElementToRender, {
-                            ...item,
-                            ...data,
-                        })
-                    } else {
-                        component = ElementRenderWrapper(
-                            ElementToRender,
-                            data,
-                            deleteComponentFromLocalStore,
-                            props.componentStore
-                        )
-                    }
-                    components.push(component)
-                }
-            })
-            setComponentsToRender(components)
-            twoJSInstance && setPrevElements(arr)
-        }
-    }
 
     // on group select use effect hook
     useEffect(() => {
@@ -1250,6 +1131,61 @@ const Canvas = (props) => {
         }
     }, [cloneElement])
 
+    const setOnGroupHandler = (obj) => {
+        setOnGroup(obj)
+    }
+
+    const handleSetComponentsToRender = (currentComponents) => {
+        let arr = [...prevElements]
+        // console.log('prevElements', prevElements)
+        let components = [...componentsToRender]
+        if (currentComponents && twoJSInstance) {
+            currentComponents.forEach((item, index) => {
+                if (prevElements.includes(item.id)) {
+                    // do nothing
+                } else {
+                    arr.push(item.id)
+                    const ElementToRender = Loadable({
+                        loader: () =>
+                            import(`components/elements/${item.componentType}`),
+                        loading: Loader,
+                    })
+                    const data = {
+                        twoJSInstance: twoJSInstance,
+                        id: item.id,
+                        boardId: props.boardId,
+                        // childrenArr: item.children,
+                        itemData: item,
+                    }
+
+                    // Different render wrapper for components and group
+                    let component = null
+                    // console.log(
+                    //     'in current components to render logic',
+                    //     currentComponents,
+                    //     props.componentStore
+                    // )
+                    if (item.componentType === GROUP_COMPONENT) {
+                        component = GroupRenderWrapper(ElementToRender, {
+                            ...item,
+                            ...data,
+                        })
+                    } else {
+                        component = ElementRenderWrapper(
+                            ElementToRender,
+                            data,
+                            deleteComponentFromLocalStore,
+                            props.componentStore
+                        )
+                    }
+                    components.push(component)
+                }
+            })
+            setComponentsToRender(components)
+            twoJSInstance && setPrevElements(arr)
+        }
+    }
+
     const onPasteEvent = (evt) => {
         if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
             if (
@@ -1320,6 +1256,10 @@ const Canvas = (props) => {
         updateComponentVerticesInLocalStore(id, x, y)
         document.getElementById('show-click-anywhere-btn').style.opacity = 0
     }
+
+    // if (componentsToRender.length === 0) {
+    //     return <></>
+    // }
 
     // console.log('componentsToRender', componentsToRender)
     return (
