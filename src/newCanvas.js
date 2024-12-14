@@ -66,7 +66,8 @@ function addZUI(
     updateComponentVertices,
     customEventListener,
     setOnGroupHandler,
-    addToLocalComponentStore
+    addToLocalComponentStore,
+    setSelectedComponentInBoard
 ) {
     // console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
@@ -189,6 +190,7 @@ function addZUI(
                 let isGroupSelector = false
 
                 let path = e.path || (e.composedPath && e.composedPath())
+
                 // checks for path obj in DOM event obj if it contains following element with id attr which matches with similar two.js children group
                 // and assigns that specific two.js child(group) to the shape object
 
@@ -363,6 +365,36 @@ function addZUI(
 
                     domElement.addEventListener('mousemove', mousemove, false)
                     domElement.addEventListener('mouseup', mouseup, false)
+                }
+                // console.log('shape selected', shape)
+
+                if (!shape.elementData.isGroupSelector) {
+                    // this internal state is required for floating toolbar component since floating
+                    // toolbar relies on the exact structure/schema for component's internal state
+                    // so that any changes made from toolbar can be applied directly on component's two.js properties
+                    let componentInternalState = {
+                        element: {
+                            [shape.children[0].id]: shape.children[0],
+                            [shape.id]: shape,
+                            // [selector.id]: selector,
+                        },
+                        group: {
+                            id: shape.id,
+                            data: shape,
+                        },
+                        shape: {
+                            type: shape.elementData.componentType,
+                            id: shape.children[0].id,
+                            data: shape.children[0],
+                        },
+                        text: {
+                            data: {},
+                        },
+                        icon: {
+                            data: {},
+                        },
+                    }
+                    setSelectedComponentInBoard(componentInternalState)
                 }
 
                 two.update()
@@ -654,6 +686,7 @@ function addZUI(
                     // console.log('shape group obj', obj)
                     two.remove(shape)
                     setOnGroupHandler(obj)
+                    setSelectedComponentInBoard(null)
                 } else {
                     // else shape is not a group selector then update shape's properties
                     if (
@@ -899,6 +932,8 @@ const Canvas = (props) => {
         deleteComponentFromLocalStore,
         updateComponentVerticesInLocalStore,
         updateComponentBulkPropertiesInLocalStore,
+        setTwoJSInstanceInBoard,
+        setSelectedComponentInBoard,
     } = useBoardContext()
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
@@ -936,12 +971,14 @@ const Canvas = (props) => {
             updateComponentVertices,
             customEventListener,
             setOnGroupHandler,
-            addToLocalComponentStore
+            addToLocalComponentStore,
+            setSelectedComponentInBoard
         )
 
         // this.props.getElementsData('CONSTRUCT', arr)
         setZuiInstance(zui_instance)
         setTwoJSInstance(two)
+        setTwoJSInstanceInBoard(two)
 
         const boardId = props.boardId
         const tabsOpen = localStorage.getItem(`tabs_open_${boardId}`)

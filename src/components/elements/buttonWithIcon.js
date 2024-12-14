@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
 
@@ -19,6 +19,7 @@ function ButtonWithIcon(props) {
 
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
+    const stateRefForGroup = useRef()
 
     const two = props.twoJSInstance
     let selectorInstance = null
@@ -26,11 +27,24 @@ function ButtonWithIcon(props) {
     let rectContainer = null
 
     function onBlurHandler(e) {
-        elementOnBlurHandler(e, selectorInstance, two)
-        document.getElementById(`${groupObject.id}`) &&
-            document
-                .getElementById(`${groupObject.id}`)
-                .removeEventListener('keydown', handleKeyDown)
+        if (
+            e?.relatedTarget?.id === 'floating-toolbar' ||
+            e?.relatedTarget?.dataset.parent === 'floating-toolbar'
+        ) {
+            const getGroupElementFromDOM = document.getElementById(
+                `${stateRefForGroup.current.id}`
+            )
+            // set the focus and on blur recursively until no floating toolbar touch is observed
+            getGroupElementFromDOM.focus()
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+        } else {
+            selectorInstance && selectorInstance.hide()
+            two.update()
+            document.getElementById(`${groupObject.id}`) &&
+                document
+                    .getElementById(`${groupObject.id}`)
+                    .removeEventListener('keydown', handleKeyDown)
+        }
     }
 
     function handleKeyDown(e) {
@@ -83,6 +97,7 @@ function ButtonWithIcon(props) {
         } else {
             /** This element will render by creating it's own group wrapper */
             groupObject = group
+            stateRefForGroup.current = group
 
             const { selector } = getEditComponents(two, group, 2)
             selectorInstance = selector
@@ -141,7 +156,7 @@ function ButtonWithIcon(props) {
                     rectTextSvgGroup.getBoundingClientRect(true).bottom + 5
                 )
                 two.update()
-                toggleToolbar(true)
+                // toggleToolbar(true)
             })
 
             // Captures double click event for text
@@ -404,7 +419,7 @@ function ButtonWithIcon(props) {
     return (
         <React.Fragment>
             <div id="two-button-with-icon"></div>
-            {showToolbar ? (
+            {/* {showToolbar ? (
                 <Toolbar
                     toggle={showToolbar}
                     componentState={internalState}
@@ -414,7 +429,7 @@ function ButtonWithIcon(props) {
                         two.update()
                     }}
                 />
-            ) : null}
+            ) : null} */}
         </React.Fragment>
     )
 }

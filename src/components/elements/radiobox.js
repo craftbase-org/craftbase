@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import Two from 'two.js'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
@@ -22,22 +22,34 @@ function RadioBox(props) {
         mainElement: null,
         hidebtn: true,
     })
+    const stateRefForGroup = useRef()
 
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
-        elementOnBlurHandler(e, selectorInstance, two)
-
-        // also hide add btn
-        if (e?.relatedTarget?.id !== `radiobox-add-${props.id}`) {
-            toggleAddBtn(true)
+        if (
+            e?.relatedTarget?.id === 'floating-toolbar' ||
+            e?.relatedTarget?.dataset.parent === 'floating-toolbar'
+        ) {
+            const getGroupElementFromDOM = document.getElementById(
+                `${stateRefForGroup.current.id}`
+            )
+            // set the focus and on blur recursively until no floating toolbar touch is observed
+            getGroupElementFromDOM.focus()
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+        } else {
+            if (e?.relatedTarget?.id !== `radiobox-add-${props.id}`) {
+                toggleAddBtn(true)
+            }
+            selectorInstance && selectorInstance.hide()
+            two.update()
+            document.getElementById(`${groupObject.id}`) &&
+                document
+                    .getElementById(`${groupObject.id}`)
+                    .removeEventListener('keydown', handleKeyDown)
         }
-        document.getElementById(`${groupObject.id}`) &&
-            document
-                .getElementById(`${groupObject.id}`)
-                .removeEventListener('keydown', handleKeyDown)
     }
 
     function handleKeyDown(e) {
@@ -176,6 +188,7 @@ function RadioBox(props) {
             group.translation.x = parseInt(prevX) || 500
             group.translation.y = parseInt(prevY) || 200
             groupObject = group
+            stateRefForGroup.current = group
 
             const selector = new ObjectSelector(two, group, 0, 0, 0, 0)
             selector.create()
@@ -332,7 +345,7 @@ function RadioBox(props) {
                 toggleAddBtn(false)
 
                 // show toolbar
-                toggleToolbar(true)
+                // toggleToolbar(true)
             })
 
             // add event listener on outer html tree to handle respective event
@@ -695,7 +708,7 @@ function RadioBox(props) {
                 <img src={AddIcon} width="30" height="30" />
             </a>
 
-            {showToolbar ? (
+            {/* {showToolbar ? (
                 <Toolbar
                     toggle={showToolbar}
                     componentState={internalState}
@@ -704,7 +717,7 @@ function RadioBox(props) {
                         two.update()
                     }}
                 />
-            ) : null}
+            ) : null} */}
         </React.Fragment>
     )
 }

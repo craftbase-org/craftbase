@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import PropTypes from 'prop-types'
 import Two from 'two.js'
 import interact from 'interactjs'
@@ -24,6 +24,7 @@ function Checkbox(props) {
         mainElement: null,
         hidebtn: true,
     })
+    const stateRefForGroup = useRef()
 
     const two = props.twoJSInstance
 
@@ -31,16 +32,28 @@ function Checkbox(props) {
     let groupObject = null
 
     function onBlurHandler(e) {
-        elementOnBlurHandler(e, selectorInstance, two)
-
-        // hides add btn on blur
-        if (e?.relatedTarget?.id !== `checkbox-add-${props.id}`) {
-            toggleAddBtn(true)
+        if (
+            e?.relatedTarget?.id === 'floating-toolbar' ||
+            e?.relatedTarget?.dataset.parent === 'floating-toolbar'
+        ) {
+            const getGroupElementFromDOM = document.getElementById(
+                `${stateRefForGroup.current.id}`
+            )
+            // set the focus and on blur recursively until no floating toolbar touch is observed
+            getGroupElementFromDOM.focus()
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+        } else {
+            // hides add btn on blur
+            if (e?.relatedTarget?.id !== `checkbox-add-${props.id}`) {
+                toggleAddBtn(true)
+            }
+            selectorInstance && selectorInstance.hide()
+            two.update()
+            document.getElementById(`${groupObject.id}`) &&
+                document
+                    .getElementById(`${groupObject.id}`)
+                    .removeEventListener('keydown', handleKeyDown)
         }
-        document.getElementById(`${groupObject.id}`) &&
-            document
-                .getElementById(`${groupObject.id}`)
-                .removeEventListener('keydown', handleKeyDown)
     }
 
     function handleKeyDown(e) {
@@ -180,6 +193,7 @@ function Checkbox(props) {
             group.translation.x = parseInt(prevX) || 500
             group.translation.y = parseInt(prevY) || 200
             groupObject = group
+            stateRefForGroup.current = group
 
             // console.log("text bounding initial", group.id, checkboxGroup.id);
 
@@ -335,7 +349,7 @@ function Checkbox(props) {
                 )
                 two.update()
                 toggleAddBtn(false)
-                toggleToolbar(true)
+                // toggleToolbar(true)
             })
 
             // add event listener on outer html tree to handle respective event
@@ -694,7 +708,7 @@ function Checkbox(props) {
                 <img src={AddIcon} width="30" height="30" />
             </a>
 
-            {showToolbar ? (
+            {/* {showToolbar ? (
                 <Toolbar
                     toggle={showToolbar}
                     componentState={internalState}
@@ -703,7 +717,7 @@ function Checkbox(props) {
                         two.update()
                     }}
                 />
-            ) : null}
+            ) : null} */}
         </React.Fragment>
     )
 }

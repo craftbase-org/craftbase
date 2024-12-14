@@ -10,6 +10,7 @@ export default class Selector {
         this.circle3 = null
         this.circle4 = null
         this.circleGroup = null
+        this.areaGroup = null
         this.showCircles = showCircles
         this.vertices = {
             x1,
@@ -51,9 +52,9 @@ export default class Selector {
                     this.circle3 = null
                     this.circle4 = null
                     circleGroup = this.two.makeGroup(circleLeft, circleRight)
-                    // circleGroup.opacity = 0;
+                    // circleGroup.opacity = 1
                     this.circleGroup = circleGroup
-
+                    break
                 case 4:
                     const circle1 = this.two.makeCircle(x1, y1, 4)
                     const circle2 = this.two.makeCircle(x2, y1, 4)
