@@ -18,6 +18,7 @@ import {
 } from 'schema/mutations'
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
+import Toolbar from 'components/floatingToolbar'
 import Spinner from 'components/common/spinnerWithSize'
 import { generateRandomUsernames } from 'utils/misc'
 
@@ -77,6 +78,9 @@ const BoardViewPage = (props) => {
     const [showHelperTooltip, setShowHelperTooltip] = useState(true)
     const [pointerToggle, setPointerToggle] = useState(false)
     const [isPencilMode, setPencilMode] = useState(false)
+    const [showToolbar, toggleToolbar] = useState(false)
+    const [twoJSInstance, setTwoJSInstance] = useState(null)
+    const [selectedComponent, setSelectedComponent] = useState(null)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef()
@@ -169,9 +173,29 @@ const BoardViewPage = (props) => {
     }
 
     const togglePencilMode = (value) => {
+        toggleToolbar(false)
         setPencilMode(value)
         value === true && localStorage.setItem('pencilMode', 'TRUE')
         value === false && localStorage.removeItem('pencilMode')
+    }
+
+    function closeToolbar() {
+        toggleToolbar(false)
+        setSelectedComponent(null)
+    }
+
+    const setTwoJSInstanceInBoard = (two) => {
+        setTwoJSInstance(two)
+    }
+
+    const setSelectedComponentInBoard = (shape) => {
+        if (shape === null) {
+            setSelectedComponent(null)
+            toggleToolbar(false)
+        } else {
+            setSelectedComponent(shape)
+            toggleToolbar(true)
+        }
     }
 
     const addToLocalComponentStore = (id, type, componentInfo) => {
@@ -288,6 +312,8 @@ const BoardViewPage = (props) => {
         updateComponentPropertyInLocalStore,
         updateComponentBulkPropertiesInLocalStore,
         deleteComponentFromLocalStore,
+        setTwoJSInstanceInBoard,
+        setSelectedComponentInBoard,
     }
 
     return (
@@ -319,12 +345,24 @@ const BoardViewPage = (props) => {
                         </div>
 
                         <Sidebar />
-
+                        {selectedComponent && showToolbar && (
+                            <Toolbar
+                                hideColorText={true}
+                                hideColorIcon={true}
+                                toggle={showToolbar}
+                                componentState={selectedComponent}
+                                closeToolbar={closeToolbar}
+                                postToolbarUpdate={() => {
+                                    twoJSInstance.update()
+                                }}
+                            />
+                        )}
                         <Canvas
                             pointerToggle={pointerToggle}
                             isPencilMode={isPencilMode}
                             selectPanMode={false}
                             boardId={boardId}
+                            selectedComponent={selectedComponent}
                             lastAddedElement={lastAddedElement}
                             componentStore={componentStore}
                         />

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 import { useBoardContext } from 'views/Board/board'
@@ -17,17 +17,31 @@ function Rectangle(props) {
     const selectedComponents = []
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
+    const stateRefForGroup = useRef()
 
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
-        elementOnBlurHandler(e, selectorInstance, two)
-        document.getElementById(`${groupObject.id}`) &&
-            document
-                .getElementById(`${groupObject.id}`)
-                .removeEventListener('keydown', handleKeyDown)
+        if (
+            e?.relatedTarget?.id === 'floating-toolbar' ||
+            e?.relatedTarget?.dataset.parent === 'floating-toolbar'
+        ) {
+            const getGroupElementFromDOM = document.getElementById(
+                `${stateRefForGroup.current.id}`
+            )
+            // set the focus and on blur recursively until no floating toolbar touch is observed
+            getGroupElementFromDOM.focus()
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+        } else {
+            selectorInstance && selectorInstance.hide()
+            two.update()
+            document.getElementById(`${groupObject.id}`) &&
+                document
+                    .getElementById(`${groupObject.id}`)
+                    .removeEventListener('keydown', handleKeyDown)
+        }
     }
 
     function handleKeyDown(e) {
@@ -72,6 +86,7 @@ function Rectangle(props) {
         } else {
             /** This element will render by creating it's own group wrapper */
             groupObject = group
+            stateRefForGroup.current = group
 
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
@@ -140,7 +155,7 @@ function Rectangle(props) {
                 )
                 two.update()
 
-                toggleToolbar(true)
+                // toggleToolbar(true)
             })
 
             // RESIZE SHAPE LOGIC
@@ -306,7 +321,7 @@ function Rectangle(props) {
             <div id="two-rectangle"></div>
             {/* {showToolbar && <button> Rectangles </button>} */}
             {/* <button>change button in group</button> */}
-            {showToolbar ? (
+            {/* {showToolbar ? (
                 <Toolbar
                     hideColorText={true}
                     hideColorIcon={true}
@@ -318,7 +333,7 @@ function Rectangle(props) {
                         two.update()
                     }}
                 />
-            ) : null}
+            ) : null} */}
             {/* <Toolbar toggle={toolbar} /> */}
         </React.Fragment>
     )
