@@ -187,15 +187,15 @@ const Toolbar = (props) => {
 
     const updateComponent = (propertyToUpdate, propertyValue) => {
         const userId = localStorage.getItem('userId')
-        updateComponentInfo({
-            variables: {
-                id: componentId,
-                updateObj: {
-                    [propertyToUpdate]: propertyValue,
-                    updatedBy: userId,
-                },
-            },
-        })
+        // updateComponentInfo({
+        //     variables: {
+        //         id: componentId,
+        //         updateObj: {
+        //             [propertyToUpdate]: propertyValue,
+        //             updatedBy: userId,
+        //         },
+        //     },
+        // })
         postToolbarUpdate && postToolbarUpdate()
     }
 
@@ -467,22 +467,23 @@ const Toolbar = (props) => {
     const globalMouseUpEventHanlder = (e) => {
         const nativeMouseClientX = e.clientX
         const nativeMouseClientY = e.clientY
+        console.log('componentState', componentState)
         const elementIds = Object.keys(idx(componentState, (_) => _.element))
         const toolbarCoordinate = document
             .getElementById('floating-toolbar')
             .getBoundingClientRect()
 
         // Checks for blur event by comparing x coords of toolbar and user mouse click event
-        if (nativeMouseClientX < toolbarCoordinate.x) {
-            if (!elementIds.includes(e.target.id)) {
-                closeToolbar()
-            }
-            // console.log(e.target.id, elementIds, elementIds.includes(e.target.id));
-        } else if (nativeMouseClientY < toolbarCoordinate.y) {
-            if (!elementIds.includes(e.target.id)) {
-                closeToolbar()
-            }
-        }
+        // if (nativeMouseClientX < toolbarCoordinate.x) {
+        //     if (!elementIds.includes(e.target.id)) {
+        //         closeToolbar()
+        //     }
+        //     // console.log(e.target.id, elementIds, elementIds.includes(e.target.id));
+        // } else if (nativeMouseClientY < toolbarCoordinate.y) {
+        //     if (!elementIds.includes(e.target.id)) {
+        //         closeToolbar()
+        //     }
+        // }
     }
 
     useEffect(() => {
@@ -493,38 +494,48 @@ const Toolbar = (props) => {
     }, [])
 
     return (
-        <AnimatePresence>
-            <ToolbarContainer
-                key="flo-toolbar"
-                className=" shadow-lg rounded-md"
-                data-parent="floating-toolbar"
-                initial="open"
-                animate="closed"
-                transition={{ duration: 0.01 }}
-                variants={variants}
-                // toggleToolbar={toggle}
-                id="floating-toolbar"
-                // tabIndex="1"
-            >
-                {allowedProperties.map((i, index) =>
-                    i.hide === true ? null : (
-                        <Accordion
-                            key={index}
-                            showButton={false}
-                            isLastIndex={index === allowedProperties.length - 1}
-                            accordion={true}
-                            toggleAccordion={i.toggleAccordion}
-                            header={i.title}
-                            content={i.content}
-                            renderSvg={i.renderSvg}
-                            hideColorText={props.hideColorText}
-                            hideColorBackground={props.hideColorBackground}
-                            hideColorIcon={props.hideColorIcon}
-                        />
-                    )
-                )}
-            </ToolbarContainer>
-        </AnimatePresence>
+        <>
+            {toggle ? (
+                <AnimatePresence>
+                    <ToolbarContainer
+                        key="flo-toolbar"
+                        className=" shadow-lg rounded-md"
+                        data-parent="floating-toolbar"
+                        initial="open"
+                        animate="closed"
+                        transition={{ duration: 0.01 }}
+                        variants={variants}
+                        // toggleToolbar={toggle}
+                        id="floating-toolbar"
+                        // tabIndex="1"
+                    >
+                        {allowedProperties.map((i, index) =>
+                            i.hide === true ? null : (
+                                <Accordion
+                                    key={index}
+                                    showButton={false}
+                                    isLastIndex={
+                                        index === allowedProperties.length - 1
+                                    }
+                                    accordion={true}
+                                    toggleAccordion={i.toggleAccordion}
+                                    header={i.title}
+                                    content={i.content}
+                                    renderSvg={i.renderSvg}
+                                    hideColorText={props.hideColorText}
+                                    hideColorBackground={
+                                        props.hideColorBackground
+                                    }
+                                    hideColorIcon={props.hideColorIcon}
+                                />
+                            )
+                        )}
+                    </ToolbarContainer>
+                </AnimatePresence>
+            ) : (
+                <></>
+            )}
+        </>
     )
 }
 
