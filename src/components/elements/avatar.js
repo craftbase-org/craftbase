@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 import { useMutation } from '@apollo/client'
@@ -20,17 +20,31 @@ function Avatar(props) {
     })
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({ externalSVG: null })
+    const stateRefForGroup = useRef()
 
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
-        elementOnBlurHandler(e, selectorInstance, two)
-        document.getElementById(`${groupObject.id}`) &&
-            document
-                .getElementById(`${groupObject.id}`)
-                .removeEventListener('keydown', handleKeyDown)
+        if (
+            e?.relatedTarget?.id === 'floating-toolbar' ||
+            e?.relatedTarget?.dataset.parent === 'floating-toolbar'
+        ) {
+            const getGroupElementFromDOM = document.getElementById(
+                `${stateRefForGroup.current.id}`
+            )
+            // set the focus and on blur recursively until no floating toolbar touch is observed
+            getGroupElementFromDOM.focus()
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+        } else {
+            selectorInstance && selectorInstance.hide()
+            two.update()
+            document.getElementById(`${groupObject.id}`) &&
+                document
+                    .getElementById(`${groupObject.id}`)
+                    .removeEventListener('keydown', handleKeyDown)
+        }
     }
 
     function handleKeyDown(e) {
@@ -78,6 +92,7 @@ function Avatar(props) {
         } else {
             /** This element will render by creating it's own group wrapper */
             groupObject = group
+            stateRefForGroup.current = group
             // After creating group, pass it's instance to selector class
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
@@ -134,7 +149,7 @@ function Avatar(props) {
                     circle.getBoundingClientRect(true).bottom + 3
                 )
                 two.update()
-                toggleToolbar(true)
+                // toggleToolbar(true)
             })
 
             // Apply resizable property to element
@@ -318,7 +333,7 @@ function Avatar(props) {
     return (
         <React.Fragment>
             <div id="two-avatar"></div>
-            {showToolbar ? (
+            {/* {showToolbar ? (
                 <Toolbar
                     toggle={showToolbar}
                     componentState={internalState}
@@ -328,7 +343,7 @@ function Avatar(props) {
                         two.update()
                     }}
                 />
-            ) : null}
+            ) : null} */}
         </React.Fragment>
     )
 }
