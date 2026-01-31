@@ -12,6 +12,7 @@ function Rectangle(props) {
     const {
         addToLocalComponentStore,
         updateComponentBulkPropertiesInLocalStore,
+        isPencilMode,
     } = useBoardContext()
 
     const selectedComponents = []
@@ -311,6 +312,17 @@ function Rectangle(props) {
             two.update()
         }
     }, [props.x, props.y, props.width, props.height, props.fill])
+
+    // When pencil mode is active, disable pointer events on this component
+    // so resize/drag don't capture events - only pencil drawing should work
+    useEffect(() => {
+        const groupId = internalState?.group?.id
+        if (groupId && document.getElementById(groupId)) {
+            document.getElementById(groupId).style.pointerEvents = isPencilMode
+                ? 'none'
+                : 'auto'
+        }
+    }, [isPencilMode, internalState?.group?.id])
 
     function closeToolbar() {
         toggleToolbar(false)

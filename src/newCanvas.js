@@ -133,7 +133,6 @@ function addZUI(
             scenario = SCENARIO_JUST_ADDED_ELEMENT
         }
 
-        console.log('scenario', scenario)
         switch (scenario) {
             case SCENARIO_JUST_ADDED_ELEMENT:
                 domElement.addEventListener('mousemove', mousemove, false)

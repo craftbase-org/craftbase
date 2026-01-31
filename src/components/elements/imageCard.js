@@ -12,6 +12,7 @@ function ImageCard(props) {
     const {
         addToLocalComponentStore,
         updateComponentBulkPropertiesInLocalStore,
+        isPencilMode,
     } = useBoardContext()
 
     const [showToolbar, toggleToolbar] = useState(false)
@@ -328,6 +329,16 @@ function ImageCard(props) {
         props.height,
         props.children,
     ])
+
+    // When pencil mode is active, disable pointer events on this component
+    useEffect(() => {
+        const groupId = internalState?.group?.id
+        if (groupId && document.getElementById(groupId)) {
+            document.getElementById(groupId).style.pointerEvents = isPencilMode
+                ? 'none'
+                : 'auto'
+        }
+    }, [isPencilMode, internalState?.group?.id])
 
     function closeToolbar() {
         toggleToolbar(false)

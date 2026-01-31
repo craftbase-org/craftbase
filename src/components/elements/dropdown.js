@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 import { useMutation } from '@apollo/client'
+import { useBoardContext } from 'views/Board/board'
 
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler } from 'utils/misc'
@@ -10,6 +11,7 @@ import Toolbar from 'components/floatingToolbar'
 import Icon from 'icons/icons'
 
 function Dropdown(props) {
+    const { isPencilMode } = useBoardContext()
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
@@ -393,6 +395,16 @@ function Dropdown(props) {
             two.update()
         }
     }, [props.x, props.y, props.metadata])
+
+    // When pencil mode is active, disable pointer events on this component
+    useEffect(() => {
+        const groupId = internalState?.group?.id
+        if (groupId && document.getElementById(groupId)) {
+            document.getElementById(groupId).style.pointerEvents = isPencilMode
+                ? 'none'
+                : 'auto'
+        }
+    }, [isPencilMode, internalState?.group?.id])
 
     function closeToolbar() {
         toggleToolbar(false)

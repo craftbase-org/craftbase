@@ -304,6 +304,7 @@ const BoardViewPage = (props) => {
     }
 
     const contextValueForSidebar = {
+        isPencilMode,
         togglePencilMode,
         togglePointer,
         updateLastAddedElement,

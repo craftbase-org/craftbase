@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
-
 import { useImmer } from 'use-immer'
+import { useBoardContext } from 'views/Board/board'
 
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
@@ -11,6 +11,7 @@ import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/textarea'
 
 function Textarea(props) {
+    const { isPencilMode } = useBoardContext()
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
 
@@ -286,6 +287,16 @@ function Textarea(props) {
             two.update()
         }
     }, [props.x, props.y, props.metadata])
+
+    // When pencil mode is active, disable pointer events on this component
+    useEffect(() => {
+        const groupId = internalState?.group?.id
+        if (groupId && document.getElementById(groupId)) {
+            document.getElementById(groupId).style.pointerEvents = isPencilMode
+                ? 'none'
+                : 'auto'
+        }
+    }, [isPencilMode, internalState?.group?.id])
 
     function closeToolbar() {
         toggleToolbar(false)
