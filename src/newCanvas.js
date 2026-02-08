@@ -1127,6 +1127,22 @@ const Canvas = (props) => {
                         relativeY: relativeY,
                     }
 
+                    // For arrowLine: read actual vertex coordinates from Two.js scene
+                    // to preserve arrow direction (componentStore may have stale/missing values)
+                    if (item.componentType === 'arrowLine') {
+                        const arrowShape = twoJSInstance.scene.children.find(
+                            (child) => child?.elementData?.id === item.id
+                        )
+                        // Arrow factory adds line as first child (line, pointCircle1Group, pointCircle2Group)
+                        const line = arrowShape?.children?.[0]
+                        if (line?.vertices?.length >= 2) {
+                            obj.x1 = parseInt(line.vertices[0].x)
+                            obj.y1 = parseInt(line.vertices[0].y)
+                            obj.x2 = parseInt(line.vertices[1].x)
+                            obj.y2 = parseInt(line.vertices[1].y)
+                        }
+                    }
+
                     newChildren.push(obj)
                 }
             })
