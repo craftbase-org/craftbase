@@ -12,6 +12,9 @@ function Overlay(props) {
     const {
         addToLocalComponentStore,
         updateComponentBulkPropertiesInLocalStore,
+        isPencilMode,
+        isArrowDrawMode,
+        isArrowSelected,
     } = useBoardContext()
 
     const [showToolbar, toggleToolbar] = useState(false)
@@ -262,6 +265,16 @@ function Overlay(props) {
             two.update()
         }
     }, [props.x, props.y, props.width, props.height, props.fill])
+
+    // When pencil mode is active, disable pointer events on this component
+    useEffect(() => {
+        const groupId = internalState?.group?.id
+        if (groupId && document.getElementById(groupId)) {
+            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isArrowSelected)
+                ? 'none'
+                : 'auto'
+        }
+    }, [isPencilMode, isArrowDrawMode, isArrowSelected, internalState?.group?.id])
 
     function closeToolbar() {
         toggleToolbar(false)

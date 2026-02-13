@@ -60,11 +60,15 @@ function GroupedObjectWrapper(props) {
     const {
         addToLocalComponentStore,
         updateComponentBulkPropertiesInLocalStore,
+        isPencilMode,
+        isArrowDrawMode,
+        isArrowSelected,
     } = useBoardContext()
 
     const two = props.twoJSInstance
     const [cloneGroupElements, setCloneGroupElements] = useState(null)
     const [deleteGroupElements, setDeleteGroupElements] = useState(null)
+    const [groupId, setGroupId] = useState(null)
     // const [twoGroupInstance,setTwoGroupInstance] = useState(null)
     let rectangleInstance = null
     let groupInstance = null
@@ -431,6 +435,8 @@ function GroupedObjectWrapper(props) {
         //     // two.remove();
         // })
 
+        setGroupId(group.id)
+
         interact(`#${group.id}`).resizable({
             edges: { right: true, left: true, top: true, bottom: true },
 
@@ -503,6 +509,15 @@ function GroupedObjectWrapper(props) {
             // two.remove(group)
         }
     }, [])
+
+    // When pencil mode is active, disable pointer events on this component
+    useEffect(() => {
+        if (groupId && document.getElementById(groupId)) {
+            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isArrowSelected)
+                ? 'none'
+                : 'auto'
+        }
+    }, [isPencilMode, isArrowDrawMode, isArrowSelected, groupId])
 
     return (
         <React.Fragment>

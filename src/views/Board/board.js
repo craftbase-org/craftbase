@@ -78,6 +78,7 @@ const BoardViewPage = (props) => {
     const [showHelperTooltip, setShowHelperTooltip] = useState(true)
     const [pointerToggle, setPointerToggle] = useState(false)
     const [isPencilMode, setPencilMode] = useState(false)
+    const [isArrowDrawMode, setIsArrowDrawMode] = useState(false)
     const [showToolbar, toggleToolbar] = useState(false)
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
@@ -303,7 +304,20 @@ const BoardViewPage = (props) => {
         })
     }
 
+    const setArrowDrawModeInBoard = (val) => {
+        setIsArrowDrawMode(val)
+    }
+
+    const isArrowSelected =
+        selectedComponent !== null &&
+        (selectedComponent?.shape?.type === 'arrowLine' ||
+            selectedComponent?.group?.data?.elementData?.isLineCircle === true)
+
     const contextValueForSidebar = {
+        isPencilMode,
+        isArrowDrawMode,
+        isArrowSelected,
+        setArrowDrawModeInBoard,
         togglePencilMode,
         togglePointer,
         updateLastAddedElement,
