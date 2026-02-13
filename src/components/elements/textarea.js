@@ -11,7 +11,7 @@ import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/textarea'
 
 function Textarea(props) {
-    const { isPencilMode, isArrowDrawMode } = useBoardContext()
+    const { isPencilMode, isArrowDrawMode, isArrowSelected } = useBoardContext()
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
 

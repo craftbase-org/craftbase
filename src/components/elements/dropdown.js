@@ -11,7 +11,7 @@ import Toolbar from 'components/floatingToolbar'
 import Icon from 'icons/icons'
 
 function Dropdown(props) {
-    const { isPencilMode, isArrowDrawMode } = useBoardContext()
+    const { isPencilMode, isArrowDrawMode, isArrowSelected } = useBoardContext()
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })

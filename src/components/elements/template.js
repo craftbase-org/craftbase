@@ -12,7 +12,7 @@ import ElementFactory from 'factory/rectangle'
 import Toolbar from 'components/floatingToolbar'
 
 function Rectangle(props) {
-    const { isPencilMode, isArrowDrawMode } = useBoardContext()
+    const { isPencilMode, isArrowDrawMode, isArrowSelected } = useBoardContext()
     const selectedComponents = useSelector(
         (state) => state.main.selectedComponents
     )

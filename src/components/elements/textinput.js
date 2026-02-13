@@ -12,7 +12,7 @@ import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/textinput'
 
 function TextInput(props) {
-    const { isPencilMode, isArrowDrawMode } = useBoardContext()
+    const { isPencilMode, isArrowDrawMode, isArrowSelected } = useBoardContext()
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
     const dispatch = useDispatch()
