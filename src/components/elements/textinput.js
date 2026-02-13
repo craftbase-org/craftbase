@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
 import { useDispatch } from 'react-redux'
 import { useImmer } from 'use-immer'
+import { useBoardContext } from 'views/Board/board'
 
 import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
@@ -11,6 +12,7 @@ import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/textinput'
 
 function TextInput(props) {
+    const { isPencilMode, isArrowDrawMode, isArrowSelected } = useBoardContext()
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
     const dispatch = useDispatch()
@@ -300,6 +302,16 @@ function TextInput(props) {
             two.update()
         }
     }, [props.x, props.y, props.metadata])
+
+    // When pencil mode is active, disable pointer events on this component
+    useEffect(() => {
+        const groupId = internalState?.group?.id
+        if (groupId && document.getElementById(groupId)) {
+            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isArrowSelected)
+                ? 'none'
+                : 'auto'
+        }
+    }, [isPencilMode, isArrowDrawMode, isArrowSelected, internalState?.group?.id])
 
     function closeToolbar() {
         toggleToolbar(false)

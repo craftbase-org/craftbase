@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import interact from 'interactjs'
 import { useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
@@ -14,6 +14,9 @@ function Frame(props) {
     const {
         addToLocalComponentStore,
         updateComponentBulkPropertiesInLocalStore,
+        isPencilMode,
+        isArrowDrawMode,
+        isArrowSelected,
     } = useBoardContext()
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
@@ -21,17 +24,31 @@ function Frame(props) {
     const selectedComponents = []
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
+    const stateRefForGroup = useRef()
 
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
-        elementOnBlurHandler(e, selectorInstance, two)
-        document.getElementById(`${groupObject.id}`) &&
-            document
-                .getElementById(`${groupObject.id}`)
-                .removeEventListener('keydown', handleKeyDown)
+        if (
+            e?.relatedTarget?.id === 'floating-toolbar' ||
+            e?.relatedTarget?.dataset.parent === 'floating-toolbar'
+        ) {
+            const getGroupElementFromDOM = document.getElementById(
+                `${stateRefForGroup.current.id}`
+            )
+            // set the focus and on blur recursively until no floating toolbar touch is observed
+            getGroupElementFromDOM.focus()
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+        } else {
+            selectorInstance && selectorInstance.hide()
+            two.update()
+            document.getElementById(`${groupObject.id}`) &&
+                document
+                    .getElementById(`${groupObject.id}`)
+                    .removeEventListener('keydown', handleKeyDown)
+        }
     }
 
     function handleKeyDown(e) {
@@ -76,6 +93,7 @@ function Frame(props) {
         } else {
             /** This element will render by creating it's own group wrapper */
             groupObject = group
+            stateRefForGroup.current = group
 
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
@@ -148,7 +166,7 @@ function Frame(props) {
                 )
                 two.update()
 
-                toggleToolbar(true)
+                // toggleToolbar(true)
             })
 
             // RESIZE SHAPE LOGIC
@@ -306,6 +324,16 @@ function Frame(props) {
         }
     }, [props.x, props.y, props.width, props.height, props.fill])
 
+    // When pencil mode is active, disable pointer events on this component
+    useEffect(() => {
+        const groupId = internalState?.group?.id
+        if (groupId && document.getElementById(groupId)) {
+            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isArrowSelected)
+                ? 'none'
+                : 'auto'
+        }
+    }, [isPencilMode, isArrowDrawMode, isArrowSelected, internalState?.group?.id])
+
     function closeToolbar() {
         toggleToolbar(false)
     }
@@ -315,7 +343,7 @@ function Frame(props) {
             <div id="two-frame"></div>
             {/* {showToolbar && <button> Rectangles </button>} */}
             {/* <button>change button in group</button> */}
-            {showToolbar ? (
+            {/* {showToolbar ? (
                 <Toolbar
                     toggle={showToolbar}
                     hideColorSection={true}
@@ -326,7 +354,7 @@ function Frame(props) {
                         two.update()
                     }}
                 />
-            ) : null}
+            ) : null} */}
             {/* <Toolbar toggle={toolbar} /> */}
         </React.Fragment>
     )

@@ -17,6 +17,7 @@ const PrimarySidebar = () => {
         togglePointer,
         togglePencilMode,
         addToLocalComponentStore,
+        setArrowDrawModeInBoard,
     } = useBoardContext()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const {
@@ -55,18 +56,21 @@ const PrimarySidebar = () => {
                 togglePencilMode(false)
                 togglePointer(false)
 
-                setTimeout(() => {
-                    document.getElementById(
-                        'show-click-anywhere-btn'
-                    ).style.opacity = 1
-                    let el = document.getElementById('show-saving-loader')
-                    el.style.opacity = 0
-                    el.style.zIndex = -1
-                }, 100)
+                const isArrowDraw = label === 'arrowLine'
 
-                let el = document.getElementById('show-saving-loader')
-                el.style.opacity = 1
-                el.style.zIndex = 1
+                let savingEl = document.getElementById('show-saving-loader')
+                savingEl.style.opacity = 1
+                savingEl.style.zIndex = 1
+
+                setTimeout(() => {
+                    if (!isArrowDraw) {
+                        document.getElementById(
+                            'show-click-anywhere-btn'
+                        ).style.opacity = 1
+                    }
+                    savingEl.style.opacity = 0
+                    savingEl.style.zIndex = -1
+                }, 100)
 
                 let shapeData = null
                 let randomNumber = Math.floor(Math.random() * 80 + 30)
@@ -88,17 +92,22 @@ const PrimarySidebar = () => {
                                     // linewidth: 1,
                                     children: {},
                                     metadata: [],
-                                    x: parseInt(
-                                        window.outerWidth -
-                                            (randomNumber * window.outerWidth) /
-                                                100
-                                    ),
-                                    y: parseInt(
-                                        window.outerHeight -
-                                            (randomNumber *
-                                                window.outerHeight) /
-                                                100
-                                    ),
+                                    x: isArrowDraw
+                                        ? -9999
+                                        : parseInt(
+                                              window.outerWidth -
+                                                  (randomNumber *
+                                                      window.outerWidth) /
+                                                      100
+                                          ),
+                                    y: isArrowDraw
+                                        ? -9999
+                                        : parseInt(
+                                              window.outerHeight -
+                                                  (randomNumber *
+                                                      window.outerHeight) /
+                                                      100
+                                          ),
                                     x2: label.includes('divider') ? 100 : 0,
                                     boardId: routeParams.id,
                                     metadata: item.metadata,
@@ -114,6 +123,13 @@ const PrimarySidebar = () => {
                 }
                 // console.log('shapeData', shapeData)
                 updateLastAddedElement(shapeData)
+
+                if (isArrowDraw) {
+                    document.getElementById('main-two-root').style.cursor =
+                        'crosshair'
+                    localStorage.setItem('arrowDrawMode', 'true')
+                    setArrowDrawModeInBoard(true)
+                }
 
                 // setShowAddShapeLoader(true)
                 localStorage.setItem('lastAddedElementId', generateId)

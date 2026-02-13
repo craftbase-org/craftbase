@@ -9,7 +9,6 @@ import {
     useDispatch,
     useSelector,
 } from 'react-redux'
-import { getFourthValue } from 'utils'
 import handleDrag from 'components/utils/dragger'
 import { setPeronsalInformation } from 'store/actions/main'
 

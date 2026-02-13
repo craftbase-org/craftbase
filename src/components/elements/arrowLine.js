@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
@@ -13,21 +13,33 @@ import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 function ArrowLine(props) {
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
+    const stateRefForGroup = useRef()
 
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
-        console.log('on blur arrow line', e)
-        // elementOnBlurHandler(e, selectorInstance, two)
-        selectorInstance.pointCircle1Group.opacity = 0
-        selectorInstance.pointCircle2Group.opacity = 0
-        two.update()
-        document.getElementById(`${groupObject.id}`) &&
-            document
-                .getElementById(`${groupObject.id}`)
-                .removeEventListener('keydown', handleKeyDown)
+        if (
+            e?.relatedTarget?.id === 'floating-toolbar' ||
+            e?.relatedTarget?.dataset.parent === 'floating-toolbar'
+        ) {
+            const getGroupElementFromDOM = document.getElementById(
+                `${stateRefForGroup.current.id}`
+            )
+            // set the focus and on blur recursively until no floating toolbar touch is observed
+            getGroupElementFromDOM.focus()
+            getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+        } else {
+            selectorInstance.pointCircle1Group.opacity = 0
+            selectorInstance.pointCircle2Group.opacity = 0
+            selectorInstance && selectorInstance.hide()
+            two.update()
+            document.getElementById(`${groupObject.id}`) &&
+                document
+                    .getElementById(`${groupObject.id}`)
+                    .removeEventListener('keydown', handleKeyDown)
+        }
     }
 
     function handleKeyDown(e) {
@@ -83,6 +95,7 @@ function ArrowLine(props) {
         } else {
             /** This element will render by creating it's own group wrapper */
             groupObject = group
+            stateRefForGroup.current = group
             // resizeLineInstance = resizeLine
             // const { selector } = getEditComponents(two, group, 4)
             selectorInstance = {
@@ -231,7 +244,7 @@ function ArrowLine(props) {
                 //     line.getBoundingClientRect(true).bottom + 10
                 // )
                 two.update()
-                toggleToolbar(true)
+                // toggleToolbar(true)
             })
 
             // Captures double click event for text
@@ -616,7 +629,7 @@ function ArrowLine(props) {
 
     return (
         <React.Fragment>
-            {showToolbar ? (
+            {/* {showToolbar ? (
                 <Toolbar
                     toggle={showToolbar}
                     componentState={internalState}
@@ -629,7 +642,7 @@ function ArrowLine(props) {
                     //     two.update()
                     // }}
                 />
-            ) : null}
+            ) : null} */}
         </React.Fragment>
     )
 }
