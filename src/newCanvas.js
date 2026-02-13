@@ -85,7 +85,10 @@ function addZUI(
     let scenario = null
     let SCENARIO_JUST_ADDED_ELEMENT = 'justAddedElement'
     let SCENARIO_PENCIL_MODE = 'pencilMode'
+    let SCENARIO_ARROW_DRAW = 'arrowDraw'
     let SCENARIO_DEFAULT = null
+
+    let arrowDrawElement = null
 
     zui.addLimits(0.06, 8)
 
@@ -129,11 +132,62 @@ function addZUI(
             scenario = SCENARIO_PENCIL_MODE
         }
 
-        if (lastAddedElementId !== null) {
+        const arrowDrawMode = localStorage.getItem('arrowDrawMode')
+        if (arrowDrawMode === 'true') {
+            scenario = SCENARIO_ARROW_DRAW
+        } else if (lastAddedElementId !== null) {
             scenario = SCENARIO_JUST_ADDED_ELEMENT
         }
 
         switch (scenario) {
+            case SCENARIO_ARROW_DRAW: {
+                const surfaceCoords = zui.clientToSurface(e.clientX, e.clientY)
+                const arrowId = localStorage.getItem('lastAddedElementId')
+
+                arrowDrawElement = two.scene.children.find(
+                    (child) => child?.elementData?.id === arrowId
+                )
+
+                if (arrowDrawElement) {
+                    // Position the group at the clicked point (tail position)
+                    arrowDrawElement.position.x = surfaceCoords.x
+                    arrowDrawElement.position.y = surfaceCoords.y
+
+                    const line = arrowDrawElement.children[0]
+                    const pointCircle1Group = arrowDrawElement.children[1]
+                    const pointCircle2Group = arrowDrawElement.children[2]
+
+                    // Reset line vertices: tail at 0,0, head at 0,0
+                    updateX1Y1Vertices(
+                        Two,
+                        line,
+                        0,
+                        0,
+                        pointCircle1Group,
+                        two
+                    )
+                    updateX2Y2Vertices(
+                        Two,
+                        line,
+                        0,
+                        0,
+                        pointCircle2Group,
+                        two
+                    )
+
+                    two.update()
+                }
+
+                localStorage.removeItem('lastAddedElementId')
+                localStorage.removeItem('arrowDrawMode')
+
+                domElement.addEventListener('mousemove', mousemove, false)
+                domElement.addEventListener('mouseup', mouseup, false)
+
+                document.getElementById('main-two-root').style.cursor =
+                    'crosshair'
+                break
+            }
             case SCENARIO_JUST_ADDED_ELEMENT:
                 domElement.addEventListener('mousemove', mousemove, false)
 
@@ -411,11 +465,38 @@ function addZUI(
         // console.log('shape in mousemove', e, shape, props.selectPanMode)
         const lastAddedElementId = localStorage.getItem('lastAddedElementId')
 
-        if (lastAddedElementId !== null) {
+        if (
+            lastAddedElementId !== null &&
+            localStorage.getItem('arrowDrawMode') !== 'true'
+        ) {
             scenario = SCENARIO_JUST_ADDED_ELEMENT
         }
 
         switch (scenario) {
+            case SCENARIO_ARROW_DRAW:
+                if (arrowDrawElement) {
+                    const surfaceCoords = zui.clientToSurface(
+                        e.clientX,
+                        e.clientY
+                    )
+                    const relX =
+                        surfaceCoords.x - arrowDrawElement.position.x
+                    const relY =
+                        surfaceCoords.y - arrowDrawElement.position.y
+
+                    const line = arrowDrawElement.children[0]
+                    const pointCircle2Group = arrowDrawElement.children[2]
+
+                    updateX2Y2Vertices(
+                        Two,
+                        line,
+                        relX,
+                        relY,
+                        pointCircle2Group,
+                        two
+                    )
+                }
+                break
             case SCENARIO_JUST_ADDED_ELEMENT:
                 // This block falls for the case when there is newly added element and we let user click
                 // anywhere to set last added element's position
@@ -618,6 +699,47 @@ function addZUI(
         // old school logic here
 
         switch (scenario) {
+            case SCENARIO_ARROW_DRAW: {
+                if (arrowDrawElement) {
+                    const line = arrowDrawElement.children[0]
+                    const finalX1 = parseInt(line.vertices[0].x)
+                    const finalY1 = parseInt(line.vertices[0].y)
+                    const finalX2 = parseInt(line.vertices[1].x)
+                    const finalY2 = parseInt(line.vertices[1].y)
+
+                    // Update elementData so subsequent drag operations use correct position
+                    arrowDrawElement.elementData.x = parseInt(
+                        arrowDrawElement.position.x
+                    )
+                    arrowDrawElement.elementData.y = parseInt(
+                        arrowDrawElement.position.y
+                    )
+
+                    const newShapeData = {
+                        id: arrowDrawElement.elementData.id,
+                        prevX: -9999,
+                        prevY: -9999,
+                        isLineCircle: true,
+                        parentData: arrowDrawElement,
+                        data: {
+                            x: parseInt(arrowDrawElement.position.x),
+                            y: parseInt(arrowDrawElement.position.y),
+                            x1: finalX1,
+                            y1: finalY1,
+                            x2: finalX2,
+                            y2: finalY2,
+                        },
+                    }
+
+                    updateToGlobalState(newShapeData, {})
+                }
+
+                arrowDrawElement = null
+                document.getElementById('main-two-root').style.cursor = 'auto'
+                domElement.removeEventListener('mousemove', mousemove, false)
+                domElement.removeEventListener('mouseup', mouseup, false)
+                break
+            }
             case SCENARIO_JUST_ADDED_ELEMENT:
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
