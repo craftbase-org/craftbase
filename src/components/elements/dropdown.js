@@ -11,7 +11,7 @@ import Toolbar from 'components/floatingToolbar'
 import Icon from 'icons/icons'
 
 function Dropdown(props) {
-    const { isPencilMode } = useBoardContext()
+    const { isPencilMode, isArrowDrawMode } = useBoardContext()
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
@@ -400,11 +400,11 @@ function Dropdown(props) {
     useEffect(() => {
         const groupId = internalState?.group?.id
         if (groupId && document.getElementById(groupId)) {
-            document.getElementById(groupId).style.pointerEvents = isPencilMode
+            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isArrowSelected)
                 ? 'none'
                 : 'auto'
         }
-    }, [isPencilMode, internalState?.group?.id])
+    }, [isPencilMode, isArrowDrawMode, isArrowSelected, internalState?.group?.id])
 
     function closeToolbar() {
         toggleToolbar(false)

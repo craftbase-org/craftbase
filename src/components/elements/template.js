@@ -12,7 +12,7 @@ import ElementFactory from 'factory/rectangle'
 import Toolbar from 'components/floatingToolbar'
 
 function Rectangle(props) {
-    const { isPencilMode } = useBoardContext()
+    const { isPencilMode, isArrowDrawMode } = useBoardContext()
     const selectedComponents = useSelector(
         (state) => state.main.selectedComponents
     )
@@ -216,11 +216,11 @@ function Rectangle(props) {
     useEffect(() => {
         const groupId = internalState?.group?.id
         if (groupId && document.getElementById(groupId)) {
-            document.getElementById(groupId).style.pointerEvents = isPencilMode
+            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isArrowSelected)
                 ? 'none'
                 : 'auto'
         }
-    }, [isPencilMode, internalState?.group?.id])
+    }, [isPencilMode, isArrowDrawMode, isArrowSelected, internalState?.group?.id])
 
     function closeToolbar() {
         toggleToolbar(false)

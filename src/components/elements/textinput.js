@@ -12,7 +12,7 @@ import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/textinput'
 
 function TextInput(props) {
-    const { isPencilMode } = useBoardContext()
+    const { isPencilMode, isArrowDrawMode } = useBoardContext()
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
     const dispatch = useDispatch()
@@ -307,11 +307,11 @@ function TextInput(props) {
     useEffect(() => {
         const groupId = internalState?.group?.id
         if (groupId && document.getElementById(groupId)) {
-            document.getElementById(groupId).style.pointerEvents = isPencilMode
+            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isArrowSelected)
                 ? 'none'
                 : 'auto'
         }
-    }, [isPencilMode, internalState?.group?.id])
+    }, [isPencilMode, isArrowDrawMode, isArrowSelected, internalState?.group?.id])
 
     function closeToolbar() {
         toggleToolbar(false)

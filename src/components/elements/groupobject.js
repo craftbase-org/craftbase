@@ -61,6 +61,8 @@ function GroupedObjectWrapper(props) {
         addToLocalComponentStore,
         updateComponentBulkPropertiesInLocalStore,
         isPencilMode,
+        isArrowDrawMode,
+        isArrowSelected,
     } = useBoardContext()
 
     const two = props.twoJSInstance
@@ -511,11 +513,11 @@ function GroupedObjectWrapper(props) {
     // When pencil mode is active, disable pointer events on this component
     useEffect(() => {
         if (groupId && document.getElementById(groupId)) {
-            document.getElementById(groupId).style.pointerEvents = isPencilMode
+            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isArrowSelected)
                 ? 'none'
                 : 'auto'
         }
-    }, [isPencilMode, groupId])
+    }, [isPencilMode, isArrowDrawMode, isArrowSelected, groupId])
 
     return (
         <React.Fragment>

@@ -67,7 +67,8 @@ function addZUI(
     customEventListener,
     setOnGroupHandler,
     addToLocalComponentStore,
-    setSelectedComponentInBoard
+    setSelectedComponentInBoard,
+    setArrowDrawModeOff
 ) {
     // console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
@@ -419,6 +420,22 @@ function addZUI(
                     domElement.addEventListener('mousemove', mousemove, false)
                     domElement.addEventListener('mouseup', mouseup, false)
                 }
+
+                // When an arrow or its endpoint circle is selected, disable pointer
+                // events on all other components so interactjs resize handlers on
+                // shapes like rectangle don't capture events during arrow drag
+                if (
+                    !avoidDragging &&
+                    (shape?.elementData?.isLineCircle ||
+                        shape?.elementData?.componentType === 'arrowLine')
+                ) {
+                    document
+                        .querySelectorAll('.dragger-picker:not(.is-line-circle)')
+                        .forEach((el) => {
+                            el.style.pointerEvents = 'none'
+                        })
+                }
+
                 // console.log('shape selected', shape)
 
                 if (!shape.elementData.isGroupSelector) {
@@ -735,6 +752,7 @@ function addZUI(
                 }
 
                 arrowDrawElement = null
+                setArrowDrawModeOff()
                 document.getElementById('main-two-root').style.cursor = 'auto'
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
@@ -884,6 +902,11 @@ function addZUI(
         //     elementId: shape.elementData.elementId,
         //     data: { x: shape.translation.x, y: shape.translation.y },
         // }
+        // Restore pointer events on all components (may have been disabled during arrow drag)
+        document.querySelectorAll('.dragger-picker').forEach((el) => {
+            el.style.pointerEvents = ''
+        })
+
         shape = {}
         scenario = null
 
@@ -1055,6 +1078,7 @@ const Canvas = (props) => {
         updateComponentBulkPropertiesInLocalStore,
         setTwoJSInstanceInBoard,
         setSelectedComponentInBoard,
+        setArrowDrawModeInBoard,
     } = useBoardContext()
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
@@ -1093,7 +1117,8 @@ const Canvas = (props) => {
             customEventListener,
             setOnGroupHandler,
             addToLocalComponentStore,
-            setSelectedComponentInBoard
+            setSelectedComponentInBoard,
+            () => setArrowDrawModeInBoard(false)
         )
 
         // this.props.getElementsData('CONSTRUCT', arr)

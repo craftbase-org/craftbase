@@ -17,6 +17,7 @@ const PrimarySidebar = () => {
         togglePointer,
         togglePencilMode,
         addToLocalComponentStore,
+        setArrowDrawModeInBoard,
     } = useBoardContext()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const {
@@ -127,6 +128,7 @@ const PrimarySidebar = () => {
                     document.getElementById('main-two-root').style.cursor =
                         'crosshair'
                     localStorage.setItem('arrowDrawMode', 'true')
+                    setArrowDrawModeInBoard(true)
                 }
 
                 // setShowAddShapeLoader(true)
