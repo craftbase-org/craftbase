@@ -86,6 +86,7 @@ function ArrowLine(props) {
             line,
         } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
+        line.opacity = props.metadata?.opacity ?? 1
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
@@ -596,6 +597,7 @@ function ArrowLine(props) {
             let pointCircle2Group = internalState.pointCircle2Group.data
             groupInstance.translation.x = props.x
             groupInstance.translation.y = props.y
+            lineInstance.opacity = props.metadata?.opacity ?? 1
             two.update()
             // updateX1Y1Vertices(lineInstance, props.x1, props.y1, pointCircle1Group)
             // updateX2Y2Vertices(lineInstance, props.x2, props.y2, pointCircle2Group)

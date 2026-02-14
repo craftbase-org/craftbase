@@ -16,16 +16,16 @@ export default class ArrowLineFactory extends Main {
         // centerPointCircle.stroke = '#0052CC'
         // centerPointCircle.linewidth = 2
 
-        const pointCircle1 = two.makeEllipse(0, 0, 5, 5)
+        const pointCircle1 = two.makeCircle(0, 0, 4)
         pointCircle1.fill = '#f4f4f2'
         pointCircle1.stroke = '#0052CC'
-        pointCircle1.linewidth = 1
+        pointCircle1.linewidth = 1.5
         // pointCircle1.noStroke()
 
-        const pointCircle2 = two.makeEllipse(0, 0, 5, 5)
+        const pointCircle2 = two.makeCircle(0, 0, 4)
         pointCircle2.fill = '#f4f4f2'
         pointCircle2.stroke = '#0052CC'
-        pointCircle2.linewidth = 1
+        pointCircle2.linewidth = 1.5
         // pointCircle2.noStroke()
 
         // const resizeLine = two.makeGroup(pointCircle1, pointCircle2)
