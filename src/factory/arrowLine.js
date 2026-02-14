@@ -9,7 +9,7 @@ export default class ArrowLineFactory extends Main {
 
         // console.log('arrow line factory x1, y1, x2, y2', x1, y1, x2, y2)
         let line = two.makeArrow(x1, y1, x2, y2)
-        line.linewidth = 2
+        line.linewidth = 1
         // line.vertices[1].y = 200
         // const centerPointCircle = two.makeEllipse(0, 0, 5, 5)
         // centerPointCircle.fill = '#FFF'
@@ -17,15 +17,15 @@ export default class ArrowLineFactory extends Main {
         // centerPointCircle.linewidth = 2
 
         const pointCircle1 = two.makeEllipse(0, 0, 5, 5)
-        pointCircle1.fill = '#FFF'
+        pointCircle1.fill = '#f4f4f2'
         pointCircle1.stroke = '#0052CC'
-        pointCircle1.linewidth = 2
+        pointCircle1.linewidth = 1
         // pointCircle1.noStroke()
 
         const pointCircle2 = two.makeEllipse(0, 0, 5, 5)
-        pointCircle2.fill = '#FFF'
+        pointCircle2.fill = '#f4f4f2'
         pointCircle2.stroke = '#0052CC'
-        pointCircle2.linewidth = 2
+        pointCircle2.linewidth = 1
         // pointCircle2.noStroke()
 
         // const resizeLine = two.makeGroup(pointCircle1, pointCircle2)

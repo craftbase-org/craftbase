@@ -159,22 +159,8 @@ function addZUI(
                     const pointCircle2Group = arrowDrawElement.children[2]
 
                     // Reset line vertices: tail at 0,0, head at 0,0
-                    updateX1Y1Vertices(
-                        Two,
-                        line,
-                        0,
-                        0,
-                        pointCircle1Group,
-                        two
-                    )
-                    updateX2Y2Vertices(
-                        Two,
-                        line,
-                        0,
-                        0,
-                        pointCircle2Group,
-                        two
-                    )
+                    updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
+                    updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
 
                     two.update()
                 }
@@ -430,7 +416,9 @@ function addZUI(
                         shape?.elementData?.componentType === 'arrowLine')
                 ) {
                     document
-                        .querySelectorAll('.dragger-picker:not(.is-line-circle)')
+                        .querySelectorAll(
+                            '.dragger-picker:not(.is-line-circle)'
+                        )
                         .forEach((el) => {
                             el.style.pointerEvents = 'none'
                         })
@@ -496,10 +484,8 @@ function addZUI(
                         e.clientX,
                         e.clientY
                     )
-                    const relX =
-                        surfaceCoords.x - arrowDrawElement.position.x
-                    const relY =
-                        surfaceCoords.y - arrowDrawElement.position.y
+                    const relX = surfaceCoords.x - arrowDrawElement.position.x
+                    const relY = surfaceCoords.y - arrowDrawElement.position.y
 
                     const line = arrowDrawElement.children[0]
                     const pointCircle2Group = arrowDrawElement.children[2]
@@ -783,11 +769,11 @@ function addZUI(
                     linewidth: currentPath.linewidth,
                     stroke: currentPath.stroke,
                 }
-                componentData.metadata = currentPath.vertices.map(function (
-                    vertex
-                ) {
-                    return { x: vertex.x, y: vertex.y }
-                })
+                componentData.metadata = currentPath.vertices.map(
+                    function (vertex) {
+                        return { x: vertex.x, y: vertex.y }
+                    }
+                )
 
                 componentData.x = Math.floor(componentData.metadata[0]?.x || 0)
                 componentData.y = Math.floor(componentData.metadata[0]?.y || 0)
@@ -1477,7 +1463,7 @@ const Canvas = (props) => {
                     <Component />
                 </React.Fragment>
             ))}
-            <Zoomer sceneInstance={twoJSInstance} />
+            {/* <Zoomer sceneInstance={twoJSInstance} /> */}
         </>
     )
 }
