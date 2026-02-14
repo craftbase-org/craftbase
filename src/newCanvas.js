@@ -353,7 +353,8 @@ function addZUI(
 
                             // Show point circles when arrow line body is clicked
                             if (
-                                shape?.elementData?.componentType === 'arrowLine'
+                                shape?.elementData?.componentType ===
+                                'arrowLine'
                             ) {
                                 if (shape.children[1])
                                     shape.children[1].opacity = 1
