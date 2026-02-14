@@ -449,20 +449,30 @@ function addZUI(
                     // this internal state is required for floating toolbar component since floating
                     // toolbar relies on the exact structure/schema for component's internal state
                     // so that any changes made from toolbar can be applied directly on component's two.js properties
+
+                    // For arrow endpoint circle clicks, resolve to the parent arrow group and
+                    // the actual line shape so the toolbar has the correct id and target element
+                    const isLineCircle = shape?.elementData?.isLineCircle === true
+                    const groupForToolbar = isLineCircle
+                        ? shape.elementData.parentData
+                        : shape
+                    const shapeForToolbar = isLineCircle
+                        ? shape.elementData.lineData
+                        : shape.children[0]
+
                     let componentInternalState = {
                         element: {
-                            [shape.children[0].id]: shape.children[0],
-                            [shape.id]: shape,
-                            // [selector.id]: selector,
+                            [shapeForToolbar.id]: shapeForToolbar,
+                            [groupForToolbar.id]: groupForToolbar,
                         },
                         group: {
-                            id: shape.id,
-                            data: shape,
+                            id: groupForToolbar.id,
+                            data: groupForToolbar,
                         },
                         shape: {
-                            type: shape.elementData.componentType,
-                            id: shape.children[0].id,
-                            data: shape.children[0],
+                            type: groupForToolbar.elementData.componentType,
+                            id: shapeForToolbar.id,
+                            data: shapeForToolbar,
                         },
                         text: {
                             data: {},

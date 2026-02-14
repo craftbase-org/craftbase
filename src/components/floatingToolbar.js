@@ -188,15 +188,16 @@ const Toolbar = (props) => {
 
     const updateComponent = (propertyToUpdate, propertyValue) => {
         const userId = localStorage.getItem('userId')
-        // updateComponentInfo({
-        //     variables: {
-        //         id: componentId,
-        //         updateObj: {
-        //             [propertyToUpdate]: propertyValue,
-        //             updatedBy: userId,
-        //         },
-        //     },
-        // })
+        const componentId = componentState?.group?.data?.elementData?.id
+        updateComponentInfo({
+            variables: {
+                id: componentId,
+                updateObj: {
+                    [propertyToUpdate]: propertyValue,
+                    updatedBy: userId,
+                },
+            },
+        })
         postToolbarUpdate && postToolbarUpdate()
     }
 
