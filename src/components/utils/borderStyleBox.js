@@ -47,7 +47,7 @@ const BorderStyleBox = ({
     }
 
     const renderBorderWidths = () => {
-        const widths = [0, 1, 2, 4, 6].map((width, index) => {
+        const widths = [0, 2, 4, 8].map((width, index) => {
             return (
                 <Fragment key={width}>
                     <button

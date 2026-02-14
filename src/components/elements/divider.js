@@ -90,7 +90,7 @@ function Divider(props) {
         const { group, pointCircle1, pointCircle2, resizeLine, line } =
             elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        group.opacity = props.metadata?.opacity ?? 1
+        line.opacity = props.metadata?.opacity ?? 1
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */

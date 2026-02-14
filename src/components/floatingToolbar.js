@@ -443,14 +443,14 @@ const Toolbar = (props) => {
                         setState((draft) => {
                             draft.opacity = arr[0]
                         })
-                        componentState.group.data.opacity = arr[0]
+                        componentState.shape.data.opacity = arr[0]
                         postToolbarUpdate && postToolbarUpdate()
                     }}
                     handleOnChange={(arr) => {
                         setState((draft) => {
                             draft.opacity = arr[0]
                         })
-                        componentState.group.data.opacity = arr[0]
+                        componentState.shape.data.opacity = arr[0]
 
                         const componentId =
                             componentState?.group?.data?.elementData?.id

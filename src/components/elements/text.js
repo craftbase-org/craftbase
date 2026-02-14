@@ -93,7 +93,7 @@ function Text(props) {
         const { group, rectTextGroup, rectangle } =
             elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        group.opacity = props.metadata?.opacity ?? 1
+        rectTextGroup.opacity = props.metadata?.opacity ?? 1
         // the custom foreign object hook
         const svgElem = rectTextGroup._renderer.elem
 
