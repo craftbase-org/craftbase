@@ -229,6 +229,14 @@ function addZUI(
                 let avoidDragging = false
                 let isGroupSelector = false
 
+                // Hide all arrow endpoint circles before processing the new selection
+                two.scene.children.forEach((child) => {
+                    if (child?.elementData?.componentType === 'arrowLine') {
+                        if (child.children[1]) child.children[1].opacity = 0
+                        if (child.children[2]) child.children[2].opacity = 0
+                    }
+                })
+
                 let path = e.path || (e.composedPath && e.composedPath())
 
                 // checks for path obj in DOM event obj if it contains following element with id attr which matches with similar two.js children group
@@ -342,6 +350,16 @@ function addZUI(
                             shape = two.scene.children.find(
                                 (child) => child.id === item.id
                             )
+
+                            // Show point circles when arrow line body is clicked
+                            if (
+                                shape?.elementData?.componentType === 'arrowLine'
+                            ) {
+                                if (shape.children[1])
+                                    shape.children[1].opacity = 1
+                                if (shape.children[2])
+                                    shape.children[2].opacity = 1
+                            }
                         }
                     }
                 })
