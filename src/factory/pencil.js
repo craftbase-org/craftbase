@@ -27,7 +27,7 @@ export default class PencilFactory extends Main {
 
         // path.fill = fill ? fill : color_blue
 
-        // path.linewidth = linewidth ? linewidth : 0
+        path.linewidth = linewidth ? linewidth : 1
 
         this.path = path
         // Create group and take children elements as a parameter

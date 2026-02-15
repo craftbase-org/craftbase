@@ -20,9 +20,12 @@ const PrimarySidebar = () => {
         togglePencilMode,
         addToLocalComponentStore,
         setArrowDrawModeInBoard,
+        defaultLinewidth,
     } = useBoardContext()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
-    const [hintText, setHintText] = useState('Click anywhere to place element there.')
+    const [hintText, setHintText] = useState(
+        'Click anywhere to place element there.'
+    )
     const {
         loading: getComponentTypesLoading,
         data: getComponentTypesData,
@@ -70,7 +73,9 @@ const PrimarySidebar = () => {
                         if (DRAW_SHAPE_TYPES.includes(label)) {
                             setHintText('Click and drag to draw shape')
                         } else {
-                            setHintText('Click anywhere to place element there.')
+                            setHintText(
+                                'Click anywhere to place element there.'
+                            )
                         }
                         document.getElementById(
                             'show-click-anywhere-btn'
@@ -97,7 +102,7 @@ const PrimarySidebar = () => {
                                     id: generateId,
                                     componentType: label,
                                     // stroke: '#000',
-                                    // linewidth: 1,
+                                    linewidth: defaultLinewidth,
                                     children: {},
                                     metadata: [],
                                     x: isArrowDraw
@@ -173,7 +178,7 @@ const PrimarySidebar = () => {
                 id="sidebar-container"
                 className="sidebar-container flex items-center "
             >
-                <div className="  relative ">
+                <div className=" relative ">
                     <ElementsDropdown
                         getComponentTypesLoading={getComponentTypesLoading}
                         addElement={addElement}

@@ -58,6 +58,7 @@ function getComponentSchema(obj, boardId) {
  */
 
 var isDrawing
+var defaultLinewidthValue = 1
 
 function addZUI(
     props,
@@ -273,6 +274,7 @@ function addZUI(
                 domElement.addEventListener('mouseup', mouseup, false)
 
                 currentPath = two.makePath()
+                currentPath.linewidth = defaultLinewidthValue
                 currentPath.closed = false
                 two.add(currentPath)
                 paths.push(currentPath)
@@ -507,7 +509,8 @@ function addZUI(
 
                     // For arrow endpoint circle clicks, resolve to the parent arrow group and
                     // the actual line shape so the toolbar has the correct id and target element
-                    const isLineCircle = shape?.elementData?.isLineCircle === true
+                    const isLineCircle =
+                        shape?.elementData?.isLineCircle === true
                     const groupForToolbar = isLineCircle
                         ? shape.elementData.parentData
                         : shape
@@ -594,12 +597,8 @@ function addZUI(
                     y: surfaceCoordsMove.y,
                 }
 
-                const drawWidth = Math.abs(
-                    surfaceCoordsMove.x - drawOrigin.x
-                )
-                const drawHeight = Math.abs(
-                    surfaceCoordsMove.y - drawOrigin.y
-                )
+                const drawWidth = Math.abs(surfaceCoordsMove.x - drawOrigin.x)
+                const drawHeight = Math.abs(surfaceCoordsMove.y - drawOrigin.y)
                 const centerX = (surfaceCoordsMove.x + drawOrigin.x) / 2
                 const centerY = (surfaceCoordsMove.y + drawOrigin.y) / 2
 
@@ -641,6 +640,7 @@ function addZUI(
                     'L'
                 currentPath.noFill()
                 currentPath.stroke = '#000'
+                currentPath.linewidth = defaultLinewidthValue
                 two.update()
                 break
             default:
@@ -879,16 +879,18 @@ function addZUI(
             case SCENARIO_DRAW_SHAPE: {
                 const MIN_SIZE = 20
                 const endCoords = drawCurrentCoords || drawOrigin
-                const finalWidth = Math.round(Math.max(
-                    Math.abs(endCoords.x - drawOrigin.x),
-                    MIN_SIZE
-                ))
-                const finalHeight = Math.round(Math.max(
-                    Math.abs(endCoords.y - drawOrigin.y),
-                    MIN_SIZE
-                ))
-                const finalCenterX = Math.round((drawOrigin.x + endCoords.x) / 2)
-                const finalCenterY = Math.round((drawOrigin.y + endCoords.y) / 2)
+                const finalWidth = Math.round(
+                    Math.max(Math.abs(endCoords.x - drawOrigin.x), MIN_SIZE)
+                )
+                const finalHeight = Math.round(
+                    Math.max(Math.abs(endCoords.y - drawOrigin.y), MIN_SIZE)
+                )
+                const finalCenterX = Math.round(
+                    (drawOrigin.x + endCoords.x) / 2
+                )
+                const finalCenterY = Math.round(
+                    (drawOrigin.y + endCoords.y) / 2
+                )
 
                 if (previewShape) {
                     two.remove(previewShape)
@@ -937,14 +939,18 @@ function addZUI(
                         )
                     }
                 }
-                requestAnimationFrame(() => waitForNewElement(pendingSelectionId))
+                requestAnimationFrame(() =>
+                    waitForNewElement(pendingSelectionId)
+                )
 
                 drawOrigin = null
                 drawCurrentCoords = null
                 drawShapeType = null
                 drawShapeProps = null
                 document.getElementById('main-two-root').style.cursor = 'auto'
-                const hintBtn = document.getElementById('show-click-anywhere-btn')
+                const hintBtn = document.getElementById(
+                    'show-click-anywhere-btn'
+                )
                 if (hintBtn) hintBtn.style.opacity = 0
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
@@ -1405,6 +1411,10 @@ const Canvas = (props) => {
             document.getElementById('main-two-root').style.cursor = 'auto'
         }
     }, [props.isPencilMode])
+
+    useEffect(() => {
+        defaultLinewidthValue = props.defaultLinewidth || 1
+    }, [props.defaultLinewidth])
 
     // on group select use effect hook
     useEffect(() => {

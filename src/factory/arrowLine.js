@@ -5,11 +5,18 @@ export default class ArrowLineFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill, x1 = 20, x2 = 100, y1 = 10, y2 = 10 } = this.properties
+        const {
+            fill,
+            x1 = 20,
+            x2 = 100,
+            y1 = 10,
+            y2 = 10,
+            linewidth,
+        } = this.properties
 
         // console.log('arrow line factory x1, y1, x2, y2', x1, y1, x2, y2)
         let line = two.makeArrow(x1, y1, x2, y2)
-        line.linewidth = 1
+        line.linewidth = linewidth ? linewidth : 1
         line.fill = 'none'
         // line.vertices[1].y = 200
         // const centerPointCircle = two.makeEllipse(0, 0, 5, 5)
