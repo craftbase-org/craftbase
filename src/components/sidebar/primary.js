@@ -11,6 +11,8 @@ import { useBoardContext } from 'views/Board/board'
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
 
+const DRAW_SHAPE_TYPES = ['circle', 'rectangle']
+
 const PrimarySidebar = () => {
     const {
         updateLastAddedElement,
@@ -20,6 +22,7 @@ const PrimarySidebar = () => {
         setArrowDrawModeInBoard,
     } = useBoardContext()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
+    const [hintText, setHintText] = useState('Click anywhere to place element there.')
     const {
         loading: getComponentTypesLoading,
         data: getComponentTypesData,
@@ -64,6 +67,11 @@ const PrimarySidebar = () => {
 
                 setTimeout(() => {
                     if (!isArrowDraw) {
+                        if (DRAW_SHAPE_TYPES.includes(label)) {
+                            setHintText('Click and drag to draw shape')
+                        } else {
+                            setHintText('Click anywhere to place element there.')
+                        }
                         document.getElementById(
                             'show-click-anywhere-btn'
                         ).style.opacity = 1
@@ -122,24 +130,40 @@ const PrimarySidebar = () => {
                     )
                 }
                 // console.log('shapeData', shapeData)
-                updateLastAddedElement(shapeData)
 
                 if (isArrowDraw) {
+                    updateLastAddedElement(shapeData)
                     document.getElementById('main-two-root').style.cursor =
                         'crosshair'
                     localStorage.setItem('arrowDrawMode', 'true')
+                    localStorage.setItem('lastAddedElementId', generateId)
                     setArrowDrawModeInBoard(true)
+                    // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
+                    addToLocalComponentStore(
+                        shapeData.id,
+                        shapeData.componentType,
+                        shapeData
+                    )
+                } else if (DRAW_SHAPE_TYPES.includes(label)) {
+                    // Draw-to-place: store pending shape props, canvas will create on mouseup
+                    localStorage.setItem('pendingShapeType', label)
+                    localStorage.setItem(
+                        'pendingShapeProps',
+                        JSON.stringify(shapeData)
+                    )
+                    document.getElementById('main-two-root').style.cursor =
+                        'crosshair'
+                } else {
+                    updateLastAddedElement(shapeData)
+                    // setShowAddShapeLoader(true)
+                    localStorage.setItem('lastAddedElementId', generateId)
+                    // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
+                    addToLocalComponentStore(
+                        shapeData.id,
+                        shapeData.componentType,
+                        shapeData
+                    )
                 }
-
-                // setShowAddShapeLoader(true)
-                localStorage.setItem('lastAddedElementId', generateId)
-
-                // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
-                addToLocalComponentStore(
-                    shapeData.id,
-                    shapeData.componentType,
-                    shapeData
-                )
         }
     }
     let isLiveSession = false
@@ -170,7 +194,7 @@ const PrimarySidebar = () => {
                 >
                     <div className="flex items-center  ">
                         <div className="w-auto text-sm text-left">
-                            Click anywhere to place element there.
+                            {hintText}
                         </div>
                     </div>
                 </div>

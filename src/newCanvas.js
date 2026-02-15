@@ -87,9 +87,15 @@ function addZUI(
     let SCENARIO_JUST_ADDED_ELEMENT = 'justAddedElement'
     let SCENARIO_PENCIL_MODE = 'pencilMode'
     let SCENARIO_ARROW_DRAW = 'arrowDraw'
+    let SCENARIO_DRAW_SHAPE = 'drawShape'
     let SCENARIO_DEFAULT = null
 
     let arrowDrawElement = null
+    let drawOrigin = null
+    let drawCurrentCoords = null
+    let previewShape = null
+    let drawShapeType = null
+    let drawShapeProps = null
 
     zui.addLimits(0.06, 8)
 
@@ -134,8 +140,11 @@ function addZUI(
         }
 
         const arrowDrawMode = localStorage.getItem('arrowDrawMode')
+        const pendingShapeType = localStorage.getItem('pendingShapeType')
         if (arrowDrawMode === 'true') {
             scenario = SCENARIO_ARROW_DRAW
+        } else if (pendingShapeType !== null) {
+            scenario = SCENARIO_DRAW_SHAPE
         } else if (lastAddedElementId !== null) {
             scenario = SCENARIO_JUST_ADDED_ELEMENT
         }
@@ -171,6 +180,49 @@ function addZUI(
                 domElement.addEventListener('mousemove', mousemove, false)
                 domElement.addEventListener('mouseup', mouseup, false)
 
+                document.getElementById('main-two-root').style.cursor =
+                    'crosshair'
+                break
+            }
+            case SCENARIO_DRAW_SHAPE: {
+                const surfaceCoords = zui.clientToSurface(e.clientX, e.clientY)
+                drawOrigin = { x: surfaceCoords.x, y: surfaceCoords.y }
+                drawCurrentCoords = { x: surfaceCoords.x, y: surfaceCoords.y }
+                drawShapeType = localStorage.getItem('pendingShapeType')
+                drawShapeProps = JSON.parse(
+                    localStorage.getItem('pendingShapeProps')
+                )
+
+                localStorage.removeItem('pendingShapeType')
+                localStorage.removeItem('pendingShapeProps')
+
+                if (drawShapeType === 'circle') {
+                    previewShape = two.makeEllipse(
+                        surfaceCoords.x,
+                        surfaceCoords.y,
+                        0,
+                        0
+                    )
+                } else if (drawShapeType === 'rectangle') {
+                    previewShape = two.makeRoundedRectangle(
+                        surfaceCoords.x,
+                        surfaceCoords.y,
+                        0,
+                        0,
+                        5
+                    )
+                }
+
+                if (previewShape) {
+                    previewShape.fill = drawShapeProps?.fill || '#fff'
+                    previewShape.stroke = drawShapeProps?.stroke || '#000'
+                    previewShape.linewidth = drawShapeProps?.linewidth || 1
+                    previewShape.opacity = 0.6
+                    two.update()
+                }
+
+                domElement.addEventListener('mousemove', mousemove, false)
+                domElement.addEventListener('mouseup', mouseup, false)
                 document.getElementById('main-two-root').style.cursor =
                     'crosshair'
                 break
@@ -529,6 +581,34 @@ function addZUI(
                     )
                 }
                 break
+            case SCENARIO_DRAW_SHAPE: {
+                const surfaceCoordsMove = zui.clientToSurface(
+                    e.clientX,
+                    e.clientY
+                )
+                drawCurrentCoords = {
+                    x: surfaceCoordsMove.x,
+                    y: surfaceCoordsMove.y,
+                }
+
+                const drawWidth = Math.abs(
+                    surfaceCoordsMove.x - drawOrigin.x
+                )
+                const drawHeight = Math.abs(
+                    surfaceCoordsMove.y - drawOrigin.y
+                )
+                const centerX = (surfaceCoordsMove.x + drawOrigin.x) / 2
+                const centerY = (surfaceCoordsMove.y + drawOrigin.y) / 2
+
+                if (previewShape) {
+                    previewShape.translation.x = centerX
+                    previewShape.translation.y = centerY
+                    previewShape.width = drawWidth
+                    previewShape.height = drawHeight
+                    two.update()
+                }
+                break
+            }
             case SCENARIO_JUST_ADDED_ELEMENT:
                 // This block falls for the case when there is newly added element and we let user click
                 // anywhere to set last added element's position
@@ -769,6 +849,49 @@ function addZUI(
                 arrowDrawElement = null
                 setArrowDrawModeOff()
                 document.getElementById('main-two-root').style.cursor = 'auto'
+                domElement.removeEventListener('mousemove', mousemove, false)
+                domElement.removeEventListener('mouseup', mouseup, false)
+                break
+            }
+            case SCENARIO_DRAW_SHAPE: {
+                const MIN_SIZE = 20
+                const endCoords = drawCurrentCoords || drawOrigin
+                const finalWidth = Math.max(
+                    Math.abs(endCoords.x - drawOrigin.x),
+                    MIN_SIZE
+                )
+                const finalHeight = Math.max(
+                    Math.abs(endCoords.y - drawOrigin.y),
+                    MIN_SIZE
+                )
+                const finalCenterX = (drawOrigin.x + endCoords.x) / 2
+                const finalCenterY = (drawOrigin.y + endCoords.y) / 2
+
+                if (previewShape) {
+                    two.remove(previewShape)
+                    previewShape = null
+                    two.update()
+                }
+
+                const finalId = generateUUID()
+                const finalShapeData = {
+                    ...drawShapeProps,
+                    id: finalId,
+                    x: finalCenterX,
+                    y: finalCenterY,
+                    width: finalWidth,
+                    height: finalHeight,
+                }
+
+                addToLocalComponentStore(finalId, drawShapeType, finalShapeData)
+
+                drawOrigin = null
+                drawCurrentCoords = null
+                drawShapeType = null
+                drawShapeProps = null
+                document.getElementById('main-two-root').style.cursor = 'auto'
+                const hintBtn = document.getElementById('show-click-anywhere-btn')
+                if (hintBtn) hintBtn.style.opacity = 0
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
