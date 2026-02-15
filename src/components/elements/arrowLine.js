@@ -87,7 +87,6 @@ function ArrowLine(props) {
         } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
         line.opacity = props.metadata?.opacity ?? 1
-        if (props.fill) line.fill = props.fill
         if (props.stroke) line.stroke = props.stroke
         if (props.linewidth) line.linewidth = props.linewidth
 
@@ -245,12 +244,11 @@ function ArrowLine(props) {
     useEffect(() => {
         if (internalState?.line?.data) {
             let lineInstance = internalState.line.data
-            if (props.fill) lineInstance.fill = props.fill
             if (props.stroke) lineInstance.stroke = props.stroke
             if (props.linewidth) lineInstance.linewidth = props.linewidth
             two.update()
         }
-    }, [props.fill, props.stroke, props.linewidth])
+    }, [props.stroke, props.linewidth])
 
     useEffect(() => {
         if (internalState?.group?.data) {

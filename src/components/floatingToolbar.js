@@ -213,6 +213,7 @@ const Toolbar = (props) => {
             //     }),
             content: (hideColorText, hideColorIcon, hideColorBackground) => (
                 <Fragment>
+                    {hideColorBackground ? null : (
                     <ColorPicker
                         title="Background"
                         currentColor={state.colorBg}
@@ -250,6 +251,7 @@ const Toolbar = (props) => {
                             updateComponent && updateComponent('fill', color)
                         }}
                     />
+                    )}
 
                     {/** Icon color picker */}
                     {hideColorIcon ? null : (

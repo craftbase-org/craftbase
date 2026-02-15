@@ -363,6 +363,7 @@ const BoardViewPage = (props) => {
                             <Toolbar
                                 hideColorText={true}
                                 hideColorIcon={true}
+                                hideColorBackground={isArrowSelected}
                                 toggle={showToolbar}
                                 componentState={selectedComponent}
                                 closeToolbar={closeToolbar}

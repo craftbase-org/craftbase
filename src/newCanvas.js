@@ -856,16 +856,16 @@ function addZUI(
             case SCENARIO_DRAW_SHAPE: {
                 const MIN_SIZE = 20
                 const endCoords = drawCurrentCoords || drawOrigin
-                const finalWidth = Math.max(
+                const finalWidth = Math.round(Math.max(
                     Math.abs(endCoords.x - drawOrigin.x),
                     MIN_SIZE
-                )
-                const finalHeight = Math.max(
+                ))
+                const finalHeight = Math.round(Math.max(
                     Math.abs(endCoords.y - drawOrigin.y),
                     MIN_SIZE
-                )
-                const finalCenterX = (drawOrigin.x + endCoords.x) / 2
-                const finalCenterY = (drawOrigin.y + endCoords.y) / 2
+                ))
+                const finalCenterX = Math.round((drawOrigin.x + endCoords.x) / 2)
+                const finalCenterY = Math.round((drawOrigin.y + endCoords.y) / 2)
 
                 if (previewShape) {
                     two.remove(previewShape)
