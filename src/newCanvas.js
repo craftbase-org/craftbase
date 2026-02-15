@@ -96,6 +96,7 @@ function addZUI(
     let previewShape = null
     let drawShapeType = null
     let drawShapeProps = null
+    let lastPlacedElement = null
 
     zui.addLimits(0.06, 8)
 
@@ -252,6 +253,8 @@ function addZUI(
                         clientToSurface.x,
                         clientToSurface.y
                     )
+
+                    lastPlacedElement = twoJSElement
                 }
 
                 localStorage.removeItem('lastAddedElementId')
@@ -885,6 +888,37 @@ function addZUI(
 
                 addToLocalComponentStore(finalId, drawShapeType, finalShapeData)
 
+                // React renders the element asynchronously; poll until it appears in two.scene.children
+                const pendingSelectionId = finalId
+                const waitForNewElement = (id, retries = 0) => {
+                    const el = two.scene.children.find(
+                        (child) => child?.elementData?.id === id
+                    )
+                    if (el && el.children?.[0]) {
+                        const shapeEl = el.children[0]
+                        const componentInternalState = {
+                            element: {
+                                [shapeEl.id]: shapeEl,
+                                [el.id]: el,
+                            },
+                            group: { id: el.id, data: el },
+                            shape: {
+                                type: el.elementData?.componentType,
+                                id: shapeEl.id,
+                                data: shapeEl,
+                            },
+                            text: { data: {} },
+                            icon: { data: {} },
+                        }
+                        setSelectedComponentInBoard(componentInternalState)
+                    } else if (retries < 30) {
+                        requestAnimationFrame(() =>
+                            waitForNewElement(id, retries + 1)
+                        )
+                    }
+                }
+                requestAnimationFrame(() => waitForNewElement(pendingSelectionId))
+
                 drawOrigin = null
                 drawCurrentCoords = null
                 drawShapeType = null
@@ -897,6 +931,26 @@ function addZUI(
                 break
             }
             case SCENARIO_JUST_ADDED_ELEMENT:
+                if (lastPlacedElement && lastPlacedElement.children?.[0]) {
+                    const groupEl = lastPlacedElement
+                    const shapeEl = lastPlacedElement.children[0]
+                    const componentInternalState = {
+                        element: {
+                            [shapeEl.id]: shapeEl,
+                            [groupEl.id]: groupEl,
+                        },
+                        group: { id: groupEl.id, data: groupEl },
+                        shape: {
+                            type: groupEl.elementData?.componentType,
+                            id: shapeEl.id,
+                            data: shapeEl,
+                        },
+                        text: { data: {} },
+                        icon: { data: {} },
+                    }
+                    setSelectedComponentInBoard(componentInternalState)
+                    lastPlacedElement = null
+                }
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
