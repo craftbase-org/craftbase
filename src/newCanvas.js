@@ -849,6 +849,26 @@ function addZUI(
                     updateToGlobalState(newShapeData, {})
                 }
 
+                if (arrowDrawElement && arrowDrawElement.children?.[0]) {
+                    const groupEl = arrowDrawElement
+                    const lineEl = arrowDrawElement.children[0]
+                    const componentInternalState = {
+                        element: {
+                            [lineEl.id]: lineEl,
+                            [groupEl.id]: groupEl,
+                        },
+                        group: { id: groupEl.id, data: groupEl },
+                        shape: {
+                            type: groupEl.elementData?.componentType,
+                            id: lineEl.id,
+                            data: lineEl,
+                        },
+                        text: { data: {} },
+                        icon: { data: {} },
+                    }
+                    setSelectedComponentInBoard(componentInternalState)
+                }
+
                 arrowDrawElement = null
                 setArrowDrawModeOff()
                 document.getElementById('main-two-root').style.cursor = 'auto'
