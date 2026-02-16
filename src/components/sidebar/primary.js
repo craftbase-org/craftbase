@@ -11,6 +11,8 @@ import { useBoardContext } from 'views/Board/board'
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
 
+const DRAW_SHAPE_TYPES = ['circle', 'rectangle']
+
 const PrimarySidebar = () => {
     const {
         updateLastAddedElement,
@@ -18,8 +20,12 @@ const PrimarySidebar = () => {
         togglePencilMode,
         addToLocalComponentStore,
         setArrowDrawModeInBoard,
+        defaultLinewidth,
     } = useBoardContext()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
+    const [hintText, setHintText] = useState(
+        'Click anywhere to place element there.'
+    )
     const {
         loading: getComponentTypesLoading,
         data: getComponentTypesData,
@@ -44,17 +50,54 @@ const PrimarySidebar = () => {
         }
     }, [getComponentTypesData])
 
+    // When stroke width changes while a shape draw mode is active,
+    // patch pendingShapeProps in localStorage so the next draw picks up the new linewidth.
+    useEffect(() => {
+        const pendingShapeType = localStorage.getItem('pendingShapeType')
+        if (pendingShapeType) {
+            const pendingShapePropsStr = localStorage.getItem('pendingShapeProps')
+            if (pendingShapePropsStr) {
+                const pendingShapeProps = JSON.parse(pendingShapePropsStr)
+                localStorage.setItem(
+                    'pendingShapeProps',
+                    JSON.stringify({ ...pendingShapeProps, linewidth: defaultLinewidth })
+                )
+            }
+        }
+        // Arrow linewidth is handled directly in newCanvas.js via defaultLinewidthValue,
+        // which is a module-level var always kept in sync, bypassing the React
+        // same-reference mutation issue in updateComponentBulkPropertiesInLocalStore.
+    }, [defaultLinewidth])
+
     const addElement = (label) => {
         switch (label) {
             case 'pointer':
                 togglePointer(true)
+                localStorage.removeItem('pendingShapeType')
+                localStorage.removeItem('pendingShapeProps')
+                localStorage.removeItem('arrowDrawMode')
+                localStorage.removeItem('lastAddedElementId')
+                document.getElementById('main-two-root').style.cursor = 'auto'
+                setArrowDrawModeInBoard(false)
                 break
             case 'pencil':
                 togglePencilMode(true)
+                localStorage.removeItem('pendingShapeType')
+                localStorage.removeItem('pendingShapeProps')
+                localStorage.removeItem('arrowDrawMode')
+                localStorage.removeItem('lastAddedElementId')
+                setArrowDrawModeInBoard(false)
                 break
             default:
                 togglePencilMode(false)
                 togglePointer(false)
+
+                // Clear any previously active persistent draw mode before starting a new one
+                localStorage.removeItem('pendingShapeType')
+                localStorage.removeItem('pendingShapeProps')
+                localStorage.removeItem('arrowDrawMode')
+                localStorage.removeItem('lastAddedElementId')
+                setArrowDrawModeInBoard(false)
 
                 const isArrowDraw = label === 'arrowLine'
 
@@ -64,6 +107,13 @@ const PrimarySidebar = () => {
 
                 setTimeout(() => {
                     if (!isArrowDraw) {
+                        if (DRAW_SHAPE_TYPES.includes(label)) {
+                            setHintText('Click and drag to draw shape')
+                        } else {
+                            setHintText(
+                                'Click anywhere to place element there.'
+                            )
+                        }
                         document.getElementById(
                             'show-click-anywhere-btn'
                         ).style.opacity = 1
@@ -89,7 +139,7 @@ const PrimarySidebar = () => {
                                     id: generateId,
                                     componentType: label,
                                     // stroke: '#000',
-                                    // linewidth: 1,
+                                    linewidth: defaultLinewidth,
                                     children: {},
                                     metadata: [],
                                     x: isArrowDraw
@@ -122,24 +172,40 @@ const PrimarySidebar = () => {
                     )
                 }
                 // console.log('shapeData', shapeData)
-                updateLastAddedElement(shapeData)
 
                 if (isArrowDraw) {
+                    updateLastAddedElement(shapeData)
                     document.getElementById('main-two-root').style.cursor =
                         'crosshair'
                     localStorage.setItem('arrowDrawMode', 'true')
+                    localStorage.setItem('lastAddedElementId', generateId)
                     setArrowDrawModeInBoard(true)
+                    // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
+                    addToLocalComponentStore(
+                        shapeData.id,
+                        shapeData.componentType,
+                        shapeData
+                    )
+                } else if (DRAW_SHAPE_TYPES.includes(label)) {
+                    // Draw-to-place: store pending shape props, canvas will create on mouseup
+                    localStorage.setItem('pendingShapeType', label)
+                    localStorage.setItem(
+                        'pendingShapeProps',
+                        JSON.stringify(shapeData)
+                    )
+                    document.getElementById('main-two-root').style.cursor =
+                        'crosshair'
+                } else {
+                    updateLastAddedElement(shapeData)
+                    // setShowAddShapeLoader(true)
+                    localStorage.setItem('lastAddedElementId', generateId)
+                    // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
+                    addToLocalComponentStore(
+                        shapeData.id,
+                        shapeData.componentType,
+                        shapeData
+                    )
                 }
-
-                // setShowAddShapeLoader(true)
-                localStorage.setItem('lastAddedElementId', generateId)
-
-                // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
-                addToLocalComponentStore(
-                    shapeData.id,
-                    shapeData.componentType,
-                    shapeData
-                )
         }
     }
     let isLiveSession = false
@@ -149,7 +215,7 @@ const PrimarySidebar = () => {
                 id="sidebar-container"
                 className="sidebar-container flex items-center "
             >
-                <div className="  relative ">
+                <div className=" relative ">
                     <ElementsDropdown
                         getComponentTypesLoading={getComponentTypesLoading}
                         addElement={addElement}
@@ -170,7 +236,7 @@ const PrimarySidebar = () => {
                 >
                     <div className="flex items-center  ">
                         <div className="w-auto text-sm text-left">
-                            Click anywhere to place element there.
+                            {hintText}
                         </div>
                     </div>
                 </div>

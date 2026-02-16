@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState, useRef } from 'react'
+import React, { Fragment, useEffect, useState, useRef, use } from 'react'
 import PropTypes from 'prop-types'
 import styled, { css } from 'styled-components'
 import { useRanger, Ranger } from '@tanstack/react-ranger'
@@ -44,10 +44,10 @@ const Segment = styled('div')`
         props.index === 0
             ? '#0052CC'
             : props.index === 1
-            ? '#0052CC'
-            : props.index === 2
-            ? '#f5c200'
-            : '#ff6050'};
+              ? '#0052CC'
+              : props.index === 2
+                ? '#f5c200'
+                : '#ff6050'};
     height: 50%;
 `
 
@@ -106,7 +106,7 @@ const OpacitySlider = ({
     useEffect(() => {
         let arr = currentOpacity ? [currentOpacity] : [0]
         setValues(arr)
-    }, [])
+    }, [currentOpacity])
 
     return (
         <Fragment>
@@ -147,59 +147,108 @@ const OpacitySlider = ({
                         </div>
                     ))}
                 </Track> */}
-                <div
-                    ref={rangerRef}
-                    className="mt-2"
-                    style={{
-                        position: 'relative',
-                        userSelect: 'none',
-                        height: '4px',
-                        background: '#ddd',
-                        boxShadow: 'inset 0 1px 2px rgba(0,0,0,.6)',
-                        borderRadius: '2px',
-                    }}
-                >
-                    {rangerInstance
-                        .handles()
-                        .map(
-                            (
-                                {
-                                    value,
-                                    onKeyDownHandler,
-                                    onMouseDownHandler,
-                                    onTouchStart,
-                                    isActive,
-                                },
-                                i
-                            ) => (
-                                <button
-                                    key={i}
-                                    onKeyDown={onKeyDownHandler}
-                                    onMouseDown={onMouseDownHandler}
-                                    onTouchStart={onTouchStart}
-                                    role="slider"
-                                    aria-valuemin={rangerInstance.options.min}
-                                    aria-valuemax={rangerInstance.options.max}
-                                    aria-valuenow={value}
-                                    style={{
-                                        position: 'absolute',
-                                        top: '50%',
-                                        left: `${rangerInstance.getPercentageForValue(
-                                            value
-                                        )}%`,
-                                        zIndex: isActive ? '1' : '0',
-                                        transform: 'translate(-50%, -50%)',
-                                        width: '14px',
-                                        height: '14px',
-                                        outline: 'none',
-                                        borderRadius: '100%',
-                                        background:
-                                            'linear-gradient(to bottom, #eee 45%, #ddd 55%)',
-                                        border: 'solid 1px #888',
-                                    }}
-                                />
-                            )
-                        )}
+                <div className="pl-1 pr-1" style={{ position: 'relative' }}>
+                    <div
+                        ref={rangerRef}
+                        id="slider-main"
+                        className="mt-2"
+                        style={{
+                            position: 'relative',
+                            userSelect: 'none',
+                            height: '4px',
+                            background: `linear-gradient(to right, #0052CC ${rangerInstance.getPercentageForValue(values[0])}%, #ddd ${rangerInstance.getPercentageForValue(values[0])}%)`,
+                            borderRadius: '2px',
+                        }}
+                    >
+                        {rangerInstance
+                            .handles()
+                            .map(
+                                (
+                                    {
+                                        value,
+                                        onKeyDownHandler,
+                                        onMouseDownHandler,
+                                        onTouchStart,
+                                        isActive,
+                                    },
+                                    i
+                                ) => (
+                                    <button
+                                        id="slider-handle"
+                                        key={i}
+                                        onKeyDown={onKeyDownHandler}
+                                        onMouseDown={onMouseDownHandler}
+                                        onTouchStart={onTouchStart}
+                                        role="slider"
+                                        aria-valuemin={
+                                            rangerInstance.options.min
+                                        }
+                                        aria-valuemax={
+                                            rangerInstance.options.max
+                                        }
+                                        aria-valuenow={value}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '50%',
+                                            left: `${rangerInstance.getPercentageForValue(value)}%`,
+                                            zIndex: isActive ? '1' : '0',
+                                            transform: 'translate(-50%, -50%)',
+                                            width: '14px',
+                                            height: '14px',
+                                            outline: 'none',
+                                            borderRadius: '100%',
+                                            background: '#000',
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                left: '50%',
+                                                transform: 'translateX(-50%)',
+                                                marginTop: '6px',
+                                                fontSize: '9px',
+                                                color: '#555',
+                                                whiteSpace: 'nowrap',
+                                                pointerEvents: 'none',
+                                                userSelect: 'none',
+                                                opacity: `${value > 0.9 || value < 0.1 ? `0` : `1`}`,
+                                            }}
+                                        >
+                                            {Math.round(value * 100)}
+                                        </span>
+                                    </button>
+                                )
+                            )}
+                    </div>
+                    {/* Start label */}
+                    <span
+                        style={{
+                            position: 'absolute',
+                            top: '14px',
+                            left: '4px',
+                            fontSize: '9px',
+                            color: '#aaa',
+                            userSelect: 'none',
+                            pointerEvents: 'none',
+                        }}
+                    >
+                        0
+                    </span>
+                    {/* End label */}
+                    <span
+                        style={{
+                            position: 'absolute',
+                            top: '14px',
+                            right: '0',
+                            fontSize: '9px',
+                            color: '#aaa',
+                            userSelect: 'none',
+                            pointerEvents: 'none',
+                        }}
+                    >
+                        100
+                    </span>
                 </div>
             </SliderContainer>
         </Fragment>

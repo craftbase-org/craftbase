@@ -84,7 +84,7 @@ const ColorPicker = ({ title, onChangeComplete, currentColor }) => {
                 className={`p-0 `}
             >
                 {/* <div className="flex justify-start items-center my-2">
-                    <div className="border-2 border-radius-50 border-gray-500">
+                    <div className="border-2 border-4 border-8 border-radius-50 border-gray-500">
                         {' '}
                         <CurrentColorIndicator
                             title={

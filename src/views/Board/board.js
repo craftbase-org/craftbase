@@ -82,6 +82,7 @@ const BoardViewPage = (props) => {
     const [showToolbar, toggleToolbar] = useState(false)
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
+    const [defaultLinewidth, setDefaultLinewidth] = useState(1)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef()
@@ -308,6 +309,10 @@ const BoardViewPage = (props) => {
         setIsArrowDrawMode(val)
     }
 
+    const setDefaultLinewidthInBoard = (val) => {
+        setDefaultLinewidth(val)
+    }
+
     const isArrowSelected =
         selectedComponent !== null &&
         (selectedComponent?.shape?.type === 'arrowLine' ||
@@ -328,6 +333,8 @@ const BoardViewPage = (props) => {
         deleteComponentFromLocalStore,
         setTwoJSInstanceInBoard,
         setSelectedComponentInBoard,
+        defaultLinewidth,
+        setDefaultLinewidthInBoard,
     }
 
     return (
@@ -363,6 +370,7 @@ const BoardViewPage = (props) => {
                             <Toolbar
                                 hideColorText={true}
                                 hideColorIcon={true}
+                                hideColorBackground={isArrowSelected}
                                 toggle={showToolbar}
                                 componentState={selectedComponent}
                                 closeToolbar={closeToolbar}
@@ -379,6 +387,7 @@ const BoardViewPage = (props) => {
                             selectedComponent={selectedComponent}
                             lastAddedElement={lastAddedElement}
                             componentStore={componentStore}
+                            defaultLinewidth={defaultLinewidth}
                         />
                     </div>
                 </BoardContext.Provider>

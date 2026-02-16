@@ -5,27 +5,35 @@ export default class ArrowLineFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill, x1 = 20, x2 = 100, y1 = 10, y2 = 10 } = this.properties
+        const {
+            fill,
+            x1 = 20,
+            x2 = 100,
+            y1 = 10,
+            y2 = 10,
+            linewidth,
+        } = this.properties
 
         // console.log('arrow line factory x1, y1, x2, y2', x1, y1, x2, y2)
         let line = two.makeArrow(x1, y1, x2, y2)
-        line.linewidth = 2
+        line.linewidth = linewidth ? linewidth : 1
+        line.fill = 'none'
         // line.vertices[1].y = 200
         // const centerPointCircle = two.makeEllipse(0, 0, 5, 5)
         // centerPointCircle.fill = '#FFF'
         // centerPointCircle.stroke = '#0052CC'
         // centerPointCircle.linewidth = 2
 
-        const pointCircle1 = two.makeEllipse(0, 0, 5, 5)
-        pointCircle1.fill = '#FFF'
+        const pointCircle1 = two.makeCircle(0, 0, 4)
+        pointCircle1.fill = '#f4f4f2'
         pointCircle1.stroke = '#0052CC'
-        pointCircle1.linewidth = 2
+        pointCircle1.linewidth = 1.5
         // pointCircle1.noStroke()
 
-        const pointCircle2 = two.makeEllipse(0, 0, 5, 5)
-        pointCircle2.fill = '#FFF'
+        const pointCircle2 = two.makeCircle(0, 0, 4)
+        pointCircle2.fill = '#f4f4f2'
         pointCircle2.stroke = '#0052CC'
-        pointCircle2.linewidth = 2
+        pointCircle2.linewidth = 1.5
         // pointCircle2.noStroke()
 
         // const resizeLine = two.makeGroup(pointCircle1, pointCircle2)

@@ -36,9 +36,8 @@ Reusable React UI components.
     - Shape components: `circle.js`, `rectangle.js`, `frame.js`
     - Arrow components: `arrowLine.js`, `divider.js`
     - Drawing: `pencil.js`
-    - UI components: `button.js`, `dropdown.js`, `checkbox.js`, `radiobox.js`, `toggle.js`, `tooltip.js`
-    - Text components: `text.js`, `textarea.js`, `textinput.js`
-    - Other: `imageCard.js`, `avatar.js`, `groupobject.js`, `overlay.js`
+    - Text components: `text.js`
+    - Other: `groupobject.js`
     - `template.js` - Component template definitions
 
 - **`sidebar/`**: Left sidebar UI
@@ -63,7 +62,7 @@ Reusable React UI components.
 
 Component factory functions that generate template definitions for each element type. Each factory corresponds to a component element.
 
-- Factories: `arrowLine.js`, `newArrowLine.js`, `avatar.js`, `button.js`, `buttonwithicon.js`, `circle.js`, `divider.js`, `dropdown.js`, `frame.js`, `imagecard.js`, `linkwithicon.js`, `overlay.js`, `pencil.js`, `rectangle.js`, `text.js`, `textarea.js`, `textinput.js`, `toggle.js`
+- Factories: `arrowLine.js`, `newArrowLine.js`, `circle.js`, `divider.js`, `pencil.js`, `rectangle.js`, `text.js`
 - `main.js` - Factory registry/coordinator
 
 ### `/src/store`

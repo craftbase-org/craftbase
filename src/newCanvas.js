@@ -58,6 +58,7 @@ function getComponentSchema(obj, boardId) {
  */
 
 var isDrawing
+var defaultLinewidthValue = 1
 
 function addZUI(
     props,
@@ -87,9 +88,16 @@ function addZUI(
     let SCENARIO_JUST_ADDED_ELEMENT = 'justAddedElement'
     let SCENARIO_PENCIL_MODE = 'pencilMode'
     let SCENARIO_ARROW_DRAW = 'arrowDraw'
+    let SCENARIO_DRAW_SHAPE = 'drawShape'
     let SCENARIO_DEFAULT = null
 
     let arrowDrawElement = null
+    let drawOrigin = null
+    let drawCurrentCoords = null
+    let previewShape = null
+    let drawShapeType = null
+    let drawShapeProps = null
+    let lastPlacedElement = null
 
     zui.addLimits(0.06, 8)
 
@@ -117,6 +125,17 @@ function addZUI(
 
             // domElement.removeEventListener('keydown', onKeyDown)
         }
+
+        if (evt.key === 'Escape') {
+            localStorage.removeItem('pendingShapeType')
+            localStorage.removeItem('pendingShapeProps')
+            localStorage.removeItem('arrowDrawMode')
+            localStorage.removeItem('lastAddedElementId')
+            document.getElementById('main-two-root').style.cursor = 'auto'
+            setArrowDrawModeOff()
+            const hintBtn = document.getElementById('show-click-anywhere-btn')
+            if (hintBtn) hintBtn.style.opacity = 0
+        }
     }
 
     function mousedown(e) {
@@ -134,8 +153,11 @@ function addZUI(
         }
 
         const arrowDrawMode = localStorage.getItem('arrowDrawMode')
+        const pendingShapeType = localStorage.getItem('pendingShapeType')
         if (arrowDrawMode === 'true') {
             scenario = SCENARIO_ARROW_DRAW
+        } else if (pendingShapeType !== null) {
+            scenario = SCENARIO_DRAW_SHAPE
         } else if (lastAddedElementId !== null) {
             scenario = SCENARIO_JUST_ADDED_ELEMENT
         }
@@ -158,23 +180,14 @@ function addZUI(
                     const pointCircle1Group = arrowDrawElement.children[1]
                     const pointCircle2Group = arrowDrawElement.children[2]
 
+                    // Apply the latest stroke width directly — defaultLinewidthValue is
+                    // always current (synced via useEffect in Canvas), bypassing the
+                    // stale-closure / same-reference mutation issue in the component store.
+                    line.linewidth = defaultLinewidthValue
+
                     // Reset line vertices: tail at 0,0, head at 0,0
-                    updateX1Y1Vertices(
-                        Two,
-                        line,
-                        0,
-                        0,
-                        pointCircle1Group,
-                        two
-                    )
-                    updateX2Y2Vertices(
-                        Two,
-                        line,
-                        0,
-                        0,
-                        pointCircle2Group,
-                        two
-                    )
+                    updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
+                    updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
 
                     two.update()
                 }
@@ -185,6 +198,49 @@ function addZUI(
                 domElement.addEventListener('mousemove', mousemove, false)
                 domElement.addEventListener('mouseup', mouseup, false)
 
+                document.getElementById('main-two-root').style.cursor =
+                    'crosshair'
+                break
+            }
+            case SCENARIO_DRAW_SHAPE: {
+                const surfaceCoords = zui.clientToSurface(e.clientX, e.clientY)
+                drawOrigin = { x: surfaceCoords.x, y: surfaceCoords.y }
+                drawCurrentCoords = { x: surfaceCoords.x, y: surfaceCoords.y }
+                drawShapeType = localStorage.getItem('pendingShapeType')
+                drawShapeProps = JSON.parse(
+                    localStorage.getItem('pendingShapeProps')
+                )
+
+                localStorage.removeItem('pendingShapeType')
+                localStorage.removeItem('pendingShapeProps')
+
+                if (drawShapeType === 'circle') {
+                    previewShape = two.makeEllipse(
+                        surfaceCoords.x,
+                        surfaceCoords.y,
+                        0,
+                        0
+                    )
+                } else if (drawShapeType === 'rectangle') {
+                    previewShape = two.makeRoundedRectangle(
+                        surfaceCoords.x,
+                        surfaceCoords.y,
+                        0,
+                        0,
+                        5
+                    )
+                }
+
+                if (previewShape) {
+                    previewShape.fill = drawShapeProps?.fill || '#fff'
+                    previewShape.stroke = drawShapeProps?.stroke || '#000'
+                    previewShape.linewidth = drawShapeProps?.linewidth || 1
+                    previewShape.opacity = 0.6
+                    two.update()
+                }
+
+                domElement.addEventListener('mousemove', mousemove, false)
+                domElement.addEventListener('mouseup', mouseup, false)
                 document.getElementById('main-two-root').style.cursor =
                     'crosshair'
                 break
@@ -214,6 +270,8 @@ function addZUI(
                         clientToSurface.x,
                         clientToSurface.y
                     )
+
+                    lastPlacedElement = twoJSElement
                 }
 
                 localStorage.removeItem('lastAddedElementId')
@@ -232,6 +290,7 @@ function addZUI(
                 domElement.addEventListener('mouseup', mouseup, false)
 
                 currentPath = two.makePath()
+                currentPath.linewidth = defaultLinewidthValue
                 currentPath.closed = false
                 two.add(currentPath)
                 paths.push(currentPath)
@@ -242,6 +301,14 @@ function addZUI(
                 mouse.y = e.clientY
                 let avoidDragging = false
                 let isGroupSelector = false
+
+                // Hide all arrow endpoint circles before processing the new selection
+                two.scene.children.forEach((child) => {
+                    if (child?.elementData?.componentType === 'arrowLine') {
+                        if (child.children[1]) child.children[1].opacity = 0
+                        if (child.children[2]) child.children[2].opacity = 0
+                    }
+                })
 
                 let path = e.path || (e.composedPath && e.composedPath())
 
@@ -356,6 +423,17 @@ function addZUI(
                             shape = two.scene.children.find(
                                 (child) => child.id === item.id
                             )
+
+                            // Show point circles when arrow line body is clicked
+                            if (
+                                shape?.elementData?.componentType ===
+                                'arrowLine'
+                            ) {
+                                if (shape.children[1])
+                                    shape.children[1].opacity = 1
+                                if (shape.children[2])
+                                    shape.children[2].opacity = 1
+                            }
                         }
                     }
                 })
@@ -430,7 +508,9 @@ function addZUI(
                         shape?.elementData?.componentType === 'arrowLine')
                 ) {
                     document
-                        .querySelectorAll('.dragger-picker:not(.is-line-circle)')
+                        .querySelectorAll(
+                            '.dragger-picker:not(.is-line-circle)'
+                        )
                         .forEach((el) => {
                             el.style.pointerEvents = 'none'
                         })
@@ -442,20 +522,31 @@ function addZUI(
                     // this internal state is required for floating toolbar component since floating
                     // toolbar relies on the exact structure/schema for component's internal state
                     // so that any changes made from toolbar can be applied directly on component's two.js properties
+
+                    // For arrow endpoint circle clicks, resolve to the parent arrow group and
+                    // the actual line shape so the toolbar has the correct id and target element
+                    const isLineCircle =
+                        shape?.elementData?.isLineCircle === true
+                    const groupForToolbar = isLineCircle
+                        ? shape.elementData.parentData
+                        : shape
+                    const shapeForToolbar = isLineCircle
+                        ? shape.elementData.lineData
+                        : shape.children[0]
+
                     let componentInternalState = {
                         element: {
-                            [shape.children[0].id]: shape.children[0],
-                            [shape.id]: shape,
-                            // [selector.id]: selector,
+                            [shapeForToolbar.id]: shapeForToolbar,
+                            [groupForToolbar.id]: groupForToolbar,
                         },
                         group: {
-                            id: shape.id,
-                            data: shape,
+                            id: groupForToolbar.id,
+                            data: groupForToolbar,
                         },
                         shape: {
-                            type: shape.elementData.componentType,
-                            id: shape.children[0].id,
-                            data: shape.children[0],
+                            type: groupForToolbar.elementData.componentType,
+                            id: shapeForToolbar.id,
+                            data: shapeForToolbar,
                         },
                         text: {
                             data: {},
@@ -496,10 +587,8 @@ function addZUI(
                         e.clientX,
                         e.clientY
                     )
-                    const relX =
-                        surfaceCoords.x - arrowDrawElement.position.x
-                    const relY =
-                        surfaceCoords.y - arrowDrawElement.position.y
+                    const relX = surfaceCoords.x - arrowDrawElement.position.x
+                    const relY = surfaceCoords.y - arrowDrawElement.position.y
 
                     const line = arrowDrawElement.children[0]
                     const pointCircle2Group = arrowDrawElement.children[2]
@@ -514,6 +603,30 @@ function addZUI(
                     )
                 }
                 break
+            case SCENARIO_DRAW_SHAPE: {
+                const surfaceCoordsMove = zui.clientToSurface(
+                    e.clientX,
+                    e.clientY
+                )
+                drawCurrentCoords = {
+                    x: surfaceCoordsMove.x,
+                    y: surfaceCoordsMove.y,
+                }
+
+                const drawWidth = Math.abs(surfaceCoordsMove.x - drawOrigin.x)
+                const drawHeight = Math.abs(surfaceCoordsMove.y - drawOrigin.y)
+                const centerX = (surfaceCoordsMove.x + drawOrigin.x) / 2
+                const centerY = (surfaceCoordsMove.y + drawOrigin.y) / 2
+
+                if (previewShape) {
+                    previewShape.translation.x = centerX
+                    previewShape.translation.y = centerY
+                    previewShape.width = drawWidth
+                    previewShape.height = drawHeight
+                    two.update()
+                }
+                break
+            }
             case SCENARIO_JUST_ADDED_ELEMENT:
                 // This block falls for the case when there is newly added element and we let user click
                 // anywhere to set last added element's position
@@ -543,6 +656,7 @@ function addZUI(
                     'L'
                 currentPath.noFill()
                 currentPath.stroke = '#000'
+                currentPath.linewidth = defaultLinewidthValue
                 two.update()
                 break
             default:
@@ -751,14 +865,170 @@ function addZUI(
                     updateToGlobalState(newShapeData, {})
                 }
 
+                if (arrowDrawElement && arrowDrawElement.children?.[0]) {
+                    const groupEl = arrowDrawElement
+                    const lineEl = arrowDrawElement.children[0]
+                    const componentInternalState = {
+                        element: {
+                            [lineEl.id]: lineEl,
+                            [groupEl.id]: groupEl,
+                        },
+                        group: { id: groupEl.id, data: groupEl },
+                        shape: {
+                            type: groupEl.elementData?.componentType,
+                            id: lineEl.id,
+                            data: lineEl,
+                        },
+                        text: { data: {} },
+                        icon: { data: {} },
+                    }
+                    setSelectedComponentInBoard(componentInternalState)
+                }
+
+                // Re-arm arrow draw mode so user can draw another arrow immediately
+                if (arrowDrawElement) {
+                    const newArrowId = generateUUID()
+                    const userId = localStorage.getItem('userId')
+                    const newArrowData = {
+                        id: newArrowId,
+                        componentType: 'arrowLine',
+                        boardId: arrowDrawElement.elementData.boardId,
+                        fill: arrowDrawElement.elementData.fill,
+                        stroke: arrowDrawElement.elementData.stroke,
+                        linewidth: defaultLinewidthValue,
+                        children: {},
+                        metadata: [],
+                        x: -9999,
+                        y: -9999,
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 0,
+                        width: arrowDrawElement.elementData.width,
+                        height: arrowDrawElement.elementData.height,
+                        textColor: arrowDrawElement.elementData.textColor,
+                        updatedBy: userId,
+                    }
+                    addToLocalComponentStore(
+                        newArrowId,
+                        'arrowLine',
+                        newArrowData
+                    )
+                    localStorage.setItem('arrowDrawMode', 'true')
+                    localStorage.setItem('lastAddedElementId', newArrowId)
+                    // Keep cursor as crosshair for next arrow draw
+                }
+
                 arrowDrawElement = null
-                setArrowDrawModeOff()
-                document.getElementById('main-two-root').style.cursor = 'auto'
+                // Stay in arrow draw mode - don't call setArrowDrawModeOff()
+                domElement.removeEventListener('mousemove', mousemove, false)
+                domElement.removeEventListener('mouseup', mouseup, false)
+                break
+            }
+            case SCENARIO_DRAW_SHAPE: {
+                const MIN_SIZE = 20
+                const endCoords = drawCurrentCoords || drawOrigin
+                const finalWidth = Math.round(
+                    Math.max(Math.abs(endCoords.x - drawOrigin.x), MIN_SIZE)
+                )
+                const finalHeight = Math.round(
+                    Math.max(Math.abs(endCoords.y - drawOrigin.y), MIN_SIZE)
+                )
+                const finalCenterX = Math.round(
+                    (drawOrigin.x + endCoords.x) / 2
+                )
+                const finalCenterY = Math.round(
+                    (drawOrigin.y + endCoords.y) / 2
+                )
+
+                if (previewShape) {
+                    two.remove(previewShape)
+                    previewShape = null
+                    two.update()
+                }
+
+                const finalId = generateUUID()
+                const finalShapeData = {
+                    ...drawShapeProps,
+                    id: finalId,
+                    x: finalCenterX,
+                    y: finalCenterY,
+                    width: finalWidth,
+                    height: finalHeight,
+                }
+
+                addToLocalComponentStore(finalId, drawShapeType, finalShapeData)
+
+                // React renders the element asynchronously; poll until it appears in two.scene.children
+                const pendingSelectionId = finalId
+                const waitForNewElement = (id, retries = 0) => {
+                    const el = two.scene.children.find(
+                        (child) => child?.elementData?.id === id
+                    )
+                    if (el && el.children?.[0]) {
+                        const shapeEl = el.children[0]
+                        const componentInternalState = {
+                            element: {
+                                [shapeEl.id]: shapeEl,
+                                [el.id]: el,
+                            },
+                            group: { id: el.id, data: el },
+                            shape: {
+                                type: el.elementData?.componentType,
+                                id: shapeEl.id,
+                                data: shapeEl,
+                            },
+                            text: { data: {} },
+                            icon: { data: {} },
+                        }
+                        setSelectedComponentInBoard(componentInternalState)
+                    } else if (retries < 30) {
+                        requestAnimationFrame(() =>
+                            waitForNewElement(id, retries + 1)
+                        )
+                    }
+                }
+                requestAnimationFrame(() =>
+                    waitForNewElement(pendingSelectionId)
+                )
+
+                // Re-arm shape draw mode so user can draw another shape immediately
+                localStorage.setItem('pendingShapeType', drawShapeType)
+                localStorage.setItem(
+                    'pendingShapeProps',
+                    JSON.stringify(drawShapeProps)
+                )
+                // Keep cursor as crosshair for next draw
+
+                drawOrigin = null
+                drawCurrentCoords = null
+                drawShapeType = null
+                drawShapeProps = null
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
             }
             case SCENARIO_JUST_ADDED_ELEMENT:
+                if (lastPlacedElement && lastPlacedElement.children?.[0]) {
+                    const groupEl = lastPlacedElement
+                    const shapeEl = lastPlacedElement.children[0]
+                    const componentInternalState = {
+                        element: {
+                            [shapeEl.id]: shapeEl,
+                            [groupEl.id]: groupEl,
+                        },
+                        group: { id: groupEl.id, data: groupEl },
+                        shape: {
+                            type: groupEl.elementData?.componentType,
+                            id: shapeEl.id,
+                            data: shapeEl,
+                        },
+                        text: { data: {} },
+                        icon: { data: {} },
+                    }
+                    setSelectedComponentInBoard(componentInternalState)
+                    lastPlacedElement = null
+                }
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
@@ -783,11 +1053,11 @@ function addZUI(
                     linewidth: currentPath.linewidth,
                     stroke: currentPath.stroke,
                 }
-                componentData.metadata = currentPath.vertices.map(function (
-                    vertex
-                ) {
-                    return { x: vertex.x, y: vertex.y }
-                })
+                componentData.metadata = currentPath.vertices.map(
+                    function (vertex) {
+                        return { x: vertex.x, y: vertex.y }
+                    }
+                )
 
                 componentData.x = Math.floor(componentData.metadata[0]?.x || 0)
                 componentData.y = Math.floor(componentData.metadata[0]?.y || 0)
@@ -1194,6 +1464,10 @@ const Canvas = (props) => {
         }
     }, [props.isPencilMode])
 
+    useEffect(() => {
+        defaultLinewidthValue = props.defaultLinewidth || 1
+    }, [props.defaultLinewidth])
+
     // on group select use effect hook
     useEffect(() => {
         // let componentsArr = [...currentComponents]
@@ -1477,7 +1751,7 @@ const Canvas = (props) => {
                     <Component />
                 </React.Fragment>
             ))}
-            <Zoomer sceneInstance={twoJSInstance} />
+            {/* <Zoomer sceneInstance={twoJSInstance} /> */}
         </>
     )
 }

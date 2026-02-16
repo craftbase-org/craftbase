@@ -82,6 +82,7 @@ function Circle(props) {
         // Get all instances of every sub child element
         const { group, circle } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
+        circle.opacity = props.metadata?.opacity ?? 1
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */

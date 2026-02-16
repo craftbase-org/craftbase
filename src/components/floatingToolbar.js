@@ -14,7 +14,6 @@ import Icon from 'icons/icon'
 
 const ToolbarContainer = styled(motion.div)`
     height: 79vh;
-    width: 288px;
     z-index: 1;
     position: fixed;
     overflow: auto;
@@ -129,7 +128,7 @@ const Accordion = ({
                                 : {}
                         }
                     >
-                        <div className="py-1">
+                        <div className="py-2">
                             {content(
                                 hideColorText,
                                 hideColorIcon,
@@ -173,7 +172,7 @@ const Toolbar = (props) => {
         borderColor: '#000',
         linewidth: 0,
         hasUnderline: false,
-        opacity: 0.4,
+        opacity: 1,
         hideColorSection: hideColorSection,
     })
 
@@ -182,20 +181,23 @@ const Toolbar = (props) => {
             draft.colorBg = componentState?.shape?.data?.fill
             draft.borderColor = componentState?.shape?.data?.stroke
             draft.linewidth = componentState?.shape?.data?.linewidth
+            draft.opacity =
+                componentState?.group?.data?.elementData?.metadata?.opacity ?? 1
         })
-    }, [])
+    }, [componentState])
 
     const updateComponent = (propertyToUpdate, propertyValue) => {
         const userId = localStorage.getItem('userId')
-        // updateComponentInfo({
-        //     variables: {
-        //         id: componentId,
-        //         updateObj: {
-        //             [propertyToUpdate]: propertyValue,
-        //             updatedBy: userId,
-        //         },
-        //     },
-        // })
+        const componentId = componentState?.group?.data?.elementData?.id
+        updateComponentInfo({
+            variables: {
+                id: componentId,
+                updateObj: {
+                    [propertyToUpdate]: propertyValue,
+                    updatedBy: userId,
+                },
+            },
+        })
         postToolbarUpdate && postToolbarUpdate()
     }
 
@@ -211,6 +213,7 @@ const Toolbar = (props) => {
             //     }),
             content: (hideColorText, hideColorIcon, hideColorBackground) => (
                 <Fragment>
+                    {hideColorBackground ? null : (
                     <ColorPicker
                         title="Background"
                         currentColor={state.colorBg}
@@ -248,6 +251,7 @@ const Toolbar = (props) => {
                             updateComponent && updateComponent('fill', color)
                         }}
                     />
+                    )}
 
                     {/** Icon color picker */}
                     {hideColorIcon ? null : (
@@ -442,16 +446,39 @@ const Toolbar = (props) => {
                         setState((draft) => {
                             draft.opacity = arr[0]
                         })
-                        componentState.group.data.opacity = arr[0]
+                        componentState.shape.data.opacity = arr[0]
                         postToolbarUpdate && postToolbarUpdate()
                     }}
                     handleOnChange={(arr) => {
                         setState((draft) => {
                             draft.opacity = arr[0]
                         })
-                        componentState.group.data.opacity = arr[0]
+                        componentState.shape.data.opacity = arr[0]
 
-                        // updateComponent && updateComponent('opacity', arr[0])
+                        const componentId =
+                            componentState?.group?.data?.elementData?.id
+                        const existingMetadata =
+                            componentState?.group?.data?.elementData
+                                ?.metadata ?? {}
+                        const userId = localStorage.getItem('userId')
+                        const updatedMetadata = {
+                            ...existingMetadata,
+                            opacity: arr[0],
+                        }
+                        // Keep elementData in sync so subsequent saves include latest opacity
+                        if (componentState?.group?.data?.elementData) {
+                            componentState.group.data.elementData.metadata =
+                                updatedMetadata
+                        }
+                        updateComponentInfo({
+                            variables: {
+                                id: componentId,
+                                updateObj: {
+                                    metadata: updatedMetadata,
+                                    updatedBy: userId,
+                                },
+                            },
+                        })
                     }}
                 />
             ),
@@ -499,7 +526,7 @@ const Toolbar = (props) => {
                 <AnimatePresence>
                     <ToolbarContainer
                         key="flo-toolbar"
-                        className=" shadow-lg rounded-md"
+                        className=" shadow-lg px-2 rounded-md"
                         data-parent="floating-toolbar"
                         initial="open"
                         animate="closed"

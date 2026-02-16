@@ -346,112 +346,6 @@ const HomePage = (props) => {
                         </div>
                     </div>
 
-                    <div className="mt-20 ">
-                        <div className="w-full flex flex-wrap ">
-                            <div className="w-full lg:w-1/2">
-                                <div className="  ">
-                                    <div className="font-bold text-2xl text-left">
-                                        Modify your wireframe elements the way
-                                        you want
-                                    </div>
-                                    <div className="mt-4">
-                                        <p className="text-left">
-                                            With pre-baked elements, comes the
-                                            customization. You can customize
-                                            them with whatever you need. Whether
-                                            its opacity or border color or text
-                                            color, we have them in our
-                                            customization bar
-                                        </p>
-                                        <p className="mt-4 text-left">
-                                            Moreover, we have a primary toolbar
-                                            in top which always keeps most used
-                                            shapes and text. So that you can
-                                            pick them without browsing them over
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="w-full lg:w-1/2 h-64 pt-4 lg:pt-0">
-                                <div className="w-auto h-full float-right ">
-                                    <img
-                                        className="w-auto  h-64 shadow-2xl"
-                                        src={HomeShapeToolbarJPG}
-                                        alt="shape-toolbar"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-20 ">
-                        <div className="w-full flex flex-wrap ">
-                            <div className="w-full lg:w-1/2 h-64 ">
-                                <div className="w-auto h-full float-left">
-                                    <img
-                                        className="w-auto  h-64 shadow-2xl"
-                                        src={RadioCheckboxPNG}
-                                        alt="radio-checkbox"
-                                    />
-                                </div>
-                            </div>
-                            <div className="w-full lg:w-1/2 pt-4 lg:pt-0">
-                                <div className="  ">
-                                    <div className="font-bold text-2xl text-left">
-                                        Support for most common used elements
-                                    </div>
-                                    <div className="mt-4">
-                                        <p className="text-left">
-                                            Whether its checkbox or radiobox,
-                                            for your form designing we've got
-                                            already wireframe elements for you
-                                            to kickstart
-                                        </p>
-                                        <p className="mt-4 text-left">
-                                            As we are open source, you could
-                                            send us your prefered wireframe
-                                            element you want to be there and we
-                                            will implement upon your request.
-                                            Would love to get your feedback as
-                                            always
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-20 ">
-                        <div className="w-full flex flex-wrap ">
-                            <div className="w-full lg:w-1/2 ">
-                                <div className="  ">
-                                    <div className="font-bold text-2xl text-left">
-                                        Back to the basics
-                                    </div>
-                                    <div className="mt-4">
-                                        <p className="text-left">
-                                            Sometimes you don't need to do heavy
-                                            work and just simply want to play
-                                            with shapes. We already have a
-                                            dedicated seperate toolbar for
-                                            shapes in the top-left corner where
-                                            you can easily choose your shapes
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="w-full lg:w-1/2 pt-4 lg:pt-0 h-64">
-                                <div className="w-auto h-full float-right">
-                                    <img
-                                        className="w-auto  h-64 shadow-2xl"
-                                        src={BasicShapesPNG}
-                                        alt="basic-shapes"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     <div className="mt-20 w-full flex items-center justify-center">
                         <hr className="border border-neutrals-n80 w-2/4" />
                     </div>
@@ -498,7 +392,7 @@ const HomePage = (props) => {
                 flex items-center justify-between"
                 >
                     <div className="text-sm big-desktop:text-base">
-                        © 2024 Craftbase. All rights reserved.
+                        © 2026 Craftbase. All rights reserved.
                     </div>
                     <div className=" flex items-center">
                         <a href="https://twitter.com/craftbase_org">

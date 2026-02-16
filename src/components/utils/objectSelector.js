@@ -73,6 +73,7 @@ export default class Selector {
                     )
                     circleGroup.linewidth = 1.5
                     circleGroup.opacity = 0
+                    circleGroup.stroke = '#0052CC'
                     this.circleGroup = circleGroup
                     break
 

@@ -18,9 +18,9 @@ export default class RectangleFactory extends Main {
             5
         )
 
-        rectangle.fill = fill ? fill : color_blue
-        rectangle.stroke = stroke ? stroke : '#fff'
-        rectangle.linewidth = linewidth ? linewidth : 0
+        rectangle.fill = fill ? fill : '#fff'
+        rectangle.stroke = stroke ? stroke : '#000'
+        rectangle.linewidth = linewidth ? linewidth : 1
 
         // console.trace('rectangle trace')
         // console.log('rectangle', rectangle.getBoundingClientRect())

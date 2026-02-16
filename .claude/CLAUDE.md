@@ -5,7 +5,7 @@
 
 # Code structure
 
-- Please refer to ./CODEBASE_MAP.md file (at project's root) to understand code structure, key files, data flow, local state management using React Context and technology stack.
+- IMPORTANT: At the start of every session, you MUST read `./CODEBASE_MAP.md` (at project root) before doing any work. This file contains the code structure, key files, data flow, local state management using React Context, and technology stack.
 
 # Workflow
 

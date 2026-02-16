@@ -13,10 +13,10 @@ export default class CircleFactory extends Main {
         const circle = two.makeEllipse(0, 0, 0, 0)
         circle.width = width || 100
         circle.height = height || 100
-        circle.fill = fill ? fill : color_blue
+        circle.fill = fill ? fill : '#fff'
 
-        circle.stroke = stroke ? stroke : '#fff'
-        circle.linewidth = linewidth ? linewidth : 0
+        circle.stroke = stroke ? stroke : '#000'
+        circle.linewidth = linewidth ? linewidth : 1
 
         this.circle = circle
 

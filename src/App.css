@@ -13,8 +13,8 @@ body {
 }
 
 code {
-    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-        monospace;
+    font-family:
+        source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
 .App {
@@ -24,7 +24,7 @@ code {
     z-index: -9;
 }
 #main-two-root svg {
-    background: #e5e5e5;
+    background: #f4f4f2;
     z-index: -1;
 }
 
