@@ -50,17 +50,54 @@ const PrimarySidebar = () => {
         }
     }, [getComponentTypesData])
 
+    // When stroke width changes while a shape draw mode is active,
+    // patch pendingShapeProps in localStorage so the next draw picks up the new linewidth.
+    useEffect(() => {
+        const pendingShapeType = localStorage.getItem('pendingShapeType')
+        if (pendingShapeType) {
+            const pendingShapePropsStr = localStorage.getItem('pendingShapeProps')
+            if (pendingShapePropsStr) {
+                const pendingShapeProps = JSON.parse(pendingShapePropsStr)
+                localStorage.setItem(
+                    'pendingShapeProps',
+                    JSON.stringify({ ...pendingShapeProps, linewidth: defaultLinewidth })
+                )
+            }
+        }
+        // Arrow linewidth is handled directly in newCanvas.js via defaultLinewidthValue,
+        // which is a module-level var always kept in sync, bypassing the React
+        // same-reference mutation issue in updateComponentBulkPropertiesInLocalStore.
+    }, [defaultLinewidth])
+
     const addElement = (label) => {
         switch (label) {
             case 'pointer':
                 togglePointer(true)
+                localStorage.removeItem('pendingShapeType')
+                localStorage.removeItem('pendingShapeProps')
+                localStorage.removeItem('arrowDrawMode')
+                localStorage.removeItem('lastAddedElementId')
+                document.getElementById('main-two-root').style.cursor = 'auto'
+                setArrowDrawModeInBoard(false)
                 break
             case 'pencil':
                 togglePencilMode(true)
+                localStorage.removeItem('pendingShapeType')
+                localStorage.removeItem('pendingShapeProps')
+                localStorage.removeItem('arrowDrawMode')
+                localStorage.removeItem('lastAddedElementId')
+                setArrowDrawModeInBoard(false)
                 break
             default:
                 togglePencilMode(false)
                 togglePointer(false)
+
+                // Clear any previously active persistent draw mode before starting a new one
+                localStorage.removeItem('pendingShapeType')
+                localStorage.removeItem('pendingShapeProps')
+                localStorage.removeItem('arrowDrawMode')
+                localStorage.removeItem('lastAddedElementId')
+                setArrowDrawModeInBoard(false)
 
                 const isArrowDraw = label === 'arrowLine'
 

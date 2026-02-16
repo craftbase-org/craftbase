@@ -125,6 +125,17 @@ function addZUI(
 
             // domElement.removeEventListener('keydown', onKeyDown)
         }
+
+        if (evt.key === 'Escape') {
+            localStorage.removeItem('pendingShapeType')
+            localStorage.removeItem('pendingShapeProps')
+            localStorage.removeItem('arrowDrawMode')
+            localStorage.removeItem('lastAddedElementId')
+            document.getElementById('main-two-root').style.cursor = 'auto'
+            setArrowDrawModeOff()
+            const hintBtn = document.getElementById('show-click-anywhere-btn')
+            if (hintBtn) hintBtn.style.opacity = 0
+        }
     }
 
     function mousedown(e) {
@@ -168,6 +179,11 @@ function addZUI(
                     const line = arrowDrawElement.children[0]
                     const pointCircle1Group = arrowDrawElement.children[1]
                     const pointCircle2Group = arrowDrawElement.children[2]
+
+                    // Apply the latest stroke width directly — defaultLinewidthValue is
+                    // always current (synced via useEffect in Canvas), bypassing the
+                    // stale-closure / same-reference mutation issue in the component store.
+                    line.linewidth = defaultLinewidthValue
 
                     // Reset line vertices: tail at 0,0, head at 0,0
                     updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
@@ -869,9 +885,42 @@ function addZUI(
                     setSelectedComponentInBoard(componentInternalState)
                 }
 
+                // Re-arm arrow draw mode so user can draw another arrow immediately
+                if (arrowDrawElement) {
+                    const newArrowId = generateUUID()
+                    const userId = localStorage.getItem('userId')
+                    const newArrowData = {
+                        id: newArrowId,
+                        componentType: 'arrowLine',
+                        boardId: arrowDrawElement.elementData.boardId,
+                        fill: arrowDrawElement.elementData.fill,
+                        stroke: arrowDrawElement.elementData.stroke,
+                        linewidth: defaultLinewidthValue,
+                        children: {},
+                        metadata: [],
+                        x: -9999,
+                        y: -9999,
+                        x1: 0,
+                        y1: 0,
+                        x2: 0,
+                        y2: 0,
+                        width: arrowDrawElement.elementData.width,
+                        height: arrowDrawElement.elementData.height,
+                        textColor: arrowDrawElement.elementData.textColor,
+                        updatedBy: userId,
+                    }
+                    addToLocalComponentStore(
+                        newArrowId,
+                        'arrowLine',
+                        newArrowData
+                    )
+                    localStorage.setItem('arrowDrawMode', 'true')
+                    localStorage.setItem('lastAddedElementId', newArrowId)
+                    // Keep cursor as crosshair for next arrow draw
+                }
+
                 arrowDrawElement = null
-                setArrowDrawModeOff()
-                document.getElementById('main-two-root').style.cursor = 'auto'
+                // Stay in arrow draw mode - don't call setArrowDrawModeOff()
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
@@ -943,15 +992,18 @@ function addZUI(
                     waitForNewElement(pendingSelectionId)
                 )
 
+                // Re-arm shape draw mode so user can draw another shape immediately
+                localStorage.setItem('pendingShapeType', drawShapeType)
+                localStorage.setItem(
+                    'pendingShapeProps',
+                    JSON.stringify(drawShapeProps)
+                )
+                // Keep cursor as crosshair for next draw
+
                 drawOrigin = null
                 drawCurrentCoords = null
                 drawShapeType = null
                 drawShapeProps = null
-                document.getElementById('main-two-root').style.cursor = 'auto'
-                const hintBtn = document.getElementById(
-                    'show-click-anywhere-btn'
-                )
-                if (hintBtn) hintBtn.style.opacity = 0
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
