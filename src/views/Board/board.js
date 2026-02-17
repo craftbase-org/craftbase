@@ -75,7 +75,6 @@ const BoardViewPage = (props) => {
 
     const [componentStore, setComponentStore] = useState({})
     const [lastAddedElement, setLastAddedElement] = useState(null)
-    const [showHelperTooltip, setShowHelperTooltip] = useState(true)
     const [pointerToggle, setPointerToggle] = useState(false)
     const [isPencilMode, setPencilMode] = useState(false)
     const [isArrowDrawMode, setIsArrowDrawMode] = useState(false)
@@ -149,12 +148,6 @@ const BoardViewPage = (props) => {
                 </div>
             </>
         )
-    }
-
-    if (getComponentsForBoardData) {
-        setTimeout(() => {
-            setShowHelperTooltip(false)
-        }, 2500)
     }
 
     if (insertUserData) {
@@ -349,29 +342,6 @@ const BoardViewPage = (props) => {
             {!isMobile ? (
                 <BoardContext.Provider value={contextValueForSidebar}>
                     <div>
-                        <div
-                            id="show-select-any-shape-btn"
-                            className="fixed w-40 top-0 left-60 
-                transition-all ease-out duration-300"
-                            style={{
-                                opacity: showHelperTooltip ? 1 : 0,
-                                zIndex: showHelperTooltip ? 1 : -1,
-                            }}
-                        >
-                            <div
-                                className="w-auto mt-2
-                          bg-greens-g400 text-white  
-                            px-4 py-2 rounded-md shadow-md
-                            "
-                            >
-                                <div className="flex items-center  ">
-                                    <div className="w-auto text-sm text-left">
-                                        You can select any shape(s) from here
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         <Sidebar />
                         {selectedComponent && showToolbar && (
                             <Toolbar
