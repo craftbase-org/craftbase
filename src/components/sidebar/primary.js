@@ -3,6 +3,7 @@ import { useQuery } from '@apollo/client'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import ElementsDropdown from './elementsDropdown'
+import ShapesToolbar from './shapesToolbar'
 import { GET_COMPONENT_TYPES } from 'schema/queries'
 import SpinnerWithSize from 'components/common/spinnerWithSize'
 import { generateUUID } from 'utils/misc'
@@ -174,16 +175,13 @@ const PrimarySidebar = () => {
     let isLiveSession = false
     return (
         <>
+            <ShapesToolbar addElement={addElement} />
             <div
                 id="sidebar-container"
                 className="sidebar-container flex items-center "
             >
                 <div className=" relative ">
-                    <ElementsDropdown
-                        getComponentTypesLoading={getComponentTypesLoading}
-                        addElement={addElement}
-                        showMenu={secondaryMenu}
-                    />
+                    <ElementsDropdown />
                 </div>
             </div>
             <div
