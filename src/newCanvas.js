@@ -69,7 +69,8 @@ function addZUI(
     setOnGroupHandler,
     addToLocalComponentStore,
     setSelectedComponentInBoard,
-    setArrowDrawModeOff
+    setArrowDrawModeOff,
+    setPointerElement
 ) {
     // console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
@@ -871,6 +872,7 @@ function addZUI(
 
                 arrowDrawElement = null
                 setArrowDrawModeOff()
+                setPointerElement('pointer')
                 document.getElementById('main-two-root').style.cursor = 'auto'
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
@@ -947,6 +949,7 @@ function addZUI(
                 drawCurrentCoords = null
                 drawShapeType = null
                 drawShapeProps = null
+                setPointerElement('pointer')
                 document.getElementById('main-two-root').style.cursor = 'auto'
                 const hintBtn = document.getElementById(
                     'show-click-anywhere-btn'
@@ -977,6 +980,7 @@ function addZUI(
                     setSelectedComponentInBoard(componentInternalState)
                     lastPlacedElement = null
                 }
+                setPointerElement('pointer')
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
@@ -1297,6 +1301,7 @@ const Canvas = (props) => {
         setTwoJSInstanceInBoard,
         setSelectedComponentInBoard,
         setArrowDrawModeInBoard,
+        setCurrentElementInBoard,
     } = useBoardContext()
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
@@ -1336,7 +1341,8 @@ const Canvas = (props) => {
             setOnGroupHandler,
             addToLocalComponentStore,
             setSelectedComponentInBoard,
-            () => setArrowDrawModeInBoard(false)
+            () => setArrowDrawModeInBoard(false),
+            setCurrentElementInBoard
         )
 
         // this.props.getElementsData('CONSTRUCT', arr)

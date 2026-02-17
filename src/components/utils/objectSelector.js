@@ -27,8 +27,8 @@ export default class Selector {
         area.fill = 'rgba(0,0,0,0)'
         area.opacity = 1
         area.linewidth = 2
-        area.dashes[0] = 6
-        area.stroke = '#505F79'
+        // area.dashes[0] = 6
+        area.stroke = '#0052CC'
         // area.curved = true;
         // console.log("area", area);
         this.area = area

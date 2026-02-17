@@ -20,13 +20,12 @@ const STROKE_WIDTHS = [
 ]
 
 const ElementsDropdown = ({ addElement, getComponentTypesLoading }) => {
-    const { defaultLinewidth, setDefaultLinewidthInBoard } = useBoardContext()
+    const { defaultLinewidth, setDefaultLinewidthInBoard, currentElement, setCurrentElementInBoard } = useBoardContext()
     const [listElements, setListElements] = useState([
         ...staticPrimaryElementData,
     ])
 
     const [toggleDrawer, setToggleDrawer] = useState(false)
-    const [currentElement, setCurrentElement] = useState(null)
     const [selectedStrokeType, setSelectedStrokeType] = useState('solid')
 
     const renderPrimaryStack = (element) => {
@@ -50,7 +49,7 @@ const ElementsDropdown = ({ addElement, getComponentTypesLoading }) => {
                                 setListElements(element.drawerData)
                             } else {
                                 addElement(element.elementName)
-                                setCurrentElement(element.elementName)
+                                setCurrentElementInBoard(element.elementName)
                             }
                         }}
                     >
