@@ -938,7 +938,9 @@ function addZUI(
                         text: { data: {} },
                         icon: { data: {} },
                     }
-                    setSelectedComponentInBoard(componentInternalState)
+                    // Don't use the board's generic toolbar for text elements —
+                    // the text component manages its own correctly-configured toolbar.
+                    setSelectedComponentInBoard(null)
                 }
 
                 textDrawElement = null

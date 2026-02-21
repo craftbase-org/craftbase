@@ -12,6 +12,13 @@ import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { properties } from 'utils/constants'
 import Icon from 'icons/icon'
 
+const TEXT_SIZES = [
+    { label: 'S', value: 12 },
+    { label: 'M', value: 16 },
+    { label: 'L', value: 24 },
+    { label: 'XL', value: 36 },
+]
+
 const ToolbarContainer = styled(motion.div)`
     height: 79vh;
     z-index: 1;
@@ -153,6 +160,9 @@ const Toolbar = (props) => {
         enableClassNameStyling,
         classNameLabel,
         hideBorderSection,
+        showTextSizeSection,
+        currentFontSize,
+        onTextSizeChange,
     } = props
     console.log('Toolbar props', props)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
@@ -175,6 +185,8 @@ const Toolbar = (props) => {
         hasUnderline: false,
         opacity: 1,
         hideColorSection: hideColorSection,
+        selectedTextSize:
+            TEXT_SIZES.find((s) => s.value === currentFontSize)?.label || null,
     })
 
     useEffect(() => {
@@ -204,6 +216,49 @@ const Toolbar = (props) => {
 
     const allowedProperties = [
         {
+            key: 'textSize',
+            hide: !showTextSizeSection,
+            content: () => (
+                <div className="px-2 py-1 w-full">
+                    <p className="text-xs text-gray-400 mb-2">Text Size</p>
+                    <div className="flex flex-row gap-2">
+                        {TEXT_SIZES.map(({ label, value }) => (
+                            <button
+                                key={label}
+                                onClick={() => {
+                                    setState((draft) => {
+                                        draft.selectedTextSize = label
+                                    })
+                                    if (
+                                        enableClassNameStyling &&
+                                        classNameLabel
+                                    ) {
+                                        const els =
+                                            document.getElementsByClassName(
+                                                classNameLabel
+                                            )
+                                        if (els.length > 0) {
+                                            els[0].style.fontSize = `${value}px`
+                                        }
+                                    }
+                                    // updateComponent('fontSize', value)
+                                    onTextSizeChange && onTextSizeChange(label)
+                                }}
+                                className={`w-9 h-8 text-xs font-semibold border rounded transition-colors ${
+                                    state.selectedTextSize === label
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            ),
+            renderSvg: () => null,
+        },
+        {
             key: properties.colorBg,
             // hide: state.hideColorSection,
             title: 'Color',
@@ -215,43 +270,44 @@ const Toolbar = (props) => {
             content: (hideColorText, hideColorIcon, hideColorBackground) => (
                 <Fragment>
                     {hideColorBackground ? null : (
-                    <ColorPicker
-                        title="Background"
-                        currentColor={state.colorBg}
-                        onChangeComplete={(color) => {
-                            setState((draft) => {
-                                draft.colorBg = color
-                            })
+                        <ColorPicker
+                            title="Background"
+                            currentColor={state.colorBg}
+                            onChangeComplete={(color) => {
+                                setState((draft) => {
+                                    draft.colorBg = color
+                                })
 
-                            // Shape's color overlaps all property so update necessary
-                            // secondary element's fill property from the existing state
-                            if (componentState.shape?.data?.fill)
-                                componentState.shape.data.fill = color
+                                // Shape's color overlaps all property so update necessary
+                                // secondary element's fill property from the existing state
+                                if (componentState.shape?.data?.fill)
+                                    componentState.shape.data.fill = color
 
-                            // check if to apply style via class names
-                            if (enableClassNameStyling) {
-                                let getClassNamesFromDOM =
-                                    document.getElementsByClassName(
-                                        classNameLabel
-                                    )
+                                // check if to apply style via class names
+                                if (enableClassNameStyling) {
+                                    let getClassNamesFromDOM =
+                                        document.getElementsByClassName(
+                                            classNameLabel
+                                        )
 
-                                if (getClassNamesFromDOM.length > 0) {
-                                    getClassNamesFromDOM[0].style.background =
-                                        color
+                                    if (getClassNamesFromDOM.length > 0) {
+                                        getClassNamesFromDOM[0].style.background =
+                                            color
+                                    }
                                 }
-                            }
-                            // componentState.icon.data.stroke = state.colorIcon
+                                // componentState.icon.data.stroke = state.colorIcon
 
-                            // if (componentState?.icon?.data?.stroke)
-                            //     componentState.icon.data.stroke = color
-                            // componentState.icon.data.stroke = state.colorIcon
+                                // if (componentState?.icon?.data?.stroke)
+                                //     componentState.icon.data.stroke = color
+                                // componentState.icon.data.stroke = state.colorIcon
 
-                            // if (componentState?.text?.data?.fill)
-                            //     componentState.text.data.fill = state.colorText
+                                // if (componentState?.text?.data?.fill)
+                                //     componentState.text.data.fill = state.colorText
 
-                            updateComponent && updateComponent('fill', color)
-                        }}
-                    />
+                                updateComponent &&
+                                    updateComponent('fill', color)
+                            }}
+                        />
                     )}
 
                     {/** Icon color picker */}

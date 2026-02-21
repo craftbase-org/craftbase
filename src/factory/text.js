@@ -30,8 +30,8 @@ export default class TextFactory extends Main {
         const svgElem = rectTextGroup._renderer.elem
         svgElem.innerHTML = `
     <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
-            rectTextGroup.getBoundingClientRect(true).top
-        } width=${rectangle.width} height=${height}>
+        rectTextGroup.getBoundingClientRect(true).top
+    } width=${rectangle.width} height=${height}>
         <div class="foreign-text-container-base foreign-text-container-${id}">${content}</div>
     </foreignObject>
     `

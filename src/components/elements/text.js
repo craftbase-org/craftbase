@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import PropTypes from 'prop-types'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
@@ -10,6 +10,11 @@ import handleDrag from 'components/utils/dragger'
 import Toolbar from 'components/floatingToolbar'
 import { setPeronsalInformation } from 'store/actions/main'
 import ElementFactory from 'factory/text'
+
+// Scale factors follow a doubling pattern per step: S=1x, M=2x, L=4x, XL=8x
+// Ratio between any two sizes = newScale / currentScale
+const TEXT_SIZE_SCALES = { S: 1, M: 2, L: 4, XL: 8 }
+const TEXT_SIZE_VALUES = { S: 12, M: 16, L: 24, XL: 36 }
 
 function Text(props) {
     const {
@@ -23,10 +28,18 @@ function Text(props) {
 
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({ textFontSize: 16 })
+    const [textValue, setTextValue] = useState(props?.metadata?.content || '')
+    const textValueRef = useRef(textValue)
 
     const two = props.twoJSInstance
     let selectorInstance = null
     let groupObject = null
+
+    // Refs to Two.js objects needed by the text-size change handler
+    const rectangleRef = useRef(null)
+    const rectTextGroupRef = useRef(null)
+    const svgElemRef = useRef(null)
+    const currentTextSizeLabelRef = useRef(null)
 
     function onBlurHandler(e) {
         elementOnBlurHandler(e, selectorInstance, two)
@@ -54,33 +67,55 @@ function Text(props) {
             .addEventListener('keydown', handleKeyDown)
     }
 
-    const updateTextStylingViaDOM = (props, rectangle) => {
-        // perform styling via classname rather than component based due to text's foreign svg element
-        let getClassNamesFromDOM = document.getElementsByClassName(
-            `foreign-text-container-${props.id}`
+    const handleTextSizeChange = (newLabel) => {
+        const rectangle = rectangleRef.current
+        const rectTextGroup = rectTextGroupRef.current
+        const svgElem = svgElemRef.current
+        if (!rectangle || !rectTextGroup || !svgElem) return
+
+        const currentLabel = currentTextSizeLabelRef.current || 'M'
+        const ratio =
+            TEXT_SIZE_SCALES[newLabel] / TEXT_SIZE_SCALES[currentLabel]
+
+        const newWidth = Math.round(rectangle.width * ratio)
+        const newHeight = Math.round(rectangle.height * ratio)
+
+        rectangle.width = newWidth
+        rectangle.height = newHeight
+        rectTextGroup.width = newWidth
+        rectTextGroup.height = newHeight
+
+        // Preserve existing content and font-size before rewriting innerHTML
+        const existingContainer = svgElem.querySelector(
+            `.foreign-text-container-${props.id}`
         )
-        if (getClassNamesFromDOM.length > 0) {
-            let linewidth = props.linewidth ? props.linewidth : 0.1
-            let color = props.stroke ? props.stroke : '#ccc'
-            let textColor = props.textColor
-            let fill = props.fill
+        const currentContent = existingContainer?.innerHTML || ''
+        const currentFontSize = existingContainer?.style?.fontSize || '16px'
 
-            getClassNamesFromDOM[0].style.color = textColor
-            // commenting this code for temporary basis. This would be responsible for updating rectangle style
-            // getClassNamesFromDOM[0].style.background = fill
-            // getClassNamesFromDOM[0].style.border = `${linewidth}px solid ${color} `
+        const bRect = rectTextGroup.getBoundingClientRect(true)
+        svgElem.innerHTML = `
+<foreignObject x=${bRect.left} y=${bRect.top} width=${newWidth} height=${newHeight}>
+    <div class="foreign-text-container-base foreign-text-container-${props.id}" style="font-size:${currentFontSize}">${currentContent}</div>
+</foreignObject>
+`
+        two.update()
 
-            rectangle.textColor = textColor
-            rectangle.stroke = color
-            rectangle.linewidth = linewidth
-            two.update()
-        }
+        updateComponentBulkPropertiesInLocalStore(props.id, {
+            width: newWidth,
+            height: newHeight,
+            metadata: {
+                ...props.metadata,
+                content: textValueRef.current,
+                fontSize: TEXT_SIZE_VALUES[newLabel],
+            },
+        })
+
+        currentTextSizeLabelRef.current = newLabel
     }
 
     // Using unmount phase to remove event listeners
     useEffect(() => {
-        let textFontSize = 16
-        let textValue = props?.metadata?.content
+        let textFontSize = props?.metadata?.fontSize || 16
         let itemData = props?.itemData
         let handleGlobalMousedown = null
         // Calculate x and y through dividing width and height by 2 or vice versa
@@ -99,6 +134,27 @@ function Text(props) {
         // the custom foreign object hook
         const svgElem = rectTextGroup._renderer.elem
 
+        // Populate refs so handleTextSizeChange can access Two.js objects
+        rectangleRef.current = rectangle
+        rectTextGroupRef.current = rectTextGroup
+        svgElemRef.current = svgElem
+        // Derive current size label from saved fontSize (fallback to 'M')
+        const savedFontSize = props?.metadata?.fontSize || 16
+        currentTextSizeLabelRef.current =
+            Object.entries(TEXT_SIZE_VALUES).find(
+                ([, v]) => v === savedFontSize
+            )?.[0] || 'M'
+
+        // Apply saved font size from DB (persists across page reloads)
+        if (props?.metadata?.fontSize) {
+            const textContainers = document.getElementsByClassName(
+                `foreign-text-container-${props.id}`
+            )
+            if (textContainers.length > 0) {
+                textContainers[0].style.fontSize = `${props.metadata.fontSize}px`
+            }
+        }
+
         // Function to show text input
         const showTextInput = () => {
             const twoTextInstance = document.getElementById(`${group.id}`)
@@ -113,12 +169,12 @@ function Text(props) {
             const topBuffer = 0
             const randomNumber = Math.floor(Math.random() * 90 + 10)
             input.id = `two-temp-input-area-${randomNumber}`
-            input.value = props?.itemData?.text || textValue || ''
+            input.value = props?.itemData?.text || textValueRef.current || ''
             input.style.border = 'none'
             input.style.background = 'transparent'
             input.style.padding = '6px'
             input.style.color = props?.itemData?.color || '#000'
-            input.style.fontSize = `${props?.itemData?.fontSize || textFontSize}px`
+            input.style.fontSize = `${props.metadata?.fontSize || textFontSize}px`
             input.style.position = 'absolute'
             input.style.top = `${getCoordOfBtnText.top - topBuffer}px`
             input.style.left = `${getCoordOfBtnText.left}px`
@@ -128,6 +184,10 @@ function Text(props) {
             document.getElementById('main-two-root').append(input)
 
             input.onfocus = function (e) {
+                const currentLabel = currentTextSizeLabelRef.current || 'M'
+                const newWidth = Math.round(rectangle.width)
+                const newHeight = Math.round(rectangle.height)
+                selectorInstance.update(0, newWidth, 0, newHeight)
                 selectorInstance.show()
                 two.update()
             }
@@ -156,9 +216,20 @@ function Text(props) {
                 )
 
                 twoTextInstance.style.display = 'block'
-                textValue = input.value
+                setTextValue(input.value)
+                textValueRef.current = input.value
 
-                selectorInstance.update(0, rectangle.width, 0, rectangle.height)
+                // Preserve any font-size set by the toolbar during this session
+                const existingContainer = svgElem.querySelector(
+                    `.foreign-text-container-${props.id}`
+                )
+                const preservedFontSize =
+                    existingContainer?.style?.fontSize || `${textFontSize}px`
+
+                const currentLabel = currentTextSizeLabelRef.current || 'M'
+                const newWidth = Math.round(rectangle.width)
+                const newHeight = Math.round(rectangle.height)
+                selectorInstance.update(0, newWidth, 0, newHeight)
                 selectorInstance.hide()
 
                 rectTextGroup.height =
@@ -175,11 +246,11 @@ function Text(props) {
           <foreignObject x=${
               rectTextGroup.getBoundingClientRect(true).left
           } y=${rectTextGroup.getBoundingClientRect(true).top} width=${
-                    rectangle.width
-                } height=${rectangle.height}>
+              rectangle.width
+          } height=${rectangle.height}>
               <div class="foreign-text-container-base foreign-text-container-${
                   props.id
-              }" style="font-size:${textFontSize + 'px'}">${textValue}</div>
+              }" style="font-size:${preservedFontSize}">${textValueRef.current}</div>
           </foreignObject>
           `
                 two.update()
@@ -189,7 +260,7 @@ function Text(props) {
                     height: rectangle.height,
                     metadata: {
                         ...props.metadata,
-                        content: textValue,
+                        content: textValueRef.current,
                     },
                 }
                 updateComponentBulkPropertiesInLocalStore(props.id, updateObj)
@@ -200,6 +271,8 @@ function Text(props) {
         // Listen for trigger text input event from canvas
         const handleTriggerTextInput = (e) => {
             if (e.detail.elementId === props.id) {
+                // Show the text element's own toolbar (not the board's generic one)
+                toggleToolbar(true)
                 setTimeout(() => showTextInput(), 100)
             }
         }
@@ -219,8 +292,6 @@ function Text(props) {
 
             group.children.unshift(rectTextGroup)
             two.update()
-
-            updateTextStylingViaDOM(props, rectangle)
 
             document
                 .getElementById(group.id)
@@ -298,127 +369,16 @@ function Text(props) {
             rectTextGroup._renderer.elem.addEventListener('dblclick', () => {
                 showTextInput()
             })
-
-            interact(`#${group.id}`).resizable({
-                edges: { right: true, left: true, top: true, bottom: true },
-
-                listeners: {
-                    start() {
-                        getGroupElementFromDOM.setAttribute(
-                            'data-resize',
-                            'true'
-                        )
-                        // window.removeEventListener(
-                        //     'mousemove',
-                        //     mousemove,
-                        //     false
-                        // )
-                        // window.removeEventListener('mouseup', mouseup, false)
-                    },
-                    move(event) {
-                        let target = event.target
-                        let rect = event.rect
-
-                        if (rect.height < 30) {
-                            // do nothing
-                        } else {
-                            rectangle.width = rect.width
-                            rectangle.height = rect.height
-                            selector.update(
-                                rectTextGroup.getBoundingClientRect(true).left -
-                                    4,
-                                rectTextGroup.getBoundingClientRect(true)
-                                    .right + 4,
-                                rectTextGroup.getBoundingClientRect(true).top -
-                                    4,
-                                rectTextGroup.getBoundingClientRect(true)
-                                    .bottom + 4
-                            )
-
-                            svgElem.innerHTML = `
-    <foreignObject x=${rectTextGroup.getBoundingClientRect(true).left} y=${
-                                rectTextGroup.getBoundingClientRect(true).top
-                            } width=${rectangle.width} height=${
-                                rectangle.height
-                            }>
-        <div class="foreign-text-container-base foreign-text-container-${
-            props.id
-        }" style="font-size:${textFontSize + 'px'}">${textValue}</div>
-    </foreignObject>
-    `
-
-                            two.update()
-                        }
-
-                        // Restrict width to shrink if it has reached point
-                        //  where it's width should be less than or equal to text's
-                        // if (rect.width > text.getBoundingClientRect().width) {
-                        //   rectangle.width = rect.width;
-                        //   rectangle.height = rect.height;
-                        //   text.size = rosterSize;
-                        //   selector.update(
-                        //     rectTextGroup.getBoundingClientRect(true).left - 5,
-                        //     rectTextGroup.getBoundingClientRect(true).right + 5,
-                        //     rectTextGroup.getBoundingClientRect(true).top - 5,
-                        //     rectTextGroup.getBoundingClientRect(true).bottom + 5
-                        //   );
-                        // }
-                    },
-                    end(event) {
-                        let updateObj = {
-                            width: parseInt(rectangle.width),
-                            height: parseInt(rectangle.height),
-                        }
-                        updateComponentBulkPropertiesInLocalStore(
-                            props.id,
-                            updateObj
-                        )
-                        getGroupElementFromDOM.removeAttribute('data-resize')
-                        console.log('the end', event)
-                    },
-                },
-            })
-
-            // interact(`#${group.id}`).draggable({
-            //   // enable inertial throwing
-            //   inertia: false,
-
-            //   listeners: {
-            //     start(event) {
-            //       // console.log(event.type, event.target);
-            //     },
-            //     move(event) {
-            //       event.target.style.transform = `translate(${event.pageX}px, ${
-            //         event.pageY - offsetHeight
-            //       }px)`;
-
-            //       two.update();
-            //     },
-            //     end(event) {
-            //       console.log(
-            //         'event x',
-            //         event.target.getBoundingClientRect(),
-            //         event.rect.left,
-            //         event.pageX,
-            //         event.clientX
-            //       );
-            //       // alternate -> take event.rect.left for x
-            //       localStorage.setItem('text_coordX', parseInt(event.pageX));
-            //       localStorage.setItem(
-            //         'text_coordY',
-            //         parseInt(event.pageY - offsetHeight)
-            //       );
-            //       dispatch(setPeronsalInformation('COMPLETE', { data: {} }));
-            //     },
-            //   },
-            // });
         }
 
         return () => {
             // console.log('UNMOUNTING in text', group)
             // clean garbage by removing instance
             // two.remove(group)
-            window.removeEventListener('triggerTextInput', handleTriggerTextInput)
+            window.removeEventListener(
+                'triggerTextInput',
+                handleTriggerTextInput
+            )
             if (handleGlobalMousedown) {
                 window.removeEventListener('mousedown', handleGlobalMousedown)
             }
@@ -443,11 +403,8 @@ function Text(props) {
             if (props.height !== shapeInstance.height) {
                 shapeInstance.height = props.height
             }
-            updateTextStylingViaDOM(props, internalState.shape.data)
         }
     }, [
-        props.stroke,
-        props.linewidth,
         props.x,
         props.y,
         props.width,
@@ -460,11 +417,21 @@ function Text(props) {
     useEffect(() => {
         const groupId = internalState?.group?.id
         if (groupId && document.getElementById(groupId)) {
-            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isTextDrawMode || isArrowSelected)
-                ? 'none'
-                : 'auto'
+            document.getElementById(groupId).style.pointerEvents =
+                isPencilMode ||
+                isArrowDrawMode ||
+                isTextDrawMode ||
+                isArrowSelected
+                    ? 'none'
+                    : 'auto'
         }
-    }, [isPencilMode, isArrowDrawMode, isTextDrawMode, isArrowSelected, internalState?.group?.id])
+    }, [
+        isPencilMode,
+        isArrowDrawMode,
+        isTextDrawMode,
+        isArrowSelected,
+        internalState?.group?.id,
+    ])
 
     function closeToolbar() {
         toggleToolbar(false)
@@ -478,6 +445,9 @@ function Text(props) {
                     hideColorIcon={true}
                     hideColorBackground={true}
                     hideBorderSection={true}
+                    showTextSizeSection={true}
+                    currentFontSize={props?.metadata?.fontSize || 16}
+                    onTextSizeChange={handleTextSizeChange}
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
