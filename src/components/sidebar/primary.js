@@ -128,7 +128,7 @@ const PrimarySidebar = () => {
                     const userId = localStorage.getItem('userId')
                     shapeData = {
                         id: generateId,
-                        componentType: label,
+                        componentType: 'newText',
                         linewidth: defaultLinewidth,
                         children: {},
                         metadata: item.metadata || {},
