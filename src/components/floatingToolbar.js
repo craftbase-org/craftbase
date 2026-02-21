@@ -152,6 +152,7 @@ const Toolbar = (props) => {
         hideColorSection,
         enableClassNameStyling,
         classNameLabel,
+        hideBorderSection,
     } = props
     console.log('Toolbar props', props)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
@@ -369,6 +370,7 @@ const Toolbar = (props) => {
         {
             key: properties.borderColor,
             title: 'Border',
+            hide: hideBorderSection,
             accordion: state.borderAccordion,
             toggleAccordion: () =>
                 setState((draft) => {

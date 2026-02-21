@@ -78,6 +78,7 @@ const BoardViewPage = (props) => {
     const [pointerToggle, setPointerToggle] = useState(false)
     const [isPencilMode, setPencilMode] = useState(false)
     const [isArrowDrawMode, setIsArrowDrawMode] = useState(false)
+    const [isTextDrawMode, setIsTextDrawMode] = useState(false)
     const [showToolbar, toggleToolbar] = useState(false)
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
@@ -303,6 +304,10 @@ const BoardViewPage = (props) => {
         setIsArrowDrawMode(val)
     }
 
+    const setTextDrawModeInBoard = (val) => {
+        setIsTextDrawMode(val)
+    }
+
     const setDefaultLinewidthInBoard = (val) => {
         setDefaultLinewidth(val)
     }
@@ -319,8 +324,10 @@ const BoardViewPage = (props) => {
     const contextValueForSidebar = {
         isPencilMode,
         isArrowDrawMode,
+        isTextDrawMode,
         isArrowSelected,
         setArrowDrawModeInBoard,
+        setTextDrawModeInBoard,
         togglePencilMode,
         togglePointer,
         updateLastAddedElement,

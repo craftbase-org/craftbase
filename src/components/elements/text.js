@@ -17,6 +17,7 @@ function Text(props) {
         updateComponentBulkPropertiesInLocalStore,
         isPencilMode,
         isArrowDrawMode,
+        isTextDrawMode,
         isArrowSelected,
     } = useBoardContext()
 
@@ -81,6 +82,7 @@ function Text(props) {
         let textFontSize = 16
         let textValue = props?.metadata?.content
         let itemData = props?.itemData
+        let handleGlobalMousedown = null
         // Calculate x and y through dividing width and height by 2 or vice versa
         // if x and y are given then multiply width and height into 2
         const offsetHeight = 0
@@ -96,6 +98,112 @@ function Text(props) {
         rectTextGroup.opacity = props.metadata?.opacity ?? 1
         // the custom foreign object hook
         const svgElem = rectTextGroup._renderer.elem
+
+        // Function to show text input
+        const showTextInput = () => {
+            const twoTextInstance = document.getElementById(`${group.id}`)
+            if (!twoTextInstance) return
+
+            // Use svgElem (the rectTextGroup's DOM element) rather than the outer group
+            // so the selector's extended bounds don't push the textarea upward
+            const getCoordOfBtnText = svgElem.getBoundingClientRect()
+            twoTextInstance.style.display = 'none'
+
+            const input = document.createElement('textarea')
+            const topBuffer = 0
+            const randomNumber = Math.floor(Math.random() * 90 + 10)
+            input.id = `two-temp-input-area-${randomNumber}`
+            input.value = props?.itemData?.text || textValue || ''
+            input.style.border = 'none'
+            input.style.background = 'transparent'
+            input.style.padding = '6px'
+            input.style.color = props?.itemData?.color || '#000'
+            input.style.fontSize = `${props?.itemData?.fontSize || textFontSize}px`
+            input.style.position = 'absolute'
+            input.style.top = `${getCoordOfBtnText.top - topBuffer}px`
+            input.style.left = `${getCoordOfBtnText.left}px`
+            input.style.outline = 'none'
+            input.className = 'temp-input-area'
+
+            document.getElementById('main-two-root').append(input)
+
+            input.onfocus = function (e) {
+                selectorInstance.show()
+                two.update()
+            }
+
+            input.focus()
+
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    input.rows = input.rows + 1
+                }
+                if (event.key === ' ') {
+                    console.log('space key pressed!')
+                    input.style.width = input.style.width + 5
+                    rectangle.width = rectangle.width + 5
+                    two.update()
+                }
+            })
+
+            input.addEventListener('blur', () => {
+                console.log(
+                    'at blur text',
+                    input.value,
+                    input.rows,
+                    input.scrollHeight,
+                    document.getElementById(input.id).getBoundingClientRect()
+                )
+
+                twoTextInstance.style.display = 'block'
+                textValue = input.value
+
+                selectorInstance.update(0, rectangle.width, 0, rectangle.height)
+                selectorInstance.hide()
+
+                rectTextGroup.height =
+                    input.scrollHeight < 60
+                        ? input.scrollHeight
+                        : input.scrollHeight - 20
+                rectangle.height =
+                    input.scrollHeight < 60
+                        ? input.scrollHeight
+                        : input.scrollHeight - 20
+                two.update()
+
+                svgElem.innerHTML = `
+          <foreignObject x=${
+              rectTextGroup.getBoundingClientRect(true).left
+          } y=${rectTextGroup.getBoundingClientRect(true).top} width=${
+                    rectangle.width
+                } height=${rectangle.height}>
+              <div class="foreign-text-container-base foreign-text-container-${
+                  props.id
+              }" style="font-size:${textFontSize + 'px'}">${textValue}</div>
+          </foreignObject>
+          `
+                two.update()
+
+                let updateObj = {
+                    width: rectangle.width,
+                    height: rectangle.height,
+                    metadata: {
+                        ...props.metadata,
+                        content: textValue,
+                    },
+                }
+                updateComponentBulkPropertiesInLocalStore(props.id, updateObj)
+                input.remove()
+            })
+        }
+
+        // Listen for trigger text input event from canvas
+        const handleTriggerTextInput = (e) => {
+            if (e.detail.elementId === props.id) {
+                setTimeout(() => showTextInput(), 100)
+            }
+        }
+        window.addEventListener('triggerTextInput', handleTriggerTextInput)
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
@@ -173,125 +281,22 @@ function Text(props) {
                 toggleToolbar(true)
             })
 
+            handleGlobalMousedown = (e) => {
+                const path = e.composedPath ? e.composedPath() : e.path || []
+                const isOnGroup = path.some((el) => el.id === group.id)
+                const isOnToolbar = path.some(
+                    (el) => el.id === 'floating-toolbar'
+                )
+                if (!isOnGroup && !isOnToolbar) {
+                    toggleToolbar(false)
+                }
+            }
+            window.addEventListener('mousedown', handleGlobalMousedown)
+
             // Captures double click event for text
             // and generates temporary textarea support for it
             rectTextGroup._renderer.elem.addEventListener('dblclick', () => {
-                // console.log('on click for texy', text.id);
-                console.log('textValue', textValue)
-                // Hide actual text and replace it with input box
-                const twoTextInstance = document.getElementById(`${group.id}`)
-                const getCoordOfBtnText =
-                    twoTextInstance.getBoundingClientRect()
-                twoTextInstance.style.display = 'none'
-
-                const input = document.createElement('textarea')
-
-                const topBuffer = 2
-                const randomNumber = Math.floor(Math.random() * 90 + 10)
-                input.id = `two-temp-input-area-${randomNumber}`
-                input.value = props?.itemData?.text || textValue
-                // input.rows = 1
-                input.style.border = '2px solid #ccc'
-                input.style.background = 'transparent'
-                input.style.padding = '6px'
-                input.style.color = props?.itemData?.color
-                    ? props?.itemData?.color
-                    : '#000'
-                input.style.fontSize = `${props?.itemData?.fontSize}px`
-                input.style.position = 'absolute'
-                input.style.top = `${getCoordOfBtnText.top - topBuffer}px`
-                input.style.left = `${getCoordOfBtnText.left}px`
-                // input.style.width = `${
-                //     rectTextGroup.getBoundingClientRect(true).width
-                // }px`
-                input.className = 'temp-input-area'
-
-                document.getElementById('main-two-root').append(input)
-
-                input.onfocus = function (e) {
-                    // console.log('on input focus')
-                    selector.show()
-                    two.update()
-                }
-
-                input.focus()
-
-                input.addEventListener('keydown', (event) => {
-                    if (event.key === 'Enter') {
-                        input.rows = input.rows + 1
-                        // console.log('Enter key pressed!')
-                        // Your code to handle the "Enter" key press goes here
-                    }
-                    if (event.key === ' ') {
-                        console.log('space key pressed!')
-                        input.style.width = input.style.width + 5
-                        rectangle.width = rectangle.width + 5
-                        two.update()
-
-                        // Your code to handle the "Enter" key press goes here
-                    }
-                })
-
-                input.addEventListener('blur', () => {
-                    console.log(
-                        'at blur text',
-                        input.value,
-                        input.rows,
-                        input.scrollHeight,
-                        document
-                            .getElementById(input.id)
-                            .getBoundingClientRect()
-                    )
-
-                    twoTextInstance.style.display = 'block'
-
-                    textValue = input.value
-
-                    // USE 4 LINES 4 CIRCLES
-                    selector.update(0, rectangle.width, 0, rectangle.height)
-                    selector.hide()
-
-                    rectTextGroup.height =
-                        input.scrollHeight < 60
-                            ? input.scrollHeight
-                            : input.scrollHeight - 20
-                    rectangle.height =
-                        input.scrollHeight < 60
-                            ? input.scrollHeight
-                            : input.scrollHeight - 20
-                    two.update()
-                    console.log(
-                        'rectangle.height',
-                        rectangle.height,
-                        input.scrollHeight
-                    )
-                    svgElem.innerHTML = `
-          <foreignObject x=${
-              rectTextGroup.getBoundingClientRect(true).left
-          } y=${rectTextGroup.getBoundingClientRect(true).top} width=${
-                        rectangle.width
-                    } height=${rectangle.height}>
-              <div class="foreign-text-container-base foreign-text-container-${
-                  props.id
-              }" style="font-size:${textFontSize + 'px'}">${textValue}</div>
-          </foreignObject>
-          `
-                    two.update()
-
-                    let updateObj = {
-                        width: rectangle.width,
-                        height: rectangle.height,
-                        metadata: {
-                            ...props.metadata,
-                            content: textValue,
-                        },
-                    }
-                    updateComponentBulkPropertiesInLocalStore(
-                        props.id,
-                        updateObj
-                    )
-                    input.remove()
-                })
+                showTextInput()
             })
 
             interact(`#${group.id}`).resizable({
@@ -413,6 +418,10 @@ function Text(props) {
             // console.log('UNMOUNTING in text', group)
             // clean garbage by removing instance
             // two.remove(group)
+            window.removeEventListener('triggerTextInput', handleTriggerTextInput)
+            if (handleGlobalMousedown) {
+                window.removeEventListener('mousedown', handleGlobalMousedown)
+            }
         }
     }, [])
 
@@ -447,15 +456,15 @@ function Text(props) {
         props.textColor,
     ])
 
-    // When pencil mode is active, disable pointer events on this component
+    // When pencil mode, arrow mode, or text mode is active, disable pointer events on this component
     useEffect(() => {
         const groupId = internalState?.group?.id
         if (groupId && document.getElementById(groupId)) {
-            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isArrowSelected)
+            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isTextDrawMode || isArrowSelected)
                 ? 'none'
                 : 'auto'
         }
-    }, [isPencilMode, isArrowDrawMode, isArrowSelected, internalState?.group?.id])
+    }, [isPencilMode, isArrowDrawMode, isTextDrawMode, isArrowSelected, internalState?.group?.id])
 
     function closeToolbar() {
         toggleToolbar(false)
@@ -467,12 +476,14 @@ function Text(props) {
             {showToolbar ? (
                 <Toolbar
                     hideColorIcon={true}
+                    hideColorBackground={true}
+                    hideBorderSection={true}
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
                     componentId={props.id}
                     enableClassNameStyling={true}
-                    // classNameLabel={`foreign-text-container-${props.id}`}
+                    classNameLabel={`foreign-text-container-${props.id}`}
                     updateComponent={() => {
                         two.update()
                     }}
