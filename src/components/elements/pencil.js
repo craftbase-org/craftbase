@@ -59,15 +59,16 @@ function Pencil(props) {
         })
         // Get all instances of every sub child element
         const { group, path } = elementFactory.createElement()
+        const shapeRef = path || group.children[0]
         group.elementData = { ...props.itemData, ...props }
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
             console.log('properties of pencil', props)
             const parentGroup = props.parentGroup
-            path.translation.x = props.properties.x
-            path.translation.y = props.properties.y
-            parentGroup.add(path)
+            shapeRef.translation.x = props.properties.x
+            shapeRef.translation.y = props.properties.y
+            parentGroup.add(shapeRef)
             two.update()
         } else {
             /** This element will render by creating it's own group wrapper */
@@ -76,7 +77,9 @@ function Pencil(props) {
             const { selector } = getEditComponents(two, group, 4)
             selectorInstance = selector
 
-            group.children.unshift(path)
+            if (path) {
+                group.children.unshift(path)
+            }
             two.update()
 
             // document
@@ -100,7 +103,7 @@ function Pencil(props) {
 
             setInternalState((draft) => {
                 draft.element = {
-                    [path.id]: path,
+                    [shapeRef.id]: shapeRef,
                     [group.id]: group,
                     // [selector.id]: selector,
                 }
@@ -109,8 +112,8 @@ function Pencil(props) {
                     data: group,
                 }
                 draft.shape = {
-                    id: path.id,
-                    data: path,
+                    id: shapeRef.id,
+                    data: shapeRef,
                 }
                 draft.text = {
                     data: {},

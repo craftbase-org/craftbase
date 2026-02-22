@@ -119,8 +119,9 @@ function GroupedObjectWrapper(props) {
                     if (element.elementData.componentType === 'pencil') {
                         newMetadata = element.elementData.metadata.map(
                             (vert, index) => {
+                                const lwProp = vert.lw !== undefined ? { lw: vert.lw } : {}
                                 if (index === 0) {
-                                    return { x: newX, y: newY }
+                                    return { x: newX, y: newY, ...lwProp }
                                 } else if (index > 0) {
                                     // here the logic is to get relative vertex coordinates to the original metadata
                                     // so we want to get result of ( relative coordinate + orginal_vert(x) - originalX )
@@ -141,6 +142,7 @@ function GroupedObjectWrapper(props) {
                                                     element.elementData
                                                         .metadata[0].y
                                             ),
+                                        ...lwProp,
                                     }
                                 }
                             }
