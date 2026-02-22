@@ -9,7 +9,7 @@ Below is the craftbase project codemap with different sections talking about ove
 
 ## Overview
 
-Craftbase is an online whiteboarding tool built with React that uses Two.js for 2D canvas rendering. This document maps the codebase structure to help developers quickly locate and understand different parts of the application.
+Craftbase is an minimal virtual whiteboarding tool built with React that uses Two.js for 2D canvas rendering. This document maps the codebase structure to help developers quickly locate and understand different parts of the application.
 
 ## Core Architecture
 
@@ -43,7 +43,7 @@ Reusable React UI components.
     - Shape components: `circle.js`, `rectangle.js`, `frame.js`
     - Arrow components: `arrowLine.js`, `divider.js`
     - Drawing: `pencil.js`
-    - Text components: `text.js`
+    - Text components: `newText.js`
     - Other: `groupobject.js`
     - `template.js` - Component template definitions
 
@@ -69,7 +69,7 @@ Reusable React UI components.
 
 Component factory functions that generate template definitions for each element type. Each factory corresponds to a component element.
 
-- Factories: `arrowLine.js`, `newArrowLine.js`, `circle.js`, `divider.js`, `pencil.js`, `rectangle.js`, `text.js`
+- Factories: `arrowLine.js`, `newArrowLine.js`, `circle.js`, `divider.js`, `pencil.js`, `rectangle.js`, `newText.js`
 - `main.js` - Factory registry/coordinator
 
 ### `/src/store`
