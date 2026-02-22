@@ -61,7 +61,7 @@ const ElementsDropdown = () => {
                 </div>
             </div>
 
-            <div id="stroke-type-section" className="pt-3 px-2">
+            {/* <div id="stroke-type-section" className="pt-3 px-2">
                 <div className="w-full text-black font-normal text-xs pl-0 mb-2">
                     Stroke type
                 </div>
@@ -91,7 +91,7 @@ const ElementsDropdown = () => {
                         </button>
                     ))}
                 </div>
-            </div>
+            </div> */}
         </div>
     )
 }
