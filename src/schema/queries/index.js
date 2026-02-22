@@ -44,6 +44,7 @@ export const GET_COMPONENTS_FOR_BOARD_QUERY = gql`
             iconStroke
             stroke
             linewidth
+            textColor
         }
     }
 `

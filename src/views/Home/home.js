@@ -15,6 +15,7 @@ import BlueStarSVG from 'assets/blue_star.svg'
 // import ImageContainer from 'components/ProgressiveImageLoader/loader'
 // import CraftbaseBoardScreenshotPNG from 'assets/craftbase_board_screenshot.png'
 // import CraftbaseBoardScreenshotBlurJPG from 'assets/blur_craftbase_screenshot.jpg'
+import WhiteboardingPNG from 'assets/whiteboarding.png'
 import HomeShapeToolbarJPG from 'assets/home_shape_toolbar.png'
 import RadioCheckboxPNG from 'assets/radio_check.png'
 import BasicShapesPNG from 'assets/basic_shapes.png'
@@ -217,16 +218,14 @@ const HomePage = (props) => {
                     >
                         <div className="w-full lg:w-5/12 h-full flex items-center justify-center">
                             <div className="text-left transition-opacity duration-300 ease-in-out">
-                                <p className="text-base lg:text-3xl 2xl:text-4xl font-bold ">
-                                    Online whiteboarding tool for creative
-                                    people.
-                                </p>
+                                <h1 className="text-base lg:text-3xl 2xl:text-4xl font-bold ">
+                                    Instant Infinite Whiteboard with Unique
+                                    Board Links
+                                </h1>
                                 <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
-                                    Craftbase is online whiteboarding tool where
-                                    user(s) can brainstorm using various objects
-                                    such as shapes, pencil and to name a few,
-                                    with themselves as well share it with other
-                                    users.
+                                    Create unlimited infinite canvases. Each
+                                    board gets a unique URL. No accounts. No
+                                    dashboards. Just start thinking.
                                 </p>
                                 {/* <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
                                     With real-time updates across all devices,
@@ -265,25 +264,12 @@ const HomePage = (props) => {
                             </div>
                         </div>
                         <div className="w-full lg:w-7/12 pt-8 lg:pt-0 h-full ">
-                            <div className="lg:pl-4 home-page-main-video w-full flex items-center lg:justify-end justify-center ">
-                                <iframe
-                                    title="vimeo-player"
-                                    src="https://player.vimeo.com/video/701362448?h=3b8bc751b0"
-                                    className=" w-full lg:w-11/12"
-                                    height="345"
-                                    frameborder="0"
-                                    allowfullscreen
-                                    style={{ zIndex: '1 !important' }}
-                                ></iframe>
-
-                                {/* <ImageContainer
-                                src={CraftbaseBoardScreenshotPNG}
-                                thumb={CraftbaseBoardScreenshotBlurJPG}
-                                height={382}
-                                width={775}
-                                alt={'screenshot'}
-                                url={''}
-                            /> */}
+                            <div className="lg:pl-4 w-full flex items-center lg:justify-end justify-center ">
+                                <img
+                                    src={WhiteboardingPNG}
+                                    alt="Craftbase whiteboarding"
+                                    className="w-full lg:w-11/12 rounded-lg shadow-lg"
+                                />
                             </div>
                         </div>
                     </div>
