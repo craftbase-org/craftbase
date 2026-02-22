@@ -13,6 +13,11 @@ import Spinner from 'components/common/spinner'
 import Loader from 'components/utils/loader'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 import { generateUUID } from 'utils/misc'
+import {
+    velocityToLinewidth,
+    smoothLinewidth,
+    simplifyWithLinewidth,
+} from 'utils/pencilHelper'
 
 function getComponentSchema(obj, boardId) {
     let generateId = generateUUID()
@@ -59,6 +64,7 @@ function getComponentSchema(obj, boardId) {
 
 var isDrawing
 var defaultLinewidthValue = 1
+var pencilStrokeColorValue = '#000'
 
 function addZUI(
     props,
@@ -85,6 +91,13 @@ function addZUI(
     let currentPath
     let lastAddedPath
     let paths = []
+
+    // Velocity-based pencil state
+    let pencilGroup = null
+    let pencilRawPoints = []
+    let lastPencilPoint = null
+    let lastPencilTime = 0
+    let lastPencilLinewidth = null
 
     let scenario = null
     let SCENARIO_JUST_ADDED_ELEMENT = 'justAddedElement'
@@ -304,17 +317,25 @@ function addZUI(
 
                 document.getElementById('main-two-root').style.cursor = 'auto'
                 break
-            case SCENARIO_PENCIL_MODE:
-                // do here
+            case SCENARIO_PENCIL_MODE: {
                 domElement.addEventListener('mousemove', mousemove, false)
                 domElement.addEventListener('mouseup', mouseup, false)
 
-                currentPath = two.makePath()
-                currentPath.linewidth = defaultLinewidthValue
-                currentPath.closed = false
-                two.add(currentPath)
-                paths.push(currentPath)
+                // Create a group for live preview segments
+                pencilGroup = two.makeGroup()
+                pencilRawPoints = []
+                lastPencilLinewidth = defaultLinewidthValue
+
+                const startCoords = zui.clientToSurface(e.clientX, e.clientY)
+                lastPencilPoint = { x: startCoords.x, y: startCoords.y }
+                lastPencilTime = performance.now()
+                pencilRawPoints.push({
+                    x: startCoords.x,
+                    y: startCoords.y,
+                    lw: lastPencilLinewidth,
+                })
                 break
+            }
             default:
                 shape = null
                 mouse.x = e.clientX
@@ -667,19 +688,49 @@ function addZUI(
                     two.update()
                 }
                 break
-            case SCENARIO_PENCIL_MODE:
-                let getCoordinate = zui.clientToSurface(e.clientX, e.clientY)
+            case SCENARIO_PENCIL_MODE: {
+                const pencilCoords = zui.clientToSurface(e.clientX, e.clientY)
 
-                currentPath.vertices.push(
-                    new Two.Vector(getCoordinate.x, getCoordinate.y)
+                // Distance throttle: skip if too close to last point
+                const pdx = pencilCoords.x - lastPencilPoint.x
+                const pdy = pencilCoords.y - lastPencilPoint.y
+                const pDist = Math.sqrt(pdx * pdx + pdy * pdy)
+                if (pDist < 3) break
+
+                // Compute velocity and map to linewidth
+                const now = performance.now()
+                const timeDelta = now - lastPencilTime
+                const velocity = timeDelta > 0 ? pDist / timeDelta : 0
+                const targetLw = velocityToLinewidth(velocity, defaultLinewidthValue)
+                const smoothedLw = smoothLinewidth(lastPencilLinewidth, targetLw, 0.3)
+
+                // Create a 2-point path segment for live preview
+                const segment = two.makePath(
+                    lastPencilPoint.x, lastPencilPoint.y,
+                    pencilCoords.x, pencilCoords.y
                 )
-                currentPath.vertices[currentPath.vertices.length - 1].command =
-                    'L'
-                currentPath.noFill()
-                currentPath.stroke = '#000'
-                currentPath.linewidth = defaultLinewidthValue
+                segment.noFill()
+                segment.stroke = pencilStrokeColorValue
+                segment.linewidth = smoothedLw
+                segment.cap = 'round'
+                segment.join = 'round'
+                segment.closed = false
+                pencilGroup.add(segment)
+
+                // Record point with linewidth
+                pencilRawPoints.push({
+                    x: pencilCoords.x,
+                    y: pencilCoords.y,
+                    lw: smoothedLw,
+                })
+
+                lastPencilPoint = { x: pencilCoords.x, y: pencilCoords.y }
+                lastPencilTime = now
+                lastPencilLinewidth = smoothedLw
+
                 two.update()
                 break
+            }
             default:
                 /**
                     Currently "resize" event handling is at component level.  
@@ -1056,48 +1107,53 @@ function addZUI(
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
-            case SCENARIO_PENCIL_MODE:
-                // isDrawing = false
-                // console.log(
-                //     'on mouse up pencil mode',
-                //     paths,
-                //     currentPath.vertices,
-                //     currentPath.translation
-                // )
+            case SCENARIO_PENCIL_MODE: {
+                // Remove live preview group — React component will re-render from metadata
+                if (pencilGroup) {
+                    two.remove(pencilGroup)
+                }
 
-                let generateId = generateUUID()
-                let componentData = {
-                    id: generateId,
+                if (pencilRawPoints.length < 2) {
+                    // Too few points to form a stroke
+                    pencilGroup = null
+                    pencilRawPoints = []
+                    lastPencilPoint = null
+                    lastPencilLinewidth = null
+                    break
+                }
+
+                // Simplify points while preserving lw
+                const simplifiedPoints = simplifyWithLinewidth(pencilRawPoints, 1.5)
+
+                let pencilId = generateUUID()
+                let pencilComponentData = {
+                    id: pencilId,
                     boardId: props.boardId,
                     componentType: 'pencil',
                     children: {},
-                    metadata: [],
+                    metadata: simplifiedPoints,
                     x: 0,
                     y: 0,
-                    linewidth: currentPath.linewidth,
-                    stroke: currentPath.stroke,
+                    linewidth: defaultLinewidthValue,
+                    stroke: pencilStrokeColorValue,
                 }
-                componentData.metadata = currentPath.vertices.map(
-                    function (vertex) {
-                        return { x: vertex.x, y: vertex.y }
-                    }
-                )
 
-                componentData.x = Math.floor(componentData.metadata[0]?.x || 0)
-                componentData.y = Math.floor(componentData.metadata[0]?.y || 0)
+                pencilComponentData.x = Math.floor(simplifiedPoints[0]?.x || 0)
+                pencilComponentData.y = Math.floor(simplifiedPoints[0]?.y || 0)
 
                 addToLocalComponentStore(
-                    componentData.id,
-                    componentData.componentType,
-                    componentData
+                    pencilComponentData.id,
+                    pencilComponentData.componentType,
+                    pencilComponentData
                 )
 
-                // let currentPathRef = currentPath
-                // setTimeout(() => {
-                //     two.remove(currentPathRef)
-                //     two.update()
-                // }, 5000)
+                // Reset pencil state
+                pencilGroup = null
+                pencilRawPoints = []
+                lastPencilPoint = null
+                lastPencilLinewidth = null
                 break
+            }
             default:
                 // diff to check new x,y and prev x,y
                 let oldShapeData = {}
@@ -1496,6 +1552,10 @@ const Canvas = (props) => {
         defaultLinewidthValue = props.defaultLinewidth || 1
     }, [props.defaultLinewidth])
 
+    useEffect(() => {
+        pencilStrokeColorValue = props.pencilStrokeColor || '#000'
+    }, [props.pencilStrokeColor])
+
     // on group select use effect hook
     useEffect(() => {
         // let componentsArr = [...currentComponents]
@@ -1546,8 +1606,9 @@ const Canvas = (props) => {
                     let newMetadata = []
                     if (item.componentType === 'pencil') {
                         newMetadata = item.metadata.map((vert, index) => {
+                            const lwProp = vert.lw !== undefined ? { lw: vert.lw } : {}
                             if (index === 0) {
-                                return { x: relativeX, y: relativeY }
+                                return { x: relativeX, y: relativeY, ...lwProp }
                             } else if (index > 0) {
                                 // here the logic is to get relative vertex coordinates to the original metadata
                                 // so we want to get result of ( relative coordinate + orginal_vert(x) - originalX )
@@ -1560,6 +1621,7 @@ const Canvas = (props) => {
                                     y:
                                         relativeY +
                                         parseInt(vert.y - item.metadata[0].y),
+                                    ...lwProp,
                                 }
                             }
                         })
