@@ -1,0 +1,61 @@
+name: Version Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    name: Verify VERSION is bumped
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      - name: Read PR branch VERSION
+        id: pr_version
+        run: |
+          PR_VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "version=$PR_VERSION" >> "$GITHUB_OUTPUT"
+          echo "PR branch VERSION: $PR_VERSION"
+
+      - name: Fetch main branch VERSION
+        id: main_version
+        run: |
+          git fetch origin main
+          MAIN_VERSION=$(git show origin/main:VERSION | tr -d '[:space:]')
+          echo "version=$MAIN_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Main branch VERSION: $MAIN_VERSION"
+
+      - name: Compare versions
+        run: |
+          PR_VERSION="${{ steps.pr_version.outputs.version }}"
+          MAIN_VERSION="${{ steps.main_version.outputs.version }}"
+
+          echo "Main VERSION: $MAIN_VERSION"
+          echo "PR VERSION:   $PR_VERSION"
+
+          # Split versions into major.minor.patch
+          IFS='.' read -r PR_MAJOR PR_MINOR PR_PATCH <<< "$PR_VERSION"
+          IFS='.' read -r MAIN_MAJOR MAIN_MINOR MAIN_PATCH <<< "$MAIN_VERSION"
+
+          # Default patch to 0 if missing
+          PR_PATCH=${PR_PATCH:-0}
+          MAIN_PATCH=${MAIN_PATCH:-0}
+
+          # Compare: PR version must be strictly greater than main version
+          if [ "$PR_MAJOR" -gt "$MAIN_MAJOR" ]; then
+            echo "Version bump valid (major): $MAIN_VERSION -> $PR_VERSION"
+            exit 0
+          elif [ "$PR_MAJOR" -eq "$MAIN_MAJOR" ] && [ "$PR_MINOR" -gt "$MAIN_MINOR" ]; then
+            echo "Version bump valid (minor): $MAIN_VERSION -> $PR_VERSION"
+            exit 0
+          elif [ "$PR_MAJOR" -eq "$MAIN_MAJOR" ] && [ "$PR_MINOR" -eq "$MAIN_MINOR" ] && [ "$PR_PATCH" -gt "$MAIN_PATCH" ]; then
+            echo "Version bump valid (patch): $MAIN_VERSION -> $PR_VERSION"
+            exit 0
+          else
+            echo "::error::VERSION must be bumped. PR version ($PR_VERSION) is not higher than main version ($MAIN_VERSION). Please update the VERSION file."
+            exit 1
+          fi
