@@ -218,16 +218,14 @@ const HomePage = (props) => {
                         <div className="w-full lg:w-5/12 h-full flex items-center justify-center">
                             <div className="text-left transition-opacity duration-300 ease-in-out">
                                 <h1 className="text-base lg:text-3xl 2xl:text-4xl font-bold ">
-                                    Fast, Minimal Infinite Whiteboard for
-                                    Builders
+                                    Instant Infinite Whiteboard with Unique
+                                    Board Links
                                 </h1>
-                                <h3 className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
-                                    Craftbase is minimal whiteboarding tool
-                                    where builders can brainstorm using various
-                                    objects such as shapes, pencil and to name a
-                                    few, with themselves as well share it with
-                                    other users.
-                                </h3>
+                                <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
+                                    Create unlimited infinite canvases. Each
+                                    board gets a unique URL. No accounts. No
+                                    dashboards. Just start thinking.
+                                </p>
                                 {/* <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
                                     With real-time updates across all devices,
                                     you can collaborate with your peers in

@@ -23,6 +23,7 @@ function NewText(props) {
     const [textValue, setTextValue] = useState(
         props?.metadata?.content || 'Text'
     )
+    const [textSize, setTextSize] = useState(props?.metadata?.fontSize || 16)
     const textValueRef = useRef(textValue)
     const twoTextRef = useRef(null)
 
@@ -94,6 +95,111 @@ function NewText(props) {
         selectorInstance = selector
         two.update()
 
+        // ── Resize via corner handles (proportional font-size scaling) ──
+        // Adapted from text_resize.html: distance-based proportional resize
+        const cornerCircles = [
+            selectorInstance.circle1,
+            selectorInstance.circle2,
+            selectorInstance.circle3,
+            selectorInstance.circle4,
+        ].filter(Boolean)
+
+        const resizeCursors = [
+            'nwse-resize', // circle1 = TL
+            'nesw-resize', // circle2 = TR
+            'nwse-resize', // circle3 = BR
+            'nesw-resize', // circle4 = BL
+        ]
+
+        let resizeState = null
+
+        const onResizeMouseMove = (e) => {
+            if (!resizeState) return
+            const { centerX, centerY, startDist, startSize } = resizeState
+            const currentDist = Math.sqrt(
+                (e.clientX - centerX) ** 2 + (e.clientY - centerY) ** 2
+            )
+            const scale = currentDist / Math.max(startDist, 1)
+            const newSize = Math.round(
+                Math.min(Math.max(startSize * scale, 8), 300)
+            )
+
+            twoText.size = newSize
+            twoText.leading = newSize
+            two.update()
+
+            // Update selector bounds to match new text size
+            const bRect = twoText.getBoundingClientRect(true)
+            selectorInstance.update(
+                bRect.left - 4,
+                bRect.right + 4,
+                bRect.top - 4,
+                bRect.bottom + 4
+            )
+
+            setTextSize(newSize)
+        }
+
+        const onResizeMouseUp = () => {
+            if (!resizeState) return
+            const finalSize = twoText.size
+            resizeState = null
+
+            window.removeEventListener('mousemove', onResizeMouseMove)
+            window.removeEventListener('mouseup', onResizeMouseUp)
+
+            // Persist to store
+            const bRect = twoText.getBoundingClientRect(true)
+            const newWidth = Math.round(bRect.width || 60)
+            const newHeight = Math.round(bRect.height || twoText.size)
+
+            updateComponentBulkPropertiesInLocalStore(props.id, {
+                width: newWidth,
+                height: newHeight,
+                metadata: {
+                    ...props.metadata,
+                    fontSize: finalSize,
+                    content: twoText.value,
+                },
+            })
+        }
+
+        cornerCircles.forEach((circle, index) => {
+            const circleElem = circle._renderer?.elem
+            if (!circleElem) return
+
+            circleElem.style.cursor = resizeCursors[index]
+            circleElem.style.pointerEvents = 'all'
+
+            circleElem.addEventListener('mousedown', (e) => {
+                // Only allow resize when selector is visible
+                if (selectorInstance.areaGroup.opacity === 0) return
+
+                e.stopPropagation()
+                e.preventDefault()
+
+                // Get text center in screen coordinates
+                const textDomElem = twoText._renderer.elem
+                const textScreenRect = textDomElem.getBoundingClientRect()
+                const centerX = textScreenRect.left + textScreenRect.width / 2
+                const centerY = textScreenRect.top + textScreenRect.height / 2
+
+                const startDist = Math.sqrt(
+                    (e.clientX - centerX) ** 2 + (e.clientY - centerY) ** 2
+                )
+
+                resizeState = {
+                    centerX,
+                    centerY,
+                    startDist,
+                    startSize: twoText.size || 16,
+                }
+
+                window.addEventListener('mousemove', onResizeMouseMove)
+                window.addEventListener('mouseup', onResizeMouseUp)
+            })
+        })
+
         document
             .getElementById(group.id)
             .setAttribute('class', 'dragger-picker')
@@ -128,6 +234,16 @@ function NewText(props) {
             // Hide the Two.js group so the textarea sits on top cleanly
             groupDomElem.style.display = 'none'
 
+            const fontSize = twoText.size || 16
+            // Use a generous line-height so ascenders/descenders are
+            // never clipped. A 1.6× multiplier covers most font metrics.
+            const lineH = Math.ceil(fontSize * 1.6)
+            // Vertical padding inside the textarea prevents the top of
+            // tall glyphs (H, d, l …) from being cut off by the element
+            // boundary. Half the difference between lineH and fontSize
+            // approximates the ascender headroom the browser needs.
+            const vertPad = Math.ceil((lineH - fontSize) / 2) + 4
+
             const input = document.createElement('textarea')
             const randomId = Math.floor(Math.random() * 90 + 10)
             input.id = `new-text-input-area-${randomId}`
@@ -135,21 +251,76 @@ function NewText(props) {
             input.rows = 1
             input.style.border = 'none'
             input.style.background = 'transparent'
-            input.style.padding = '4px'
+            input.style.padding = `${vertPad}px 8px`
             input.style.color = twoText.fill || '#000000'
-            input.style.fontSize = `${twoText.size}px`
+            input.style.fontSize = `${fontSize}px`
             input.style.fontFamily = twoText.family || 'sans-serif'
+            input.style.fontWeight = twoText.weight || 'normal'
+            input.style.lineHeight = `${lineH}px`
+            input.style.letterSpacing = '0px'
             input.style.textAlign = 'center'
             input.style.position = 'absolute'
-            input.style.top = `${screenRect.top}px`
-            input.style.left = `${screenRect.left - screenRect.width * 0.5}px`
-            input.style.width = `${Math.max(screenRect.width * 2, 80)}px`
             input.style.outline = 'none'
             input.style.resize = 'none'
-            input.style.overflow = 'hidden'
+            input.style.overflow = 'visible'
+            input.style.whiteSpace = 'pre'
+            input.style.boxSizing = 'border-box'
             input.className = 'temp-input-area'
 
+            // Anchor point: the SVG text element's screen-space center
+            const centerX = screenRect.left + screenRect.width / 2
+            const centerY = screenRect.top + screenRect.height / 2
+
             document.getElementById('main-two-root').append(input)
+
+            // ── Offscreen measurement helper ──
+            // We create a hidden <span> with identical font styles and
+            // read its offsetWidth/offsetHeight. This is more reliable
+            // than textarea.scrollWidth which can be affected by cols,
+            // min intrinsic sizing, and platform differences.
+            const measureSpan = document.createElement('span')
+            measureSpan.style.position = 'absolute'
+            measureSpan.style.visibility = 'hidden'
+            measureSpan.style.whiteSpace = 'pre'
+            measureSpan.style.fontSize = `${fontSize}px`
+            measureSpan.style.fontFamily = twoText.family || 'sans-serif'
+            measureSpan.style.fontWeight = twoText.weight || 'normal'
+            measureSpan.style.lineHeight = `${lineH}px`
+            measureSpan.style.letterSpacing = '0px'
+            measureSpan.style.padding = '0'
+            document.body.appendChild(measureSpan)
+
+            const autoSizeAndCenter = () => {
+                // Measure the text content with the hidden span
+                const val = input.value || 'M' // fallback to 'M' so empty input still has width
+                measureSpan.textContent = val
+
+                const measuredW = measureSpan.offsetWidth
+                const measuredH = measureSpan.offsetHeight
+
+                // Total textarea size = measured text + padding + breathing room
+                const contentWidth = Math.max(
+                    measuredW + 40,
+                    screenRect.width + 40,
+                    80
+                )
+                const contentHeight = Math.max(
+                    measuredH + vertPad * 2,
+                    lineH + vertPad * 2
+                )
+
+                input.style.width = `${contentWidth}px`
+                input.style.height = `${contentHeight}px`
+
+                // Centre over the original text midpoint
+                input.style.left = `${centerX - contentWidth / 2}px`
+                input.style.top = `${centerY - contentHeight / 2}px`
+            }
+
+            autoSizeAndCenter()
+
+            // Re-measure on every keystroke so the box grows with the text
+            input.addEventListener('input', autoSizeAndCenter)
 
             input.onfocus = function () {
                 const bRect = twoText.getBoundingClientRect(true)
@@ -172,6 +343,12 @@ function NewText(props) {
             })
 
             input.addEventListener('blur', () => {
+                // Clean up the input listener and measurement span
+                input.removeEventListener('input', autoSizeAndCenter)
+                if (measureSpan.parentNode) {
+                    measureSpan.parentNode.removeChild(measureSpan)
+                }
+
                 groupDomElem.style.display = 'block'
 
                 const newContent = input.value
@@ -259,6 +436,8 @@ function NewText(props) {
             if (handleGlobalMousedown) {
                 window.removeEventListener('mousedown', handleGlobalMousedown)
             }
+            window.removeEventListener('mousemove', onResizeMouseMove)
+            window.removeEventListener('mouseup', onResizeMouseUp)
         }
     }, [])
 
@@ -278,6 +457,7 @@ function NewText(props) {
             }
             if (props.metadata?.fontSize) {
                 twoText.size = props.metadata.fontSize
+                setTextSize(props.metadata.fontSize)
             }
             if (
                 props.metadata?.content !== undefined &&
