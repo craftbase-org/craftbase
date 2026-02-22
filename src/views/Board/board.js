@@ -6,7 +6,7 @@ import React, {
     createContext,
 } from 'react'
 import { useSubscription, useMutation, useQuery } from '@apollo/client'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useMediaQueryUtils } from 'constants/exportHooks'
 import { GET_COMPONENTS_FOR_BOARD_QUERY } from 'schema/queries'
 import {
@@ -15,6 +15,7 @@ import {
     INSERT_COMPONENT,
     DELETE_COMPONENT_BY_ID,
     UPDATE_COMPONENT_INFO,
+    CREATE_BOARD,
 } from 'schema/mutations'
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
@@ -73,11 +74,22 @@ const BoardViewPage = (props) => {
         },
     ] = useMutation(UPDATE_USER_REVISIT_COUNT)
 
+    const navigate = useNavigate()
+
+    const [
+        createBoard,
+        {
+            loading: createBoardLoading,
+            data: createBoardData,
+        },
+    ] = useMutation(CREATE_BOARD)
+
     const [componentStore, setComponentStore] = useState({})
     const [lastAddedElement, setLastAddedElement] = useState(null)
     const [pointerToggle, setPointerToggle] = useState(false)
     const [isPencilMode, setPencilMode] = useState(false)
     const [isArrowDrawMode, setIsArrowDrawMode] = useState(false)
+    const [isTextDrawMode, setIsTextDrawMode] = useState(false)
     const [showToolbar, toggleToolbar] = useState(false)
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
@@ -86,6 +98,12 @@ const BoardViewPage = (props) => {
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef()
+
+    // Reset component store whenever the board changes
+    useEffect(() => {
+        setComponentStore({})
+    }, [boardId])
+
     // check if user exists or not
     useEffect(() => {
         const userId = localStorage.getItem('userId')
@@ -109,6 +127,13 @@ const BoardViewPage = (props) => {
         }
         localStorage.setItem('lastOpenBoard', routeParams.id)
     }, [])
+
+    useEffect(() => {
+        if (createBoardData) {
+            const newBoardId = createBoardData.board.id
+            navigate(`/board/${newBoardId}`)
+        }
+    }, [createBoardData])
 
     useEffect(() => {
         if (
@@ -303,12 +328,39 @@ const BoardViewPage = (props) => {
         setIsArrowDrawMode(val)
     }
 
+    const setTextDrawModeInBoard = (val) => {
+        setIsTextDrawMode(val)
+    }
+
     const setDefaultLinewidthInBoard = (val) => {
         setDefaultLinewidth(val)
     }
 
     const setCurrentElementInBoard = (val) => {
         setCurrentElement(val)
+    }
+
+    const onCreateBoard = () => {
+        const userId = localStorage.getItem('userId')
+        if (userId === null) {
+            const { nickname, firstName, lastName } = generateRandomUsernames()
+            insertUser({
+                variables: {
+                    object: {
+                        nickname,
+                        firstName,
+                        lastName,
+                    },
+                },
+            })
+        }
+        createBoard({
+            variables: {
+                object: {
+                    createdBy: userId,
+                },
+            },
+        })
     }
 
     const isArrowSelected =
@@ -319,8 +371,10 @@ const BoardViewPage = (props) => {
     const contextValueForSidebar = {
         isPencilMode,
         isArrowDrawMode,
+        isTextDrawMode,
         isArrowSelected,
         setArrowDrawModeInBoard,
+        setTextDrawModeInBoard,
         togglePencilMode,
         togglePointer,
         updateLastAddedElement,
@@ -335,6 +389,8 @@ const BoardViewPage = (props) => {
         setDefaultLinewidthInBoard,
         currentElement,
         setCurrentElementInBoard,
+        onCreateBoard,
+        createBoardLoading,
     }
 
     return (

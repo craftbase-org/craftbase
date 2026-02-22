@@ -36,8 +36,8 @@ const ShareLinkPopup = ({}) => {
                         setShowLink(!showLink)
                     }}
                 >
-                    <span className="text-sm">Share</span>
-                    <img src={LinkIcon} className="ml-2 w-5 h-5" />
+                    {/* <span className="text-sm">Share</span> */}
+                    <img src={LinkIcon} className="w-5 h-5" />
                 </a>
 
                 <div

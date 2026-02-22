@@ -1,11 +1,17 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { staticPrimaryElementData } from 'utils/constants'
 import { useBoardContext } from 'views/Board/board'
 
-const allElements = staticPrimaryElementData.flatMap((section) => section.elements)
+const allElements = staticPrimaryElementData.flatMap(
+    (section) => section.elements
+)
 
 const ShapesToolbar = ({ addElement }) => {
     const { currentElement, setCurrentElementInBoard } = useBoardContext()
+
+    useEffect(() => {
+        setCurrentElementInBoard('pointer')
+    }, [])
 
     return (
         <div

@@ -70,6 +70,7 @@ function addZUI(
     addToLocalComponentStore,
     setSelectedComponentInBoard,
     setArrowDrawModeOff,
+    setTextDrawModeOff,
     setPointerElement
 ) {
     // console.log('two.renderer.domElement', two.renderer.domElement)
@@ -90,9 +91,11 @@ function addZUI(
     let SCENARIO_PENCIL_MODE = 'pencilMode'
     let SCENARIO_ARROW_DRAW = 'arrowDraw'
     let SCENARIO_DRAW_SHAPE = 'drawShape'
+    let SCENARIO_TEXT_DRAW = 'textDraw'
     let SCENARIO_DEFAULT = null
 
     let arrowDrawElement = null
+    let textDrawElement = null
     let drawOrigin = null
     let drawCurrentCoords = null
     let previewShape = null
@@ -143,9 +146,12 @@ function addZUI(
         }
 
         const arrowDrawMode = localStorage.getItem('arrowDrawMode')
+        const textDrawMode = localStorage.getItem('textDrawMode')
         const pendingShapeType = localStorage.getItem('pendingShapeType')
         if (arrowDrawMode === 'true') {
             scenario = SCENARIO_ARROW_DRAW
+        } else if (textDrawMode === 'true') {
+            scenario = SCENARIO_TEXT_DRAW
         } else if (pendingShapeType !== null) {
             scenario = SCENARIO_DRAW_SHAPE
         } else if (lastAddedElementId !== null) {
@@ -185,6 +191,35 @@ function addZUI(
 
                 document.getElementById('main-two-root').style.cursor =
                     'crosshair'
+                break
+            }
+            case SCENARIO_TEXT_DRAW: {
+                const surfaceCoords = zui.clientToSurface(e.clientX, e.clientY)
+                const textId = localStorage.getItem('lastAddedElementId')
+
+                textDrawElement = two.scene.children.find(
+                    (child) => child?.elementData?.id === textId
+                )
+
+                if (textDrawElement) {
+                    // Position the text at the clicked point
+                    textDrawElement.position.x = surfaceCoords.x
+                    textDrawElement.position.y = surfaceCoords.y
+                    two.update()
+
+                    // Update the component position in the store
+                    updateComponentVertices(
+                        textId,
+                        surfaceCoords.x,
+                        surfaceCoords.y
+                    )
+                }
+
+                localStorage.removeItem('lastAddedElementId')
+                localStorage.removeItem('textDrawMode')
+
+                domElement.addEventListener('mouseup', mouseup, false)
+                document.getElementById('main-two-root').style.cursor = 'auto'
                 break
             }
             case SCENARIO_DRAW_SHAPE: {
@@ -560,7 +595,8 @@ function addZUI(
 
         if (
             lastAddedElementId !== null &&
-            localStorage.getItem('arrowDrawMode') !== 'true'
+            localStorage.getItem('arrowDrawMode') !== 'true' &&
+            localStorage.getItem('textDrawMode') !== 'true'
         ) {
             scenario = SCENARIO_JUST_ADDED_ELEMENT
         }
@@ -875,6 +911,42 @@ function addZUI(
                 setPointerElement('pointer')
                 document.getElementById('main-two-root').style.cursor = 'auto'
                 domElement.removeEventListener('mousemove', mousemove, false)
+                domElement.removeEventListener('mouseup', mouseup, false)
+                break
+            }
+            case SCENARIO_TEXT_DRAW: {
+                if (textDrawElement && textDrawElement.children?.[0]) {
+                    // Trigger text input by dispatching a custom event
+                    const textInputEvent = new CustomEvent('triggerTextInput', {
+                        detail: { elementId: textDrawElement.elementData.id },
+                    })
+                    window.dispatchEvent(textInputEvent)
+
+                    const groupEl = textDrawElement
+                    const shapeEl = textDrawElement.children[0]
+                    const componentInternalState = {
+                        element: {
+                            [shapeEl.id]: shapeEl,
+                            [groupEl.id]: groupEl,
+                        },
+                        group: { id: groupEl.id, data: groupEl },
+                        shape: {
+                            type: groupEl.elementData?.componentType,
+                            id: shapeEl.id,
+                            data: shapeEl,
+                        },
+                        text: { data: {} },
+                        icon: { data: {} },
+                    }
+                    // Don't use the board's generic toolbar for text elements —
+                    // the text component manages its own correctly-configured toolbar.
+                    setSelectedComponentInBoard(null)
+                }
+
+                textDrawElement = null
+                setTextDrawModeOff()
+                setPointerElement('pointer')
+                document.getElementById('main-two-root').style.cursor = 'auto'
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
             }
@@ -1301,6 +1373,7 @@ const Canvas = (props) => {
         setTwoJSInstanceInBoard,
         setSelectedComponentInBoard,
         setArrowDrawModeInBoard,
+        setTextDrawModeInBoard,
         setCurrentElementInBoard,
     } = useBoardContext()
 
@@ -1342,6 +1415,7 @@ const Canvas = (props) => {
             addToLocalComponentStore,
             setSelectedComponentInBoard,
             () => setArrowDrawModeInBoard(false),
+            () => setTextDrawModeInBoard(false),
             setCurrentElementInBoard
         )
 

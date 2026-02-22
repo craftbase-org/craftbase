@@ -2,7 +2,7 @@
 
 Thanks for reading this README of craftbase app.
 
-Craftbase is online whiteboarding tool where user(s) can brainstorm using various objects such as shapes, pencil and to name a few, with themselves as well share it with other users.
+Craftbase is minimal whiteboard tool where user(s) can brainstorm using various objects such as shapes, pencil and to name a few, with themselves as well share it with other users.
 
 Currently, the live sharing feature is internally disabled but I am working on adding feature flag for it. Once it's enabled, you can live share it with your other colleagues/peers/friends and collaborate together.
 

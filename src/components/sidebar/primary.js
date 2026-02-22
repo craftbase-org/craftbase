@@ -6,6 +6,7 @@ import ElementsDropdown from './elementsDropdown'
 import ShapesToolbar from './shapesToolbar'
 import { GET_COMPONENT_TYPES } from 'schema/queries'
 import SpinnerWithSize from 'components/common/spinnerWithSize'
+import Button from 'components/common/button'
 import { generateUUID } from 'utils/misc'
 import { useBoardContext } from 'views/Board/board'
 
@@ -21,7 +22,10 @@ const PrimarySidebar = () => {
         togglePencilMode,
         addToLocalComponentStore,
         setArrowDrawModeInBoard,
+        setTextDrawModeInBoard,
         defaultLinewidth,
+        onCreateBoard,
+        createBoardLoading,
     } = useBoardContext()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const [hintText, setHintText] = useState(
@@ -51,6 +55,113 @@ const PrimarySidebar = () => {
         }
     }, [getComponentTypesData])
 
+    const handleArrowElement = (label) => {
+        togglePencilMode(false)
+        togglePointer(false)
+
+        let savingEl = document.getElementById('show-saving-loader')
+        savingEl.style.opacity = 1
+        savingEl.style.zIndex = 1
+
+        setTimeout(() => {
+            savingEl.style.opacity = 0
+            savingEl.style.zIndex = -1
+        }, 100)
+
+        let shapeData = null
+        let generateId = generateUUID()
+
+        if (getComponentTypesData) {
+            getComponentTypesData.componentTypes.forEach((item, index) => {
+                if (item.label === label) {
+                    const userId = localStorage.getItem('userId')
+                    shapeData = {
+                        id: generateId,
+                        componentType: label,
+                        linewidth: defaultLinewidth,
+                        children: {},
+                        metadata: [],
+                        x: -9999,
+                        y: -9999,
+                        x2: 0,
+                        boardId: routeParams.id,
+                        metadata: item.metadata,
+                        width: item.width,
+                        height: item.height,
+                        fill: item.fill,
+                        textColor: item.textColor,
+                        updatedBy: userId,
+                    }
+                }
+            })
+        }
+
+        updateLastAddedElement(shapeData)
+        document.getElementById('main-two-root').style.cursor = 'crosshair'
+        localStorage.setItem('arrowDrawMode', 'true')
+        localStorage.setItem('lastAddedElementId', generateId)
+        setArrowDrawModeInBoard(true)
+        // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
+        addToLocalComponentStore(
+            shapeData.id,
+            shapeData.componentType,
+            shapeData
+        )
+    }
+
+    const handleTextElement = (label) => {
+        togglePencilMode(false)
+        togglePointer(false)
+
+        let savingEl = document.getElementById('show-saving-loader')
+        savingEl.style.opacity = 1
+        savingEl.style.zIndex = 1
+
+        setTimeout(() => {
+            savingEl.style.opacity = 0
+            savingEl.style.zIndex = -1
+        }, 100)
+
+        let shapeData = null
+        let generateId = generateUUID()
+
+        if (getComponentTypesData) {
+            getComponentTypesData.componentTypes.forEach((item, index) => {
+                if (item.label === label) {
+                    const userId = localStorage.getItem('userId')
+                    shapeData = {
+                        id: generateId,
+                        componentType: 'newText',
+                        linewidth: defaultLinewidth,
+                        children: {},
+                        metadata: item.metadata || {},
+                        x: -9999,
+                        y: -9999,
+                        x2: 0,
+                        boardId: routeParams.id,
+                        width: item.width,
+                        height: item.height,
+                        fill: item.fill,
+                        textColor: item.textColor,
+                        updatedBy: userId,
+                    }
+                }
+            })
+        }
+
+        updateLastAddedElement(shapeData)
+        document.getElementById('main-two-root').style.cursor = 'crosshair'
+        localStorage.setItem('textDrawMode', 'true')
+        localStorage.setItem('lastAddedElementId', generateId)
+        setTextDrawModeInBoard(true)
+        // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
+        addToLocalComponentStore(
+            shapeData.id,
+            shapeData.componentType,
+            shapeData
+        )
+    }
+
     const addElement = (label) => {
         switch (label) {
             case 'pointer':
@@ -59,29 +170,29 @@ const PrimarySidebar = () => {
             case 'pencil':
                 togglePencilMode(true)
                 break
+            case 'arrowLine':
+                handleArrowElement(label)
+                break
+            case 'text':
+                handleTextElement(label)
+                break
             default:
                 togglePencilMode(false)
                 togglePointer(false)
-
-                const isArrowDraw = label === 'arrowLine'
 
                 let savingEl = document.getElementById('show-saving-loader')
                 savingEl.style.opacity = 1
                 savingEl.style.zIndex = 1
 
                 setTimeout(() => {
-                    if (!isArrowDraw) {
-                        if (DRAW_SHAPE_TYPES.includes(label)) {
-                            setHintText('Click and drag to draw shape')
-                        } else {
-                            setHintText(
-                                'Click anywhere to place element there.'
-                            )
-                        }
-                        document.getElementById(
-                            'show-click-anywhere-btn'
-                        ).style.opacity = 1
+                    if (DRAW_SHAPE_TYPES.includes(label)) {
+                        setHintText('Click and drag to draw shape')
+                    } else {
+                        setHintText('Click anywhere to place element there.')
                     }
+                    document.getElementById(
+                        'show-click-anywhere-btn'
+                    ).style.opacity = 1
                     savingEl.style.opacity = 0
                     savingEl.style.zIndex = -1
                 }, 100)
@@ -89,11 +200,7 @@ const PrimarySidebar = () => {
                 let shapeData = null
                 let randomNumber = Math.floor(Math.random() * 80 + 30)
                 let generateId = generateUUID()
-                // console.log(
-                //     'getComponentTypesData',
-                //     getComponentTypesData,
-                //     label
-                // )
+
                 if (getComponentTypesData) {
                     getComponentTypesData.componentTypes.forEach(
                         (item, index) => {
@@ -102,26 +209,19 @@ const PrimarySidebar = () => {
                                 shapeData = {
                                     id: generateId,
                                     componentType: label,
-                                    // stroke: '#000',
                                     linewidth: defaultLinewidth,
                                     children: {},
                                     metadata: [],
-                                    x: isArrowDraw
-                                        ? -9999
-                                        : parseInt(
-                                              window.outerWidth -
-                                                  (randomNumber *
-                                                      window.outerWidth) /
-                                                      100
-                                          ),
-                                    y: isArrowDraw
-                                        ? -9999
-                                        : parseInt(
-                                              window.outerHeight -
-                                                  (randomNumber *
-                                                      window.outerHeight) /
-                                                      100
-                                          ),
+                                    x: parseInt(
+                                        window.outerWidth -
+                                            (randomNumber * window.outerWidth) /
+                                                100
+                                    ),
+                                    y: parseInt(
+                                        window.outerHeight -
+                                            (randomNumber * window.outerHeight) /
+                                                100
+                                    ),
                                     x2: label.includes('divider') ? 100 : 0,
                                     boardId: routeParams.id,
                                     metadata: item.metadata,
@@ -135,22 +235,8 @@ const PrimarySidebar = () => {
                         }
                     )
                 }
-                // console.log('shapeData', shapeData)
 
-                if (isArrowDraw) {
-                    updateLastAddedElement(shapeData)
-                    document.getElementById('main-two-root').style.cursor =
-                        'crosshair'
-                    localStorage.setItem('arrowDrawMode', 'true')
-                    localStorage.setItem('lastAddedElementId', generateId)
-                    setArrowDrawModeInBoard(true)
-                    // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
-                    addToLocalComponentStore(
-                        shapeData.id,
-                        shapeData.componentType,
-                        shapeData
-                    )
-                } else if (DRAW_SHAPE_TYPES.includes(label)) {
+                if (DRAW_SHAPE_TYPES.includes(label)) {
                     // Draw-to-place: store pending shape props, canvas will create on mouseup
                     localStorage.setItem('pendingShapeType', label)
                     localStorage.setItem(
@@ -160,8 +246,8 @@ const PrimarySidebar = () => {
                     document.getElementById('main-two-root').style.cursor =
                         'crosshair'
                 } else {
+                    // Handles text and divider elements
                     updateLastAddedElement(shapeData)
-                    // setShowAddShapeLoader(true)
                     localStorage.setItem('lastAddedElementId', generateId)
                     // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
                     addToLocalComponentStore(
@@ -251,6 +337,15 @@ const PrimarySidebar = () => {
                     )}
 
                     <ShareLinkPopup />
+                    <Button
+                        intent="primary"
+                        size="medium"
+                        label="Create Board"
+                        onClick={onCreateBoard}
+                        extendClass="font-semibold shadow-lg ml-2"
+                        loading={createBoardLoading}
+                        disabled={createBoardLoading}
+                    />
                     {/* <UserDetailsPopup /> */}
                 </div>
             </div>
