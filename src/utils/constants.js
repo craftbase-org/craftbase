@@ -126,6 +126,14 @@ export const staticPrimaryElementData = [
         sectionName: 'Basic',
         elements: [
             {
+                elementName: 'pointer',
+                elementDisplayName: 'Pointer',
+                elementSVG: PointerIcon,
+                hasDrawer: false,
+                noAction: true,
+                drawerData: [],
+            },
+            {
                 elementName: 'circle',
                 elementDisplayName: 'Circle',
                 elementSVG: CircleIcon,
@@ -165,14 +173,7 @@ export const staticPrimaryElementData = [
                 noAction: false,
                 drawerData: [],
             },
-            {
-                elementName: 'pointer',
-                elementDisplayName: 'Pointer',
-                elementSVG: PointerIcon,
-                hasDrawer: false,
-                noAction: true,
-                drawerData: [],
-            },
+
             {
                 elementName: 'text',
                 elementDisplayName: 'Text',

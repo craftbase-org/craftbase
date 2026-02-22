@@ -15,6 +15,7 @@ import BlueStarSVG from 'assets/blue_star.svg'
 // import ImageContainer from 'components/ProgressiveImageLoader/loader'
 // import CraftbaseBoardScreenshotPNG from 'assets/craftbase_board_screenshot.png'
 // import CraftbaseBoardScreenshotBlurJPG from 'assets/blur_craftbase_screenshot.jpg'
+import WhiteboardingPNG from 'assets/whiteboarding.png'
 import HomeShapeToolbarJPG from 'assets/home_shape_toolbar.png'
 import RadioCheckboxPNG from 'assets/radio_check.png'
 import BasicShapesPNG from 'assets/basic_shapes.png'
@@ -263,25 +264,12 @@ const HomePage = (props) => {
                             </div>
                         </div>
                         <div className="w-full lg:w-7/12 pt-8 lg:pt-0 h-full ">
-                            <div className="lg:pl-4 home-page-main-video w-full flex items-center lg:justify-end justify-center ">
-                                <iframe
-                                    title="vimeo-player"
-                                    src="https://player.vimeo.com/video/701362448?h=3b8bc751b0"
-                                    className=" w-full lg:w-11/12"
-                                    height="345"
-                                    frameborder="0"
-                                    allowfullscreen
-                                    style={{ zIndex: '1 !important' }}
-                                ></iframe>
-
-                                {/* <ImageContainer
-                                src={CraftbaseBoardScreenshotPNG}
-                                thumb={CraftbaseBoardScreenshotBlurJPG}
-                                height={382}
-                                width={775}
-                                alt={'screenshot'}
-                                url={''}
-                            /> */}
+                            <div className="lg:pl-4 w-full flex items-center lg:justify-end justify-center ">
+                                <img
+                                    src={WhiteboardingPNG}
+                                    alt="Craftbase whiteboarding"
+                                    className="w-full lg:w-11/12 rounded-lg shadow-lg"
+                                />
                             </div>
                         </div>
                     </div>
