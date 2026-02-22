@@ -21,6 +21,7 @@ import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import Spinner from 'components/common/spinnerWithSize'
+import ColorPicker from 'components/utils/colorPicker'
 import { generateRandomUsernames } from 'utils/misc'
 
 const BoardContext = createContext()
@@ -78,10 +79,7 @@ const BoardViewPage = (props) => {
 
     const [
         createBoard,
-        {
-            loading: createBoardLoading,
-            data: createBoardData,
-        },
+        { loading: createBoardLoading, data: createBoardData },
     ] = useMutation(CREATE_BOARD)
 
     const [componentStore, setComponentStore] = useState({})
@@ -94,6 +92,7 @@ const BoardViewPage = (props) => {
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
     const [defaultLinewidth, setDefaultLinewidth] = useState(2)
+    const [pencilStrokeColor, setPencilStrokeColor] = useState('#000')
     const [currentElement, setCurrentElement] = useState(null)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
@@ -336,6 +335,10 @@ const BoardViewPage = (props) => {
         setDefaultLinewidth(val)
     }
 
+    const setPencilStrokeColorInBoard = (val) => {
+        setPencilStrokeColor(val)
+    }
+
     const setCurrentElementInBoard = (val) => {
         setCurrentElement(val)
     }
@@ -363,6 +366,26 @@ const BoardViewPage = (props) => {
         })
     }
 
+    const renderBorderWidths = () => {
+        const widths = [0, 2, 4, 8].map((width, index) => {
+            return (
+                <React.Fragment key={width}>
+                    <button
+                        data-parent="floating-toolbar"
+                        className={`${defaultLinewidth === width ? `` : ``} ${
+                            width == 1 ? `border` : `border-${width}`
+                        } w-8 h-8  border-blues-b400 
+                            mr-2  bg-blues-b50 font-semibold py-2 rounded`}
+                        onClick={() => {
+                            setDefaultLinewidth(width)
+                        }}
+                    ></button>
+                </React.Fragment>
+            )
+        })
+        return widths
+    }
+
     const isArrowSelected =
         selectedComponent !== null &&
         (selectedComponent?.shape?.type === 'arrowLine' ||
@@ -387,6 +410,8 @@ const BoardViewPage = (props) => {
         setSelectedComponentInBoard,
         defaultLinewidth,
         setDefaultLinewidthInBoard,
+        pencilStrokeColor,
+        setPencilStrokeColorInBoard,
         currentElement,
         setCurrentElementInBoard,
         onCreateBoard,
@@ -412,6 +437,43 @@ const BoardViewPage = (props) => {
                                 }}
                             />
                         )}
+                        {isPencilMode && (
+                            <div
+                                style={{
+                                    position: 'fixed',
+                                    right: 16,
+                                    top: 65,
+                                    zIndex: 1,
+                                    background: 'rgba(255, 255, 255, 1)',
+                                    overflow: 'auto',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                }}
+                                className="shadow-lg px-2 py-2 rounded-md"
+                            >
+                                <ColorPicker
+                                    title="Stroke Color"
+                                    currentColor={pencilStrokeColor}
+                                    onChangeComplete={(color) => {
+                                        setPencilStrokeColor(color)
+                                    }}
+                                />
+                                <hr className="my-2 w-full" />
+                                <div className="w-full text-left text-sm">
+                                    <label htmlFor="border-widths-row">
+                                        Stroke Width
+                                    </label>
+                                    <div
+                                        id="border-widths-row"
+                                        data-parent="floating-toolbar"
+                                        className="flex flex-row my-2"
+                                    >
+                                        {renderBorderWidths()}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         <Canvas
                             pointerToggle={pointerToggle}
                             isPencilMode={isPencilMode}
@@ -421,6 +483,7 @@ const BoardViewPage = (props) => {
                             lastAddedElement={lastAddedElement}
                             componentStore={componentStore}
                             defaultLinewidth={defaultLinewidth}
+                            pencilStrokeColor={pencilStrokeColor}
                         />
                     </div>
                 </BoardContext.Provider>
