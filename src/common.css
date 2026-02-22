@@ -38,3 +38,7 @@ iframe {
     white-space: pre-wrap;
     text-align: left;
 }
+
+svg text {
+    user-select: none;
+}

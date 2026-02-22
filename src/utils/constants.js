@@ -184,3 +184,17 @@ export const staticPrimaryElementData = [
         ],
     },
 ]
+
+export const TEXT_SIZES_ARRAY = [
+    { label: 'S', value: 10 },
+    { label: 'M', value: 16 },
+    { label: 'L', value: 28 },
+    { label: 'XL', value: 40 },
+]
+
+export const TEXT_SIZES_OBJECT = {
+    S: 10,
+    M: 16,
+    L: 28,
+    XL: 40,
+}

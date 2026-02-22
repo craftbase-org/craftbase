@@ -6,6 +6,7 @@ import ElementsDropdown from './elementsDropdown'
 import ShapesToolbar from './shapesToolbar'
 import { GET_COMPONENT_TYPES } from 'schema/queries'
 import SpinnerWithSize from 'components/common/spinnerWithSize'
+import Button from 'components/common/button'
 import { generateUUID } from 'utils/misc'
 import { useBoardContext } from 'views/Board/board'
 
@@ -23,6 +24,8 @@ const PrimarySidebar = () => {
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         defaultLinewidth,
+        onCreateBoard,
+        createBoardLoading,
     } = useBoardContext()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const [hintText, setHintText] = useState(
@@ -334,6 +337,15 @@ const PrimarySidebar = () => {
                     )}
 
                     <ShareLinkPopup />
+                    <Button
+                        intent="primary"
+                        size="medium"
+                        label="Create Board"
+                        onClick={onCreateBoard}
+                        extendClass="font-semibold shadow-lg ml-2"
+                        loading={createBoardLoading}
+                        disabled={createBoardLoading}
+                    />
                     {/* <UserDetailsPopup /> */}
                 </div>
             </div>

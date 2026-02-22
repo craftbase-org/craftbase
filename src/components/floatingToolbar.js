@@ -9,15 +9,8 @@ import ColorPicker from 'components/utils/colorPicker'
 import BorderStyleBox from 'components/utils/borderStyleBox'
 import OpacitySlider from 'components/utils/opacitySlider'
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
-import { properties } from 'utils/constants'
+import { properties, TEXT_SIZES_ARRAY } from 'utils/constants'
 import Icon from 'icons/icon'
-
-const TEXT_SIZES = [
-    { label: 'S', value: 12 },
-    { label: 'M', value: 16 },
-    { label: 'L', value: 24 },
-    { label: 'XL', value: 36 },
-]
 
 const ToolbarContainer = styled(motion.div)`
     height: 79vh;
@@ -186,7 +179,8 @@ const Toolbar = (props) => {
         opacity: 1,
         hideColorSection: hideColorSection,
         selectedTextSize:
-            TEXT_SIZES.find((s) => s.value === currentFontSize)?.label || null,
+            TEXT_SIZES_ARRAY.find((s) => s.value === currentFontSize)?.label ||
+            null,
     })
 
     useEffect(() => {
@@ -222,7 +216,7 @@ const Toolbar = (props) => {
                 <div className="px-2 py-1 w-full">
                     <p className="text-xs text-gray-400 mb-2">Text Size</p>
                     <div className="flex flex-row gap-2">
-                        {TEXT_SIZES.map(({ label, value }) => (
+                        {TEXT_SIZES_ARRAY.map(({ label, value }) => (
                             <button
                                 key={label}
                                 onClick={() => {
@@ -548,35 +542,6 @@ const Toolbar = (props) => {
         open: { x: '100%' },
         closed: { x: '0%' },
     }
-
-    const globalMouseUpEventHanlder = (e) => {
-        const nativeMouseClientX = e.clientX
-        const nativeMouseClientY = e.clientY
-        console.log('componentState', componentState)
-        const elementIds = Object.keys(idx(componentState, (_) => _.element))
-        const toolbarCoordinate = document
-            .getElementById('floating-toolbar')
-            .getBoundingClientRect()
-
-        // Checks for blur event by comparing x coords of toolbar and user mouse click event
-        // if (nativeMouseClientX < toolbarCoordinate.x) {
-        //     if (!elementIds.includes(e.target.id)) {
-        //         closeToolbar()
-        //     }
-        //     // console.log(e.target.id, elementIds, elementIds.includes(e.target.id));
-        // } else if (nativeMouseClientY < toolbarCoordinate.y) {
-        //     if (!elementIds.includes(e.target.id)) {
-        //         closeToolbar()
-        //     }
-        // }
-    }
-
-    useEffect(() => {
-        window.addEventListener('mouseup', globalMouseUpEventHanlder)
-        return () => {
-            window.removeEventListener('mouseup', globalMouseUpEventHanlder)
-        }
-    }, [])
 
     return (
         <>

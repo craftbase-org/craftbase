@@ -7,6 +7,7 @@ import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import NewTextFactory from 'factory/newText'
 import Toolbar from 'components/floatingToolbar'
+import { TEXT_SIZES_OBJECT } from 'utils/constants'
 
 function NewText(props) {
     const {
@@ -23,6 +24,7 @@ function NewText(props) {
         props?.metadata?.content || 'Text'
     )
     const textValueRef = useRef(textValue)
+    const twoTextRef = useRef(null)
 
     const two = props.twoJSInstance
 
@@ -58,6 +60,21 @@ function NewText(props) {
         toggleToolbar(false)
     }
 
+    const handleTextSizeChange = (newLabel) => {
+        const textSize = TEXT_SIZES_OBJECT[newLabel]
+        const twoText = twoTextRef.current
+        twoText.size = textSize
+
+        updateComponentBulkPropertiesInLocalStore(props.id, {
+            metadata: {
+                ...props.metadata,
+                fontSize: textSize,
+                content: twoText.value,
+            },
+        })
+        two.update()
+    }
+
     useEffect(() => {
         const prevX = props.x
         const prevY = props.y
@@ -69,6 +86,7 @@ function NewText(props) {
         group.elementData = { ...props.itemData, ...props }
         twoText.opacity = props.metadata?.opacity ?? 1
 
+        twoTextRef.current = twoText
         groupObject = group
 
         // Selector sits inside the group; twoText is already at children[0]
@@ -301,10 +319,11 @@ function NewText(props) {
                 <Toolbar
                     // Show only text color and opacity; hide everything else
                     hideColorBackground={true}
+                    currentFontSize={twoTextRef.current.size}
                     hideColorIcon={true}
                     hideColorText={false}
                     hideBorderSection={true}
-                    showTextSizeSection={false}
+                    showTextSizeSection={true}
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}
@@ -312,6 +331,7 @@ function NewText(props) {
                     postToolbarUpdate={() => {
                         two.update()
                     }}
+                    onTextSizeChange={handleTextSizeChange}
                 />
             ) : null}
         </React.Fragment>
