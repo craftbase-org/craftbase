@@ -64,6 +64,7 @@ function getComponentSchema(obj, boardId) {
 
 var isDrawing
 var defaultLinewidthValue = 1
+var pencilStrokeColorValue = '#000'
 
 function addZUI(
     props,
@@ -709,7 +710,7 @@ function addZUI(
                     pencilCoords.x, pencilCoords.y
                 )
                 segment.noFill()
-                segment.stroke = '#000'
+                segment.stroke = pencilStrokeColorValue
                 segment.linewidth = smoothedLw
                 segment.cap = 'round'
                 segment.join = 'round'
@@ -1134,7 +1135,7 @@ function addZUI(
                     x: 0,
                     y: 0,
                     linewidth: defaultLinewidthValue,
-                    stroke: '#000',
+                    stroke: pencilStrokeColorValue,
                 }
 
                 pencilComponentData.x = Math.floor(simplifiedPoints[0]?.x || 0)
@@ -1550,6 +1551,10 @@ const Canvas = (props) => {
     useEffect(() => {
         defaultLinewidthValue = props.defaultLinewidth || 1
     }, [props.defaultLinewidth])
+
+    useEffect(() => {
+        pencilStrokeColorValue = props.pencilStrokeColor || '#000'
+    }, [props.pencilStrokeColor])
 
     // on group select use effect hook
     useEffect(() => {
