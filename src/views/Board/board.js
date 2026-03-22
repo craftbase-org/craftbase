@@ -97,6 +97,8 @@ const BoardViewPage = (props) => {
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef()
+    const [historyLog, setHistoryLog] = useState([])
+    const historyLogRef = useRef([])
 
     // Reset component store whenever the board changes
     useEffect(() => {
@@ -218,8 +220,23 @@ const BoardViewPage = (props) => {
         }
     }
 
+    const recordToHistoryLog = (entry) => {
+        const updatedLog = [
+            ...historyLogRef.current,
+            { ...entry, timestamp: Date.now() },
+        ]
+        historyLogRef.current = updatedLog
+        setHistoryLog(updatedLog)
+    }
+
     const addToLocalComponentStore = (id, type, componentInfo) => {
         // console.log('addToLocalComponentStore', id, type, componentInfo)
+        recordToHistoryLog({
+            action: 'ADD',
+            id,
+            componentInfo,
+        })
+
         let updatedComponentStore = stateRefForComponentStore.current
 
         // console.log('updating component store in add to local store')
@@ -232,6 +249,13 @@ const BoardViewPage = (props) => {
 
     const updateComponentBulkPropertiesInLocalStore = (id, bulkObj) => {
         const userId = localStorage.getItem('userId')
+
+        recordToHistoryLog({
+            action: 'UPDATE_BULK',
+            id,
+            prevState: { ...stateRefForComponentStore.current[id] },
+            bulkObj,
+        })
 
         // console.log('update component bulk properties in local store')
         let updatedComponentStore = stateRefForComponentStore.current
@@ -257,6 +281,14 @@ const BoardViewPage = (props) => {
     const updateComponentPropertyInLocalStore = (id, name, value) => {
         const userId = localStorage.getItem('userId')
 
+        recordToHistoryLog({
+            action: 'UPDATE_PROPERTY',
+            id,
+            name,
+            prevValue: stateRefForComponentStore.current[id]?.[name],
+            value,
+        })
+
         let updatedComponentStore = stateRefForComponentStore.current
         // console.log('updatedComponentStore[id]', updatedComponentStore[id])
         updatedComponentStore[id] = {
@@ -279,6 +311,15 @@ const BoardViewPage = (props) => {
 
     const updateComponentVerticesInLocalStore = (id, x, y) => {
         const userId = localStorage.getItem('userId')
+
+        recordToHistoryLog({
+            action: 'UPDATE_VERTICES',
+            id,
+            prevX: stateRefForComponentStore.current[id]?.x,
+            prevY: stateRefForComponentStore.current[id]?.y,
+            x: parseInt(x),
+            y: parseInt(y),
+        })
 
         let updatedComponentStore = stateRefForComponentStore.current
         // console.log('updatedComponentStore[id]', updatedComponentStore[id])
@@ -307,6 +348,12 @@ const BoardViewPage = (props) => {
 
     const deleteComponentFromLocalStore = (id) => {
         // console.log('deleteComponentFromLocalStore', id)
+
+        recordToHistoryLog({
+            action: 'DELETE',
+            id,
+            prevState: { ...stateRefForComponentStore.current[id] },
+        })
 
         let updatedComponentStore = stateRefForComponentStore.current
         delete updatedComponentStore[id]
@@ -416,6 +463,8 @@ const BoardViewPage = (props) => {
         setCurrentElementInBoard,
         onCreateBoard,
         createBoardLoading,
+        historyLog,
+        historyLogRef,
     }
 
     return (
