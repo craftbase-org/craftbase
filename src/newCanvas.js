@@ -701,13 +701,22 @@ function addZUI(
                 const now = performance.now()
                 const timeDelta = now - lastPencilTime
                 const velocity = timeDelta > 0 ? pDist / timeDelta : 0
-                const targetLw = velocityToLinewidth(velocity, defaultLinewidthValue)
-                const smoothedLw = smoothLinewidth(lastPencilLinewidth, targetLw, 0.3)
+                const targetLw = velocityToLinewidth(
+                    velocity,
+                    defaultLinewidthValue
+                )
+                const smoothedLw = smoothLinewidth(
+                    lastPencilLinewidth,
+                    targetLw,
+                    0.3
+                )
 
                 // Create a 2-point path segment for live preview
                 const segment = two.makePath(
-                    lastPencilPoint.x, lastPencilPoint.y,
-                    pencilCoords.x, pencilCoords.y
+                    lastPencilPoint.x,
+                    lastPencilPoint.y,
+                    pencilCoords.x,
+                    pencilCoords.y
                 )
                 segment.noFill()
                 segment.stroke = pencilStrokeColorValue
@@ -1123,7 +1132,10 @@ function addZUI(
                 }
 
                 // Simplify points while preserving lw
-                const simplifiedPoints = simplifyWithLinewidth(pencilRawPoints, 1.5)
+                const simplifiedPoints = simplifyWithLinewidth(
+                    pencilRawPoints,
+                    1.5
+                )
 
                 let pencilId = generateUUID()
                 let pencilComponentData = {
@@ -1431,6 +1443,7 @@ const Canvas = (props) => {
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setCurrentElementInBoard,
+        undoLastAction,
     } = useBoardContext()
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
@@ -1606,7 +1619,8 @@ const Canvas = (props) => {
                     let newMetadata = []
                     if (item.componentType === 'pencil') {
                         newMetadata = item.metadata.map((vert, index) => {
-                            const lwProp = vert.lw !== undefined ? { lw: vert.lw } : {}
+                            const lwProp =
+                                vert.lw !== undefined ? { lw: vert.lw } : {}
                             if (index === 0) {
                                 return { x: relativeX, y: relativeY, ...lwProp }
                             } else if (index > 0) {
@@ -1693,6 +1707,17 @@ const Canvas = (props) => {
             window.removeEventListener('keydown', onPasteEvent)
         }
     }, [cloneElement])
+
+    useEffect(() => {
+        const onUndoKeyDown = (evt) => {
+            if (evt.key === 'z' && (evt.ctrlKey || evt.metaKey)) {
+                evt.preventDefault()
+                undoLastAction()
+            }
+        }
+        window.addEventListener('keydown', onUndoKeyDown)
+        return () => window.removeEventListener('keydown', onUndoKeyDown)
+    }, [undoLastAction])
 
     const setOnGroupHandler = (obj) => {
         setOnGroup(obj)

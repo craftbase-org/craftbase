@@ -182,3 +182,33 @@ See detailed notes in `.claude/context/` for feature-specific implementation det
 - `.claude/context/floating-toolbar.md` - Floating toolbar activation and structure
 - `.claude/context/text-element-creation.md` - Details on how text element works in canvas (the flow from first mouse click to scaling text element size in canvas).
 - `.claude/context/shape-selection.md` - It describes regarding shape selection & its placement flow on canvas
+
+### Component schema (from DB)
+
+```
+{
+  id: uuid, // primary key, unique, default: gen_random_uuid()
+  componentType: text,
+  x: integer, // default: 0
+  y: integer, // default: 0
+  x1: integer, // default: 100
+  x2: integer, // default: 400
+  y1: integer, // default: 100
+  y2: integer, // default: 100
+  width: integer, // default: 120
+  height: integer, // default: 120
+  fill: text, // default: '#f4f4f2'
+  stroke: text | null,
+  linewidth: integer | null,
+  radius: integer | null,
+  iconStroke: text | null,
+  textColor: text | null,
+  boardId: text | null,
+  boardName: text | null,
+  metadata: jsonb | null,
+  children: jsonb | null,
+  isDummy: boolean | null,
+  updatedBy: text | null,
+  createdAt: bigint | null, // default: epoch()
+}
+```

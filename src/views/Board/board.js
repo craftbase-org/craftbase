@@ -97,6 +97,7 @@ const BoardViewPage = (props) => {
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef()
+    const twoJSInstanceRef = useRef(null)
     const [historyLog, setHistoryLog] = useState([])
     const historyLogRef = useRef([])
 
@@ -207,6 +208,7 @@ const BoardViewPage = (props) => {
     }
 
     const setTwoJSInstanceInBoard = (two) => {
+        twoJSInstanceRef.current = two
         setTwoJSInstance(two)
     }
 
@@ -220,6 +222,7 @@ const BoardViewPage = (props) => {
         }
     }
 
+    // Appends an action entry to the undo history stack
     const recordToHistoryLog = (entry) => {
         const updatedLog = [
             ...historyLogRef.current,
@@ -230,24 +233,26 @@ const BoardViewPage = (props) => {
         setHistoryLog(updatedLog)
     }
 
+    // Records ADD action, updates store and syncs to DB
     const addToLocalComponentStore = (id, type, componentInfo) => {
-        // console.log('addToLocalComponentStore', id, type, componentInfo)
         recordToHistoryLog({
             action: 'ADD',
             id,
             componentInfo,
         })
 
-        let updatedComponentStore = stateRefForComponentStore.current
+        const updatedComponentStore = {
+            ...stateRefForComponentStore.current,
+            [id]: componentInfo,
+        }
+        stateRefForComponentStore.current = updatedComponentStore
+        setComponentStore(updatedComponentStore)
 
-        // console.log('updating component store in add to local store')
-        setComponentStore({ ...updatedComponentStore, [id]: componentInfo })
-
-        // update the upstream DB
         componentInfo &&
             insertComponent({ variables: { object: componentInfo } })
     }
 
+    // Snapshots current state before applying bulk property changes, then updates store and DB
     const updateComponentBulkPropertiesInLocalStore = (id, bulkObj) => {
         const userId = localStorage.getItem('userId')
 
@@ -255,17 +260,18 @@ const BoardViewPage = (props) => {
             action: 'UPDATE_BULK',
             id,
             prevState: { ...stateRefForComponentStore.current[id] },
+            prevX: stateRefForComponentStore.current[id]?.x,
+            prevY: stateRefForComponentStore.current[id]?.y,
             bulkObj,
         })
 
-        // console.log('update component bulk properties in local store')
-        let updatedComponentStore = stateRefForComponentStore.current
-        // console.log('updatedComponentStore[id]', updatedComponentStore[id])
+        const updatedComponentStore = { ...stateRefForComponentStore.current }
         updatedComponentStore[id] = {
             ...updatedComponentStore[id],
             ...bulkObj,
             updatedBy: userId,
         }
+        stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
         updateComponentInfo({
@@ -279,6 +285,7 @@ const BoardViewPage = (props) => {
         })
     }
 
+    // Snapshots current x,y before updating position, then updates store and DB
     const updateComponentVerticesInLocalStore = (id, x, y) => {
         const userId = localStorage.getItem('userId')
 
@@ -291,19 +298,16 @@ const BoardViewPage = (props) => {
             y: parseInt(y),
         })
 
-        let updatedComponentStore = stateRefForComponentStore.current
-        // console.log('updatedComponentStore[id]', updatedComponentStore[id])
+        const updatedComponentStore = { ...stateRefForComponentStore.current }
         updatedComponentStore[id] = {
             ...updatedComponentStore[id],
             x: parseInt(x),
             y: parseInt(y),
             updatedBy: userId,
         }
-
-        // console.log('updating component store in update vertices')
+        stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
-        // update the upstream DB
         updateComponentInfo({
             variables: {
                 id: id,
@@ -316,24 +320,19 @@ const BoardViewPage = (props) => {
         })
     }
 
+    // Snapshots full component state before deletion, then removes from store and DB
     const deleteComponentFromLocalStore = (id) => {
-        // console.log('deleteComponentFromLocalStore', id)
-
         recordToHistoryLog({
             action: 'DELETE',
             id,
             prevState: { ...stateRefForComponentStore.current[id] },
         })
 
-        let updatedComponentStore = stateRefForComponentStore.current
+        const updatedComponentStore = { ...stateRefForComponentStore.current }
         delete updatedComponentStore[id]
-        // console.log(
-        //     'updating component store in delete component handler',
-        //     updatedComponentStore
-        // )
+        stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
-        // update the upstream DB
         deleteComponent({
             variables: { id },
             errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
@@ -403,6 +402,131 @@ const BoardViewPage = (props) => {
         return widths
     }
 
+    // Applies a single property back to a Two.js shape during undo
+    const applyPropertyToTwoJSGroup = (group, name, value) => {
+        const shape = group.children?.[0]
+        if (!shape || !shape.data) return
+
+        switch (name) {
+            case 'fill':
+            case 'stroke':
+            case 'linewidth':
+            case 'radius':
+            case 'width':
+            case 'height':
+            case 'textColor':
+            case 'iconStroke':
+                shape.data[name] = value
+                break
+            case 'metadata':
+                if (value && typeof value === 'object') {
+                    Object.entries(value).forEach(([k, v]) => {
+                        shape.data[k] = v
+                    })
+                }
+                break
+            default:
+                break
+        }
+    }
+
+    // Pops the last history entry and reverses it.
+    // Store is always updated before Two.js visuals to keep the ref correct
+    // even if rendering fails.
+    const undoLastAction = () => {
+        if (historyLogRef.current.length === 0) return
+
+        const updatedLog = [...historyLogRef.current]
+        const lastEntry = updatedLog.pop()
+        historyLogRef.current = updatedLog
+        setHistoryLog(updatedLog)
+
+        const { action, id } = lastEntry
+
+        const two = twoJSInstanceRef.current
+
+        if (action === 'ADD') {
+            const group = two?.scene.children.find(
+                (c) => c?.elementData?.id === id
+            )
+            if (group) {
+                two.remove([group])
+            }
+            const updatedStore = { ...stateRefForComponentStore.current }
+            delete updatedStore[id]
+            stateRefForComponentStore.current = updatedStore
+            setComponentStore(updatedStore)
+            deleteComponent({
+                variables: { id },
+                errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
+            })
+            requestAnimationFrame(() => two?.update())
+        } else if (action === 'DELETE') {
+            const { prevState } = lastEntry
+            const updatedStore = {
+                ...stateRefForComponentStore.current,
+                [id]: prevState,
+            }
+            stateRefForComponentStore.current = updatedStore
+            setComponentStore(updatedStore)
+            updateLastAddedElement(prevState)
+            insertComponent({ variables: { object: prevState } })
+        } else if (action === 'UPDATE_VERTICES') {
+            const { prevX, prevY } = lastEntry
+
+            // Update store FIRST
+            const updatedStore = { ...stateRefForComponentStore.current }
+            updatedStore[id] = { ...updatedStore[id], x: prevX, y: prevY }
+            stateRefForComponentStore.current = updatedStore
+            setComponentStore(updatedStore)
+
+            // Then update Two.js visuals
+            const group = two?.scene.children.find(
+                (c) => c?.elementData?.id === id
+            )
+            if (group) {
+                group.translation.x = prevX
+                group.translation.y = prevY
+                two?.update()
+            }
+            updateComponentInfo({
+                variables: { id, updateObj: { x: prevX, y: prevY } },
+            })
+            requestAnimationFrame(() => two?.update())
+        } else if (action === 'UPDATE_BULK') {
+            const { prevState, prevX, prevY } = lastEntry
+
+            // Update store FIRST so the ref is correct even if Two.js update fails
+            const updatedStore = { ...stateRefForComponentStore.current }
+            updatedStore[id] = {
+                ...updatedStore[id],
+                ...prevState,
+                x: prevX,
+                y: prevY,
+            }
+            stateRefForComponentStore.current = updatedStore
+            setComponentStore(updatedStore)
+
+            // Then update Two.js visuals
+            const group = two?.scene.children.find(
+                (c) => c?.elementData?.id === id
+            )
+            if (group) {
+                group.translation.x = prevX
+                group.translation.y = prevY
+                two?.update()
+                Object.entries(prevState).forEach(([name, val]) => {
+                    applyPropertyToTwoJSGroup(group, name, val)
+                })
+            }
+
+            updateComponentInfo({
+                variables: { id, updateObj: { ...prevState, x: prevX, y: prevY } },
+            })
+            requestAnimationFrame(() => two?.update())
+        }
+    }
+
     const isArrowSelected =
         selectedComponent !== null &&
         (selectedComponent?.shape?.type === 'arrowLine' ||
@@ -434,6 +558,7 @@ const BoardViewPage = (props) => {
         createBoardLoading,
         historyLog,
         historyLogRef,
+        undoLastAction,
     }
 
     return (
