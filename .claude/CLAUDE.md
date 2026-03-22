@@ -2,6 +2,7 @@
 
 - Use ES modules (import/export) syntax, not CommonJS (require)
 - Destructure imports when possible (eg. import { foo } from 'bar')
+- Use `tabWidth:4` for generating code for all the files (.js, .yaml, .md, etc...)
 
 # Code structure
 
@@ -65,14 +66,16 @@ Reusable React UI components.
 
 - **`ProgressiveImageLoader/`**: Progressive image loading component
 
-### `/src/factory`
+### `/src/factory/`
 
-Component factory functions that generate template definitions for each element type. Each factory corresponds to a component element.
+Component factory classes (.js file under /src/factory) that generate template definitions for each element type. Each factory corresponds to a component element.
 
-- Factories: `arrowLine.js`, `newArrowLine.js`, `circle.js`, `divider.js`, `pencil.js`, `rectangle.js`, `newText.js`
-- `main.js` - Factory registry/coordinator
+Example of factory-component relation:
 
-### `/src/store`
+- Factories (`/src/factory/`): `arrowLine.js`, `circle.js`, `divider.js`, `pencil.js`, `rectangle.js`, `newText.js`
+- Component (`/src/components/elements/`): `arrowLine.js`, `circle.js`, `divider.js`, `pencil.js`,`rectangle.js`, `newText.js`
+
+### `/src/store` (not in use)
 
 Legacy Redux store files (currently unused in the project).
 
@@ -171,3 +174,11 @@ Child components access this context via `useContext(BoardContext)`.
 
 - Be sure to typecheck when you're done making a series of code changes
 - Prefer running single tests, and not the whole test suite, for performance
+
+# Feature Context
+
+See detailed notes in `.claude/context/` for feature-specific implementation details:
+
+- `.claude/context/floating-toolbar.md` - Floating toolbar activation and structure
+- `.claude/context/text-element-creation.md` - Details on how text element works in canvas (the flow from first mouse click to scaling text element size in canvas).
+- `.claude/context/shape-selection.md` - It describes regarding shape selection & its placement flow on canvas

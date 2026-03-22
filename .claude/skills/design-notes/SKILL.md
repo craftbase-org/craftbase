@@ -1,3 +1,7 @@
+## Overview
+
+This skill contains some info around design libraries, guides and notes(with caveat) which you can refer to while working on design implementation.
+
 ## Tailwind CSS Notes:
 
 If you find that some css class is not appearing in tailwind as it should be, based on tailwind docs, it might be because of the below reason

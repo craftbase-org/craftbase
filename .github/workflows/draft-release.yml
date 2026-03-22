@@ -1,78 +1,78 @@
 name: Draft Release
 
 on:
-  push:
-    branches:
-      - main
+    push:
+        branches:
+            - main
 
 jobs:
-  draft-release:
-    runs-on: ubuntu-latest
-    # Only run when a PR merge commit is pushed (not direct pushes)
-    if: github.event.head_commit.message != '' && contains(github.event.head_commit.message, 'Merge pull request')
+    draft-release:
+        runs-on: ubuntu-latest
+        # Only run when a PR merge commit is pushed (not direct pushes)
+        if: github.event.head_commit.message != '' && contains(github.event.head_commit.message, 'Merge pull request')
 
-    permissions:
-      contents: write
+        permissions:
+            contents: write
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-      - name: Read version from VERSION file
-        id: version
-        run: |
-          VERSION=$(cat VERSION | tr -d '[:space:]')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+            - name: Read version from VERSION file
+              id: version
+              run: |
+                  VERSION=$(cat VERSION | tr -d '[:space:]')
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                  echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Check if release already exists
-        id: check_release
-        run: |
-          if gh release view "v${{ steps.version.outputs.version }}" &>/dev/null; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Check if release already exists
+              id: check_release
+              run: |
+                  if gh release view "v${{ steps.version.outputs.version }}" &>/dev/null; then
+                    echo "exists=true" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "exists=false" >> "$GITHUB_OUTPUT"
+                  fi
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate release notes
-        if: steps.check_release.outputs.exists == 'false'
-        id: notes
-        run: |
-          # Find the previous release tag
-          PREV_TAG=$(git tag --sort=-v:refname | head -n 1)
+            - name: Generate release notes
+              if: steps.check_release.outputs.exists == 'false'
+              id: notes
+              run: |
+                  # Find the previous release tag
+                  PREV_TAG=$(git tag --sort=-v:refname | head -n 1)
 
-          if [ -z "$PREV_TAG" ]; then
-            # No previous tag, use all commits
-            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges HEAD)
-          else
-            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges "${PREV_TAG}..HEAD")
-          fi
+                  if [ -z "$PREV_TAG" ]; then
+                    # No previous tag, use all commits
+                    COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges HEAD)
+                  else
+                    COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges "${PREV_TAG}..HEAD")
+                  fi
 
-          # Write to a temp file to preserve newlines
-          {
-            echo "## What's Changed"
-            echo ""
-            echo "$COMMITS"
-            echo ""
-            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG:-initial}...v${{ steps.version.outputs.version }}"
-          } > release_notes.md
+                  # Write to a temp file to preserve newlines
+                  {
+                    echo "## What's Changed"
+                    echo ""
+                    echo "$COMMITS"
+                    echo ""
+                    echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG:-initial}...v${{ steps.version.outputs.version }}"
+                  } > release_notes.md
 
-      - name: Create draft release
-        if: steps.check_release.outputs.exists == 'false'
-        run: |
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --draft \
-            --title "Release ${{ steps.version.outputs.tag }}" \
-            --notes-file release_notes.md
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Create draft release
+              if: steps.check_release.outputs.exists == 'false'
+              run: |
+                  gh release create "${{ steps.version.outputs.tag }}" \
+                    --draft \
+                    --title "${{ steps.version.outputs.tag }}" \
+                    --notes-file release_notes.md
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Skip (release already exists)
-        if: steps.check_release.outputs.exists == 'true'
-        run: |
-          echo "Release v${{ steps.version.outputs.version }} already exists. Skipping."
-          echo "To create a new release, bump the version in the VERSION file."
+            - name: Skip (release already exists)
+              if: steps.check_release.outputs.exists == 'true'
+              run: |
+                  echo "v${{ steps.version.outputs.version }} already exists. Skipping."
+                  echo "To create a new release, bump the version in the VERSION file."
