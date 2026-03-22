@@ -1,13 +1,19 @@
 import React, { useEffect } from 'react'
 import { staticPrimaryElementData } from 'utils/constants'
 import { useBoardContext } from 'views/Board/board'
+import undoIcon from 'assets/undo_amber.svg'
 
 const allElements = staticPrimaryElementData.flatMap(
     (section) => section.elements
 )
 
 const ShapesToolbar = ({ addElement }) => {
-    const { currentElement, setCurrentElementInBoard } = useBoardContext()
+    const {
+        currentElement,
+        setCurrentElementInBoard,
+        undoLastAction,
+        historyLog,
+    } = useBoardContext()
 
     useEffect(() => {
         setCurrentElementInBoard('pointer')
@@ -39,6 +45,22 @@ const ShapesToolbar = ({ addElement }) => {
                     />
                 </div>
             ))}
+            <div className="w-px h-6 bg-gray-200 mx-1" />
+            <div
+                title="Undo"
+                className={`
+                    w-9 h-9 flex items-center justify-center rounded cursor-pointer
+                    transition-all ease-in-out duration-200
+                    ${historyLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-blues-b50'}
+                `}
+                onClick={() => {
+                    if (historyLog.length > 0) {
+                        undoLastAction()
+                    }
+                }}
+            >
+                <img className="w-5 h-5" src={undoIcon} alt="Undo" />
+            </div>
         </div>
     )
 }
