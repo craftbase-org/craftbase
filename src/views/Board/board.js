@@ -226,6 +226,7 @@ const BoardViewPage = (props) => {
             { ...entry, timestamp: Date.now() },
         ]
         historyLogRef.current = updatedLog
+        console.log('historyLog', updatedLog)
         setHistoryLog(updatedLog)
     }
 
@@ -272,37 +273,6 @@ const BoardViewPage = (props) => {
                 id: id,
                 updateObj: {
                     ...bulkObj,
-                    updatedBy: userId,
-                },
-            },
-        })
-    }
-
-    const updateComponentPropertyInLocalStore = (id, name, value) => {
-        const userId = localStorage.getItem('userId')
-
-        recordToHistoryLog({
-            action: 'UPDATE_PROPERTY',
-            id,
-            name,
-            prevValue: stateRefForComponentStore.current[id]?.[name],
-            value,
-        })
-
-        let updatedComponentStore = stateRefForComponentStore.current
-        // console.log('updatedComponentStore[id]', updatedComponentStore[id])
-        updatedComponentStore[id] = {
-            ...updatedComponentStore[id],
-            [name]: value,
-            updatedBy: userId,
-        }
-        setComponentStore(updatedComponentStore)
-
-        updateComponentInfo({
-            variables: {
-                id: id,
-                updateObj: {
-                    [name]: value,
                     updatedBy: userId,
                 },
             },
@@ -450,7 +420,6 @@ const BoardViewPage = (props) => {
         updateLastAddedElement,
         addToLocalComponentStore,
         updateComponentVerticesInLocalStore,
-        updateComponentPropertyInLocalStore,
         updateComponentBulkPropertiesInLocalStore,
         deleteComponentFromLocalStore,
         setTwoJSInstanceInBoard,
