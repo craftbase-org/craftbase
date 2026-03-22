@@ -49,8 +49,9 @@ function Rectangle(props) {
 
     function handleKeyDown(e) {
         if (e.keyCode === 8 || e.keyCode === 46) {
-            console.log('handle key down event', e)
             // DELETE/BACKSPACE KEY WAS PRESSED
+            // Blur before removing to avoid removeChild error during Two.js render
+            document.getElementById(`${groupObject.id}`)?.blur()
             props.handleDeleteComponent &&
                 props.handleDeleteComponent(groupObject)
             two.remove([groupObject])

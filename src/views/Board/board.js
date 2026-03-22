@@ -483,15 +483,15 @@ const BoardViewPage = (props) => {
             requestAnimationFrame(() => two?.update())
         } else if (action === 'DELETE') {
             const { prevState } = lastEntry
+            const restoredState = { ...prevState, boardId: boardId }
             const updatedStore = {
                 ...stateRefForComponentStore.current,
-                [id]: prevState,
+                [id]: restoredState,
             }
             stateRefForComponentStore.current = updatedStore
             setComponentStore(updatedStore)
-            updateLastAddedElement(prevState)
             insertComponent({
-                variables: { object: stripTypename(prevState) },
+                variables: { object: stripTypename(restoredState) },
             })
         } else if (action === 'UPDATE_VERTICES') {
             const { prevX, prevY } = lastEntry

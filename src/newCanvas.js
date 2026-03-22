@@ -1515,10 +1515,6 @@ const Canvas = (props) => {
 
     useEffect(() => {
         stateRefForComponentStore.current = props.componentStore
-        // console.log(
-        //     'change in componentStore in NewCanvas',
-        //     stateRefForComponentStore.current
-        // )
         if (twoJSInstance !== null && zuiInstance !== null) {
             // listening to the change in components in DB
             // this is especially for capturing INSERT operation
@@ -1725,11 +1721,16 @@ const Canvas = (props) => {
 
     const handleSetComponentsToRender = (currentComponents) => {
         let arr = [...prevElements]
-        // console.log('prevElements', prevElements)
         let components = [...componentsToRender]
         if (currentComponents && twoJSInstance) {
             currentComponents.forEach((item, index) => {
-                if (prevElements.includes(item.id)) {
+                // Check if already rendered AND still exists in the Two.js scene.
+                // A deleted element stays in prevElements but is removed from the scene,
+                // so we need to re-render it if restored by undo.
+                const existsInScene = twoJSInstance.scene.children.some(
+                    (c) => c?.elementData?.id === item.id
+                )
+                if (prevElements.includes(item.id) && existsInScene) {
                     // do nothing
                 } else {
                     arr.push(item.id)
