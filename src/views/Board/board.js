@@ -402,23 +402,38 @@ const BoardViewPage = (props) => {
     }
 
     const renderBorderWidths = () => {
-        const widths = [0, 2, 4, 8].map((width, index) => {
+        const widths = [
+            { value: 1, strokeHeight: '1px' },
+            { value: 2, strokeHeight: '2px' },
+            { value: 4, strokeHeight: '4px' },
+            { value: 6, strokeHeight: '6px' },
+        ]
+        return widths.map(({ value, strokeHeight }) => {
+            const isSelected = defaultLinewidth === value
             return (
-                <React.Fragment key={width}>
-                    <button
-                        data-parent="floating-toolbar"
-                        className={`${defaultLinewidth === width ? `` : ``} ${
-                            width == 1 ? `border` : `border-${width}`
-                        } w-8 h-8  border-blues-b400 
-                            mr-2  bg-blues-b50 font-semibold py-2 rounded`}
-                        onClick={() => {
-                            setDefaultLinewidth(width)
+                <button
+                    key={value}
+                    data-parent="floating-toolbar"
+                    onClick={() => setDefaultLinewidth(value)}
+                    className={`flex-1 w-1/4 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
+                        isSelected ? 'bg-blues-b50' : 'hover:bg-blues-b50'
+                    }`}
+                    style={{
+                        border: isSelected
+                            ? '2px solid #0052cc'
+                            : '1px solid #e5e7eb',
+                    }}
+                >
+                    <div
+                        className="w-full my-2 mx-2 rounded-full"
+                        style={{
+                            height: strokeHeight,
+                            backgroundColor: isSelected ? '#0052cc' : '#6b7280',
                         }}
-                    ></button>
-                </React.Fragment>
+                    />
+                </button>
             )
         })
-        return widths
     }
 
     // Applies a single property back to a Two.js shape during undo.
@@ -595,7 +610,9 @@ const BoardViewPage = (props) => {
                                 toggle={showToolbar}
                                 componentState={selectedComponent}
                                 closeToolbar={closeToolbar}
-                                updateComponentBulkProperties={updateComponentBulkPropertiesInLocalStore}
+                                updateComponentBulkProperties={
+                                    updateComponentBulkPropertiesInLocalStore
+                                }
                                 postToolbarUpdate={() => {
                                     twoJSInstance.update()
                                 }}
@@ -612,7 +629,6 @@ const BoardViewPage = (props) => {
                                     overflow: 'auto',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    alignItems: 'center',
                                 }}
                                 className="shadow-lg px-2 py-2 rounded-md"
                             >
@@ -624,14 +640,14 @@ const BoardViewPage = (props) => {
                                     }}
                                 />
                                 <hr className="my-2 w-full" />
-                                <div className="w-full text-left text-sm">
+                                <div className="w-full text-left text-xs">
                                     <label htmlFor="border-widths-row">
                                         Stroke Width
                                     </label>
                                     <div
                                         id="border-widths-row"
                                         data-parent="floating-toolbar"
-                                        className="flex flex-row my-2"
+                                        className="flex gap-4 my-2 w-48"
                                     >
                                         {renderBorderWidths()}
                                     </div>

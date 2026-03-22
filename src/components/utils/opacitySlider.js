@@ -5,7 +5,7 @@ import { useRanger, Ranger } from '@tanstack/react-ranger'
 import { motion } from 'framer-motion'
 
 const SliderContainer = styled.div`
-    width: 250px;
+    width: 200px;
     height: 44px;
     border-radius: 6px;
 `
@@ -114,7 +114,7 @@ const OpacitySlider = ({
                 data-parent="floating-toolbar"
                 className={` pr-4 py-1 `}
             >
-                {title && <div className=" text-sm text-left">{title}</div>}
+                {title && <div className=" text-xs text-left">{title}</div>}
                 {/* <Track
                     className=" relative"
                     data-parent="floating-toolbar"

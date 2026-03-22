@@ -221,7 +221,8 @@ const PrimarySidebar = () => {
                                     ),
                                     y: parseInt(
                                         window.outerHeight -
-                                            (randomNumber * window.outerHeight) /
+                                            (randomNumber *
+                                                window.outerHeight) /
                                                 100
                                     ),
                                     x2: label.includes('divider') ? 100 : 0,
@@ -290,7 +291,7 @@ const PrimarySidebar = () => {
                     </div>
                 </div>
             </div>
-            <div className="absolute right-10 mt-2">
+            <div className="absolute right-1rem mt-2">
                 <div className="flex items-center">
                     <div
                         id="show-saving-loader"

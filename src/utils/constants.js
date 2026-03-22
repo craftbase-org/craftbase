@@ -96,8 +96,6 @@ export const essentialShades = [
     '#00B8D9',
     '#0065FF',
     '#6554C0',
-    '#42526E',
-    '#7A869A',
 ]
 
 export const staticDrawerData = {

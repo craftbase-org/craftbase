@@ -6,8 +6,7 @@ import Icon from 'icons/icon'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const ColorPickerContainer = styled.div`
-    width: 250px;
-    margin: 0 auto;
+    width: 200px;
     height: auto;
     background: transparent;
     text-align: left;
@@ -77,7 +76,7 @@ const ColorPicker = ({ title, onChangeComplete, currentColor }) => {
 
     return (
         <Fragment>
-            {title && <div className="p-0 text-left text-sm">{title}</div>}
+            {title && <div className="p-0 text-left text-xs">{title}</div>}
             <ColorPickerContainer
                 id="color-picker-toolbar"
                 data-parent="floating-toolbar"

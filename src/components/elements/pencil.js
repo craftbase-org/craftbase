@@ -197,7 +197,7 @@ function Pencil(props) {
         <React.Fragment>
             <div id="two-Pencil"></div>
             {/* <button>change button in group</button> */}
-            {showToolbar && (
+            {/* {showToolbar && (
                 <Toolbar
                     toggle={showToolbar}
                     componentState={internalState}
@@ -207,7 +207,7 @@ function Pencil(props) {
                         two.update()
                     }}
                 />
-            )}
+            )} */}
         </React.Fragment>
     )
 }

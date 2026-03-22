@@ -13,7 +13,7 @@ import { properties, TEXT_SIZES_ARRAY } from 'utils/constants'
 import Icon from 'icons/icon'
 
 const ToolbarContainer = styled(motion.div)`
-    height: 79vh;
+    height: 50vh;
     z-index: 1;
     position: fixed;
     overflow: auto;
@@ -24,7 +24,6 @@ const ToolbarContainer = styled(motion.div)`
 
     display: flex;
     flex-direction: column;
-    align-items: center;
     transition: transform 0.3s;
 `
 
@@ -428,6 +427,7 @@ const Toolbar = (props) => {
             content: () => (
                 <BorderStyleBox
                     currentColor={state.borderColor}
+                    currentWidth={state.linewidth}
                     onChangeColor={(color) => {
                         setState((draft) => {
                             draft.borderColor = color

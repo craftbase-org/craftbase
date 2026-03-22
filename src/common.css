@@ -21,6 +21,14 @@
     border-radius: 50%;
 }
 
+.right-1rem {
+    right: 1rem;
+}
+
+.gap-4 {
+    gap: 1rem;
+}
+
 /* patch - to disable automatically appending iframe */
 iframe {
     z-index: -11111 !important;
