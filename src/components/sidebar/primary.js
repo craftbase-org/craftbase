@@ -79,6 +79,7 @@ const PrimarySidebar = () => {
                         id: generateId,
                         componentType: label,
                         linewidth: defaultLinewidth,
+                        stroke: '#000',
                         children: {},
                         metadata: [],
                         x: -9999,
@@ -210,6 +211,7 @@ const PrimarySidebar = () => {
                                     id: generateId,
                                     componentType: label,
                                     linewidth: defaultLinewidth,
+                                    stroke: '#000',
                                     children: {},
                                     metadata: [],
                                     x: parseInt(

@@ -222,6 +222,18 @@ const BoardViewPage = (props) => {
         }
     }
 
+    // Strips __typename fields injected by Apollo before sending data back to Hasura
+    const stripTypename = (obj) => {
+        if (Array.isArray(obj)) return obj.map(stripTypename)
+        if (obj && typeof obj === 'object') {
+            const { __typename, ...rest } = obj
+            return Object.fromEntries(
+                Object.entries(rest).map(([k, v]) => [k, stripTypename(v)])
+            )
+        }
+        return obj
+    }
+
     // Appends an action entry to the undo history stack
     const recordToHistoryLog = (entry) => {
         const updatedLog = [
@@ -252,16 +264,23 @@ const BoardViewPage = (props) => {
             insertComponent({ variables: { object: componentInfo } })
     }
 
-    // Snapshots current state before applying bulk property changes, then updates store and DB
+    // Snapshots only the properties being changed before applying bulk updates
     const updateComponentBulkPropertiesInLocalStore = (id, bulkObj) => {
         const userId = localStorage.getItem('userId')
+
+        // Snapshot only the properties that bulkObj will overwrite
+        const currentComponent = stateRefForComponentStore.current[id]
+        const prevProps = {}
+        Object.keys(bulkObj).forEach((key) => {
+            if (currentComponent?.[key] !== undefined) {
+                prevProps[key] = currentComponent[key]
+            }
+        })
 
         recordToHistoryLog({
             action: 'UPDATE_BULK',
             id,
-            prevState: { ...stateRefForComponentStore.current[id] },
-            prevX: stateRefForComponentStore.current[id]?.x,
-            prevY: stateRefForComponentStore.current[id]?.y,
+            prevProps,
             bulkObj,
         })
 
@@ -402,10 +421,11 @@ const BoardViewPage = (props) => {
         return widths
     }
 
-    // Applies a single property back to a Two.js shape during undo
+    // Applies a single property back to a Two.js shape during undo.
+    // Visual properties (fill, stroke, etc.) live directly on the shape object.
     const applyPropertyToTwoJSGroup = (group, name, value) => {
         const shape = group.children?.[0]
-        if (!shape || !shape.data) return
+        if (!shape) return
 
         switch (name) {
             case 'fill':
@@ -416,12 +436,12 @@ const BoardViewPage = (props) => {
             case 'height':
             case 'textColor':
             case 'iconStroke':
-                shape.data[name] = value
+                shape[name] = value
                 break
             case 'metadata':
                 if (value && typeof value === 'object') {
                     Object.entries(value).forEach(([k, v]) => {
-                        shape.data[k] = v
+                        shape[k] = v
                     })
                 }
                 break
@@ -470,7 +490,9 @@ const BoardViewPage = (props) => {
             stateRefForComponentStore.current = updatedStore
             setComponentStore(updatedStore)
             updateLastAddedElement(prevState)
-            insertComponent({ variables: { object: prevState } })
+            insertComponent({
+                variables: { object: stripTypename(prevState) },
+            })
         } else if (action === 'UPDATE_VERTICES') {
             const { prevX, prevY } = lastEntry
 
@@ -494,15 +516,13 @@ const BoardViewPage = (props) => {
             })
             requestAnimationFrame(() => two?.update())
         } else if (action === 'UPDATE_BULK') {
-            const { prevState, prevX, prevY } = lastEntry
+            const { prevProps } = lastEntry
 
-            // Update store FIRST so the ref is correct even if Two.js update fails
+            // Update store — only restore the properties that were changed
             const updatedStore = { ...stateRefForComponentStore.current }
             updatedStore[id] = {
                 ...updatedStore[id],
-                ...prevState,
-                x: prevX,
-                y: prevY,
+                ...prevProps,
             }
             stateRefForComponentStore.current = updatedStore
             setComponentStore(updatedStore)
@@ -512,16 +532,16 @@ const BoardViewPage = (props) => {
                 (c) => c?.elementData?.id === id
             )
             if (group) {
-                group.translation.x = prevX
-                group.translation.y = prevY
-                two?.update()
-                Object.entries(prevState).forEach(([name, val]) => {
+                if (prevProps.x !== undefined) group.translation.x = prevProps.x
+                if (prevProps.y !== undefined) group.translation.y = prevProps.y
+                Object.entries(prevProps).forEach(([name, val]) => {
                     applyPropertyToTwoJSGroup(group, name, val)
                 })
+                two?.update()
             }
 
             updateComponentInfo({
-                variables: { id, updateObj: { ...prevState, x: prevX, y: prevY } },
+                variables: { id, updateObj: prevProps },
             })
             requestAnimationFrame(() => two?.update())
         }
@@ -575,6 +595,7 @@ const BoardViewPage = (props) => {
                                 toggle={showToolbar}
                                 componentState={selectedComponent}
                                 closeToolbar={closeToolbar}
+                                updateComponentBulkProperties={updateComponentBulkPropertiesInLocalStore}
                                 postToolbarUpdate={() => {
                                     twoJSInstance.update()
                                 }}
