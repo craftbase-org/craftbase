@@ -13,7 +13,7 @@ import { properties, TEXT_SIZES_ARRAY } from 'utils/constants'
 import Icon from 'icons/icon'
 
 const ToolbarContainer = styled(motion.div)`
-    height: 79vh;
+    height: 50vh;
     z-index: 1;
     position: fixed;
     overflow: auto;
@@ -24,7 +24,6 @@ const ToolbarContainer = styled(motion.div)`
 
     display: flex;
     flex-direction: column;
-    align-items: center;
     transition: transform 0.3s;
 `
 
@@ -149,6 +148,7 @@ const Toolbar = (props) => {
         closeToolbar,
         componentId,
         postToolbarUpdate,
+        updateComponentBulkProperties,
         hideColorSection,
         enableClassNameStyling,
         classNameLabel,
@@ -195,16 +195,24 @@ const Toolbar = (props) => {
 
     const updateComponent = (propertyToUpdate, propertyValue) => {
         const userId = localStorage.getItem('userId')
-        const componentId = componentState?.group?.data?.elementData?.id
-        updateComponentInfo({
-            variables: {
-                id: componentId,
-                updateObj: {
-                    [propertyToUpdate]: propertyValue,
-                    updatedBy: userId,
+        const id = componentState?.group?.data?.elementData?.id
+
+        if (updateComponentBulkProperties) {
+            // Route through board's store update so undo history is recorded
+            updateComponentBulkProperties(id, {
+                [propertyToUpdate]: propertyValue,
+            })
+        } else {
+            updateComponentInfo({
+                variables: {
+                    id,
+                    updateObj: {
+                        [propertyToUpdate]: propertyValue,
+                        updatedBy: userId,
+                    },
                 },
-            },
-        })
+            })
+        }
         postToolbarUpdate && postToolbarUpdate()
     }
 
@@ -272,12 +280,9 @@ const Toolbar = (props) => {
                                     draft.colorBg = color
                                 })
 
-                                // Shape's color overlaps all property so update necessary
-                                // secondary element's fill property from the existing state
                                 if (componentState.shape?.data?.fill)
                                     componentState.shape.data.fill = color
 
-                                // check if to apply style via class names
                                 if (enableClassNameStyling) {
                                     let getClassNamesFromDOM =
                                         document.getElementsByClassName(
@@ -289,14 +294,6 @@ const Toolbar = (props) => {
                                             color
                                     }
                                 }
-                                // componentState.icon.data.stroke = state.colorIcon
-
-                                // if (componentState?.icon?.data?.stroke)
-                                //     componentState.icon.data.stroke = color
-                                // componentState.icon.data.stroke = state.colorIcon
-
-                                // if (componentState?.text?.data?.fill)
-                                //     componentState.text.data.fill = state.colorText
 
                                 updateComponent &&
                                     updateComponent('fill', color)
@@ -351,6 +348,7 @@ const Toolbar = (props) => {
                                                 color
                                         }
                                     }
+
                                     updateComponent &&
                                         updateComponent('textColor', color)
                                 }}
@@ -429,16 +427,16 @@ const Toolbar = (props) => {
             content: () => (
                 <BorderStyleBox
                     currentColor={state.borderColor}
+                    currentWidth={state.linewidth}
                     onChangeColor={(color) => {
                         setState((draft) => {
                             draft.borderColor = color
                         })
+
                         if (componentState.shape?.data?.stroke) {
                             componentState.shape.data.stroke = color
-                            // componentState.shape.data.linewidth = 2
                         }
 
-                        // check if to apply style via class names
                         if (enableClassNameStyling) {
                             let getClassNamesFromDOM =
                                 document.getElementsByClassName(classNameLabel)
@@ -449,12 +447,12 @@ const Toolbar = (props) => {
                         }
 
                         updateComponent && updateComponent('stroke', color)
-                        // updateComponent && updateComponent('linewidth', 2)
                     }}
                     onChangeBorderWidth={(width) => {
                         setState((draft) => {
                             draft.linewidth = width
                         })
+
                         if (componentState.shape?.data?.stroke) {
                             componentState.shape.data.stroke = state.borderColor
                             componentState.shape.data.linewidth = width
@@ -465,16 +463,10 @@ const Toolbar = (props) => {
                                 document.getElementsByClassName(classNameLabel)
 
                             if (getClassNamesFromDOM.length > 0) {
-                                console.log(
-                                    'get class name from dom',
-                                    width,
-                                    state.borderColor
-                                )
                                 getClassNamesFromDOM[0].style.border = `${width}px solid ${state.borderColor} `
                             }
                         }
 
-                        // updateComponent && updateComponent('stroke', color)
                         updateComponent && updateComponent('linewidth', width)
                     }}
                 />

@@ -701,13 +701,22 @@ function addZUI(
                 const now = performance.now()
                 const timeDelta = now - lastPencilTime
                 const velocity = timeDelta > 0 ? pDist / timeDelta : 0
-                const targetLw = velocityToLinewidth(velocity, defaultLinewidthValue)
-                const smoothedLw = smoothLinewidth(lastPencilLinewidth, targetLw, 0.3)
+                const targetLw = velocityToLinewidth(
+                    velocity,
+                    defaultLinewidthValue
+                )
+                const smoothedLw = smoothLinewidth(
+                    lastPencilLinewidth,
+                    targetLw,
+                    0.3
+                )
 
                 // Create a 2-point path segment for live preview
                 const segment = two.makePath(
-                    lastPencilPoint.x, lastPencilPoint.y,
-                    pencilCoords.x, pencilCoords.y
+                    lastPencilPoint.x,
+                    lastPencilPoint.y,
+                    pencilCoords.x,
+                    pencilCoords.y
                 )
                 segment.noFill()
                 segment.stroke = pencilStrokeColorValue
@@ -1123,7 +1132,10 @@ function addZUI(
                 }
 
                 // Simplify points while preserving lw
-                const simplifiedPoints = simplifyWithLinewidth(pencilRawPoints, 1.5)
+                const simplifiedPoints = simplifyWithLinewidth(
+                    pencilRawPoints,
+                    1.5
+                )
 
                 let pencilId = generateUUID()
                 let pencilComponentData = {
@@ -1431,6 +1443,7 @@ const Canvas = (props) => {
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setCurrentElementInBoard,
+        undoLastAction,
     } = useBoardContext()
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
@@ -1502,10 +1515,6 @@ const Canvas = (props) => {
 
     useEffect(() => {
         stateRefForComponentStore.current = props.componentStore
-        // console.log(
-        //     'change in componentStore in NewCanvas',
-        //     stateRefForComponentStore.current
-        // )
         if (twoJSInstance !== null && zuiInstance !== null) {
             // listening to the change in components in DB
             // this is especially for capturing INSERT operation
@@ -1606,7 +1615,8 @@ const Canvas = (props) => {
                     let newMetadata = []
                     if (item.componentType === 'pencil') {
                         newMetadata = item.metadata.map((vert, index) => {
-                            const lwProp = vert.lw !== undefined ? { lw: vert.lw } : {}
+                            const lwProp =
+                                vert.lw !== undefined ? { lw: vert.lw } : {}
                             if (index === 0) {
                                 return { x: relativeX, y: relativeY, ...lwProp }
                             } else if (index > 0) {
@@ -1694,17 +1704,33 @@ const Canvas = (props) => {
         }
     }, [cloneElement])
 
+    useEffect(() => {
+        const onUndoKeyDown = (evt) => {
+            if (evt.key === 'z' && (evt.ctrlKey || evt.metaKey)) {
+                evt.preventDefault()
+                undoLastAction()
+            }
+        }
+        window.addEventListener('keydown', onUndoKeyDown)
+        return () => window.removeEventListener('keydown', onUndoKeyDown)
+    }, [undoLastAction])
+
     const setOnGroupHandler = (obj) => {
         setOnGroup(obj)
     }
 
     const handleSetComponentsToRender = (currentComponents) => {
         let arr = [...prevElements]
-        // console.log('prevElements', prevElements)
         let components = [...componentsToRender]
         if (currentComponents && twoJSInstance) {
             currentComponents.forEach((item, index) => {
-                if (prevElements.includes(item.id)) {
+                // Check if already rendered AND still exists in the Two.js scene.
+                // A deleted element stays in prevElements but is removed from the scene,
+                // so we need to re-render it if restored by undo.
+                const existsInScene = twoJSInstance.scene.children.some(
+                    (c) => c?.elementData?.id === item.id
+                )
+                if (prevElements.includes(item.id) && existsInScene) {
                     // do nothing
                 } else {
                     arr.push(item.id)

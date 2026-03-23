@@ -43,6 +43,8 @@ function NewText(props) {
 
     function handleKeyDown(e) {
         if (e.keyCode === 8 || e.keyCode === 46) {
+            // Blur before removing to avoid removeChild error during Two.js render
+            document.getElementById(`${groupObject.id}`)?.blur()
             props.handleDeleteComponent &&
                 props.handleDeleteComponent(groupObject)
             two.remove([groupObject])

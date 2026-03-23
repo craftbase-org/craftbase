@@ -44,8 +44,8 @@ function ArrowLine(props) {
 
     function handleKeyDown(e) {
         if (e.keyCode === 8 || e.keyCode === 46) {
-            console.log('handle key down event', e)
             // DELETE/BACKSPACE KEY WAS PRESSED
+            document.getElementById(`${groupObject.id}`)?.blur()
             props.handleDeleteComponent &&
                 props.handleDeleteComponent(groupObject)
             two.remove([groupObject])
