@@ -38,7 +38,8 @@
     },
     "resolutions": {
         "micromatch": ">=4.0.8",
-        "form-data": ">=3.0.4"
+        "form-data": ">=3.0.4",
+        "brace-expansion": ">=5.0.5"
     },
     "eslintConfig": {
         "extends": "react-app/base"
@@ -56,12 +57,12 @@
         ]
     },
     "devDependencies": {
-        "@vitejs/plugin-react": "^4.3.1",
+        "@vitejs/plugin-react": "^4.7.0",
         "autoprefixer": "^10.4.27",
         "jsdom": "^25.0.0",
         "tailwindcss": "^3.4.4",
-        "vite": "^5.4.0",
+        "vite": "^6.4.1",
         "vite-tsconfig-paths": "^6.1.1",
-        "vitest": "^2.0.0"
+        "vitest": "^3.2.4"
     }
 }

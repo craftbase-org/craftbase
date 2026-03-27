@@ -162,13 +162,14 @@ Child components access this context via `useContext(BoardContext)`.
 
 ## Technology Stack
 
-- **UI Framework**: React
+- **UI Framework**: React (^18.3.1)
 - **Canvas Rendering**: Two.js
 - **State Management**: React Context (BoardContext) + local component state
 - **Backend**: GraphQL (Hasura)
 - **GraphQL Client**: Apollo Client
 - **Styling**: CSS + Tailwind CSS
-- **Build Tool**: Create React App with CRACO
+- **Build Tool**: Vite
+- **Package manager**: Yarn (v1.22.22)
 
 # Workflow
 
