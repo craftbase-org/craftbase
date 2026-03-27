@@ -15,23 +15,23 @@ Migrating eliminated the entire CRA/CRACO dependency tree.
 
 ### Removed
 
-| Package | Reason |
-|---------|--------|
-| `react-scripts` | Replaced by Vite |
-| `@craco/craco` | No longer needed |
-| `craco-less` | Was already commented out, never used |
+| Package                                             | Reason                                     |
+| --------------------------------------------------- | ------------------------------------------ |
+| `react-scripts`                                     | Replaced by Vite                           |
+| `@craco/craco`                                      | No longer needed                           |
+| `craco-less`                                        | Was already commented out, never used      |
 | `@babel/plugin-proposal-private-property-in-object` | CRA-era Babel plugin, not needed with Vite |
 
 ### Added (devDependencies)
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `vite` | `^5.4.0` | Build tool |
-| `@vitejs/plugin-react` | `^4.3.1` | React/JSX support in Vite |
-| `vite-tsconfig-paths` | `^6.1.1` | Reads `jsconfig.json` `baseUrl` to resolve bare imports like `'views/Board'` |
-| `vitest` | `^2.0.0` | Vite-native test runner (replaces Jest via react-scripts) |
-| `jsdom` | `^25.0.0` | DOM environment for Vitest |
-| `autoprefixer` | `^10.4.27` | PostCSS plugin for CSS vendor prefixes (was included implicitly by CRA) |
+| Package                | Version    | Purpose                                                                      |
+| ---------------------- | ---------- | ---------------------------------------------------------------------------- |
+| `vite`                 | `^5.4.0`   | Build tool                                                                   |
+| `@vitejs/plugin-react` | `^4.3.1`   | React/JSX support in Vite                                                    |
+| `vite-tsconfig-paths`  | `^6.1.1`   | Reads `jsconfig.json` `baseUrl` to resolve bare imports like `'views/Board'` |
+| `vitest`               | `^2.0.0`   | Vite-native test runner (replaces Jest via react-scripts)                    |
+| `jsdom`                | `^25.0.0`  | DOM environment for Vitest                                                   |
+| `autoprefixer`         | `^10.4.27` | PostCSS plugin for CSS vendor prefixes (was included implicitly by CRA)      |
 
 ### Scripts updated
 
@@ -68,41 +68,6 @@ Changed from `"extends": "react-app"` (depends on react-scripts) to `"extends": 
 Named `.mjs` (not `.js`) because `vite-tsconfig-paths` v6 is ESM-only and can't be
 loaded when the config is treated as CommonJS. Using `.mjs` forces Node to treat it as
 an ES module, avoiding the conflict.
-
-```js
-import { defineConfig, transformWithEsbuild } from 'vite'
-import react from '@vitejs/plugin-react'
-import tsconfigPaths from 'vite-tsconfig-paths'
-
-export default defineConfig({
-    plugins: [
-        {
-            name: 'treat-js-files-as-jsx',
-            async transform(code, id) {
-                if (!id.match(/src\/.*\.js$/)) return null
-                return transformWithEsbuild(code, id, {
-                    loader: 'jsx',
-                    jsx: 'automatic',
-                })
-            },
-        },
-        react(),
-        tsconfigPaths(),
-    ],
-    optimizeDeps: {
-        esbuildOptions: {
-            loader: {
-                '.js': 'jsx',
-            },
-        },
-    },
-    test: {
-        globals: true,
-        environment: 'jsdom',
-        setupFiles: './src/setupTests.js',
-    },
-})
-```
 
 **Why the custom `treat-js-files-as-jsx` plugin?**
 
@@ -147,9 +112,9 @@ Copied from `public/index.html` with two changes:
 
 2. Added an explicit module script tag before `</body>` — CRA injected this automatically,
    Vite requires it to be declared in the HTML:
-   ```html
-   <script type="module" src="/src/index.js"></script>
-   ```
+    ```html
+    <script type="module" src="/src/index.js"></script>
+    ```
 
 The original `public/index.html` was left in place (Vite ignores it, but it does no harm).
 
@@ -181,22 +146,22 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 Vite exposes env vars via `import.meta.env.VITE_*` instead of `process.env.REACT_APP_*`.
 All four env vars were renamed in `.env`:
 
-| Old name | New name |
-|----------|----------|
-| `REACT_APP_HASURA_ADMIN_SECRET` | `VITE_HASURA_ADMIN_SECRET` |
-| `REACT_APP_WS_GRAPHQL_ENDPOINT` | `VITE_WS_GRAPHQL_ENDPOINT` |
-| `REACT_APP_GRAPHQL_ENDPOINT` | `VITE_GRAPHQL_ENDPOINT` |
+| Old name                         | New name                    |
+| -------------------------------- | --------------------------- |
+| `REACT_APP_HASURA_ADMIN_SECRET`  | `VITE_HASURA_ADMIN_SECRET`  |
+| `REACT_APP_WS_GRAPHQL_ENDPOINT`  | `VITE_WS_GRAPHQL_ENDPOINT`  |
+| `REACT_APP_GRAPHQL_ENDPOINT`     | `VITE_GRAPHQL_ENDPOINT`     |
 | `REACT_APP_GRAPHQL_ERROR_POLICY` | `VITE_GRAPHQL_ERROR_POLICY` |
 
 Access pattern changed in all files from `process.env.REACT_APP_*` → `import.meta.env.VITE_*`.
 
 Files updated:
 
-| File | What changed |
-|------|-------------|
-| `src/App.js` | 4 references — GraphQL HTTP endpoint, WS endpoint, admin secret (×2) |
-| `src/views/Board/board.js` | 2 references — `errorPolicy` option on GraphQL mutations |
-| `src/serviceWorker.js` | `process.env.NODE_ENV` → `import.meta.env.MODE`, `process.env.PUBLIC_URL` → `import.meta.env.BASE_URL` |
+| File                       | What changed                                                                                           |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/App.js`               | 4 references — GraphQL HTTP endpoint, WS endpoint, admin secret (×2)                                   |
+| `src/views/Board/board.js` | 2 references — `errorPolicy` option on GraphQL mutations                                               |
+| `src/serviceWorker.js`     | `process.env.NODE_ENV` → `import.meta.env.MODE`, `process.env.PUBLIC_URL` → `import.meta.env.BASE_URL` |
 
 ### `.gitignore`
 
@@ -204,12 +169,54 @@ Changed build output directory from `/build` (CRA default) to `/dist` (Vite defa
 
 ---
 
-## Known pre-existing issue (unrelated to migration)
+## Caveat: fully dynamic imports break in production
 
-`src/views/Home/home.js` imports `Redirect` from `react-router-dom`. `Redirect` was
-removed in react-router v6 (use `<Navigate>` instead). This produced a warning during
-`yarn build` and will cause a runtime error if that code path is hit. This bug predates
-the migration.
+Vite's bundler (Rollup) must be able to statically analyze dynamic `import()` calls at
+build time to emit the imported files as chunks. If the entire path is a runtime variable,
+Vite has nothing to analyze and silently skips bundling those files.
+
+**What breaks:**
+
+```js
+// BAD — Vite cannot determine which files to bundle
+import(`./components/elements/${item.componentType}`)
+import(`../../factory/${item.componentType}`)
+```
+
+In production the import resolves to a missing file. The server (e.g. Netlify) returns
+its 404 HTML page, which fails the browser's strict MIME type check for ES modules:
+
+```
+Failed to load module script: Expected a JavaScript-or-Wasm module script but the
+server responded with a MIME type of "text/html".
+```
+
+Note: this is invisible in dev — Vite's dev server resolves imports at request time and
+doesn't need to pre-bundle them, so the bug only surfaces after a production build.
+
+**The fix — use `import.meta.glob`:**
+
+`import.meta.glob` is a Vite-specific API that takes a static glob pattern and registers
+all matching files as lazy chunks at build time. You then call the returned function to
+load the module dynamically at runtime.
+
+```js
+// At module top level — Vite analyzes this statically
+const elementModules = import.meta.glob('./components/elements/*.js')
+const factoryModules = import.meta.glob('../../factory/*.js')
+
+// At runtime — same lazy-loading behaviour as before
+const ElementToRender = React.lazy(() =>
+    elementModules[`./components/elements/${item.componentType}.js`]()
+)
+
+factoryModules[`../../factory/${item.componentType}.js`]().then((component) => { ... })
+```
+
+The glob pattern must be a string literal — it cannot itself be dynamic.
+The key used for lookup must include the `.js` extension.
+
+**Files changed:** `src/newCanvas.js`, `src/components/elements/groupobject.js`
 
 ---
 
