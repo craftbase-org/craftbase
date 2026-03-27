@@ -177,26 +177,6 @@ function addZUI(
                 const surfaceCoords = zui.clientToSurface(e.clientX, e.clientY)
                 const arrowId = localStorage.getItem('lastAddedElementId')
 
-                arrowDrawElement = two.scene.children.find(
-                    (child) => child?.elementData?.id === arrowId
-                )
-
-                if (arrowDrawElement) {
-                    // Position the group at the clicked point (tail position)
-                    arrowDrawElement.position.x = surfaceCoords.x
-                    arrowDrawElement.position.y = surfaceCoords.y
-
-                    const line = arrowDrawElement.children[0]
-                    const pointCircle1Group = arrowDrawElement.children[1]
-                    const pointCircle2Group = arrowDrawElement.children[2]
-
-                    // Reset line vertices: tail at 0,0, head at 0,0
-                    updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
-                    updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
-
-                    two.update()
-                }
-
                 localStorage.removeItem('lastAddedElementId')
                 localStorage.removeItem('arrowDrawMode')
 
@@ -205,6 +185,38 @@ function addZUI(
 
                 document.getElementById('main-two-root').style.cursor =
                     'crosshair'
+
+                // On first use the arrowLine module loads lazily — poll until the
+                // React element appears in the scene before positioning it.
+                // mousemove/mouseup already guard on arrowDrawElement being non-null,
+                // so they are safe no-ops until this resolves.
+                const initArrowElement = (id, capturedCoords, retries = 0) => {
+                    const el = two.scene.children.find(
+                        (child) => child?.elementData?.id === id
+                    )
+                    if (el) {
+                        arrowDrawElement = el
+                        arrowDrawElement.position.x = capturedCoords.x
+                        arrowDrawElement.position.y = capturedCoords.y
+
+                        const line = arrowDrawElement.children[0]
+                        const pointCircle1Group = arrowDrawElement.children[1]
+                        const pointCircle2Group = arrowDrawElement.children[2]
+
+                        updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
+                        updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
+
+                        two.update()
+                    } else if (retries < 30) {
+                        requestAnimationFrame(() =>
+                            initArrowElement(id, capturedCoords, retries + 1)
+                        )
+                    }
+                }
+                requestAnimationFrame(() =>
+                    initArrowElement(arrowId, surfaceCoords)
+                )
+
                 break
             }
             case SCENARIO_TEXT_DRAW: {
@@ -1027,11 +1039,8 @@ function addZUI(
                     (drawOrigin.y + endCoords.y) / 2
                 )
 
-                if (previewShape) {
-                    two.remove(previewShape)
-                    previewShape = null
-                    two.update()
-                }
+                const capturedPreview = previewShape
+                previewShape = null
 
                 const finalId = generateUUID()
                 const finalShapeData = {
@@ -1045,13 +1054,18 @@ function addZUI(
 
                 addToLocalComponentStore(finalId, drawShapeType, finalShapeData)
 
-                // React renders the element asynchronously; poll until it appears in two.scene.children
+                // React renders the element asynchronously; poll until it appears in two.scene.children,
+                // then remove the preview so there is no blank gap between preview removal and final render
                 const pendingSelectionId = finalId
                 const waitForNewElement = (id, retries = 0) => {
                     const el = two.scene.children.find(
                         (child) => child?.elementData?.id === id
                     )
                     if (el && el.children?.[0]) {
+                        if (capturedPreview) {
+                            two.remove(capturedPreview)
+                            two.update()
+                        }
                         const shapeEl = el.children[0]
                         const componentInternalState = {
                             element: {
@@ -1118,14 +1132,15 @@ function addZUI(
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
             case SCENARIO_PENCIL_MODE: {
-                // Remove live preview group — React component will re-render from metadata
-                if (pencilGroup) {
-                    two.remove(pencilGroup)
-                }
+                const capturedPencilGroup = pencilGroup
+                pencilGroup = null
 
                 if (pencilRawPoints.length < 2) {
-                    // Too few points to form a stroke
-                    pencilGroup = null
+                    // Too few points to form a stroke — remove preview immediately
+                    if (capturedPencilGroup) {
+                        two.remove(capturedPencilGroup)
+                        two.update()
+                    }
                     pencilRawPoints = []
                     lastPencilPoint = null
                     lastPencilLinewidth = null
@@ -1160,8 +1175,27 @@ function addZUI(
                     pencilComponentData
                 )
 
+                // React renders the element asynchronously; keep preview visible until
+                // the final element appears in two.scene.children to avoid a blank gap
+                const pencilWaitId = pencilId
+                const waitForPencilElement = (id, retries = 0) => {
+                    const el = two.scene.children.find(
+                        (child) => child?.elementData?.id === id
+                    )
+                    if (el) {
+                        if (capturedPencilGroup) {
+                            two.remove(capturedPencilGroup)
+                            two.update()
+                        }
+                    } else if (retries < 30) {
+                        requestAnimationFrame(() =>
+                            waitForPencilElement(id, retries + 1)
+                        )
+                    }
+                }
+                requestAnimationFrame(() => waitForPencilElement(pencilWaitId))
+
                 // Reset pencil state
-                pencilGroup = null
                 pencilRawPoints = []
                 lastPencilPoint = null
                 lastPencilLinewidth = null
