@@ -1,4 +1,6 @@
 import React, { useEffect, useState, Fragment } from 'react'
+
+const factoryModules = import.meta.glob('../../factory/*.js')
 import Two from 'two.js'
 import interact from 'interactjs'
 import { useBoardContext } from 'views/Board/board'
@@ -336,7 +338,7 @@ function GroupedObjectWrapper(props) {
         for (let index = 0; index < props.children.length; index++) {
             const item = props.children[index]
             // console.log('item in children', item)
-            import(`../../factory/${item.componentType}`).then((component) => {
+            factoryModules[`../../factory/${item.componentType}.js`]().then((component) => {
                 const componentFactory = new component.default(
                     two,
                     item.x,

@@ -9,6 +9,8 @@ import Zoomer from 'components/utils/zoomer'
 import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
 
+const elementModules = import.meta.glob('./components/elements/*.js')
+
 import Loader from 'components/utils/loader'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 import { generateUUID } from 'utils/misc'
@@ -1734,7 +1736,7 @@ const Canvas = (props) => {
                 } else {
                     arr.push(item.id)
                     const ElementToRender = React.lazy(() =>
-                        import(`./components/elements/${item.componentType}`)
+                        elementModules[`./components/elements/${item.componentType}.js`]()
                     )
                     const data = {
                         twoJSInstance: twoJSInstance,
