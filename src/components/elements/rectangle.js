@@ -294,9 +294,7 @@ function Rectangle(props) {
         }
 
         return () => {
-            console.log('UNMOUNTING in Rectangle', group)
-            // clean garbage by removing instance
-            // two.remove(group)
+            two.remove(group)
         }
     }, [])
 

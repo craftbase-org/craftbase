@@ -161,9 +161,7 @@ function Pencil(props) {
         }
 
         return () => {
-            console.log('UNMOUNTING in Pencil', group)
-            // clean garbage by removing instance
-            // two.remove(group)
+            two.remove(group)
         }
     }, [])
 

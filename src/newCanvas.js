@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, Suspense } from 'react'
 import Two from 'two.js'
 import { useNavigate } from 'react-router-dom'
 
-import Loadable from 'react-loadable'
 import { ZUI } from 'two.js/extras/jsm/zui'
 import { useBoardContext } from 'views/Board/board'
 
@@ -1734,11 +1733,9 @@ const Canvas = (props) => {
                     // do nothing
                 } else {
                     arr.push(item.id)
-                    const ElementToRender = Loadable({
-                        loader: () =>
-                            import(`components/elements/${item.componentType}`),
-                        loading: Loader,
-                    })
+                    const ElementToRender = React.lazy(() =>
+                        import(`./components/elements/${item.componentType}`)
+                    )
                     const data = {
                         twoJSInstance: twoJSInstance,
                         id: item.id,
@@ -1806,7 +1803,10 @@ const Canvas = (props) => {
 
     const updateToGlobalState = (newShapeData, oldShapeData) => {
         const userId = localStorage.getItem('userId')
-        // console.log('updateToGlobalState', newShapeData, oldShapeData)
+        // Initial arrow placement: prevX is -9999 (off-screen staging value).
+        // The ADD history entry already covers this insertion, so the position
+        // updates that follow should not create extra undo steps.
+        const isInitialArrowPlacement = newShapeData.prevX === -9999
 
         // also check that new x,y is updated or not by comparing to prev x,y
         // then only perform mutation
@@ -1822,7 +1822,8 @@ const Canvas = (props) => {
             }
             updateComponentBulkPropertiesInLocalStore(
                 newShapeData.id,
-                updateObj
+                updateObj,
+                isInitialArrowPlacement
             )
         }
 
@@ -1836,7 +1837,8 @@ const Canvas = (props) => {
             }
             updateComponentBulkPropertiesInLocalStore(
                 newShapeData.parentData.elementData.id,
-                updateObj
+                updateObj,
+                isInitialArrowPlacement
             )
         }
     }
@@ -1863,9 +1865,9 @@ const Canvas = (props) => {
                 <React.Fragment>{renderElements()}</React.Fragment>
             )} */}
             {componentsToRender.map((Component, index) => (
-                <React.Fragment key={index}>
+                <Suspense key={index} fallback={<Loader />}>
                     <Component />
-                </React.Fragment>
+                </Suspense>
             ))}
             {/* <Zoomer sceneInstance={twoJSInstance} /> */}
         </>

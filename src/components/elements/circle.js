@@ -307,9 +307,7 @@ function Circle(props) {
         }
 
         return () => {
-            // console.log('UNMOUNTING in Circle', group)
-            // clean garbage by removing instance
-            // two.remove(group)
+            two.remove(group)
         }
     }, [])
 

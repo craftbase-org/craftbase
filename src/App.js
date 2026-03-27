@@ -24,23 +24,23 @@ function getApolloClient() {
     const accessToken = localStorage.getItem('access_token')
     // console.log('access_token in client', accessToken)
     // const httpLink = new HttpLink({
-    //     uri: process.env.REACT_APP_GRAPHQL_ENDPOINT,
+    //     uri: import.meta.env.VITE_GRAPHQL_ENDPOINT,
     //     headers: {
     //         authorization: `Bearer ${accessToken}`,
     //         'content-type': 'application/json',
     //     },
     // })
     const httpLink = new HttpLink({
-        uri: process.env.REACT_APP_GRAPHQL_ENDPOINT,
+        uri: import.meta.env.VITE_GRAPHQL_ENDPOINT,
         headers: {
             // authorization: `Bearer ${accessToken}`,
             'content-type': 'application/json',
-            'x-hasura-admin-secret': process.env.REACT_APP_HASURA_ADMIN_SECRET,
+            'x-hasura-admin-secret': import.meta.env.VITE_HASURA_ADMIN_SECRET,
         },
     })
 
     const wsLink = new WebSocketLink({
-        uri: process.env.REACT_APP_WS_GRAPHQL_ENDPOINT,
+        uri: import.meta.env.VITE_WS_GRAPHQL_ENDPOINT,
 
         options: {
             reconnect: true,
@@ -49,7 +49,7 @@ function getApolloClient() {
                     // authorization: `Bearer ${accessToken}`,
                     'content-type': 'application/json',
                     'x-hasura-admin-secret':
-                        process.env.REACT_APP_HASURA_ADMIN_SECRET,
+                        import.meta.env.VITE_HASURA_ADMIN_SECRET,
                 },
             },
         },
