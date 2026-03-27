@@ -265,24 +265,26 @@ const BoardViewPage = (props) => {
     }
 
     // Snapshots only the properties being changed before applying bulk updates
-    const updateComponentBulkPropertiesInLocalStore = (id, bulkObj) => {
+    const updateComponentBulkPropertiesInLocalStore = (id, bulkObj, skipHistory = false) => {
         const userId = localStorage.getItem('userId')
 
-        // Snapshot only the properties that bulkObj will overwrite
-        const currentComponent = stateRefForComponentStore.current[id]
-        const prevProps = {}
-        Object.keys(bulkObj).forEach((key) => {
-            if (currentComponent?.[key] !== undefined) {
-                prevProps[key] = currentComponent[key]
-            }
-        })
+        if (!skipHistory) {
+            // Snapshot only the properties that bulkObj will overwrite
+            const currentComponent = stateRefForComponentStore.current[id]
+            const prevProps = {}
+            Object.keys(bulkObj).forEach((key) => {
+                if (currentComponent?.[key] !== undefined) {
+                    prevProps[key] = currentComponent[key]
+                }
+            })
 
-        recordToHistoryLog({
-            action: 'UPDATE_BULK',
-            id,
-            prevProps,
-            bulkObj,
-        })
+            recordToHistoryLog({
+                action: 'UPDATE_BULK',
+                id,
+                prevProps,
+                bulkObj,
+            })
+        }
 
         const updatedComponentStore = { ...stateRefForComponentStore.current }
         updatedComponentStore[id] = {
@@ -354,7 +356,7 @@ const BoardViewPage = (props) => {
 
         deleteComponent({
             variables: { id },
-            errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
+            errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
         })
     }
 
@@ -493,7 +495,7 @@ const BoardViewPage = (props) => {
             setComponentStore(updatedStore)
             deleteComponent({
                 variables: { id },
-                errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
+                errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
             })
             requestAnimationFrame(() => two?.update())
         } else if (action === 'DELETE') {

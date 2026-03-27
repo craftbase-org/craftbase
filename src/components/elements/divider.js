@@ -319,9 +319,7 @@ function Divider(props) {
         }
 
         return () => {
-            console.log('UNMOUNTING in Divider', group)
-            // clean garbage by removing instance
-            // two.remove(group)
+            two.remove(group)
         }
     }, [])
 

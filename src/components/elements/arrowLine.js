@@ -33,7 +33,6 @@ function ArrowLine(props) {
         } else {
             selectorInstance.pointCircle1Group.opacity = 0
             selectorInstance.pointCircle2Group.opacity = 0
-            selectorInstance && selectorInstance.hide()
             two.update()
             document.getElementById(`${groupObject.id}`) &&
                 document
@@ -220,9 +219,7 @@ function ArrowLine(props) {
         }
 
         return () => {
-            console.log('UNMOUNTING in Divider', group)
-            // clean garbage by removing instance
-            // two.remove(group)
+            two.remove(group)
         }
     }, [])
 
