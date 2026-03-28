@@ -226,6 +226,9 @@ function ArrowLine(props) {
         }
     }, [])
 
+    // Syncs visual properties to the Two.js shape when props change.
+    // Props are updated by ElementRenderWrapper (newCanvas.js) whenever componentStore changes,
+    // which happens on GraphQL subscription updates from other users editing this component.
     useEffect(() => {
         if (internalState?.group?.data) {
             let groupInstance = internalState.group.data
@@ -241,6 +244,7 @@ function ArrowLine(props) {
         }
     }, [props.x, props.y, props.metadata])
 
+    // hook for same sync behavior discussed in comment as above
     useEffect(() => {
         if (internalState?.line?.data) {
             let lineInstance = internalState.line.data
@@ -251,6 +255,7 @@ function ArrowLine(props) {
         }
     }, [props.stroke, props.linewidth, props.strokeType])
 
+    // hook for same sync behavior discussed in comment as above
     useEffect(() => {
         if (internalState?.group?.data) {
             updateX1Y1Vertices(

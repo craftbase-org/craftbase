@@ -298,6 +298,9 @@ function Rectangle(props) {
         }
     }, [])
 
+    // Syncs visual properties to the Two.js shape when props change.
+    // Props are updated by ElementRenderWrapper (newCanvas.js) whenever componentStore changes,
+    // which happens on GraphQL subscription updates from other users editing this component.
     useEffect(() => {
         if (internalState?.group?.data) {
             let groupInstance = internalState.group.data

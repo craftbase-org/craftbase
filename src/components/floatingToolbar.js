@@ -444,6 +444,10 @@ const Toolbar = (props) => {
                                 clearDashesOnTwoJSShape(componentState.shape.data)
                             }
                         }
+                        if (componentState?.group?.data?.elementData) {
+                            componentState.group.data.elementData.strokeType =
+                                type === 'solid' ? 'solid' : type
+                        }
                         updateComponent &&
                             updateComponent(
                                 'strokeType',
