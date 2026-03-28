@@ -1,13 +1,14 @@
 import Main from './main'
 import Two from 'two.js'
 import { mergeSegmentsByLinewidth, averageLinewidth } from 'utils/pencilHelper'
+import { strokeTypeToDashes } from 'utils/misc'
 
 export default class PencilFactory extends Main {
     createElement() {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill, width, height, radius, stroke, linewidth, metadata } =
+        const { fill, width, height, radius, stroke, linewidth, metadata, strokeType } =
             this.properties
 
         const hasLwData = metadata.length > 0 && metadata[0].lw !== undefined
@@ -31,6 +32,7 @@ export default class PencilFactory extends Main {
                 path.cap = 'round'
                 path.join = 'round'
                 path.linewidth = averageLinewidth(segmentPoints)
+                path.dashes = strokeTypeToDashes(strokeType)
                 group.add(path)
             })
 
@@ -54,6 +56,7 @@ export default class PencilFactory extends Main {
         }
 
         path.linewidth = linewidth ? linewidth : 1
+        path.dashes = strokeTypeToDashes(strokeType)
 
         this.path = path
         const group = two.makeGroup(path)

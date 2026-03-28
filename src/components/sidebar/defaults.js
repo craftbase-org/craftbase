@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+import React from 'react'
 
 import { useBoardContext } from 'views/Board/board'
 
 const STROKE_TYPES = [
     { label: '—', value: 'solid' },
     { label: '- -', value: 'dashed' },
+    { label: '...', value: 'dotted' },
 ]
 
 const STROKE_WIDTHS = [
@@ -13,14 +14,15 @@ const STROKE_WIDTHS = [
     { label: '4', value: 4, strokeHeight: '4px' },
     { label: '6', value: 6, strokeHeight: '6px' },
 ]
-const ElementsDropdown = () => {
+const DefaultsDropdown = () => {
     const {
         defaultLinewidth,
         setDefaultLinewidthInBoard,
+        defaultStrokeType,
+        setDefaultStrokeTypeInBoard,
         currentElement,
         setCurrentElementInBoard,
     } = useBoardContext()
-    const [selectedStrokeType, setSelectedStrokeType] = useState('solid')
 
     return (
         <div
@@ -71,39 +73,41 @@ const ElementsDropdown = () => {
                 </div>
             </div>
 
-            {/* <div id="stroke-type-section" className="pt-3 px-2">
+            <div id="stroke-type-section" className="pt-3 px-2">
                 <div className="w-full text-black font-normal text-xs pl-0 mb-2">
                     Stroke type
                 </div>
                 <div className="flex gap-2">
-                    {STROKE_TYPES.map(({ label, value }) => (
-                        <button
-                            key={value}
-                            onClick={() => setSelectedStrokeType(value)}
-                            className={`flex-1 w-4 h-6 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
-                                selectedStrokeType === value
-                                    ? 'bg-blues-b50'
-                                    : 'hover:bg-blues-b50'
-                            }`}
-                            style={{
-                                border:
-                                    selectedStrokeType === value
+                    {STROKE_TYPES.map(({ label, value }) => {
+                        const isSelected = (defaultStrokeType ?? 'solid') === value
+                        return (
+                            <button
+                                key={value}
+                                onClick={() => setDefaultStrokeTypeInBoard(value === 'solid' ? null : value)}
+                                className={`flex-1 w-4 h-6 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
+                                    isSelected
+                                        ? 'bg-blues-b50'
+                                        : 'hover:bg-blues-b50'
+                                }`}
+                                style={{
+                                    border: isSelected
                                         ? '2px solid #0052cc'
                                         : '1px solid #e5e7eb',
-                            }}
-                        >
-                            <span
-                                className="text-base font-bold tracking-widest"
-                                style={{ color: '#0052cc' }}
+                                }}
                             >
-                                {label}
-                            </span>
-                        </button>
-                    ))}
+                                <span
+                                    className="text-base font-bold tracking-widest"
+                                    style={{ color: isSelected ? '#0052cc' : '#6b7280' }}
+                                >
+                                    {label}
+                                </span>
+                            </button>
+                        )
+                    })}
                 </div>
-            </div> */}
+            </div>
         </div>
     )
 }
 
-export default ElementsDropdown
+export default DefaultsDropdown

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 
-import { elementOnBlurHandler } from 'utils/misc'
+import { elementOnBlurHandler, strokeTypeToDashes } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import PencilFactory from 'factory/pencil'
 import Toolbar from 'components/floatingToolbar'
@@ -186,6 +186,16 @@ function Pencil(props) {
             two.update()
         }
     }, [props.x, props.y, props.fill, props.width, props.height])
+
+    useEffect(() => {
+        if (internalState?.group?.data) {
+            const dashes = strokeTypeToDashes(props.strokeType)
+            internalState.group.data.children.forEach((child) => {
+                child.dashes = dashes
+            })
+            two.update()
+        }
+    }, [props.strokeType])
 
     function closeToolbar() {
         toggleToolbar(false)

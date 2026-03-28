@@ -22,7 +22,7 @@ import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import Spinner from 'components/common/spinnerWithSize'
 import ColorPicker from 'components/utils/colorPicker'
-import { generateRandomUsernames } from 'utils/misc'
+import { generateRandomUsernames, strokeTypeToDashes, clearDashesOnTwoJSShape } from 'utils/misc'
 
 const BoardContext = createContext()
 
@@ -92,6 +92,7 @@ const BoardViewPage = (props) => {
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
     const [defaultLinewidth, setDefaultLinewidth] = useState(2)
+    const [defaultStrokeType, setDefaultStrokeType] = useState(null)
     const [pencilStrokeColor, setPencilStrokeColor] = useState('#000')
     const [currentElement, setCurrentElement] = useState(null)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
@@ -372,6 +373,10 @@ const BoardViewPage = (props) => {
         setDefaultLinewidth(val)
     }
 
+    const setDefaultStrokeTypeInBoard = (val) => {
+        setDefaultStrokeType(val)
+    }
+
     const setPencilStrokeColorInBoard = (val) => {
         setPencilStrokeColor(val)
     }
@@ -454,6 +459,12 @@ const BoardViewPage = (props) => {
             case 'textColor':
             case 'iconStroke':
                 shape[name] = value
+                break
+            case 'strokeType':
+                shape.dashes = strokeTypeToDashes(value)
+                if (!value || value === 'solid') {
+                    clearDashesOnTwoJSShape(shape)
+                }
                 break
             case 'metadata':
                 if (value && typeof value === 'object') {
@@ -587,6 +598,8 @@ const BoardViewPage = (props) => {
         setSelectedComponentInBoard,
         defaultLinewidth,
         setDefaultLinewidthInBoard,
+        defaultStrokeType,
+        setDefaultStrokeTypeInBoard,
         pencilStrokeColor,
         setPencilStrokeColorInBoard,
         currentElement,
@@ -665,6 +678,7 @@ const BoardViewPage = (props) => {
                             lastAddedElement={lastAddedElement}
                             componentStore={componentStore}
                             defaultLinewidth={defaultLinewidth}
+                            defaultStrokeType={defaultStrokeType}
                             pencilStrokeColor={pencilStrokeColor}
                         />
                     </div>

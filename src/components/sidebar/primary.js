@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react'
 import { useQuery } from '@apollo/client'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import ElementsDropdown from './elementsDropdown'
+import DefaultsDropdown from './defaults'
 import ShapesToolbar from './shapesToolbar'
 import { GET_COMPONENT_TYPES } from 'schema/queries'
 import SpinnerWithSize from 'components/common/spinnerWithSize'
@@ -24,6 +24,7 @@ const PrimarySidebar = () => {
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         defaultLinewidth,
+        defaultStrokeType,
         onCreateBoard,
         createBoardLoading,
     } = useBoardContext()
@@ -79,6 +80,7 @@ const PrimarySidebar = () => {
                         id: generateId,
                         componentType: label,
                         linewidth: defaultLinewidth,
+                        strokeType: defaultStrokeType,
                         stroke: '#000',
                         children: {},
                         metadata: [],
@@ -134,6 +136,7 @@ const PrimarySidebar = () => {
                         id: generateId,
                         componentType: 'newText',
                         linewidth: defaultLinewidth,
+                        strokeType: defaultStrokeType,
                         children: {},
                         metadata: item.metadata || {},
                         x: -9999,
@@ -211,6 +214,7 @@ const PrimarySidebar = () => {
                                     id: generateId,
                                     componentType: label,
                                     linewidth: defaultLinewidth,
+                                    strokeType: defaultStrokeType,
                                     stroke: '#000',
                                     children: {},
                                     metadata: [],
@@ -270,7 +274,7 @@ const PrimarySidebar = () => {
                 className="sidebar-container flex items-center "
             >
                 <div className=" relative ">
-                    <ElementsDropdown />
+                    <DefaultsDropdown />
                 </div>
             </div>
             <div

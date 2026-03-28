@@ -10,6 +10,7 @@ import BorderStyleBox from 'components/utils/borderStyleBox'
 import OpacitySlider from 'components/utils/opacitySlider'
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { properties, TEXT_SIZES_ARRAY } from 'utils/constants'
+import { strokeTypeToDashes, clearDashesOnTwoJSShape } from 'utils/misc'
 import Icon from 'icons/icon'
 
 const ToolbarContainer = styled(motion.div)`
@@ -175,6 +176,7 @@ const Toolbar = (props) => {
         fontWeight: 400,
         borderColor: '#000',
         linewidth: 0,
+        strokeType: null,
         hasUnderline: false,
         opacity: 1,
         hideColorSection: hideColorSection,
@@ -188,6 +190,8 @@ const Toolbar = (props) => {
             draft.colorBg = componentState?.shape?.data?.fill
             draft.borderColor = componentState?.shape?.data?.stroke
             draft.linewidth = componentState?.shape?.data?.linewidth
+            draft.strokeType =
+                componentState?.group?.data?.elementData?.strokeType ?? null
             draft.opacity =
                 componentState?.group?.data?.elementData?.metadata?.opacity ?? 1
         })
@@ -428,6 +432,24 @@ const Toolbar = (props) => {
                 <BorderStyleBox
                     currentColor={state.borderColor}
                     currentWidth={state.linewidth}
+                    currentType={state.strokeType ?? 'solid'}
+                    onChangeStrokeType={(type) => {
+                        setState((draft) => {
+                            draft.strokeType = type === 'solid' ? null : type
+                        })
+                        if (componentState.shape?.data) {
+                            componentState.shape.data.dashes =
+                                strokeTypeToDashes(type)
+                            if (type === 'solid') {
+                                clearDashesOnTwoJSShape(componentState.shape.data)
+                            }
+                        }
+                        updateComponent &&
+                            updateComponent(
+                                'strokeType',
+                                type === 'solid' ? 'solid' : type
+                            )
+                    }}
                     onChangeColor={(color) => {
                         setState((draft) => {
                             draft.borderColor = color

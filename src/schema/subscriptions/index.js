@@ -30,6 +30,7 @@ export const GET_COMPONENT_INFO_SUBSCRIPTION = gql`
             id
             stroke
             linewidth
+            strokeType
             x
             y
             x1
@@ -66,6 +67,7 @@ export const GET_COMPONENTS_FOR_BOARD_SUBSCRIPTION = gql`
             iconStroke
             stroke
             linewidth
+            strokeType
         }
     }
 `

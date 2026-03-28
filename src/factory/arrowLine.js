@@ -1,4 +1,5 @@
 import Main from './main'
+import { strokeTypeToDashes } from 'utils/misc'
 
 export default class ArrowLineFactory extends Main {
     createElement() {
@@ -12,11 +13,13 @@ export default class ArrowLineFactory extends Main {
             y1 = 10,
             y2 = 10,
             linewidth,
+            strokeType,
         } = this.properties
 
         // console.log('arrow line factory x1, y1, x2, y2', x1, y1, x2, y2)
         let line = two.makeArrow(x1, y1, x2, y2)
         line.linewidth = linewidth ? linewidth : 1
+        line.dashes = strokeTypeToDashes(strokeType)
         line.fill = 'none'
         // line.vertices[1].y = 200
         // const centerPointCircle = two.makeEllipse(0, 0, 5, 5)

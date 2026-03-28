@@ -9,6 +9,7 @@ import Toolbar from 'components/floatingToolbar'
 import ElementCreator from 'factory/arrowLine'
 
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
+import { strokeTypeToDashes } from 'utils/misc'
 
 function ArrowLine(props) {
     const [showToolbar, toggleToolbar] = useState(false)
@@ -74,6 +75,8 @@ function ArrowLine(props) {
             x2: props.x2 || 100,
             y1: props.y1 || 10,
             y2: props.y2 || 10,
+            strokeType: props.strokeType,
+            linewidth: props.linewidth,
         })
         // Get all instances of every sub child element
         const {
@@ -243,9 +246,10 @@ function ArrowLine(props) {
             let lineInstance = internalState.line.data
             if (props.stroke) lineInstance.stroke = props.stroke
             if (props.linewidth) lineInstance.linewidth = props.linewidth
+            lineInstance.dashes = strokeTypeToDashes(props.strokeType)
             two.update()
         }
-    }, [props.stroke, props.linewidth])
+    }, [props.stroke, props.linewidth, props.strokeType])
 
     useEffect(() => {
         if (internalState?.group?.data) {

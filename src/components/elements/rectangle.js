@@ -5,7 +5,7 @@ import { useBoardContext } from 'views/Board/board'
 
 import getEditComponents from 'components/utils/editWrapper'
 import ElementFactory from 'factory/rectangle'
-import { elementOnBlurHandler } from 'utils/misc'
+import { elementOnBlurHandler, strokeTypeToDashes } from 'utils/misc'
 import Toolbar from 'components/floatingToolbar'
 
 function Rectangle(props) {
@@ -314,6 +314,13 @@ function Rectangle(props) {
             two.update()
         }
     }, [props.x, props.y, props.width, props.height, props.fill])
+
+    useEffect(() => {
+        if (internalState?.shape?.data) {
+            internalState.shape.data.dashes = strokeTypeToDashes(props.strokeType)
+            two.update()
+        }
+    }, [props.strokeType])
 
     // When pencil mode is active, disable pointer events on this component
     // so resize/drag don't capture events - only pencil drawing should work
