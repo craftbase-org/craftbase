@@ -22,16 +22,18 @@ function Circle(props) {
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
     const stateRefForGroup = useRef()
+    const selectorRef = useRef(null)
+    const toolbarMouseDownRef = useRef(false)
     const two = props.twoJSInstance
-    let selectorInstance = null
-    let toolbarInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
-        if (
-            e?.relatedTarget?.id === 'floating-toolbar' ||
-            e?.relatedTarget?.dataset.parent === 'floating-toolbar'
-        ) {
+        const floatingToolbar = document.getElementById('floating-toolbar')
+        const clickedInsideToolbar =
+            toolbarMouseDownRef.current ||
+            (floatingToolbar && floatingToolbar.contains(e?.relatedTarget))
+        toolbarMouseDownRef.current = false
+        if (clickedInsideToolbar) {
             const getGroupElementFromDOM = document.getElementById(
                 `${stateRefForGroup.current.id}`
             )
@@ -39,7 +41,7 @@ function Circle(props) {
             getGroupElementFromDOM.focus()
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
         } else {
-            selectorInstance && selectorInstance.hide()
+            selectorRef.current && selectorRef.current.hide()
             two.update()
             document.getElementById(`${groupObject.id}`) &&
                 document
@@ -71,6 +73,7 @@ function Circle(props) {
         // Calculate x and y through dividing width and height by 2 or vice versa
         // if x and y are given then multiply width and height into 2
         const offsetHeight = 0
+        let handleUndoSelectorSync = null
 
         const prevX = props.x
         const prevY = props.y
@@ -83,6 +86,14 @@ function Circle(props) {
         const { group, circle } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
         circle.opacity = props.metadata?.opacity ?? 1
+
+        const handleToolbarMouseDown = (e) => {
+            const toolbar = document.getElementById('floating-toolbar')
+            if (toolbar?.contains(e.target)) {
+                toolbarMouseDownRef.current = true
+            }
+        }
+        document.addEventListener('mousedown', handleToolbarMouseDown)
 
         if (props.parentGroup) {
             /** This element will be rendered and scoped in its parent group */
@@ -98,9 +109,22 @@ function Circle(props) {
             stateRefForGroup.current = group
 
             const { selector } = getEditComponents(two, group, 4)
-            selectorInstance = selector
+            selectorRef.current = selector
 
             group.children.unshift(circle)
+
+            handleUndoSelectorSync = (e) => {
+                if (e.detail.elementId === props.id) {
+                    selector.update(
+                        circle.getBoundingClientRect(true).left - 10,
+                        circle.getBoundingClientRect(true).right + 10,
+                        circle.getBoundingClientRect(true).top - 10,
+                        circle.getBoundingClientRect(true).bottom + 10
+                    )
+                }
+            }
+            window.addEventListener('undoSelectorSync', handleUndoSelectorSync)
+
             two.update()
 
             document
@@ -308,6 +332,10 @@ function Circle(props) {
 
         return () => {
             two.remove(group)
+            document.removeEventListener('mousedown', handleToolbarMouseDown)
+            if (handleUndoSelectorSync) {
+                window.removeEventListener('undoSelectorSync', handleUndoSelectorSync)
+            }
         }
     }, [])
 

@@ -198,6 +198,10 @@ const BoardViewPage = (props) => {
     const togglePointer = (pointerVal) => {
         setPointerToggle(pointerVal)
         setPencilMode(false)
+        if (pointerVal) {
+            setSelectedComponent(null)
+            toggleToolbar(false)
+        }
     }
 
     const togglePencilMode = (value) => {
@@ -376,43 +380,16 @@ const BoardViewPage = (props) => {
 
     const setDefaultLinewidthInBoard = (val) => {
         setDefaultLinewidth(val)
+        setPencilDefaultLinewidth(val)
         toggleToolbar(false)
-
-        if (selectedComponent) {
-            if (selectedComponent.shape?.data?.stroke) {
-                selectedComponent.shape.data.linewidth = val
-            }
-            const elementId = selectedComponent?.group?.data?.elementData?.id
-            if (elementId) {
-                updateComponentBulkPropertiesInLocalStore(elementId, { linewidth: val }, false, true)
-            }
-            twoJSInstanceRef.current?.update()
-        }
+        setSelectedComponent(null)
     }
 
     const setDefaultStrokeTypeInBoard = (val) => {
         setDefaultStrokeType(val)
+        setPencilDefaultStrokeType(val)
         toggleToolbar(false)
-
-        if (selectedComponent) {
-            if (selectedComponent.shape?.data) {
-                selectedComponent.shape.data.dashes = strokeTypeToDashes(val)
-                if (!val || val === 'solid') {
-                    clearDashesOnTwoJSShape(selectedComponent.shape.data)
-                }
-            }
-            if (selectedComponent?.group?.data?.elementData) {
-                selectedComponent.group.data.elementData.strokeType =
-                    val === null ? 'solid' : val
-            }
-            const elementId = selectedComponent?.group?.data?.elementData?.id
-            if (elementId) {
-                updateComponentBulkPropertiesInLocalStore(elementId, {
-                    strokeType: val === null ? 'solid' : val,
-                }, false, true)
-            }
-            twoJSInstanceRef.current?.update()
-        }
+        setSelectedComponent(null)
     }
 
     const setPencilStrokeColorInBoard = (val) => {
@@ -569,6 +546,12 @@ const BoardViewPage = (props) => {
                     applyPropertyToTwoJSGroup(group, name, val)
                 })
                 two?.update()
+
+                if (prevProps.width !== undefined || prevProps.height !== undefined) {
+                    window.dispatchEvent(
+                        new CustomEvent('undoSelectorSync', { detail: { elementId: id } })
+                    )
+                }
             }
 
             if (lastEntry.syncDefaults) {

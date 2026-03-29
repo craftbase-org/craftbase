@@ -504,29 +504,48 @@ function addZUI(
 
                 // in case if it's a group selector, it falls under below condition
                 if (shape === null) {
-                    // shape = two.scene
-                    const { x1, x2, y1, y2 } = {
-                        x1: 0,
-                        x2: 10,
-                        y1: 0,
-                        y2: 10,
+                    // When a text input overlay is active (about to blur),
+                    // the click is just dismissing the input — skip creating
+                    // the group selector so no orphaned dotted rectangle
+                    // is left on the canvas.
+                    const activeTextInput =
+                        document.querySelector('.temp-input-area')
+                    if (activeTextInput) {
+                        shape = {}
+                    } else {
+                        // shape = two.scene
+                        const { x1, x2, y1, y2 } = {
+                            x1: 0,
+                            x2: 10,
+                            y1: 0,
+                            y2: 10,
+                        }
+                        const area = two.makePath(
+                            x1,
+                            y1,
+                            x2,
+                            y1,
+                            x2,
+                            y2,
+                            x1,
+                            y2
+                        )
+                        area.fill = 'rgba(0,0,0,0)'
+                        area.opacity = 1
+                        area.linewidth = 1
+                        area.dashes[0] = 4
+                        area.stroke = '#505F79'
+
+                        let newSelectorGroup = two.makeGroup(area)
+
+                        const m = zui.clientToSurface(e.clientX, e.clientY)
+                        mouse.copy(m)
+                        newSelectorGroup.position.copy(mouse)
+
+                        two.update()
+                        shape = newSelectorGroup
+                        isGroupSelector = true
                     }
-                    const area = two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
-                    area.fill = 'rgba(0,0,0,0)'
-                    area.opacity = 1
-                    area.linewidth = 1
-                    area.dashes[0] = 4
-                    area.stroke = '#505F79'
-
-                    let newSelectorGroup = two.makeGroup(area)
-
-                    const m = zui.clientToSurface(e.clientX, e.clientY)
-                    mouse.copy(m)
-                    newSelectorGroup.position.copy(mouse)
-
-                    two.update()
-                    shape = newSelectorGroup
-                    isGroupSelector = true
                 }
 
                 // inserting prevX and prevY to diff at updateToGlobalState function
@@ -961,25 +980,8 @@ function addZUI(
                     updateToGlobalState(newShapeData, {})
                 }
 
-                if (arrowDrawElement && arrowDrawElement.children?.[0]) {
-                    const groupEl = arrowDrawElement
-                    const lineEl = arrowDrawElement.children[0]
-                    const componentInternalState = {
-                        element: {
-                            [lineEl.id]: lineEl,
-                            [groupEl.id]: groupEl,
-                        },
-                        group: { id: groupEl.id, data: groupEl },
-                        shape: {
-                            type: groupEl.elementData?.componentType,
-                            id: lineEl.id,
-                            data: lineEl,
-                        },
-                        text: { data: {} },
-                        icon: { data: {} },
-                    }
-                    setSelectedComponentInBoard(componentInternalState)
-                }
+                // TODO: select element here if tool lock is active
+                setSelectedComponentInBoard(null)
 
                 arrowDrawElement = null
                 setArrowDrawModeOff()
@@ -1058,6 +1060,7 @@ function addZUI(
 
                 // React renders the element asynchronously; poll until it appears in two.scene.children,
                 // then remove the preview so there is no blank gap between preview removal and final render
+                // TODO: select element here if tool lock is active
                 const pendingSelectionId = finalId
                 const waitForNewElement = (id, retries = 0) => {
                     const el = two.scene.children.find(
@@ -1068,22 +1071,6 @@ function addZUI(
                             two.remove(capturedPreview)
                             two.update()
                         }
-                        const shapeEl = el.children[0]
-                        const componentInternalState = {
-                            element: {
-                                [shapeEl.id]: shapeEl,
-                                [el.id]: el,
-                            },
-                            group: { id: el.id, data: el },
-                            shape: {
-                                type: el.elementData?.componentType,
-                                id: shapeEl.id,
-                                data: shapeEl,
-                            },
-                            text: { data: {} },
-                            icon: { data: {} },
-                        }
-                        setSelectedComponentInBoard(componentInternalState)
                     } else if (retries < 30) {
                         requestAnimationFrame(() =>
                             waitForNewElement(id, retries + 1)
@@ -1093,6 +1080,7 @@ function addZUI(
                 requestAnimationFrame(() =>
                     waitForNewElement(pendingSelectionId)
                 )
+                setSelectedComponentInBoard(null)
 
                 drawOrigin = null
                 drawCurrentCoords = null
@@ -1109,26 +1097,9 @@ function addZUI(
                 break
             }
             case SCENARIO_JUST_ADDED_ELEMENT:
-                if (lastPlacedElement && lastPlacedElement.children?.[0]) {
-                    const groupEl = lastPlacedElement
-                    const shapeEl = lastPlacedElement.children[0]
-                    const componentInternalState = {
-                        element: {
-                            [shapeEl.id]: shapeEl,
-                            [groupEl.id]: groupEl,
-                        },
-                        group: { id: groupEl.id, data: groupEl },
-                        shape: {
-                            type: groupEl.elementData?.componentType,
-                            id: shapeEl.id,
-                            data: shapeEl,
-                        },
-                        text: { data: {} },
-                        icon: { data: {} },
-                    }
-                    setSelectedComponentInBoard(componentInternalState)
-                    lastPlacedElement = null
-                }
+                // TODO: select element here if tool lock is active
+                setSelectedComponentInBoard(null)
+                lastPlacedElement = null
                 setPointerElement('pointer')
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
@@ -1406,7 +1377,14 @@ function addZUI(
         distance = d
     }
 
-    return { zui, mousemove }
+    return {
+        zui,
+        mousemove,
+        resetDragState: () => {
+            dragging = false
+            shape = {}
+        },
+    }
 }
 
 const ElementRenderWrapper = (
@@ -1558,6 +1536,10 @@ const Canvas = (props) => {
             // this is especially for capturing INSERT operation
             // where I can assign mousemove event listener to the new component
             let domElement = twoJSInstance?.renderer?.domElement
+
+            // Reset stale drag state so a resize followed by a store update
+            // (e.g. undo) doesn't leave the element dragging on next mousemove
+            zuiInstance.resetDragState()
 
             domElement.addEventListener(
                 'mousemove',
