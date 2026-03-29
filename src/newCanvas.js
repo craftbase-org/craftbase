@@ -39,6 +39,7 @@ function getComponentSchema(obj, boardId) {
         height: obj.height,
         linewidth: obj.linewidth,
         stroke: obj.stroke,
+        strokeType: obj.strokeType,
     }
 }
 
@@ -65,6 +66,7 @@ function getComponentSchema(obj, boardId) {
 
 var isDrawing
 var defaultLinewidthValue = 1
+var defaultStrokeTypeValue = null
 var pencilStrokeColorValue = '#000'
 
 function addZUI(
@@ -1164,6 +1166,7 @@ function addZUI(
                     y: 0,
                     linewidth: defaultLinewidthValue,
                     stroke: pencilStrokeColorValue,
+                    strokeType: defaultStrokeTypeValue,
                 }
 
                 pencilComponentData.x = Math.floor(simplifiedPoints[0]?.x || 0)
@@ -1593,8 +1596,12 @@ const Canvas = (props) => {
     }, [props.isPencilMode])
 
     useEffect(() => {
-        defaultLinewidthValue = props.defaultLinewidth || 1
-    }, [props.defaultLinewidth])
+        defaultLinewidthValue = props.pencilDefaultLinewidth || 1
+    }, [props.pencilDefaultLinewidth])
+
+    useEffect(() => {
+        defaultStrokeTypeValue = props.pencilDefaultStrokeType || null
+    }, [props.pencilDefaultStrokeType])
 
     useEffect(() => {
         pencilStrokeColorValue = props.pencilStrokeColor || '#000'

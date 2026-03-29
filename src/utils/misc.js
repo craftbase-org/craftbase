@@ -1,3 +1,19 @@
+export function strokeTypeToDashes(strokeType) {
+    if (strokeType === 'dashed') return [8]
+    if (strokeType === 'dotted') return [4]
+    return []
+}
+
+// Two.js SVG renderer only sets stroke-dasharray when dashes.length > 0,
+// but never removes the attribute when dashes = []. Call this after setting
+// dashes = [] on a shape to ensure the SVG attribute is cleared.
+export function clearDashesOnTwoJSShape(shape) {
+    if (shape?._renderer?.elem) {
+        shape._renderer.elem.removeAttribute('stroke-dasharray')
+        shape._renderer.elem.removeAttribute('stroke-dashoffset')
+    }
+}
+
 export const elementOnBlurHandler = (e, selectorInstance, two) => {
     // Callback for add and remove event listener for floating showToolbar
     const blurListenerCB = (e) => {
@@ -72,11 +88,11 @@ export const generateUUID = () => {
             let r = Math.random() * 16 //random number between 0 and 16
             if (d > 0) {
                 //Use timestamp until depleted
-                r = (d + r) % 16 | 0
+                r = ((d + r) % 16) | 0
                 d = Math.floor(d / 16)
             } else {
                 //Use microseconds since page-load if supported
-                r = (d2 + r) % 16 | 0
+                r = ((d2 + r) % 16) | 0
                 d2 = Math.floor(d2 / 16)
             }
             return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)

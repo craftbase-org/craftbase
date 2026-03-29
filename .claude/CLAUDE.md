@@ -50,7 +50,7 @@ Reusable React UI components.
 
 - **`sidebar/`**: Left sidebar UI
     - `primary.js` - Main sidebar component
-    - `elementsDropdown.js` - Element selection dropdown
+    - `defaults.js` - Defaults section sidebar (where default stroke width and stroke type can be applied)
     - `shareLinkPopup.js` - Share functionality popup
     - `userDetailsPopup.js` - User information popup
 
@@ -201,6 +201,7 @@ See detailed notes in `.claude/context/` for feature-specific implementation det
   fill: text, // default: '#f4f4f2'
   stroke: text | null,
   linewidth: integer | null,
+  strokeType: text | null,
   radius: integer | null,
   iconStroke: text | null,
   textColor: text | null,

@@ -1,14 +1,16 @@
 import Main from './main'
+import { strokeTypeToDashes } from 'utils/misc'
 
 export default class DividerFactory extends Main {
     createElement() {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill, x1, x2, y1, y2 } = this.properties
+        const { fill, x1, x2, y1, y2, strokeType } = this.properties
 
         let line = two.makeLine(x1, y1, x2, y2)
         line.linewidth = 3
+        line.dashes = strokeTypeToDashes(strokeType)
 
         const pointCircle1 = two.makeEllipse(0, 0, 5, 5)
         pointCircle1.fill = '#FFF'

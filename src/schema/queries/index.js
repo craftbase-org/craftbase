@@ -44,6 +44,7 @@ export const GET_COMPONENTS_FOR_BOARD_QUERY = gql`
             iconStroke
             stroke
             linewidth
+            strokeType
             textColor
         }
     }
@@ -59,6 +60,7 @@ export const GET_COMPONENT_INFO_QUERY = gql`
             id
             stroke
             linewidth
+            strokeType
             x
             y
             x1

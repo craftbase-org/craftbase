@@ -17,3 +17,7 @@ It toggles off when
 
 The updateComponent function in floatingToolbar.js (lines 189-201) has the entire updateComponentInfo mutation call with postToolbarUpdate() (which just calls
 two.update() via props handler fn) runs. So fill, border (stroke) color, and border(stroke) width changes (from toolbar) update the canvas visually but also gets persisted to the DB (when mutation is completed).
+
+## Caveat
+
+There is a separate floating toolbar for pencil (pencil mode), i.e. `pencilToolbar.js` which is not separate from `floatingToolbar.js` which is common for all other elements but does not apply to pencil.

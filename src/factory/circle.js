@@ -1,12 +1,13 @@
 import Main from './main'
 import { color_blue } from 'utils/constants'
+import { strokeTypeToDashes } from 'utils/misc'
 
 export default class CircleFactory extends Main {
     createElement() {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill, width, height, radius, stroke, linewidth } =
+        const { fill, width, height, radius, stroke, linewidth, strokeType } =
             this.properties
 
         // Implement core element
@@ -17,6 +18,7 @@ export default class CircleFactory extends Main {
 
         circle.stroke = stroke ? stroke : '#000'
         circle.linewidth = linewidth ? linewidth : 1
+        circle.dashes = strokeTypeToDashes(strokeType)
 
         this.circle = circle
 
