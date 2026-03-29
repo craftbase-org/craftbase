@@ -51,6 +51,8 @@ const BorderStyleBox = ({
                             className="text-base font-bold tracking-widest"
                             style={{
                                 color: isSelected ? '#0052cc' : '#6b7280',
+                                paddingBottom:
+                                    type.value === 'dotted' ? '0.4rem' : '0px',
                             }}
                         >
                             {type.display}

@@ -45,45 +45,6 @@ const PencilToolbar = ({
             />
             <hr className="my-2 w-full" />
             <div className="w-full text-left text-xs">
-                <label htmlFor="pencil-stroke-type-row">Stroke Type</label>
-                <div
-                    id="pencil-stroke-type-row"
-                    data-parent="floating-toolbar"
-                    className="flex gap-2 my-2 w-48"
-                >
-                    {STROKE_TYPES.map((type) => {
-                        const isSelected = currentType === type.value
-                        return (
-                            <button
-                                key={type.value}
-                                data-parent="floating-toolbar"
-                                onClick={() => onStrokeTypeChange(type.value)}
-                                className={`flex-1 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
-                                    isSelected
-                                        ? 'bg-blues-b50'
-                                        : 'hover:bg-blues-b50'
-                                }`}
-                                style={{
-                                    border: isSelected
-                                        ? '2px solid #0052cc'
-                                        : '1px solid #e5e7eb',
-                                }}
-                            >
-                                <span
-                                    className="text-base font-bold tracking-widest"
-                                    style={{
-                                        color: isSelected ? '#0052cc' : '#6b7280',
-                                    }}
-                                >
-                                    {type.display}
-                                </span>
-                            </button>
-                        )
-                    })}
-                </div>
-            </div>
-            <hr className="my-2 w-full" />
-            <div className="w-full text-left text-xs">
                 <label htmlFor="pencil-border-widths-row">Stroke Width</label>
                 <div
                     id="pencil-border-widths-row"
@@ -117,6 +78,51 @@ const PencilToolbar = ({
                                             : '#6b7280',
                                     }}
                                 />
+                            </button>
+                        )
+                    })}
+                </div>
+            </div>
+            <hr className="my-2 w-full" />
+            <div className="w-full text-left text-xs">
+                <label htmlFor="pencil-stroke-type-row">Stroke Type</label>
+                <div
+                    id="pencil-stroke-type-row"
+                    data-parent="floating-toolbar"
+                    className="flex gap-2 my-2 w-48"
+                >
+                    {STROKE_TYPES.map((type) => {
+                        const isSelected = currentType === type.value
+                        return (
+                            <button
+                                key={type.value}
+                                data-parent="floating-toolbar"
+                                onClick={() => onStrokeTypeChange(type.value)}
+                                className={`flex-1 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
+                                    isSelected
+                                        ? 'bg-blues-b50'
+                                        : 'hover:bg-blues-b50'
+                                }`}
+                                style={{
+                                    border: isSelected
+                                        ? '2px solid #0052cc'
+                                        : '1px solid #e5e7eb',
+                                }}
+                            >
+                                <span
+                                    className="text-base font-bold tracking-widest"
+                                    style={{
+                                        color: isSelected
+                                            ? '#0052cc'
+                                            : '#6b7280',
+                                        paddingBottom:
+                                            type.value === 'dotted'
+                                                ? '0.4rem'
+                                                : '0px',
+                                    }}
+                                >
+                                    {type.display}
+                                </span>
                             </button>
                         )
                     })}

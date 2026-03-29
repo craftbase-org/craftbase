@@ -93,6 +93,8 @@ const BoardViewPage = (props) => {
     const [selectedComponent, setSelectedComponent] = useState(null)
     const [defaultLinewidth, setDefaultLinewidth] = useState(2)
     const [defaultStrokeType, setDefaultStrokeType] = useState(null)
+    const [pencilDefaultLinewidth, setPencilDefaultLinewidth] = useState(2)
+    const [pencilDefaultStrokeType, setPencilDefaultStrokeType] = useState(null)
     const [pencilStrokeColor, setPencilStrokeColor] = useState('#000')
     const [currentElement, setCurrentElement] = useState(null)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
@@ -169,15 +171,6 @@ const BoardViewPage = (props) => {
         stateRefForComponentStore.current = componentStore
     }, [componentStore])
 
-    useEffect(() => {
-        if (selectedComponent) {
-            const linewidth = selectedComponent?.shape?.data?.linewidth
-            const strokeType =
-                selectedComponent?.group?.data?.elementData?.strokeType ?? null
-            if (linewidth !== undefined) setDefaultLinewidth(linewidth)
-            setDefaultStrokeType(strokeType === 'solid' ? null : strokeType)
-        }
-    }, [selectedComponent])
 
     if (getComponentsForBoardLoading) {
         return (
@@ -277,7 +270,7 @@ const BoardViewPage = (props) => {
     }
 
     // Snapshots only the properties being changed before applying bulk updates
-    const updateComponentBulkPropertiesInLocalStore = (id, bulkObj, skipHistory = false) => {
+    const updateComponentBulkPropertiesInLocalStore = (id, bulkObj, skipHistory = false, syncDefaults = false) => {
         const userId = localStorage.getItem('userId')
 
         if (!skipHistory) {
@@ -295,6 +288,7 @@ const BoardViewPage = (props) => {
                 id,
                 prevProps,
                 bulkObj,
+                syncDefaults,
             })
         }
 
@@ -306,13 +300,6 @@ const BoardViewPage = (props) => {
         }
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
-
-        if (bulkObj.linewidth !== undefined) setDefaultLinewidth(bulkObj.linewidth)
-        if (bulkObj.strokeType !== undefined) {
-            setDefaultStrokeType(
-                bulkObj.strokeType === 'solid' ? null : bulkObj.strokeType
-            )
-        }
 
         updateComponentInfo({
             variables: {
@@ -397,7 +384,7 @@ const BoardViewPage = (props) => {
             }
             const elementId = selectedComponent?.group?.data?.elementData?.id
             if (elementId) {
-                updateComponentBulkPropertiesInLocalStore(elementId, { linewidth: val })
+                updateComponentBulkPropertiesInLocalStore(elementId, { linewidth: val }, false, true)
             }
             twoJSInstanceRef.current?.update()
         }
@@ -422,7 +409,7 @@ const BoardViewPage = (props) => {
             if (elementId) {
                 updateComponentBulkPropertiesInLocalStore(elementId, {
                     strokeType: val === null ? 'solid' : val,
-                })
+                }, false, true)
             }
             twoJSInstanceRef.current?.update()
         }
@@ -584,11 +571,15 @@ const BoardViewPage = (props) => {
                 two?.update()
             }
 
-            if (prevProps.linewidth !== undefined) setDefaultLinewidth(prevProps.linewidth)
+            if (lastEntry.syncDefaults) {
+                if (prevProps.linewidth !== undefined) setDefaultLinewidth(prevProps.linewidth)
+                if (prevProps.strokeType !== undefined) {
+                    setDefaultStrokeType(
+                        prevProps.strokeType === 'solid' ? null : prevProps.strokeType
+                    )
+                }
+            }
             if (prevProps.strokeType !== undefined) {
-                setDefaultStrokeType(
-                    prevProps.strokeType === 'solid' ? null : prevProps.strokeType
-                )
                 if (selectedComponent?.group?.data?.elementData) {
                     selectedComponent.group.data.elementData.strokeType =
                         prevProps.strokeType
@@ -670,11 +661,11 @@ const BoardViewPage = (props) => {
                         {isPencilMode && (
                             <PencilToolbar
                                 pencilStrokeColor={pencilStrokeColor}
-                                defaultLinewidth={defaultLinewidth}
-                                defaultStrokeType={defaultStrokeType}
+                                defaultLinewidth={pencilDefaultLinewidth}
+                                defaultStrokeType={pencilDefaultStrokeType}
                                 onColorChange={(color) => setPencilStrokeColor(color)}
-                                onLinewidthChange={(value) => setDefaultLinewidth(value)}
-                                onStrokeTypeChange={(type) => setDefaultStrokeType(type === 'solid' ? null : type)}
+                                onLinewidthChange={(value) => setPencilDefaultLinewidth(value)}
+                                onStrokeTypeChange={(type) => setPencilDefaultStrokeType(type === 'solid' ? null : type)}
                             />
                         )}
                         <Canvas
@@ -687,6 +678,8 @@ const BoardViewPage = (props) => {
                             componentStore={componentStore}
                             defaultLinewidth={defaultLinewidth}
                             defaultStrokeType={defaultStrokeType}
+                            pencilDefaultLinewidth={pencilDefaultLinewidth}
+                            pencilDefaultStrokeType={pencilDefaultStrokeType}
                             pencilStrokeColor={pencilStrokeColor}
                         />
                     </div>

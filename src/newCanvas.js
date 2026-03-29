@@ -1596,12 +1596,12 @@ const Canvas = (props) => {
     }, [props.isPencilMode])
 
     useEffect(() => {
-        defaultLinewidthValue = props.defaultLinewidth || 1
-    }, [props.defaultLinewidth])
+        defaultLinewidthValue = props.pencilDefaultLinewidth || 1
+    }, [props.pencilDefaultLinewidth])
 
     useEffect(() => {
-        defaultStrokeTypeValue = props.defaultStrokeType || null
-    }, [props.defaultStrokeType])
+        defaultStrokeTypeValue = props.pencilDefaultStrokeType || null
+    }, [props.pencilDefaultStrokeType])
 
     useEffect(() => {
         pencilStrokeColorValue = props.pencilStrokeColor || '#000'

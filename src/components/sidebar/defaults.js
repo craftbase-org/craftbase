@@ -106,6 +106,10 @@ const DefaultsDropdown = () => {
                                         color: isSelected
                                             ? '#0052cc'
                                             : '#6b7280',
+                                        paddingBottom:
+                                            value === 'dotted'
+                                                ? '0.4rem'
+                                                : '0px',
                                     }}
                                 >
                                     {label}
