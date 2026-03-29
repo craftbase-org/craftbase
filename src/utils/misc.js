@@ -14,13 +14,21 @@ export function clearDashesOnTwoJSShape(shape) {
     }
 }
 
-export const elementOnBlurHandler = (e, selectorInstance, two) => {
+export const elementOnBlurHandler = (e, selectorInstanceOrHide, two) => {
+    const doHide = () => {
+        if (typeof selectorInstanceOrHide === 'function') {
+            selectorInstanceOrHide()
+        } else {
+            selectorInstanceOrHide && selectorInstanceOrHide.hide()
+        }
+    }
+
     // Callback for add and remove event listener for floating showToolbar
     const blurListenerCB = (e) => {
         if (e?.relatedTarget?.dataset.parent === 'floating-toolbar') {
             // no action required
         } else {
-            selectorInstance && selectorInstance.hide()
+            doHide()
             // toggleToolbar(false);
         }
     }
@@ -34,7 +42,7 @@ export const elementOnBlurHandler = (e, selectorInstance, two) => {
             .getElementById('floating-toolbar')
             .addEventListener('blur', blurListenerCB)
     } else {
-        selectorInstance && selectorInstance.hide()
+        doHide()
         // toggleToolbar(false);
     }
     two.update()

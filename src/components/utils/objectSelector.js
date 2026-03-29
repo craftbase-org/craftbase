@@ -88,10 +88,14 @@ export default class Selector {
         this.group.add(areaGroup)
         this.two.update()
 
-        const clearSelector = () => {
-            this.areaGroup.opacity = 0
+        // Prevent the selector overlay from intercepting pointer events.
+        // When the selector is a shared singleton in two.scene (not nested
+        // inside a dragger-picker group), its SVG elements sit on top of all
+        // elements. Without this, clicks land on the selector instead of the
+        // element underneath, breaking the dragger-picker path lookup.
+        if (areaGroup._renderer?.elem) {
+            areaGroup._renderer.elem.style.pointerEvents = 'none'
         }
-        window.addEventListener('clearSelector', clearSelector, false)
     }
 
     show() {

@@ -11,8 +11,7 @@ import {
     INSERT_BULK_COMPONENTS,
     DELETE_BULK_COMPONENTS,
 } from 'schema/mutations'
-import ObjectSelector from 'components/utils/objectSelector'
-import getEditComponents from 'components/utils/editWrapper'
+import { updateSharedSelector, hideSharedSelector } from 'components/utils/sharedSelector'
 import { elementOnBlurHandler, generateUUID } from 'utils/misc'
 
 function getComponentSchema(obj, boardId, parentGroupX, parentGroupY) {
@@ -74,8 +73,6 @@ function GroupedObjectWrapper(props) {
     // const [twoGroupInstance,setTwoGroupInstance] = useState(null)
     let rectangleInstance = null
     let groupInstance = null
-    let selectorInstance = null
-
     function onBlurHandler(e) {
         // console.log(
         //     'groupObject on blur handler',
@@ -83,7 +80,7 @@ function GroupedObjectWrapper(props) {
         //     groupInstance.translation.x,
         //     groupInstance.translation.y
         // )
-        elementOnBlurHandler(e, selectorInstance, two)
+        elementOnBlurHandler(e, hideSharedSelector, two)
         // on un-group, these components will return back to their individual state
         // with their new positions depending on group's x,y was changed
         if (deleteGroupElements === null) {
@@ -369,9 +366,6 @@ function GroupedObjectWrapper(props) {
 
         // console.log('Grouped Objects Wrapper', props.twoJSInstance)
 
-        const { selector } = getEditComponents(two, group, 4)
-        selectorInstance = selector
-
         two.update()
         // console.log(
         //     'group object translation',
@@ -396,7 +390,7 @@ function GroupedObjectWrapper(props) {
         getGroupElementFromDOM.focus()
 
         // simulating click behvior
-        selector.update(
+        updateSharedSelector(
             rectangle.getBoundingClientRect(true).left,
             rectangle.getBoundingClientRect(true).right,
             rectangle.getBoundingClientRect(true).top,
@@ -406,7 +400,7 @@ function GroupedObjectWrapper(props) {
 
         interact(`#${group.id}`).on('click', () => {
             console.log('on click ')
-            selector.update(
+            updateSharedSelector(
                 rectangle.getBoundingClientRect(true).left,
                 rectangle.getBoundingClientRect(true).right,
                 rectangle.getBoundingClientRect(true).top,
@@ -459,7 +453,7 @@ function GroupedObjectWrapper(props) {
                         rectangle.width = rect.width
                         rectangle.height = rect.height
 
-                        selector.update(
+                        updateSharedSelector(
                             rectangle.getBoundingClientRect(true).left,
                             rectangle.getBoundingClientRect(true).right,
                             rectangle.getBoundingClientRect(true).top,

@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useImmer } from 'use-immer'
 import { useBoardContext } from 'views/Board/board'
 
-import getEditComponents from 'components/utils/editWrapper'
+import { updateSharedSelector, hideSharedSelector } from 'components/utils/sharedSelector'
 import { elementOnBlurHandler } from 'utils/misc'
 import { setPeronsalInformation } from 'store/actions/main'
 import { UPDATE_ELEMENT_DATA } from 'store/types'
@@ -20,11 +20,10 @@ function Rectangle(props) {
     const [internalState, setInternalState] = useImmer({})
     const dispatch = useDispatch()
     const two = props.twoJSInstance
-    let selectorInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
-        elementOnBlurHandler(e, selectorInstance, two)
+        elementOnBlurHandler(e, hideSharedSelector, two)
     }
 
     function onFocusHandler(e) {
@@ -53,8 +52,6 @@ function Rectangle(props) {
             /** This element will render by creating it's own group wrapper */
             groupObject = group
 
-            const { selector } = getEditComponents(two, group, 4)
-            selectorInstance = selector
             group.children.unshift(rectangle)
             two.update()
 
@@ -81,21 +78,9 @@ function Rectangle(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            // If component is in area of selection frame/tool, programmatically enable it's selector
-            if (selectedComponents.includes(props.id)) {
-                console.log('selectedComponents', selectedComponents)
-
-                selector.update(
-                    rectangle.getBoundingClientRect(true).left - 10,
-                    rectangle.getBoundingClientRect(true).right + 10,
-                    rectangle.getBoundingClientRect(true).top - 10,
-                    rectangle.getBoundingClientRect(true).bottom + 10
-                )
-            }
-
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ')
-                selector.update(
+                updateSharedSelector(
                     rectangle.getBoundingClientRect(true).left - 10,
                     rectangle.getBoundingClientRect(true).right + 10,
                     rectangle.getBoundingClientRect(true).top - 10,
@@ -122,7 +107,7 @@ function Rectangle(props) {
                             rectangle.width = rect.width
                             rectangle.height = rect.height
 
-                            selector.update(
+                            updateSharedSelector(
                                 rectangle.getBoundingClientRect(true).left - 10,
                                 rectangle.getBoundingClientRect(true).right +
                                     10,

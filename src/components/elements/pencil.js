@@ -3,7 +3,6 @@ import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 
 import { elementOnBlurHandler, strokeTypeToDashes } from 'utils/misc'
-import getEditComponents from 'components/utils/editWrapper'
 import PencilFactory from 'factory/pencil'
 import Toolbar from 'components/floatingToolbar'
 
@@ -14,7 +13,6 @@ function Pencil(props) {
     const [internalState, setInternalState] = useImmer({})
 
     const two = props.twoJSInstance
-    let selectorInstance = null
     let toolbarInstance = null
     let groupObject = null
 
@@ -73,9 +71,6 @@ function Pencil(props) {
         } else {
             /** This element will render by creating it's own group wrapper */
             groupObject = group
-
-            const { selector } = getEditComponents(two, group, 4)
-            selectorInstance = selector
 
             if (path) {
                 group.children.unshift(path)

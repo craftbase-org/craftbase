@@ -8,7 +8,6 @@ import { useBoardContext } from 'views/Board/board'
 
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import { elementOnBlurHandler, strokeTypeToDashes } from 'utils/misc'
-import getEditComponents from 'components/utils/editWrapper'
 
 import Toolbar from 'components/floatingToolbar'
 import ElementCreator from 'factory/divider'

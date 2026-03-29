@@ -4,7 +4,7 @@ import { useImmer } from 'use-immer'
 import { useBoardContext } from 'views/Board/board'
 
 import { elementOnBlurHandler } from 'utils/misc'
-import getEditComponents from 'components/utils/editWrapper'
+import { updateSharedSelector, hideSharedSelector, getSharedSelectorInstance } from 'components/utils/sharedSelector'
 import NewTextFactory from 'factory/newText'
 import Toolbar from 'components/floatingToolbar'
 import { TEXT_SIZES_OBJECT } from 'utils/constants'
@@ -30,15 +30,45 @@ function NewText(props) {
     const two = props.twoJSInstance
 
     // Component-level mutable refs matching the pattern used in other elements
-    let selectorInstance = null
     let groupObject = null
+    // Named corner-circle mousedown handlers so they can be detached on deselect
+    let cornerMousedownHandlers = []
 
     function onBlurHandler(e) {
-        elementOnBlurHandler(e, selectorInstance, two)
+        elementOnBlurHandler(e, hideSharedSelector, two)
         document.getElementById(`${groupObject.id}`) &&
             document
                 .getElementById(`${groupObject.id}`)
                 .removeEventListener('keydown', handleKeyDown)
+    }
+
+    function detachCornerHandlers() {
+        const sel = getSharedSelectorInstance()
+        if (!sel) return
+        ;[sel.circle1, sel.circle2, sel.circle3, sel.circle4]
+            .filter(Boolean)
+            .forEach((circle, index) => {
+                const elem = circle._renderer?.elem
+                if (!elem) return
+                elem.removeEventListener('mousedown', cornerMousedownHandlers[index])
+                elem.style.pointerEvents = 'none'
+            })
+    }
+
+    const resizeCursorsForCorners = ['nwse-resize', 'nesw-resize', 'nwse-resize', 'nesw-resize']
+
+    function attachCornerHandlers() {
+        const sel = getSharedSelectorInstance()
+        if (!sel) return
+        ;[sel.circle1, sel.circle2, sel.circle3, sel.circle4]
+            .filter(Boolean)
+            .forEach((circle, index) => {
+                const elem = circle._renderer?.elem
+                if (!elem) return
+                elem.style.cursor = resizeCursorsForCorners[index]
+                elem.style.pointerEvents = 'all'
+                elem.addEventListener('mousedown', cornerMousedownHandlers[index])
+            })
     }
 
     function handleKeyDown(e) {
@@ -92,27 +122,10 @@ function NewText(props) {
         twoTextRef.current = twoText
         groupObject = group
 
-        // Selector sits inside the group; twoText is already at children[0]
-        const { selector } = getEditComponents(two, group, 4)
-        selectorInstance = selector
         two.update()
 
         // ── Resize via corner handles (proportional font-size scaling) ──
         // Adapted from text_resize.html: distance-based proportional resize
-        const cornerCircles = [
-            selectorInstance.circle1,
-            selectorInstance.circle2,
-            selectorInstance.circle3,
-            selectorInstance.circle4,
-        ].filter(Boolean)
-
-        const resizeCursors = [
-            'nwse-resize', // circle1 = TL
-            'nesw-resize', // circle2 = TR
-            'nwse-resize', // circle3 = BR
-            'nesw-resize', // circle4 = BL
-        ]
-
         let resizeState = null
 
         const onResizeMouseMove = (e) => {
@@ -132,7 +145,7 @@ function NewText(props) {
 
             // Update selector bounds to match new text size
             const bRect = twoText.getBoundingClientRect(true)
-            selectorInstance.update(
+            updateSharedSelector(
                 bRect.left - 4,
                 bRect.right + 4,
                 bRect.top - 4,
@@ -166,16 +179,12 @@ function NewText(props) {
             })
         }
 
-        cornerCircles.forEach((circle, index) => {
-            const circleElem = circle._renderer?.elem
-            if (!circleElem) return
-
-            circleElem.style.cursor = resizeCursors[index]
-            circleElem.style.pointerEvents = 'all'
-
-            circleElem.addEventListener('mousedown', (e) => {
+        // Build named corner-circle mousedown handlers (attached/detached on select/deselect)
+        for (let index = 0; index < 4; index++) {
+            cornerMousedownHandlers[index] = (e) => {
                 // Only allow resize when selector is visible
-                if (selectorInstance.areaGroup.opacity === 0) return
+                const sel = getSharedSelectorInstance()
+                if (!sel || sel.areaGroup.opacity === 0) return
 
                 e.stopPropagation()
                 e.preventDefault()
@@ -199,8 +208,8 @@ function NewText(props) {
 
                 window.addEventListener('mousemove', onResizeMouseMove)
                 window.addEventListener('mouseup', onResizeMouseUp)
-            })
-        })
+            }
+        }
 
         document
             .getElementById(group.id)
@@ -326,13 +335,12 @@ function NewText(props) {
 
             input.onfocus = function () {
                 const bRect = twoText.getBoundingClientRect(true)
-                selectorInstance.update(
+                updateSharedSelector(
                     bRect.left - 4,
                     bRect.right + 4,
                     bRect.top - 4,
                     bRect.bottom + 4
                 )
-                selectorInstance.show()
                 two.update()
             }
 
@@ -366,13 +374,13 @@ function NewText(props) {
                 const newWidth = Math.round(bRect.width || 60)
                 const newHeight = Math.round(bRect.height || twoText.size)
 
-                selectorInstance.update(
+                updateSharedSelector(
                     bRect.left - 4,
                     bRect.right + 4,
                     bRect.top - 4,
                     bRect.bottom + 4
                 )
-                selectorInstance.hide()
+                hideSharedSelector()
                 two.update()
 
                 updateComponentBulkPropertiesInLocalStore(props.id, {
@@ -407,12 +415,13 @@ function NewText(props) {
         // Single click → show selector + toolbar
         interact(`#${group.id}`).on('click', () => {
             const bRect = twoText.getBoundingClientRect(true)
-            selector.update(
+            updateSharedSelector(
                 bRect.left - 4,
                 bRect.right + 4,
                 bRect.top - 4,
                 bRect.bottom + 4
             )
+            attachCornerHandlers()
             two.update()
             toggleToolbar(true)
         })
@@ -423,7 +432,8 @@ function NewText(props) {
             const isOnGroup = path.some((el) => el.id === group.id)
             const isOnToolbar = path.some((el) => el.id === 'floating-toolbar')
             if (!isOnGroup && !isOnToolbar) {
-                selectorInstance.hide()
+                detachCornerHandlers()
+                hideSharedSelector()
                 toggleToolbar(false)
                 two.update()
             }

@@ -4,7 +4,7 @@ import { useImmer } from 'use-immer'
 import { useBoardContext } from 'views/Board/board'
 
 import { elementOnBlurHandler, strokeTypeToDashes } from 'utils/misc'
-import getEditComponents from 'components/utils/editWrapper'
+import { updateSharedSelector, hideSharedSelector } from 'components/utils/sharedSelector'
 import CircleFactory from 'factory/circle'
 import Toolbar from 'components/floatingToolbar'
 
@@ -23,7 +23,6 @@ function Circle(props) {
     const [internalState, setInternalState] = useImmer({})
     const stateRefForGroup = useRef()
     const two = props.twoJSInstance
-    let selectorInstance = null
     let toolbarInstance = null
     let groupObject = null
 
@@ -39,7 +38,7 @@ function Circle(props) {
             getGroupElementFromDOM.focus()
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
         } else {
-            selectorInstance && selectorInstance.hide()
+            hideSharedSelector()
             two.update()
             document.getElementById(`${groupObject.id}`) &&
                 document
@@ -97,9 +96,6 @@ function Circle(props) {
             groupObject = group
             stateRefForGroup.current = group
 
-            const { selector } = getEditComponents(two, group, 4)
-            selectorInstance = selector
-
             group.children.unshift(circle)
             two.update()
 
@@ -146,27 +142,12 @@ function Circle(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            // If component is in area of selection frame/tool, programmatically enable it's selector
-            if (selectedComponents.includes(props.id)) {
-                console.log('selectedComponents', selectedComponents)
-
-                // forcefully
-                // document.getElementById(`${group.id}`).focus();
-
-                selector.update(
-                    circle.getBoundingClientRect(true).left - 10,
-                    circle.getBoundingClientRect(true).right + 10,
-                    circle.getBoundingClientRect(true).top - 10,
-                    circle.getBoundingClientRect(true).bottom + 10
-                )
-            }
-
             // const { mousemove, mouseup } = handleDrag(two, group, 'Circle')
 
             interact(`#${group.id}`).on('click', () => {
                 // two.scene.scale = 1
                 console.log('on click circle', group)
-                selector.update(
+                updateSharedSelector(
                     circle.getBoundingClientRect(true).left - 10,
                     circle.getBoundingClientRect(true).right + 10,
                     circle.getBoundingClientRect(true).top - 10,
@@ -205,7 +186,7 @@ function Circle(props) {
                         circle.width = rect.width
                         circle.height = rect.height
 
-                        selector.update(
+                        updateSharedSelector(
                             circle.getBoundingClientRect(true).left - 10,
                             circle.getBoundingClientRect(true).right + 10,
                             circle.getBoundingClientRect(true).top - 10,

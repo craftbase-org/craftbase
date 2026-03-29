@@ -27,6 +27,7 @@ const PrimarySidebar = () => {
         defaultStrokeType,
         onCreateBoard,
         createBoardLoading,
+        setSelectedComponentInBoard,
     } = useBoardContext()
     const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const [hintText, setHintText] = useState(
@@ -57,6 +58,7 @@ const PrimarySidebar = () => {
     }, [getComponentTypesData])
 
     const handleArrowElement = (label) => {
+        setSelectedComponentInBoard(null)
         togglePencilMode(false)
         togglePointer(false)
 
@@ -113,6 +115,7 @@ const PrimarySidebar = () => {
     }
 
     const handleTextElement = (label) => {
+        setSelectedComponentInBoard(null)
         togglePencilMode(false)
         togglePointer(false)
 
@@ -167,6 +170,7 @@ const PrimarySidebar = () => {
     }
 
     const addElement = (label) => {
+        setSelectedComponentInBoard(null)
         switch (label) {
             case 'pointer':
                 togglePointer(true)

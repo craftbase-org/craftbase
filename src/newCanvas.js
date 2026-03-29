@@ -6,6 +6,7 @@ import { ZUI } from 'two.js/extras/jsm/zui'
 import { useBoardContext } from 'views/Board/board'
 
 import Zoomer from 'components/utils/zoomer'
+import { initSharedSelector, updateSharedSelector, hideSharedSelector } from 'components/utils/sharedSelector'
 import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
 
@@ -155,6 +156,7 @@ function addZUI(
         if (e?.srcElement?.lastChild?.id === 'two-0') {
             let evt = new CustomEvent('clearSelector', {})
             window.dispatchEvent(evt)
+            hideSharedSelector()
         }
 
         if (isDrawing === true) {
@@ -612,6 +614,9 @@ function addZUI(
                         },
                     }
                     setSelectedComponentInBoard(componentInternalState)
+                    const boundsEl = isLineCircle ? shapeForToolbar : groupForToolbar
+                    const rect = boundsEl.getBoundingClientRect(true)
+                    updateSharedSelector(rect.left - 10, rect.right + 10, rect.top - 10, rect.bottom + 10)
                 }
 
                 two.update()
@@ -1084,6 +1089,13 @@ function addZUI(
                             icon: { data: {} },
                         }
                         setSelectedComponentInBoard(componentInternalState)
+                        const newRect = el.getBoundingClientRect(true)
+                        updateSharedSelector(
+                            newRect.left - 10,
+                            newRect.right + 10,
+                            newRect.top - 10,
+                            newRect.bottom + 10
+                        )
                     } else if (retries < 30) {
                         requestAnimationFrame(() =>
                             waitForNewElement(id, retries + 1)
@@ -1127,6 +1139,13 @@ function addZUI(
                         icon: { data: {} },
                     }
                     setSelectedComponentInBoard(componentInternalState)
+                    const placedRect = groupEl.getBoundingClientRect(true)
+                    updateSharedSelector(
+                        placedRect.left - 10,
+                        placedRect.right + 10,
+                        placedRect.top - 10,
+                        placedRect.bottom + 10
+                    )
                     lastPlacedElement = null
                 }
                 setPointerElement('pointer')
@@ -1530,6 +1549,7 @@ const Canvas = (props) => {
         setZuiInstance(zui_instance)
         setTwoJSInstance(two)
         setTwoJSInstanceInBoard(two)
+        initSharedSelector(two)
 
         const boardId = props.boardId
         const tabsOpen = localStorage.getItem(`tabs_open_${boardId}`)

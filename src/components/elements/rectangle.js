@@ -3,7 +3,7 @@ import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 import { useBoardContext } from 'views/Board/board'
 
-import getEditComponents from 'components/utils/editWrapper'
+import { updateSharedSelector, hideSharedSelector } from 'components/utils/sharedSelector'
 import ElementFactory from 'factory/rectangle'
 import { elementOnBlurHandler, strokeTypeToDashes } from 'utils/misc'
 import Toolbar from 'components/floatingToolbar'
@@ -23,7 +23,6 @@ function Rectangle(props) {
     const stateRefForGroup = useRef()
 
     const two = props.twoJSInstance
-    let selectorInstance = null
     let groupObject = null
 
     function onBlurHandler(e) {
@@ -38,7 +37,7 @@ function Rectangle(props) {
             getGroupElementFromDOM.focus()
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
         } else {
-            selectorInstance && selectorInstance.hide()
+            hideSharedSelector()
             two.update()
             document.getElementById(`${groupObject.id}`) &&
                 document
@@ -93,8 +92,6 @@ function Rectangle(props) {
             groupObject = group
             stateRefForGroup.current = group
 
-            const { selector } = getEditComponents(two, group, 4)
-            selectorInstance = selector
             group.children.unshift(rectangle)
             two.update()
 
@@ -136,23 +133,11 @@ function Rectangle(props) {
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
 
-            // If component is in area of selection frame/tool, programmatically enable it's selector
-            if (selectedComponents.includes(props.id)) {
-                console.log('selectedComponents', selectedComponents)
-
-                selector.update(
-                    rectangle.getBoundingClientRect(true).left - 10,
-                    rectangle.getBoundingClientRect(true).right + 10,
-                    rectangle.getBoundingClientRect(true).top - 10,
-                    rectangle.getBoundingClientRect(true).bottom + 10
-                )
-            }
-
             // const { mousemove, mouseup } = handleDrag(two, group, 'rectangle')
 
             interact(`#${group.id}`).on('click', () => {
                 console.log('on click ')
-                selector.update(
+                updateSharedSelector(
                     rectangle.getBoundingClientRect(true).left - 10,
                     rectangle.getBoundingClientRect(true).right + 10,
                     rectangle.getBoundingClientRect(true).top - 10,
@@ -194,7 +179,7 @@ function Rectangle(props) {
                             rectangle.width = rect.width
                             rectangle.height = rect.height
 
-                            selector.update(
+                            updateSharedSelector(
                                 rectangle.getBoundingClientRect(true).left - 10,
                                 rectangle.getBoundingClientRect(true).right +
                                     10,

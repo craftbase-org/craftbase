@@ -18,6 +18,7 @@ import {
     CREATE_BOARD,
 } from 'schema/mutations'
 import Canvas from '../../newCanvas'
+import { hideSharedSelector } from 'components/utils/sharedSelector'
 import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import PencilToolbar from 'components/pencilToolbar'
@@ -219,6 +220,7 @@ const BoardViewPage = (props) => {
 
     const setSelectedComponentInBoard = (shape) => {
         if (shape === null) {
+            hideSharedSelector()
             setSelectedComponent(null)
             toggleToolbar(false)
         } else {
@@ -376,43 +378,16 @@ const BoardViewPage = (props) => {
 
     const setDefaultLinewidthInBoard = (val) => {
         setDefaultLinewidth(val)
+        hideSharedSelector()
+        setSelectedComponent(null)
         toggleToolbar(false)
-
-        if (selectedComponent) {
-            if (selectedComponent.shape?.data?.stroke) {
-                selectedComponent.shape.data.linewidth = val
-            }
-            const elementId = selectedComponent?.group?.data?.elementData?.id
-            if (elementId) {
-                updateComponentBulkPropertiesInLocalStore(elementId, { linewidth: val }, false, true)
-            }
-            twoJSInstanceRef.current?.update()
-        }
     }
 
     const setDefaultStrokeTypeInBoard = (val) => {
         setDefaultStrokeType(val)
+        hideSharedSelector()
+        setSelectedComponent(null)
         toggleToolbar(false)
-
-        if (selectedComponent) {
-            if (selectedComponent.shape?.data) {
-                selectedComponent.shape.data.dashes = strokeTypeToDashes(val)
-                if (!val || val === 'solid') {
-                    clearDashesOnTwoJSShape(selectedComponent.shape.data)
-                }
-            }
-            if (selectedComponent?.group?.data?.elementData) {
-                selectedComponent.group.data.elementData.strokeType =
-                    val === null ? 'solid' : val
-            }
-            const elementId = selectedComponent?.group?.data?.elementData?.id
-            if (elementId) {
-                updateComponentBulkPropertiesInLocalStore(elementId, {
-                    strokeType: val === null ? 'solid' : val,
-                }, false, true)
-            }
-            twoJSInstanceRef.current?.update()
-        }
     }
 
     const setPencilStrokeColorInBoard = (val) => {
