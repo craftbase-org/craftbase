@@ -35,7 +35,9 @@ const BorderStyleBox = ({
                 <Fragment key={index}>
                     <button
                         data-parent="floating-toolbar"
-                        onClick={() => onChangeStrokeType && onChangeStrokeType(type.value)}
+                        onClick={() =>
+                            onChangeStrokeType && onChangeStrokeType(type.value)
+                        }
                         className={`flex-1 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
                             isSelected ? 'bg-blues-b50' : 'hover:bg-blues-b50'
                         }`}
@@ -47,7 +49,9 @@ const BorderStyleBox = ({
                     >
                         <span
                             className="text-base font-bold tracking-widest"
-                            style={{ color: isSelected ? '#0052cc' : '#6b7280' }}
+                            style={{
+                                color: isSelected ? '#0052cc' : '#6b7280',
+                            }}
                         >
                             {type.display}
                         </span>
@@ -95,15 +99,6 @@ const BorderStyleBox = ({
     return (
         <Fragment>
             <BorderStyleBoxContainer className={`text-left p-0 text-xs`}>
-                <label htmlFor="border-type-row">Stroke Type</label>
-                <div
-                    id="border-type-row"
-                    data-parent="floating-toolbar"
-                    className="flex gap-2 my-2 w-48"
-                >
-                    {renderBorderType()}
-                </div>
-                <hr className="my-2" />
                 <label htmlFor="border-widths-row">Stroke Width</label>
                 <div
                     id="border-widths-row"
@@ -111,6 +106,15 @@ const BorderStyleBox = ({
                     className="flex gap-4 my-2 w-48"
                 >
                     {renderBorderWidths()}
+                </div>
+                <hr className="my-2" />
+                <label htmlFor="border-type-row">Stroke Type</label>
+                <div
+                    id="border-type-row"
+                    data-parent="floating-toolbar"
+                    className="flex gap-2 my-2 w-48"
+                >
+                    {renderBorderType()}
                 </div>
                 <hr className="my-2" />
                 <ColorPicker

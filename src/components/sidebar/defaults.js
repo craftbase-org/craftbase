@@ -35,7 +35,7 @@ const DefaultsDropdown = () => {
             </div>
             <div id="stroke-width-section" className="pt-2 px-2">
                 <div className="w-full text-black font-normal text-xs pl-0 mb-2">
-                    Stroke width
+                    Stroke Width
                 </div>
                 <div className="flex gap-2">
                     {STROKE_WIDTHS.map(
@@ -75,15 +75,20 @@ const DefaultsDropdown = () => {
 
             <div id="stroke-type-section" className="pt-3 px-2">
                 <div className="w-full text-black font-normal text-xs pl-0 mb-2">
-                    Stroke type
+                    Stroke Type
                 </div>
                 <div className="flex gap-2">
                     {STROKE_TYPES.map(({ label, value }) => {
-                        const isSelected = (defaultStrokeType ?? 'solid') === value
+                        const isSelected =
+                            (defaultStrokeType ?? 'solid') === value
                         return (
                             <button
                                 key={value}
-                                onClick={() => setDefaultStrokeTypeInBoard(value === 'solid' ? null : value)}
+                                onClick={() =>
+                                    setDefaultStrokeTypeInBoard(
+                                        value === 'solid' ? null : value
+                                    )
+                                }
                                 className={`flex-1 w-4 h-6 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
                                     isSelected
                                         ? 'bg-blues-b50'
@@ -97,7 +102,11 @@ const DefaultsDropdown = () => {
                             >
                                 <span
                                     className="text-base font-bold tracking-widest"
-                                    style={{ color: isSelected ? '#0052cc' : '#6b7280' }}
+                                    style={{
+                                        color: isSelected
+                                            ? '#0052cc'
+                                            : '#6b7280',
+                                    }}
                                 >
                                     {label}
                                 </span>

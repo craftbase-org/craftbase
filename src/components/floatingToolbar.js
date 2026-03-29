@@ -157,6 +157,7 @@ const Toolbar = (props) => {
         showTextSizeSection,
         currentFontSize,
         onTextSizeChange,
+        refreshKey,
     } = props
     console.log('Toolbar props', props)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
@@ -195,7 +196,7 @@ const Toolbar = (props) => {
             draft.opacity =
                 componentState?.group?.data?.elementData?.metadata?.opacity ?? 1
         })
-    }, [componentState])
+    }, [componentState, refreshKey])
 
     const updateComponent = (propertyToUpdate, propertyValue) => {
         const userId = localStorage.getItem('userId')

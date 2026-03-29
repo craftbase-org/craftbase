@@ -100,6 +100,7 @@ const BoardViewPage = (props) => {
     const stateRefForComponentStore = useRef()
     const twoJSInstanceRef = useRef(null)
     const [historyLog, setHistoryLog] = useState([])
+    const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
     const historyLogRef = useRef([])
 
     // Reset component store whenever the board changes
@@ -167,6 +168,16 @@ const BoardViewPage = (props) => {
         console.log('change in componentStore in Board', componentStore)
         stateRefForComponentStore.current = componentStore
     }, [componentStore])
+
+    useEffect(() => {
+        if (selectedComponent) {
+            const linewidth = selectedComponent?.shape?.data?.linewidth
+            const strokeType =
+                selectedComponent?.group?.data?.elementData?.strokeType ?? null
+            if (linewidth !== undefined) setDefaultLinewidth(linewidth)
+            setDefaultStrokeType(strokeType === 'solid' ? null : strokeType)
+        }
+    }, [selectedComponent])
 
     if (getComponentsForBoardLoading) {
         return (
@@ -296,6 +307,13 @@ const BoardViewPage = (props) => {
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
+        if (bulkObj.linewidth !== undefined) setDefaultLinewidth(bulkObj.linewidth)
+        if (bulkObj.strokeType !== undefined) {
+            setDefaultStrokeType(
+                bulkObj.strokeType === 'solid' ? null : bulkObj.strokeType
+            )
+        }
+
         updateComponentInfo({
             variables: {
                 id: id,
@@ -371,10 +389,43 @@ const BoardViewPage = (props) => {
 
     const setDefaultLinewidthInBoard = (val) => {
         setDefaultLinewidth(val)
+        toggleToolbar(false)
+
+        if (selectedComponent) {
+            if (selectedComponent.shape?.data?.stroke) {
+                selectedComponent.shape.data.linewidth = val
+            }
+            const elementId = selectedComponent?.group?.data?.elementData?.id
+            if (elementId) {
+                updateComponentBulkPropertiesInLocalStore(elementId, { linewidth: val })
+            }
+            twoJSInstanceRef.current?.update()
+        }
     }
 
     const setDefaultStrokeTypeInBoard = (val) => {
         setDefaultStrokeType(val)
+        toggleToolbar(false)
+
+        if (selectedComponent) {
+            if (selectedComponent.shape?.data) {
+                selectedComponent.shape.data.dashes = strokeTypeToDashes(val)
+                if (!val || val === 'solid') {
+                    clearDashesOnTwoJSShape(selectedComponent.shape.data)
+                }
+            }
+            if (selectedComponent?.group?.data?.elementData) {
+                selectedComponent.group.data.elementData.strokeType =
+                    val === null ? 'solid' : val
+            }
+            const elementId = selectedComponent?.group?.data?.elementData?.id
+            if (elementId) {
+                updateComponentBulkPropertiesInLocalStore(elementId, {
+                    strokeType: val === null ? 'solid' : val,
+                })
+            }
+            twoJSInstanceRef.current?.update()
+        }
     }
 
     const setPencilStrokeColorInBoard = (val) => {
@@ -533,6 +584,23 @@ const BoardViewPage = (props) => {
                 two?.update()
             }
 
+            if (prevProps.linewidth !== undefined) setDefaultLinewidth(prevProps.linewidth)
+            if (prevProps.strokeType !== undefined) {
+                setDefaultStrokeType(
+                    prevProps.strokeType === 'solid' ? null : prevProps.strokeType
+                )
+                if (selectedComponent?.group?.data?.elementData) {
+                    selectedComponent.group.data.elementData.strokeType =
+                        prevProps.strokeType
+                }
+            }
+            if (
+                prevProps.linewidth !== undefined ||
+                prevProps.strokeType !== undefined
+            ) {
+                setToolbarRefreshKey((k) => k + 1)
+            }
+
             updateComponentInfo({
                 variables: { id, updateObj: prevProps },
             })
@@ -590,6 +658,7 @@ const BoardViewPage = (props) => {
                                 toggle={showToolbar}
                                 componentState={selectedComponent}
                                 closeToolbar={closeToolbar}
+                                refreshKey={toolbarRefreshKey}
                                 updateComponentBulkProperties={
                                     updateComponentBulkPropertiesInLocalStore
                                 }
