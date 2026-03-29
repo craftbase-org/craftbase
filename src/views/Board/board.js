@@ -546,6 +546,12 @@ const BoardViewPage = (props) => {
                     applyPropertyToTwoJSGroup(group, name, val)
                 })
                 two?.update()
+
+                if (prevProps.width !== undefined || prevProps.height !== undefined) {
+                    window.dispatchEvent(
+                        new CustomEvent('undoSelectorSync', { detail: { elementId: id } })
+                    )
+                }
             }
 
             if (lastEntry.syncDefaults) {

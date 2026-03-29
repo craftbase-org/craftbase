@@ -1358,7 +1358,14 @@ function addZUI(
         distance = d
     }
 
-    return { zui, mousemove }
+    return {
+        zui,
+        mousemove,
+        resetDragState: () => {
+            dragging = false
+            shape = {}
+        },
+    }
 }
 
 const ElementRenderWrapper = (
@@ -1510,6 +1517,10 @@ const Canvas = (props) => {
             // this is especially for capturing INSERT operation
             // where I can assign mousemove event listener to the new component
             let domElement = twoJSInstance?.renderer?.domElement
+
+            // Reset stale drag state so a resize followed by a store update
+            // (e.g. undo) doesn't leave the element dragging on next mousemove
+            zuiInstance.resetDragState()
 
             domElement.addEventListener(
                 'mousemove',
