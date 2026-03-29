@@ -50,7 +50,7 @@ Reusable React UI components.
 
 - **`sidebar/`**: Left sidebar UI
     - `primary.js` - Main sidebar component
-    - `elementsDropdown.js` - Element selection dropdown
+    - `defaults.js` - Defaults section sidebar (where default stroke width and stroke type can be applied)
     - `shareLinkPopup.js` - Share functionality popup
     - `userDetailsPopup.js` - User information popup
 
@@ -162,13 +162,14 @@ Child components access this context via `useContext(BoardContext)`.
 
 ## Technology Stack
 
-- **UI Framework**: React
+- **UI Framework**: React (^18.3.1)
 - **Canvas Rendering**: Two.js
 - **State Management**: React Context (BoardContext) + local component state
 - **Backend**: GraphQL (Hasura)
 - **GraphQL Client**: Apollo Client
 - **Styling**: CSS + Tailwind CSS
-- **Build Tool**: Create React App with CRACO
+- **Build Tool**: Vite
+- **Package manager**: Yarn (v1.22.22)
 
 # Workflow
 
@@ -200,6 +201,7 @@ See detailed notes in `.claude/context/` for feature-specific implementation det
   fill: text, // default: '#f4f4f2'
   stroke: text | null,
   linewidth: integer | null,
+  strokeType: text | null,
   radius: integer | null,
   iconStroke: text | null,
   textColor: text | null,

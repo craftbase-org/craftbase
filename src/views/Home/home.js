@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Redirect, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@apollo/client'
 
 import { INSERT_USER_ONE, CREATE_BOARD } from 'schema/mutations'

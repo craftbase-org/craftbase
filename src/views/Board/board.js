@@ -20,9 +20,9 @@ import {
 import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
+import PencilToolbar from 'components/pencilToolbar'
 import Spinner from 'components/common/spinnerWithSize'
-import ColorPicker from 'components/utils/colorPicker'
-import { generateRandomUsernames } from 'utils/misc'
+import { generateRandomUsernames, strokeTypeToDashes, clearDashesOnTwoJSShape } from 'utils/misc'
 
 const BoardContext = createContext()
 
@@ -92,6 +92,9 @@ const BoardViewPage = (props) => {
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
     const [defaultLinewidth, setDefaultLinewidth] = useState(2)
+    const [defaultStrokeType, setDefaultStrokeType] = useState(null)
+    const [pencilDefaultLinewidth, setPencilDefaultLinewidth] = useState(2)
+    const [pencilDefaultStrokeType, setPencilDefaultStrokeType] = useState(null)
     const [pencilStrokeColor, setPencilStrokeColor] = useState('#000')
     const [currentElement, setCurrentElement] = useState(null)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
@@ -99,6 +102,7 @@ const BoardViewPage = (props) => {
     const stateRefForComponentStore = useRef()
     const twoJSInstanceRef = useRef(null)
     const [historyLog, setHistoryLog] = useState([])
+    const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
     const historyLogRef = useRef([])
 
     // Reset component store whenever the board changes
@@ -167,6 +171,7 @@ const BoardViewPage = (props) => {
         stateRefForComponentStore.current = componentStore
     }, [componentStore])
 
+
     if (getComponentsForBoardLoading) {
         return (
             <>
@@ -193,6 +198,10 @@ const BoardViewPage = (props) => {
     const togglePointer = (pointerVal) => {
         setPointerToggle(pointerVal)
         setPencilMode(false)
+        if (pointerVal) {
+            setSelectedComponent(null)
+            toggleToolbar(false)
+        }
     }
 
     const togglePencilMode = (value) => {
@@ -265,24 +274,27 @@ const BoardViewPage = (props) => {
     }
 
     // Snapshots only the properties being changed before applying bulk updates
-    const updateComponentBulkPropertiesInLocalStore = (id, bulkObj) => {
+    const updateComponentBulkPropertiesInLocalStore = (id, bulkObj, skipHistory = false, syncDefaults = false) => {
         const userId = localStorage.getItem('userId')
 
-        // Snapshot only the properties that bulkObj will overwrite
-        const currentComponent = stateRefForComponentStore.current[id]
-        const prevProps = {}
-        Object.keys(bulkObj).forEach((key) => {
-            if (currentComponent?.[key] !== undefined) {
-                prevProps[key] = currentComponent[key]
-            }
-        })
+        if (!skipHistory) {
+            // Snapshot only the properties that bulkObj will overwrite
+            const currentComponent = stateRefForComponentStore.current[id]
+            const prevProps = {}
+            Object.keys(bulkObj).forEach((key) => {
+                if (currentComponent?.[key] !== undefined) {
+                    prevProps[key] = currentComponent[key]
+                }
+            })
 
-        recordToHistoryLog({
-            action: 'UPDATE_BULK',
-            id,
-            prevProps,
-            bulkObj,
-        })
+            recordToHistoryLog({
+                action: 'UPDATE_BULK',
+                id,
+                prevProps,
+                bulkObj,
+                syncDefaults,
+            })
+        }
 
         const updatedComponentStore = { ...stateRefForComponentStore.current }
         updatedComponentStore[id] = {
@@ -354,7 +366,7 @@ const BoardViewPage = (props) => {
 
         deleteComponent({
             variables: { id },
-            errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
+            errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
         })
     }
 
@@ -368,6 +380,16 @@ const BoardViewPage = (props) => {
 
     const setDefaultLinewidthInBoard = (val) => {
         setDefaultLinewidth(val)
+        setPencilDefaultLinewidth(val)
+        toggleToolbar(false)
+        setSelectedComponent(null)
+    }
+
+    const setDefaultStrokeTypeInBoard = (val) => {
+        setDefaultStrokeType(val)
+        setPencilDefaultStrokeType(val)
+        toggleToolbar(false)
+        setSelectedComponent(null)
     }
 
     const setPencilStrokeColorInBoard = (val) => {
@@ -401,41 +423,6 @@ const BoardViewPage = (props) => {
         })
     }
 
-    const renderBorderWidths = () => {
-        const widths = [
-            { value: 1, strokeHeight: '1px' },
-            { value: 2, strokeHeight: '2px' },
-            { value: 4, strokeHeight: '4px' },
-            { value: 6, strokeHeight: '6px' },
-        ]
-        return widths.map(({ value, strokeHeight }) => {
-            const isSelected = defaultLinewidth === value
-            return (
-                <button
-                    key={value}
-                    data-parent="floating-toolbar"
-                    onClick={() => setDefaultLinewidth(value)}
-                    className={`flex-1 w-1/4 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
-                        isSelected ? 'bg-blues-b50' : 'hover:bg-blues-b50'
-                    }`}
-                    style={{
-                        border: isSelected
-                            ? '2px solid #0052cc'
-                            : '1px solid #e5e7eb',
-                    }}
-                >
-                    <div
-                        className="w-full my-2 mx-2 rounded-full"
-                        style={{
-                            height: strokeHeight,
-                            backgroundColor: isSelected ? '#0052cc' : '#6b7280',
-                        }}
-                    />
-                </button>
-            )
-        })
-    }
-
     // Applies a single property back to a Two.js shape during undo.
     // Visual properties (fill, stroke, etc.) live directly on the shape object.
     const applyPropertyToTwoJSGroup = (group, name, value) => {
@@ -452,6 +439,12 @@ const BoardViewPage = (props) => {
             case 'textColor':
             case 'iconStroke':
                 shape[name] = value
+                break
+            case 'strokeType':
+                shape.dashes = strokeTypeToDashes(value)
+                if (!value || value === 'solid') {
+                    clearDashesOnTwoJSShape(shape)
+                }
                 break
             case 'metadata':
                 if (value && typeof value === 'object') {
@@ -493,7 +486,7 @@ const BoardViewPage = (props) => {
             setComponentStore(updatedStore)
             deleteComponent({
                 variables: { id },
-                errorPolicy: process.env.REACT_APP_GRAPHQL_ERROR_POLICY,
+                errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
             })
             requestAnimationFrame(() => two?.update())
         } else if (action === 'DELETE') {
@@ -553,6 +546,33 @@ const BoardViewPage = (props) => {
                     applyPropertyToTwoJSGroup(group, name, val)
                 })
                 two?.update()
+
+                if (prevProps.width !== undefined || prevProps.height !== undefined) {
+                    window.dispatchEvent(
+                        new CustomEvent('undoSelectorSync', { detail: { elementId: id } })
+                    )
+                }
+            }
+
+            if (lastEntry.syncDefaults) {
+                if (prevProps.linewidth !== undefined) setDefaultLinewidth(prevProps.linewidth)
+                if (prevProps.strokeType !== undefined) {
+                    setDefaultStrokeType(
+                        prevProps.strokeType === 'solid' ? null : prevProps.strokeType
+                    )
+                }
+            }
+            if (prevProps.strokeType !== undefined) {
+                if (selectedComponent?.group?.data?.elementData) {
+                    selectedComponent.group.data.elementData.strokeType =
+                        prevProps.strokeType
+                }
+            }
+            if (
+                prevProps.linewidth !== undefined ||
+                prevProps.strokeType !== undefined
+            ) {
+                setToolbarRefreshKey((k) => k + 1)
             }
 
             updateComponentInfo({
@@ -585,6 +605,8 @@ const BoardViewPage = (props) => {
         setSelectedComponentInBoard,
         defaultLinewidth,
         setDefaultLinewidthInBoard,
+        defaultStrokeType,
+        setDefaultStrokeTypeInBoard,
         pencilStrokeColor,
         setPencilStrokeColorInBoard,
         currentElement,
@@ -610,6 +632,7 @@ const BoardViewPage = (props) => {
                                 toggle={showToolbar}
                                 componentState={selectedComponent}
                                 closeToolbar={closeToolbar}
+                                refreshKey={toolbarRefreshKey}
                                 updateComponentBulkProperties={
                                     updateComponentBulkPropertiesInLocalStore
                                 }
@@ -619,40 +642,14 @@ const BoardViewPage = (props) => {
                             />
                         )}
                         {isPencilMode && (
-                            <div
-                                style={{
-                                    position: 'fixed',
-                                    right: 16,
-                                    top: 65,
-                                    zIndex: 1,
-                                    background: 'rgba(255, 255, 255, 1)',
-                                    overflow: 'auto',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                }}
-                                className="shadow-lg px-2 py-2 rounded-md"
-                            >
-                                <ColorPicker
-                                    title="Stroke Color"
-                                    currentColor={pencilStrokeColor}
-                                    onChangeComplete={(color) => {
-                                        setPencilStrokeColor(color)
-                                    }}
-                                />
-                                <hr className="my-2 w-full" />
-                                <div className="w-full text-left text-xs">
-                                    <label htmlFor="border-widths-row">
-                                        Stroke Width
-                                    </label>
-                                    <div
-                                        id="border-widths-row"
-                                        data-parent="floating-toolbar"
-                                        className="flex gap-4 my-2 w-48"
-                                    >
-                                        {renderBorderWidths()}
-                                    </div>
-                                </div>
-                            </div>
+                            <PencilToolbar
+                                pencilStrokeColor={pencilStrokeColor}
+                                defaultLinewidth={pencilDefaultLinewidth}
+                                defaultStrokeType={pencilDefaultStrokeType}
+                                onColorChange={(color) => setPencilStrokeColor(color)}
+                                onLinewidthChange={(value) => setPencilDefaultLinewidth(value)}
+                                onStrokeTypeChange={(type) => setPencilDefaultStrokeType(type === 'solid' ? null : type)}
+                            />
                         )}
                         <Canvas
                             pointerToggle={pointerToggle}
@@ -663,6 +660,9 @@ const BoardViewPage = (props) => {
                             lastAddedElement={lastAddedElement}
                             componentStore={componentStore}
                             defaultLinewidth={defaultLinewidth}
+                            defaultStrokeType={defaultStrokeType}
+                            pencilDefaultLinewidth={pencilDefaultLinewidth}
+                            pencilDefaultStrokeType={pencilDefaultStrokeType}
                             pencilStrokeColor={pencilStrokeColor}
                         />
                     </div>

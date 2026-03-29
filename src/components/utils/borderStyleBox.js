@@ -14,36 +14,53 @@ const BorderStyleBoxContainer = styled.div`
     text-align: left;
 `
 
+const STROKE_TYPES = [
+    { value: 'solid', display: '—' },
+    { value: 'dashed', display: '- -' },
+    { value: 'dotted', display: '...' },
+]
+
 const BorderStyleBox = ({
     currentType,
     currentWidth,
     currentColor,
     onChangeColor,
     onChangeBorderWidth,
+    onChangeStrokeType,
 }) => {
     const renderBorderType = () => {
-        const types = [
-            { value: 'solid', display: '—' },
-            { value: 'dashed', display: '- -' },
-        ].map((type, index) => {
+        return STROKE_TYPES.map((type, index) => {
+            const isSelected = currentType === type.value
             return (
                 <Fragment key={index}>
                     <button
                         data-parent="floating-toolbar"
-                        className={`${
-                            currentType === type.value
-                                ? `bg-blues-b50 `
-                                : `bg-transparent text-blues-b400`
-                        }  
-            mr-2 hover:bg-blues-b400  font-semibold hover:text-white 
-            py-1 px-2 border border-blues-b400 hover:border-transparent rounded`}
+                        onClick={() =>
+                            onChangeStrokeType && onChangeStrokeType(type.value)
+                        }
+                        className={`flex-1 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
+                            isSelected ? 'bg-blues-b50' : 'hover:bg-blues-b50'
+                        }`}
+                        style={{
+                            border: isSelected
+                                ? '2px solid #0052cc'
+                                : '1px solid #e5e7eb',
+                        }}
                     >
-                        {type.display}
+                        <span
+                            className="text-base font-bold tracking-widest"
+                            style={{
+                                color: isSelected ? '#0052cc' : '#6b7280',
+                                paddingBottom:
+                                    type.value === 'dotted' ? '0.4rem' : '0px',
+                            }}
+                        >
+                            {type.display}
+                        </span>
                     </button>
                 </Fragment>
             )
         })
-        return types
     }
 
     const renderBorderWidths = () => {
@@ -84,15 +101,6 @@ const BorderStyleBox = ({
     return (
         <Fragment>
             <BorderStyleBoxContainer className={`text-left p-0 text-xs`}>
-                {/* <label htmlFor="border-type-row">Stroke Type</label>
-                <div
-                    id="border-type-row"
-                    data-parent="floating-toolbar"
-                    className="flex flex-row my-2"
-                >
-                    {renderBorderType()}
-                </div>
-                <hr className="my-2" /> */}
                 <label htmlFor="border-widths-row">Stroke Width</label>
                 <div
                     id="border-widths-row"
@@ -100,6 +108,15 @@ const BorderStyleBox = ({
                     className="flex gap-4 my-2 w-48"
                 >
                     {renderBorderWidths()}
+                </div>
+                <hr className="my-2" />
+                <label htmlFor="border-type-row">Stroke Type</label>
+                <div
+                    id="border-type-row"
+                    data-parent="floating-toolbar"
+                    className="flex gap-2 my-2 w-48"
+                >
+                    {renderBorderType()}
                 </div>
                 <hr className="my-2" />
                 <ColorPicker

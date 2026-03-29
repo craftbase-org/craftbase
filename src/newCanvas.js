@@ -1,14 +1,15 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, Suspense } from 'react'
 import Two from 'two.js'
 import { useNavigate } from 'react-router-dom'
 
-import Loadable from 'react-loadable'
 import { ZUI } from 'two.js/extras/jsm/zui'
 import { useBoardContext } from 'views/Board/board'
 
 import Zoomer from 'components/utils/zoomer'
 import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
+
+const elementModules = import.meta.glob('./components/elements/*.js')
 
 import Loader from 'components/utils/loader'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
@@ -38,6 +39,7 @@ function getComponentSchema(obj, boardId) {
         height: obj.height,
         linewidth: obj.linewidth,
         stroke: obj.stroke,
+        strokeType: obj.strokeType,
     }
 }
 
@@ -64,6 +66,7 @@ function getComponentSchema(obj, boardId) {
 
 var isDrawing
 var defaultLinewidthValue = 1
+var defaultStrokeTypeValue = null
 var pencilStrokeColorValue = '#000'
 
 function addZUI(
@@ -176,26 +179,6 @@ function addZUI(
                 const surfaceCoords = zui.clientToSurface(e.clientX, e.clientY)
                 const arrowId = localStorage.getItem('lastAddedElementId')
 
-                arrowDrawElement = two.scene.children.find(
-                    (child) => child?.elementData?.id === arrowId
-                )
-
-                if (arrowDrawElement) {
-                    // Position the group at the clicked point (tail position)
-                    arrowDrawElement.position.x = surfaceCoords.x
-                    arrowDrawElement.position.y = surfaceCoords.y
-
-                    const line = arrowDrawElement.children[0]
-                    const pointCircle1Group = arrowDrawElement.children[1]
-                    const pointCircle2Group = arrowDrawElement.children[2]
-
-                    // Reset line vertices: tail at 0,0, head at 0,0
-                    updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
-                    updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
-
-                    two.update()
-                }
-
                 localStorage.removeItem('lastAddedElementId')
                 localStorage.removeItem('arrowDrawMode')
 
@@ -204,6 +187,38 @@ function addZUI(
 
                 document.getElementById('main-two-root').style.cursor =
                     'crosshair'
+
+                // On first use the arrowLine module loads lazily — poll until the
+                // React element appears in the scene before positioning it.
+                // mousemove/mouseup already guard on arrowDrawElement being non-null,
+                // so they are safe no-ops until this resolves.
+                const initArrowElement = (id, capturedCoords, retries = 0) => {
+                    const el = two.scene.children.find(
+                        (child) => child?.elementData?.id === id
+                    )
+                    if (el) {
+                        arrowDrawElement = el
+                        arrowDrawElement.position.x = capturedCoords.x
+                        arrowDrawElement.position.y = capturedCoords.y
+
+                        const line = arrowDrawElement.children[0]
+                        const pointCircle1Group = arrowDrawElement.children[1]
+                        const pointCircle2Group = arrowDrawElement.children[2]
+
+                        updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
+                        updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
+
+                        two.update()
+                    } else if (retries < 30) {
+                        requestAnimationFrame(() =>
+                            initArrowElement(id, capturedCoords, retries + 1)
+                        )
+                    }
+                }
+                requestAnimationFrame(() =>
+                    initArrowElement(arrowId, surfaceCoords)
+                )
+
                 break
             }
             case SCENARIO_TEXT_DRAW: {
@@ -489,29 +504,48 @@ function addZUI(
 
                 // in case if it's a group selector, it falls under below condition
                 if (shape === null) {
-                    // shape = two.scene
-                    const { x1, x2, y1, y2 } = {
-                        x1: 0,
-                        x2: 10,
-                        y1: 0,
-                        y2: 10,
+                    // When a text input overlay is active (about to blur),
+                    // the click is just dismissing the input — skip creating
+                    // the group selector so no orphaned dotted rectangle
+                    // is left on the canvas.
+                    const activeTextInput =
+                        document.querySelector('.temp-input-area')
+                    if (activeTextInput) {
+                        shape = {}
+                    } else {
+                        // shape = two.scene
+                        const { x1, x2, y1, y2 } = {
+                            x1: 0,
+                            x2: 10,
+                            y1: 0,
+                            y2: 10,
+                        }
+                        const area = two.makePath(
+                            x1,
+                            y1,
+                            x2,
+                            y1,
+                            x2,
+                            y2,
+                            x1,
+                            y2
+                        )
+                        area.fill = 'rgba(0,0,0,0)'
+                        area.opacity = 1
+                        area.linewidth = 1
+                        area.dashes[0] = 4
+                        area.stroke = '#505F79'
+
+                        let newSelectorGroup = two.makeGroup(area)
+
+                        const m = zui.clientToSurface(e.clientX, e.clientY)
+                        mouse.copy(m)
+                        newSelectorGroup.position.copy(mouse)
+
+                        two.update()
+                        shape = newSelectorGroup
+                        isGroupSelector = true
                     }
-                    const area = two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
-                    area.fill = 'rgba(0,0,0,0)'
-                    area.opacity = 1
-                    area.linewidth = 1
-                    area.dashes[0] = 4
-                    area.stroke = '#505F79'
-
-                    let newSelectorGroup = two.makeGroup(area)
-
-                    const m = zui.clientToSurface(e.clientX, e.clientY)
-                    mouse.copy(m)
-                    newSelectorGroup.position.copy(mouse)
-
-                    two.update()
-                    shape = newSelectorGroup
-                    isGroupSelector = true
                 }
 
                 // inserting prevX and prevY to diff at updateToGlobalState function
@@ -946,25 +980,8 @@ function addZUI(
                     updateToGlobalState(newShapeData, {})
                 }
 
-                if (arrowDrawElement && arrowDrawElement.children?.[0]) {
-                    const groupEl = arrowDrawElement
-                    const lineEl = arrowDrawElement.children[0]
-                    const componentInternalState = {
-                        element: {
-                            [lineEl.id]: lineEl,
-                            [groupEl.id]: groupEl,
-                        },
-                        group: { id: groupEl.id, data: groupEl },
-                        shape: {
-                            type: groupEl.elementData?.componentType,
-                            id: lineEl.id,
-                            data: lineEl,
-                        },
-                        text: { data: {} },
-                        icon: { data: {} },
-                    }
-                    setSelectedComponentInBoard(componentInternalState)
-                }
+                // TODO: select element here if tool lock is active
+                setSelectedComponentInBoard(null)
 
                 arrowDrawElement = null
                 setArrowDrawModeOff()
@@ -1026,11 +1043,8 @@ function addZUI(
                     (drawOrigin.y + endCoords.y) / 2
                 )
 
-                if (previewShape) {
-                    two.remove(previewShape)
-                    previewShape = null
-                    two.update()
-                }
+                const capturedPreview = previewShape
+                previewShape = null
 
                 const finalId = generateUUID()
                 const finalShapeData = {
@@ -1044,29 +1058,19 @@ function addZUI(
 
                 addToLocalComponentStore(finalId, drawShapeType, finalShapeData)
 
-                // React renders the element asynchronously; poll until it appears in two.scene.children
+                // React renders the element asynchronously; poll until it appears in two.scene.children,
+                // then remove the preview so there is no blank gap between preview removal and final render
+                // TODO: select element here if tool lock is active
                 const pendingSelectionId = finalId
                 const waitForNewElement = (id, retries = 0) => {
                     const el = two.scene.children.find(
                         (child) => child?.elementData?.id === id
                     )
                     if (el && el.children?.[0]) {
-                        const shapeEl = el.children[0]
-                        const componentInternalState = {
-                            element: {
-                                [shapeEl.id]: shapeEl,
-                                [el.id]: el,
-                            },
-                            group: { id: el.id, data: el },
-                            shape: {
-                                type: el.elementData?.componentType,
-                                id: shapeEl.id,
-                                data: shapeEl,
-                            },
-                            text: { data: {} },
-                            icon: { data: {} },
+                        if (capturedPreview) {
+                            two.remove(capturedPreview)
+                            two.update()
                         }
-                        setSelectedComponentInBoard(componentInternalState)
                     } else if (retries < 30) {
                         requestAnimationFrame(() =>
                             waitForNewElement(id, retries + 1)
@@ -1076,6 +1080,7 @@ function addZUI(
                 requestAnimationFrame(() =>
                     waitForNewElement(pendingSelectionId)
                 )
+                setSelectedComponentInBoard(null)
 
                 drawOrigin = null
                 drawCurrentCoords = null
@@ -1092,39 +1097,23 @@ function addZUI(
                 break
             }
             case SCENARIO_JUST_ADDED_ELEMENT:
-                if (lastPlacedElement && lastPlacedElement.children?.[0]) {
-                    const groupEl = lastPlacedElement
-                    const shapeEl = lastPlacedElement.children[0]
-                    const componentInternalState = {
-                        element: {
-                            [shapeEl.id]: shapeEl,
-                            [groupEl.id]: groupEl,
-                        },
-                        group: { id: groupEl.id, data: groupEl },
-                        shape: {
-                            type: groupEl.elementData?.componentType,
-                            id: shapeEl.id,
-                            data: shapeEl,
-                        },
-                        text: { data: {} },
-                        icon: { data: {} },
-                    }
-                    setSelectedComponentInBoard(componentInternalState)
-                    lastPlacedElement = null
-                }
+                // TODO: select element here if tool lock is active
+                setSelectedComponentInBoard(null)
+                lastPlacedElement = null
                 setPointerElement('pointer')
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
             case SCENARIO_PENCIL_MODE: {
-                // Remove live preview group — React component will re-render from metadata
-                if (pencilGroup) {
-                    two.remove(pencilGroup)
-                }
+                const capturedPencilGroup = pencilGroup
+                pencilGroup = null
 
                 if (pencilRawPoints.length < 2) {
-                    // Too few points to form a stroke
-                    pencilGroup = null
+                    // Too few points to form a stroke — remove preview immediately
+                    if (capturedPencilGroup) {
+                        two.remove(capturedPencilGroup)
+                        two.update()
+                    }
                     pencilRawPoints = []
                     lastPencilPoint = null
                     lastPencilLinewidth = null
@@ -1148,6 +1137,7 @@ function addZUI(
                     y: 0,
                     linewidth: defaultLinewidthValue,
                     stroke: pencilStrokeColorValue,
+                    strokeType: defaultStrokeTypeValue,
                 }
 
                 pencilComponentData.x = Math.floor(simplifiedPoints[0]?.x || 0)
@@ -1159,8 +1149,27 @@ function addZUI(
                     pencilComponentData
                 )
 
+                // React renders the element asynchronously; keep preview visible until
+                // the final element appears in two.scene.children to avoid a blank gap
+                const pencilWaitId = pencilId
+                const waitForPencilElement = (id, retries = 0) => {
+                    const el = two.scene.children.find(
+                        (child) => child?.elementData?.id === id
+                    )
+                    if (el) {
+                        if (capturedPencilGroup) {
+                            two.remove(capturedPencilGroup)
+                            two.update()
+                        }
+                    } else if (retries < 30) {
+                        requestAnimationFrame(() =>
+                            waitForPencilElement(id, retries + 1)
+                        )
+                    }
+                }
+                requestAnimationFrame(() => waitForPencilElement(pencilWaitId))
+
                 // Reset pencil state
-                pencilGroup = null
                 pencilRawPoints = []
                 lastPencilPoint = null
                 lastPencilLinewidth = null
@@ -1368,7 +1377,14 @@ function addZUI(
         distance = d
     }
 
-    return { zui, mousemove }
+    return {
+        zui,
+        mousemove,
+        resetDragState: () => {
+            dragging = false
+            shape = {}
+        },
+    }
 }
 
 const ElementRenderWrapper = (
@@ -1521,6 +1537,10 @@ const Canvas = (props) => {
             // where I can assign mousemove event listener to the new component
             let domElement = twoJSInstance?.renderer?.domElement
 
+            // Reset stale drag state so a resize followed by a store update
+            // (e.g. undo) doesn't leave the element dragging on next mousemove
+            zuiInstance.resetDragState()
+
             domElement.addEventListener(
                 'mousemove',
                 zuiInstance.mousemove,
@@ -1558,8 +1578,12 @@ const Canvas = (props) => {
     }, [props.isPencilMode])
 
     useEffect(() => {
-        defaultLinewidthValue = props.defaultLinewidth || 1
-    }, [props.defaultLinewidth])
+        defaultLinewidthValue = props.pencilDefaultLinewidth || 1
+    }, [props.pencilDefaultLinewidth])
+
+    useEffect(() => {
+        defaultStrokeTypeValue = props.pencilDefaultStrokeType || null
+    }, [props.pencilDefaultStrokeType])
 
     useEffect(() => {
         pencilStrokeColorValue = props.pencilStrokeColor || '#000'
@@ -1734,11 +1758,9 @@ const Canvas = (props) => {
                     // do nothing
                 } else {
                     arr.push(item.id)
-                    const ElementToRender = Loadable({
-                        loader: () =>
-                            import(`components/elements/${item.componentType}`),
-                        loading: Loader,
-                    })
+                    const ElementToRender = React.lazy(() =>
+                        elementModules[`./components/elements/${item.componentType}.js`]()
+                    )
                     const data = {
                         twoJSInstance: twoJSInstance,
                         id: item.id,
@@ -1806,7 +1828,10 @@ const Canvas = (props) => {
 
     const updateToGlobalState = (newShapeData, oldShapeData) => {
         const userId = localStorage.getItem('userId')
-        // console.log('updateToGlobalState', newShapeData, oldShapeData)
+        // Initial arrow placement: prevX is -9999 (off-screen staging value).
+        // The ADD history entry already covers this insertion, so the position
+        // updates that follow should not create extra undo steps.
+        const isInitialArrowPlacement = newShapeData.prevX === -9999
 
         // also check that new x,y is updated or not by comparing to prev x,y
         // then only perform mutation
@@ -1822,7 +1847,8 @@ const Canvas = (props) => {
             }
             updateComponentBulkPropertiesInLocalStore(
                 newShapeData.id,
-                updateObj
+                updateObj,
+                isInitialArrowPlacement
             )
         }
 
@@ -1836,7 +1862,8 @@ const Canvas = (props) => {
             }
             updateComponentBulkPropertiesInLocalStore(
                 newShapeData.parentData.elementData.id,
-                updateObj
+                updateObj,
+                isInitialArrowPlacement
             )
         }
     }
@@ -1863,9 +1890,9 @@ const Canvas = (props) => {
                 <React.Fragment>{renderElements()}</React.Fragment>
             )} */}
             {componentsToRender.map((Component, index) => (
-                <React.Fragment key={index}>
+                <Suspense key={index} fallback={<Loader />}>
                     <Component />
-                </React.Fragment>
+                </Suspense>
             ))}
             {/* <Zoomer sceneInstance={twoJSInstance} /> */}
         </>

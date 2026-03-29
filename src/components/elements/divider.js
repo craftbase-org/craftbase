@@ -7,7 +7,7 @@ import { useImmer } from 'use-immer'
 import { useBoardContext } from 'views/Board/board'
 
 import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
-import { elementOnBlurHandler } from 'utils/misc'
+import { elementOnBlurHandler, strokeTypeToDashes } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 
 import Toolbar from 'components/floatingToolbar'
@@ -85,6 +85,7 @@ function Divider(props) {
             x2: props.x2,
             y1: props.y1,
             y2: props.y2,
+            strokeType: props.strokeType,
         })
         // Get all instances of every sub child element
         const { group, pointCircle1, pointCircle2, resizeLine, line } =
@@ -319,11 +320,16 @@ function Divider(props) {
         }
 
         return () => {
-            console.log('UNMOUNTING in Divider', group)
-            // clean garbage by removing instance
-            // two.remove(group)
+            two.remove(group)
         }
     }, [])
+
+    useEffect(() => {
+        if (internalState?.line?.data) {
+            internalState.line.data.dashes = strokeTypeToDashes(props.strokeType)
+            two.update()
+        }
+    }, [props.strokeType])
 
     const updateX2Y2Vertices = (line, x2, y2, pointCircle2) => {
         pointCircle2.translation.x = line.vertices[1].x + 4
