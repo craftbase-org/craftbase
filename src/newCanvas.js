@@ -504,29 +504,48 @@ function addZUI(
 
                 // in case if it's a group selector, it falls under below condition
                 if (shape === null) {
-                    // shape = two.scene
-                    const { x1, x2, y1, y2 } = {
-                        x1: 0,
-                        x2: 10,
-                        y1: 0,
-                        y2: 10,
+                    // When a text input overlay is active (about to blur),
+                    // the click is just dismissing the input — skip creating
+                    // the group selector so no orphaned dotted rectangle
+                    // is left on the canvas.
+                    const activeTextInput =
+                        document.querySelector('.temp-input-area')
+                    if (activeTextInput) {
+                        shape = {}
+                    } else {
+                        // shape = two.scene
+                        const { x1, x2, y1, y2 } = {
+                            x1: 0,
+                            x2: 10,
+                            y1: 0,
+                            y2: 10,
+                        }
+                        const area = two.makePath(
+                            x1,
+                            y1,
+                            x2,
+                            y1,
+                            x2,
+                            y2,
+                            x1,
+                            y2
+                        )
+                        area.fill = 'rgba(0,0,0,0)'
+                        area.opacity = 1
+                        area.linewidth = 1
+                        area.dashes[0] = 4
+                        area.stroke = '#505F79'
+
+                        let newSelectorGroup = two.makeGroup(area)
+
+                        const m = zui.clientToSurface(e.clientX, e.clientY)
+                        mouse.copy(m)
+                        newSelectorGroup.position.copy(mouse)
+
+                        two.update()
+                        shape = newSelectorGroup
+                        isGroupSelector = true
                     }
-                    const area = two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
-                    area.fill = 'rgba(0,0,0,0)'
-                    area.opacity = 1
-                    area.linewidth = 1
-                    area.dashes[0] = 4
-                    area.stroke = '#505F79'
-
-                    let newSelectorGroup = two.makeGroup(area)
-
-                    const m = zui.clientToSurface(e.clientX, e.clientY)
-                    mouse.copy(m)
-                    newSelectorGroup.position.copy(mouse)
-
-                    two.update()
-                    shape = newSelectorGroup
-                    isGroupSelector = true
                 }
 
                 // inserting prevX and prevY to diff at updateToGlobalState function
