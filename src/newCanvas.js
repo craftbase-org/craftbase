@@ -961,25 +961,8 @@ function addZUI(
                     updateToGlobalState(newShapeData, {})
                 }
 
-                if (arrowDrawElement && arrowDrawElement.children?.[0]) {
-                    const groupEl = arrowDrawElement
-                    const lineEl = arrowDrawElement.children[0]
-                    const componentInternalState = {
-                        element: {
-                            [lineEl.id]: lineEl,
-                            [groupEl.id]: groupEl,
-                        },
-                        group: { id: groupEl.id, data: groupEl },
-                        shape: {
-                            type: groupEl.elementData?.componentType,
-                            id: lineEl.id,
-                            data: lineEl,
-                        },
-                        text: { data: {} },
-                        icon: { data: {} },
-                    }
-                    setSelectedComponentInBoard(componentInternalState)
-                }
+                // TODO: select element here if tool lock is active
+                setSelectedComponentInBoard(null)
 
                 arrowDrawElement = null
                 setArrowDrawModeOff()
@@ -1058,6 +1041,7 @@ function addZUI(
 
                 // React renders the element asynchronously; poll until it appears in two.scene.children,
                 // then remove the preview so there is no blank gap between preview removal and final render
+                // TODO: select element here if tool lock is active
                 const pendingSelectionId = finalId
                 const waitForNewElement = (id, retries = 0) => {
                     const el = two.scene.children.find(
@@ -1068,22 +1052,6 @@ function addZUI(
                             two.remove(capturedPreview)
                             two.update()
                         }
-                        const shapeEl = el.children[0]
-                        const componentInternalState = {
-                            element: {
-                                [shapeEl.id]: shapeEl,
-                                [el.id]: el,
-                            },
-                            group: { id: el.id, data: el },
-                            shape: {
-                                type: el.elementData?.componentType,
-                                id: shapeEl.id,
-                                data: shapeEl,
-                            },
-                            text: { data: {} },
-                            icon: { data: {} },
-                        }
-                        setSelectedComponentInBoard(componentInternalState)
                     } else if (retries < 30) {
                         requestAnimationFrame(() =>
                             waitForNewElement(id, retries + 1)
@@ -1093,6 +1061,7 @@ function addZUI(
                 requestAnimationFrame(() =>
                     waitForNewElement(pendingSelectionId)
                 )
+                setSelectedComponentInBoard(null)
 
                 drawOrigin = null
                 drawCurrentCoords = null
@@ -1109,26 +1078,9 @@ function addZUI(
                 break
             }
             case SCENARIO_JUST_ADDED_ELEMENT:
-                if (lastPlacedElement && lastPlacedElement.children?.[0]) {
-                    const groupEl = lastPlacedElement
-                    const shapeEl = lastPlacedElement.children[0]
-                    const componentInternalState = {
-                        element: {
-                            [shapeEl.id]: shapeEl,
-                            [groupEl.id]: groupEl,
-                        },
-                        group: { id: groupEl.id, data: groupEl },
-                        shape: {
-                            type: groupEl.elementData?.componentType,
-                            id: shapeEl.id,
-                            data: shapeEl,
-                        },
-                        text: { data: {} },
-                        icon: { data: {} },
-                    }
-                    setSelectedComponentInBoard(componentInternalState)
-                    lastPlacedElement = null
-                }
+                // TODO: select element here if tool lock is active
+                setSelectedComponentInBoard(null)
+                lastPlacedElement = null
                 setPointerElement('pointer')
                 domElement.removeEventListener('mousemove', mousemove, false)
                 domElement.removeEventListener('mouseup', mouseup, false)
