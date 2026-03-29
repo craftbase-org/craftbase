@@ -30,18 +30,35 @@ the useEffect re-applies it to the Two.js shape instance to keep the canvas in s
 
 When user selects "stroke width" from defaults sidebar or floating toolbar, it internally updates element's linewidth property. Stroke width for Visual representation, linewidth for code representation.
 
-Here's how manipulation of linewidth (a.k.a "Stroke width") works
+**1. Initial creation — factories**
 
-1. src/components/floatingToolbar.js:479-484 — onChangeBorderWidth updates state.linewidth and directly mutates componentState.shape.data.linewidth, then calls
-   updateComponent('linewidth', width) to persist to DB. This is the primary live-edit path for all shapes.
-2. src/views/Board/board.js:455-461 — applyPropertyToTwoJSGroup handles linewidth as part of the undo system, setting shape[name] = value on the Two.js shape when rewinding
-   history.
+`src/factory/rectangle.js:24`, `circle.js:20` etc. set the initial linewidth on shape creation.
 
-The individual element files (rectangle.js, circle.js, etc.) only set the initial linewidth at creation time — that happens in their factories (src/factory/rectangle.js:24,
-src/factory/circle.js:20).
+**2. Default stroke width — defaults sidebar**
 
-The exception is arrowLine.js which has its own useEffect at line 252 that watches props.linewidth and reapplies it — but that's because arrows have a more complex shape
-structure that needs special handling on prop changes.
+`defaultLinewidth` is board-level state in `board.js` (`useState(2)`). The defaults sidebar renders a stroke-width selector; selecting a value calls `setDefaultLinewidthInBoard(value)`.
+
+`setDefaultLinewidthInBoard` (board.js) does the following:
+
+- Updates the default for future elements (`setDefaultLinewidth(val)`).
+- Calls `toggleToolbar(false)` to dismiss the floating toolbar.
+- If an element is currently selected (`selectedComponent != null`), mutates `selectedComponent.shape.data.linewidth` (guarded by `shape?.data?.stroke` being truthy, matching the floating toolbar's guard) and calls `updateComponentBulkPropertiesInLocalStore` to persist to DB and record undo history. Then calls `twoJSInstanceRef.current?.update()`.
+
+`updateComponentBulkPropertiesInLocalStore`, after updating the local store, also calls `setDefaultLinewidth` when `linewidth` is present in `bulkObj` — so the defaults sidebar stays in sync with any property change regardless of which UI triggered it (floating toolbar, defaults sidebar, or undo).
+
+**3. Live editing — floatingToolbar.js:479-484**
+
+`onChangeBorderWidth` updates `state.linewidth` and directly mutates `componentState.shape.data.linewidth` (guarded by `shape?.data?.stroke`), then calls `updateComponent('linewidth', width)` to persist to DB via `updateComponentBulkPropertiesInLocalStore`.
+
+**4. Undo — board.js UPDATE_BULK path**
+
+*Visual (Two.js)*: `applyPropertyToTwoJSGroup` handles `'linewidth'` via `shape[name] = value`.
+
+*UI state sync*: After the visual update, the undo path calls `setDefaultLinewidth(prevProps.linewidth)` so the defaults sidebar reflects the restored value, and increments `toolbarRefreshKey` to force the floating toolbar's sync useEffect to re-fire. Since `selectedComponent` is the same object reference after undo, the floating toolbar's `useEffect([componentState, refreshKey])` would never re-fire on `componentState` alone — `toolbarRefreshKey` is the explicit signal.
+
+**5. Element files**
+
+Individual element files (rectangle.js, circle.js, etc.) only set the initial linewidth at creation time via their factories. The exception is arrowLine.js which has its own useEffect at line 252 that watches `props.linewidth` and reapplies it — arrows have a more complex shape structure that needs special handling on prop changes.
 
 # strokeType
 
@@ -63,10 +80,11 @@ All factories (`src/factory/rectangle.js:25`, `circle.js:21`, `arrowLine.js:22`,
 
 `defaultStrokeType` is a board-level state in `board.js:95` (`useState(null)`). The defaults sidebar (`src/components/sidebar/defaults.js:76-108`) renders a stroke-type selector; selecting a type calls `setDefaultStrokeTypeInBoard(value === 'solid' ? null : value)`.
 
-`setDefaultStrokeTypeInBoard` (board.js) does two things:
+`setDefaultStrokeTypeInBoard` (board.js) does the following:
 
 - Updates the default for future elements (`setDefaultStrokeType(val)`).
-- If an element is currently selected (`selectedComponent != null`), immediately applies the change to it — same three steps as the floating toolbar: mutates `selectedComponent.shape.data.dashes`, updates `selectedComponent.group.data.elementData.strokeType`, and calls `updateComponentInfo` to persist to DB. Then calls `twoJSInstanceRef.current?.update()`.
+- Calls `toggleToolbar(false)` to dismiss the floating toolbar.
+- If an element is currently selected (`selectedComponent != null`), immediately applies the change to it: mutates `selectedComponent.shape.data.dashes`, calls `clearDashesOnTwoJSShape` when reverting to solid, updates `selectedComponent.group.data.elementData.strokeType`, and calls `updateComponentBulkPropertiesInLocalStore` to persist to DB and record undo history. Then calls `twoJSInstanceRef.current?.update()`.
 
 This default is threaded through `BoardContext` and consumed by:
 
@@ -85,9 +103,16 @@ This default is threaded through `BoardContext` and consumed by:
 
 Note the asymmetry: DB/elementData stores `'solid'` for solid, but local toolbar state stores `null`. Both are treated as solid downstream.
 
-**4. Undo — board.js:428-432**
+`updateComponent` in the floating toolbar routes through `updateComponentBulkProperties` (which is `updateComponentBulkPropertiesInLocalStore` from board.js). That function, after updating the local store, also calls `setDefaultStrokeType` when `strokeType` is present in `bulkObj` — so the defaults sidebar stays in sync with any strokeType change regardless of which UI triggered it.
 
-`applyPropertyToTwoJSGroup` handles `'strokeType'` by calling `shape.dashes = strokeTypeToDashes(value)` and then `clearDashesOnTwoJSShape(shape)` when value is falsy or `'solid'`.
+**4. Undo — board.js UPDATE_BULK path**
+
+*Visual (Two.js)*: `applyPropertyToTwoJSGroup` handles `'strokeType'` by calling `shape.dashes = strokeTypeToDashes(value)` and `clearDashesOnTwoJSShape(shape)` when value is falsy or `'solid'`.
+
+*UI state sync*: After the visual update, the undo path also:
+- Calls `setDefaultStrokeType` so the defaults sidebar reflects the restored value.
+- Updates `selectedComponent.group.data.elementData.strokeType` in-memory — necessary because `applyPropertyToTwoJSGroup` only updates the Two.js shape dashes, not `elementData`. The floating toolbar reads `componentState.group.data.elementData.strokeType`, so without this it would re-read a stale value.
+- Increments `toolbarRefreshKey` to force the floating toolbar's sync useEffect to re-fire (see linewidth section for details on `toolbarRefreshKey`).
 
 **5. Prop-change useEffect in element files (real-time sync)**
 
