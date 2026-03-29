@@ -22,15 +22,18 @@ function Rectangle(props) {
     const [internalState, setInternalState] = useImmer({})
     const stateRefForGroup = useRef()
     const selectorRef = useRef(null)
+    const toolbarMouseDownRef = useRef(false)
 
     const two = props.twoJSInstance
     let groupObject = null
 
     function onBlurHandler(e) {
-        if (
-            e?.relatedTarget?.id === 'floating-toolbar' ||
-            e?.relatedTarget?.dataset.parent === 'floating-toolbar'
-        ) {
+        const floatingToolbar = document.getElementById('floating-toolbar')
+        const clickedInsideToolbar =
+            toolbarMouseDownRef.current ||
+            (floatingToolbar && floatingToolbar.contains(e?.relatedTarget))
+        toolbarMouseDownRef.current = false
+        if (clickedInsideToolbar) {
             const getGroupElementFromDOM = document.getElementById(
                 `${stateRefForGroup.current.id}`
             )
@@ -74,6 +77,14 @@ function Rectangle(props) {
         const prevX = props.x
         const prevY = props.y
         let handleUndoSelectorSync = null
+
+        const handleToolbarMouseDown = (e) => {
+            const toolbar = document.getElementById('floating-toolbar')
+            if (toolbar?.contains(e.target)) {
+                toolbarMouseDownRef.current = true
+            }
+        }
+        document.addEventListener('mousedown', handleToolbarMouseDown)
 
         // Instantiate factory
         const elementFactory = new ElementFactory(two, prevX, prevY, {
@@ -308,6 +319,7 @@ function Rectangle(props) {
 
         return () => {
             two.remove(group)
+            document.removeEventListener('mousedown', handleToolbarMouseDown)
             if (handleUndoSelectorSync) {
                 window.removeEventListener('undoSelectorSync', handleUndoSelectorSync)
             }
