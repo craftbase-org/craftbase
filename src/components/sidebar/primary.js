@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react'
 import { useQuery } from '@apollo/client'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import DefaultsDropdown from './defaults'
 import ShapesToolbar from './shapesToolbar'
@@ -17,6 +17,8 @@ const DRAW_SHAPE_TYPES = ['circle', 'rectangle']
 
 const PrimarySidebar = () => {
     const {
+        boardId,
+        isPersisted,
         updateLastAddedElement,
         togglePointer,
         togglePencilMode,
@@ -39,8 +41,6 @@ const PrimarySidebar = () => {
     } = useQuery(GET_COMPONENT_TYPES)
 
     const history = useNavigate()
-    const routeParams = useParams()
-    // console.log('boardId', routeParams.id)
 
     // A check to see if the component types seeds are already populated in DB.
     // We need all the component types being inserted as DB seeds otherwise we insert component functionality will be affected
@@ -87,7 +87,7 @@ const PrimarySidebar = () => {
                         x: -9999,
                         y: -9999,
                         x2: 0,
-                        boardId: routeParams.id,
+                        boardId: boardId,
                         metadata: item.metadata,
                         width: item.width,
                         height: item.height,
@@ -142,7 +142,7 @@ const PrimarySidebar = () => {
                         x: -9999,
                         y: -9999,
                         x2: 0,
-                        boardId: routeParams.id,
+                        boardId: boardId,
                         width: item.width,
                         height: item.height,
                         fill: item.fill,
@@ -230,7 +230,7 @@ const PrimarySidebar = () => {
                                                 100
                                     ),
                                     x2: label.includes('divider') ? 100 : 0,
-                                    boardId: routeParams.id,
+                                    boardId: boardId,
                                     metadata: item.metadata,
                                     width: item.width,
                                     height: item.height,
@@ -344,15 +344,15 @@ const PrimarySidebar = () => {
                     )}
 
                     <ShareLinkPopup />
-                    <Button
-                        intent="primary"
-                        size="medium"
-                        label="Create Board"
-                        onClick={onCreateBoard}
-                        extendClass="font-semibold shadow-lg ml-2"
-                        loading={createBoardLoading}
-                        disabled={createBoardLoading}
-                    />
+                    {isPersisted && (
+                        <Button
+                            intent="primary"
+                            size="medium"
+                            label="New Canvas"
+                            onClick={() => history('/')}
+                            extendClass="font-semibold shadow-lg ml-2"
+                        />
+                    )}
                     {/* <UserDetailsPopup /> */}
                 </div>
             </div>

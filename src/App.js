@@ -93,11 +93,15 @@ class App extends Component {
                         <Routes>
                             <Route
                                 path={routes.home}
-                                element={<HomePageViewContainer />}
+                                element={<BoardViewContainer />}
                             />
                             <Route
                                 path={routes.board}
                                 element={<BoardViewContainer />}
+                            />
+                            <Route
+                                path={routes.marketing}
+                                element={<HomePageViewContainer />}
                             />
                         </Routes>
                     </div>

@@ -3,10 +3,15 @@ import React, { useRef, useState, useEffect } from 'react'
 import Button from 'components/common/button'
 import LinkIcon from 'assets/link_white.svg'
 import CopyIcon from 'assets/copy.svg'
+import Spinner from 'components/common/spinnerWithSize'
+import { useBoardContext } from 'views/Board/board'
 
 const ShareLinkPopup = ({}) => {
     const refNode = useRef(null)
     const [showLink, setShowLink] = useState(false)
+    const [isPersisting, setIsPersisting] = useState(false)
+    const [shareUrl, setShareUrl] = useState(window.location.href)
+    const { isPersisted, persistBoard } = useBoardContext()
 
     useEffect(() => {
         document.addEventListener('mousedown', handleClick, false)
@@ -25,19 +30,36 @@ const ShareLinkPopup = ({}) => {
         setShowLink(false)
     }
 
+    const handleShareClick = async (e) => {
+        e.preventDefault()
+        if (!isPersisted) {
+            setIsPersisting(true)
+            try {
+                const serverBoardId = await persistBoard()
+                setShareUrl(`${window.location.origin}/board/${serverBoardId}`)
+                setShowLink(true)
+            } finally {
+                setIsPersisting(false)
+            }
+        } else {
+            setShareUrl(window.location.href)
+            setShowLink(!showLink)
+        }
+    }
+
     return (
         <>
             <div className="relative text-sm pr-2" ref={refNode}>
                 <a
                     className=" flex items-center px-4 py-2 rounded-md bg-primary-blue text-white shadow-md"
                     href=""
-                    onClick={(e) => {
-                        e.preventDefault()
-                        setShowLink(!showLink)
-                    }}
+                    onClick={handleShareClick}
                 >
-                    {/* <span className="text-sm">Share</span> */}
-                    <img src={LinkIcon} className="w-5 h-5" />
+                    {isPersisting ? (
+                        <Spinner loaderSize="sm" />
+                    ) : (
+                        <img src={LinkIcon} className="w-5 h-5" />
+                    )}
                 </a>
 
                 <div
@@ -48,7 +70,7 @@ const ShareLinkPopup = ({}) => {
                     }}
                 >
                     <div
-                        className=" 
+                        className="
                         bg-white text-neutrals-n700 border border-neutrals-n40
                         rounded-md px-2 py-4 shadow-md
                         "
@@ -59,18 +81,16 @@ const ShareLinkPopup = ({}) => {
                         </div>
                         <div className="mt-2 flex items-center justify-between">
                             <div className="text-sm rounded-md bg-neutrals-n40  text-black px-2 py-2 ">
-                                {window.location.href}
+                                {shareUrl}
                             </div>
                             <div
-                                className="ml-2 rounded-md   
+                                className="ml-2 rounded-md
                                 px-2 py-2  cursor-pointer bg-neutrals-n40
                                 hover:shadow-md
                                 "
                                 onClick={(e) => {
                                     e.stopPropagation()
-                                    navigator?.clipboard?.writeText(
-                                        window.location.href
-                                    )
+                                    navigator?.clipboard?.writeText(shareUrl)
                                     setShowLink(false)
                                 }}
                             >
