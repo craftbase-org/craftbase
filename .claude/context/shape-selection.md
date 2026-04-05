@@ -22,7 +22,10 @@ Circle & Rectangle (Draw-to-Place)
     - Removes preview shape from scene
     - Computes final x, y, width, height (all Math.round()-ed to avoid float errors)
     - Enforces a minimum size of 20px
-    - Calls addToLocalComponentStore() → persists to DB via GraphQL
+    - Calls addToLocalComponentStore() → updates React state; persists to DB only if `isPersisted` is true (see canvas-first-ux.md)
+    - Also triggers `ensureBackgroundBoard()` on first draw (background, non-blocking board creation)
     - Resets cursor to auto, hides hint tooltip, clears draw state
+
+Note: mousedown resets `scenario` to `SCENARIO_DEFAULT` and cleans up any orphaned draw state (preview shape, stale listeners) from a prior interrupted drag (e.g. mouse released outside canvas).
 
 ---
