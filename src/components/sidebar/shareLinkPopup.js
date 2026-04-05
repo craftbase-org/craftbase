@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react'
 
 import Button from 'components/common/button'
+import Modal from 'components/common/modal'
 import LinkIcon from 'assets/link_white.svg'
 import CopyIcon from 'assets/copy.svg'
 import Spinner from 'components/common/spinnerWithSize'
@@ -9,14 +10,14 @@ import { useBoardContext } from 'views/Board/board'
 const ShareLinkPopup = ({}) => {
     const refNode = useRef(null)
     const [showLink, setShowLink] = useState(false)
+    const [showConfirmModal, setShowConfirmModal] = useState(false)
     const [isPersisting, setIsPersisting] = useState(false)
-    const [shareUrl, setShareUrl] = useState(window.location.href)
-    const { isPersisted, persistBoard } = useBoardContext()
+    const [shareUrl, setShareUrl] = useState(null)
+    const { isPersisted, persistBoard, backgroundBoardId } = useBoardContext()
 
     useEffect(() => {
         document.addEventListener('mousedown', handleClick, false)
 
-        // when component will unmount
         return () => {
             document.removeEventListener('mousedown', handleClick, false)
         }
@@ -30,22 +31,32 @@ const ShareLinkPopup = ({}) => {
         setShowLink(false)
     }
 
-    const handleShareClick = async (e) => {
+    const handleShareClick = (e) => {
         e.preventDefault()
         if (!isPersisted) {
-            setIsPersisting(true)
-            try {
-                const serverBoardId = await persistBoard()
-                setShareUrl(`${window.location.origin}/board/${serverBoardId}`)
-                setShowLink(true)
-            } finally {
-                setIsPersisting(false)
-            }
+            setShowConfirmModal(true)
         } else {
             setShareUrl(window.location.href)
             setShowLink(!showLink)
         }
     }
+
+    const handleConfirmShare = async () => {
+        setIsPersisting(true)
+        try {
+            const serverBoardId = await persistBoard()
+            const url = `${window.location.origin}/board/${serverBoardId}`
+            setShareUrl(url)
+            setShowConfirmModal(false)
+            setShowLink(true)
+        } finally {
+            setIsPersisting(false)
+        }
+    }
+
+    const previewUrl = backgroundBoardId
+        ? `${window.location.origin}/board/${backgroundBoardId}`
+        : `${window.location.origin}/board/...`
 
     return (
         <>
@@ -55,11 +66,7 @@ const ShareLinkPopup = ({}) => {
                     href=""
                     onClick={handleShareClick}
                 >
-                    {isPersisting ? (
-                        <Spinner loaderSize="sm" />
-                    ) : (
-                        <img src={LinkIcon} className="w-5 h-5" />
-                    )}
+                    <img src={LinkIcon} className="w-5 h-5" />
                 </a>
 
                 <div
@@ -100,6 +107,75 @@ const ShareLinkPopup = ({}) => {
                     </div>
                 </div>
             </div>
+
+            <Modal
+                open={showConfirmModal}
+                onClose={() => !isPersisting && setShowConfirmModal(false)}
+                locked={isPersisting}
+            >
+                <div style={{ minWidth: '440px', maxWidth: '520px' }}>
+                    {backgroundBoardId ? (
+                        <>
+                            <h2 className="text-lg font-semibold mb-3">
+                                Share this board
+                            </h2>
+                            <p className="text-sm text-neutrals-n700 mb-2">
+                                We'll generate a unique board link so you can
+                                share your work with others.
+                            </p>
+                            <p className="text-sm text-neutrals-n700 mb-4">
+                                This board will be visible to anyone you share
+                                the link with. Your shareable URL will be:
+                            </p>
+                            <div className="text-sm rounded-md bg-neutrals-n40 text-black px-3 py-2 mb-4 break-all">
+                                {previewUrl}
+                            </div>
+                            <p className="text-sm text-neutrals-n700 mb-4">
+                                Would you like to proceed?
+                            </p>
+                            <div className="flex gap-2 justify-end">
+                                <Button
+                                    intent="secondary"
+                                    size="medium"
+                                    label="Cancel"
+                                    onClick={() =>
+                                        setShowConfirmModal(false)
+                                    }
+                                    disabled={isPersisting}
+                                />
+                                <Button
+                                    intent="primary"
+                                    size="medium"
+                                    label="Yes, share"
+                                    onClick={handleConfirmShare}
+                                    loading={isPersisting}
+                                    disabled={isPersisting}
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <h2 className="text-lg font-semibold mb-3">
+                                Nothing to share yet
+                            </h2>
+                            <p className="text-sm text-neutrals-n700 mb-4">
+                                Before you share, please create something on
+                                the board to make it shareable.
+                            </p>
+                            <div className="flex justify-end">
+                                <Button
+                                    intent="primary"
+                                    size="medium"
+                                    label="Okay"
+                                    onClick={() =>
+                                        setShowConfirmModal(false)
+                                    }
+                                />
+                            </div>
+                        </>
+                    )}
+                </div>
+            </Modal>
         </>
     )
 }

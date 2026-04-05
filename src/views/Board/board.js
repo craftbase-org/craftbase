@@ -36,6 +36,9 @@ const BoardViewPage = (props) => {
     const [isPersisted, setIsPersisted] = useState(!!boardIdFromUrl)
     const isPersistedRef = useRef(!!boardIdFromUrl)
     const boardId = boardIdFromUrl || localBoardId
+    const [backgroundBoardId, setBackgroundBoardId] = useState(null)
+    const backgroundBoardIdRef = useRef(null)
+    const boardCreationInFlightRef = useRef(false)
 
     const {
         loading: getComponentsForBoardLoading,
@@ -122,9 +125,18 @@ const BoardViewPage = (props) => {
     const [storageLimitBoardUrl, setStorageLimitBoardUrl] = useState(null)
     const draftSaveTimerRef = useRef(null)
 
-    // Restore draft from localStorage on mount (local mode only)
+    // Restore draft and background board ID from localStorage on mount (local mode only)
     useEffect(() => {
         if (isPersisted) return
+
+        const savedBgBoardId = localStorage.getItem(
+            'craftbase_background_board_id'
+        )
+        if (savedBgBoardId) {
+            backgroundBoardIdRef.current = savedBgBoardId
+            setBackgroundBoardId(savedBgBoardId)
+        }
+
         try {
             const draft = localStorage.getItem(LOCAL_DRAFT_KEY)
             if (draft) {
@@ -134,10 +146,12 @@ const BoardViewPage = (props) => {
                     setComponentStore(parsed.components)
                 } else {
                     localStorage.removeItem(LOCAL_DRAFT_KEY)
+                    localStorage.removeItem('craftbase_background_board_id')
                 }
             }
         } catch (e) {
             localStorage.removeItem(LOCAL_DRAFT_KEY)
+            localStorage.removeItem('craftbase_background_board_id')
         }
     }, [])
 
@@ -202,9 +216,14 @@ const BoardViewPage = (props) => {
         }
     }
 
-    // Reset component store whenever the board changes
+    // Reset component store whenever the board changes (persisted mode only).
+    // In local mode the boardId is a stable UUID and draft restore handles initialization.
+    const prevBoardIdRef = useRef(boardId)
     useEffect(() => {
-        setComponentStore({})
+        if (prevBoardIdRef.current !== boardId) {
+            setComponentStore({})
+            prevBoardIdRef.current = boardId
+        }
     }, [boardId])
 
     // check if user exists or not (only in persisted mode)
@@ -231,13 +250,6 @@ const BoardViewPage = (props) => {
         }
         localStorage.setItem('lastOpenBoard', boardId)
     }, [isPersisted])
-
-    useEffect(() => {
-        if (createBoardData) {
-            const newBoardId = createBoardData.board.id
-            navigate(`/board/${newBoardId}`)
-        }
-    }, [createBoardData])
 
     useEffect(() => {
         if (
@@ -356,8 +368,49 @@ const BoardViewPage = (props) => {
         setHistoryLog(updatedLog)
     }
 
+    // Creates a board in the background on first interaction (non-blocking).
+    // Stores the server board ID in state + ref + localStorage for later use.
+    const ensureBackgroundBoard = async () => {
+        if (isPersistedRef.current) return
+        if (backgroundBoardIdRef.current) return
+        if (boardCreationInFlightRef.current) return
+
+        boardCreationInFlightRef.current = true
+        try {
+            let userId = localStorage.getItem('userId')
+            if (!userId) {
+                const { nickname, firstName, lastName } =
+                    generateRandomUsernames()
+                const { data } = await insertUser({
+                    variables: {
+                        object: { nickname, firstName, lastName },
+                    },
+                })
+                userId = data.user.id
+                localStorage.setItem('userId', userId)
+            }
+
+            const { data: boardData } = await createBoard({
+                variables: {
+                    object: { createdBy: userId },
+                },
+            })
+            const newBoardId = boardData.board.id
+            backgroundBoardIdRef.current = newBoardId
+            setBackgroundBoardId(newBoardId)
+            localStorage.setItem('craftbase_background_board_id', newBoardId)
+        } catch (e) {
+            console.error('Background board creation failed:', e)
+        } finally {
+            boardCreationInFlightRef.current = false
+        }
+    }
+
     // Records ADD action, updates store and syncs to DB
     const addToLocalComponentStore = (id, type, componentInfo) => {
+        // Trigger background board creation on first interaction
+        ensureBackgroundBoard()
+
         recordToHistoryLog({
             action: 'ADD',
             id,
@@ -533,24 +586,31 @@ const BoardViewPage = (props) => {
     }
 
     const persistBoard = async () => {
-        let userId = localStorage.getItem('userId')
-        if (!userId) {
-            const { nickname, firstName, lastName } = generateRandomUsernames()
-            const { data } = await insertUser({
+        let serverBoardId = backgroundBoardIdRef.current
+
+        // If background board wasn't created yet (e.g. user shares before first draw),
+        // create it now
+        if (!serverBoardId) {
+            let userId = localStorage.getItem('userId')
+            if (!userId) {
+                const { nickname, firstName, lastName } =
+                    generateRandomUsernames()
+                const { data } = await insertUser({
+                    variables: {
+                        object: { nickname, firstName, lastName },
+                    },
+                })
+                userId = data.user.id
+                localStorage.setItem('userId', userId)
+            }
+
+            const { data: boardData } = await createBoard({
                 variables: {
-                    object: { nickname, firstName, lastName },
+                    object: { createdBy: userId },
                 },
             })
-            userId = data.user.id
-            localStorage.setItem('userId', userId)
+            serverBoardId = boardData.board.id
         }
-
-        const { data: boardData } = await createBoard({
-            variables: {
-                object: { createdBy: userId },
-            },
-        })
-        const serverBoardId = boardData.board.id
 
         const components = Object.values(stateRefForComponentStore.current).map(
             (comp) => {
@@ -576,6 +636,7 @@ const BoardViewPage = (props) => {
         setIsPersisted(true)
         isPersistedRef.current = true
         localStorage.removeItem('craftbase_local_draft')
+        localStorage.removeItem('craftbase_background_board_id')
         localStorage.setItem('lastOpenBoard', serverBoardId)
         navigate(`/board/${serverBoardId}`, { replace: true })
 
@@ -758,6 +819,7 @@ const BoardViewPage = (props) => {
         boardId,
         isPersisted,
         persistBoard,
+        backgroundBoardId,
         isPencilMode,
         isArrowDrawMode,
         isTextDrawMode,

@@ -157,6 +157,26 @@ function addZUI(
             window.dispatchEvent(evt)
         }
 
+        // Reset scenario to prevent stale state from a previous interaction
+        // (e.g. mouse released outside the canvas during a draw)
+        scenario = SCENARIO_DEFAULT
+
+        // Clean up orphaned draw state from an interrupted drag
+        // (e.g. user moved cursor outside canvas and released mouse there)
+        if (previewShape) {
+            two.remove(previewShape)
+            two.update()
+            previewShape = null
+        }
+        if (drawOrigin) {
+            drawOrigin = null
+            drawCurrentCoords = null
+            drawShapeType = null
+            drawShapeProps = null
+            domElement.removeEventListener('mousemove', mousemove, false)
+            domElement.removeEventListener('mouseup', mouseup, false)
+        }
+
         if (isDrawing === true) {
             scenario = SCENARIO_PENCIL_MODE
         }

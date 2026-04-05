@@ -20,7 +20,7 @@ import HomeShapeToolbarJPG from 'assets/home_shape_toolbar.png'
 import RadioCheckboxPNG from 'assets/radio_check.png'
 import BasicShapesPNG from 'assets/basic_shapes.png'
 import Button from 'components/common/button'
-import ModalContainer from 'components/common/modalContainer'
+
 import { generateRandomUsernames } from 'utils/misc'
 
 const HomePage = (props) => {
@@ -119,31 +119,6 @@ const HomePage = (props) => {
                 className="home-page-container relative bg-neutrals-n20 "
                 // style={{ height: `${pageHeight}px` }}
             >
-                {/* <ModalContainer
-                    showModal={showLastOpenBoardModal}
-                    closeModal={closeLastOpenBoardModal}
-                >
-                    <div className="text-xl">
-                        Do you want to continue on your last board ?
-                    </div>
-                    <div className="mt-4 flex items-center justify-center ">
-                        <Button
-                            intent="primary"
-                            label="Yes"
-                            size="large"
-                            onClick={() => {
-                                navigate.push(`/board/${lastOpenBoard}`)
-                            }}
-                        />
-                        <Button
-                            extendClass="ml-4"
-                            intent="secondary"
-                            label="No"
-                            size="large"
-                            onClick={closeLastOpenBoardModal}
-                        />
-                    </div>
-                </ModalContainer> */}
                 <nav
                     className="flex items-center w-full px-5 py-1 lg:py-2 2xl:py-4
                  bg-white shadow-md
