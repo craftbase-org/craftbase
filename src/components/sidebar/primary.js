@@ -344,15 +344,15 @@ const PrimarySidebar = () => {
                     )}
 
                     <ShareLinkPopup />
-                    {isPersisted && (
+                    {/* {isPersisted && (
                         <Button
                             intent="primary"
                             size="medium"
-                            label="New Canvas"
+                            label="New Board"
                             onClick={() => history('/')}
                             extendClass="font-semibold shadow-lg ml-2"
                         />
-                    )}
+                    )} */}
                     {/* <UserDetailsPopup /> */}
                 </div>
             </div>

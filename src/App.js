@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React, { Component, useEffect } from 'react'
 import { Routes, Route, BrowserRouter } from 'react-router-dom'
 
 import {
@@ -7,6 +7,7 @@ import {
     InMemoryCache,
     HttpLink,
     split,
+    useMutation,
 } from '@apollo/client'
 import { getMainDefinition } from '@apollo/client/utilities'
 import { WebSocketLink } from '@apollo/client/link/ws'
@@ -15,6 +16,8 @@ import BoardViewContainer from 'views/Board'
 import HomePageViewContainer from 'views/Home'
 
 import routes from './routes'
+import { INSERT_USER_ONE } from 'schema/mutations'
+import { generateRandomUsernames } from 'utils/misc'
 
 import './App.css'
 
@@ -48,8 +51,8 @@ function getApolloClient() {
                 headers: {
                     // authorization: `Bearer ${accessToken}`,
                     'content-type': 'application/json',
-                    'x-hasura-admin-secret':
-                        import.meta.env.VITE_HASURA_ADMIN_SECRET,
+                    'x-hasura-admin-secret': import.meta.env
+                        .VITE_HASURA_ADMIN_SECRET,
                 },
             },
         },
@@ -79,32 +82,53 @@ function getApolloClient() {
     return client
 }
 
+const apolloClient = getApolloClient()
+
+function AppInit({ children }) {
+    const [insertUser] = useMutation(INSERT_USER_ONE)
+
+    useEffect(() => {
+        const userId = localStorage.getItem('userId')
+        if (!userId) {
+            const { nickname, firstName, lastName } = generateRandomUsernames()
+            insertUser({
+                variables: { object: { nickname, firstName, lastName } },
+            }).then(({ data }) => {
+                localStorage.setItem('userId', data.user.id)
+            })
+        }
+    }, [])
+
+    return children
+}
+
 class App extends Component {
     constructor(props) {
         super(props)
     }
 
     render() {
-        const apolloClient = getApolloClient()
         return (
             <BrowserRouter>
                 <ApolloProvider client={apolloClient}>
-                    <div className="App ">
-                        <Routes>
-                            <Route
-                                path={routes.home}
-                                element={<BoardViewContainer />}
-                            />
-                            <Route
-                                path={routes.board}
-                                element={<BoardViewContainer />}
-                            />
-                            <Route
-                                path={routes.marketing}
-                                element={<HomePageViewContainer />}
-                            />
-                        </Routes>
-                    </div>
+                    <AppInit>
+                        <div className="App ">
+                            <Routes>
+                                <Route
+                                    path={routes.index}
+                                    element={<BoardViewContainer />}
+                                />
+                                <Route
+                                    path={routes.board}
+                                    element={<BoardViewContainer />}
+                                />
+                                <Route
+                                    path={routes.marketing}
+                                    element={<HomePageViewContainer />}
+                                />
+                            </Routes>
+                        </div>
+                    </AppInit>
                 </ApolloProvider>
             </BrowserRouter>
         )

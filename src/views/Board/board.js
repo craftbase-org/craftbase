@@ -10,7 +10,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useMediaQueryUtils } from 'constants/exportHooks'
 import { GET_COMPONENTS_FOR_BOARD_QUERY } from 'schema/queries'
 import {
-    INSERT_USER_ONE,
     UPDATE_USER_REVISIT_COUNT,
     INSERT_COMPONENT,
     INSERT_BULK_COMPONENTS,
@@ -25,7 +24,11 @@ import PencilToolbar from 'components/pencilToolbar'
 import Spinner from 'components/common/spinnerWithSize'
 import Modal from 'components/common/modal'
 import Button from 'components/common/button'
-import { generateRandomUsernames, generateUUID, strokeTypeToDashes, clearDashesOnTwoJSShape } from 'utils/misc'
+import {
+    generateUUID,
+    strokeTypeToDashes,
+    clearDashesOnTwoJSShape,
+} from 'utils/misc'
 
 const BoardContext = createContext()
 
@@ -67,15 +70,6 @@ const BoardViewPage = (props) => {
         },
     ] = useMutation(DELETE_COMPONENT_BY_ID)
 
-    const [
-        insertUser,
-        {
-            loading: insertUserLoading,
-            data: insertUserData,
-            error: insertUserError,
-            reset: resetInsertUserMutation,
-        },
-    ] = useMutation(INSERT_USER_ONE)
     const [
         updateUserRevisit,
         {
@@ -226,27 +220,12 @@ const BoardViewPage = (props) => {
         }
     }, [boardId])
 
-    // check if user exists or not (only in persisted mode)
+    // Update revisit count when loading a persisted board
     useEffect(() => {
         if (!isPersisted) return
         const userId = localStorage.getItem('userId')
-        if (userId === null) {
-            const { nickname, firstName, lastName } = generateRandomUsernames()
-            insertUser({
-                variables: {
-                    object: {
-                        nickname,
-                        firstName,
-                        lastName,
-                    },
-                },
-            })
-        } else if (userId !== null || userId !== undefined) {
-            updateUserRevisit({
-                variables: {
-                    userId: userId,
-                },
-            })
+        if (userId) {
+            updateUserRevisit({ variables: { userId } })
         }
         localStorage.setItem('lastOpenBoard', boardId)
     }, [isPersisted])
@@ -285,7 +264,6 @@ const BoardViewPage = (props) => {
         stateRefForComponentStore.current = componentStore
     }, [componentStore])
 
-
     if (isPersisted && getComponentsForBoardLoading) {
         return (
             <>
@@ -294,14 +272,6 @@ const BoardViewPage = (props) => {
                 </div>
             </>
         )
-    }
-
-    if (insertUserData) {
-        const userId = insertUserData.user.id
-
-        localStorage.setItem('userId', userId)
-        // console.log('insertUserData', insertUserData)
-        // window.location.reload()
     }
 
     const updateLastAddedElement = (obj) => {
@@ -377,19 +347,7 @@ const BoardViewPage = (props) => {
 
         boardCreationInFlightRef.current = true
         try {
-            let userId = localStorage.getItem('userId')
-            if (!userId) {
-                const { nickname, firstName, lastName } =
-                    generateRandomUsernames()
-                const { data } = await insertUser({
-                    variables: {
-                        object: { nickname, firstName, lastName },
-                    },
-                })
-                userId = data.user.id
-                localStorage.setItem('userId', userId)
-            }
-
+            const userId = localStorage.getItem('userId')
             const { data: boardData } = await createBoard({
                 variables: {
                     object: { createdBy: userId },
@@ -430,7 +388,12 @@ const BoardViewPage = (props) => {
     }
 
     // Snapshots only the properties being changed before applying bulk updates
-    const updateComponentBulkPropertiesInLocalStore = (id, bulkObj, skipHistory = false, syncDefaults = false) => {
+    const updateComponentBulkPropertiesInLocalStore = (
+        id,
+        bulkObj,
+        skipHistory = false,
+        syncDefaults = false
+    ) => {
         const userId = localStorage.getItem('userId')
 
         if (!skipHistory) {
@@ -564,18 +527,6 @@ const BoardViewPage = (props) => {
 
     const onCreateBoard = () => {
         const userId = localStorage.getItem('userId')
-        if (userId === null) {
-            const { nickname, firstName, lastName } = generateRandomUsernames()
-            insertUser({
-                variables: {
-                    object: {
-                        nickname,
-                        firstName,
-                        lastName,
-                    },
-                },
-            })
-        }
         createBoard({
             variables: {
                 object: {
@@ -591,19 +542,7 @@ const BoardViewPage = (props) => {
         // If background board wasn't created yet (e.g. user shares before first draw),
         // create it now
         if (!serverBoardId) {
-            let userId = localStorage.getItem('userId')
-            if (!userId) {
-                const { nickname, firstName, lastName } =
-                    generateRandomUsernames()
-                const { data } = await insertUser({
-                    variables: {
-                        object: { nickname, firstName, lastName },
-                    },
-                })
-                userId = data.user.id
-                localStorage.setItem('userId', userId)
-            }
-
+            const userId = localStorage.getItem('userId')
             const { data: boardData } = await createBoard({
                 variables: {
                     object: { createdBy: userId },
@@ -773,18 +712,26 @@ const BoardViewPage = (props) => {
                 })
                 two?.update()
 
-                if (prevProps.width !== undefined || prevProps.height !== undefined) {
+                if (
+                    prevProps.width !== undefined ||
+                    prevProps.height !== undefined
+                ) {
                     window.dispatchEvent(
-                        new CustomEvent('undoSelectorSync', { detail: { elementId: id } })
+                        new CustomEvent('undoSelectorSync', {
+                            detail: { elementId: id },
+                        })
                     )
                 }
             }
 
             if (lastEntry.syncDefaults) {
-                if (prevProps.linewidth !== undefined) setDefaultLinewidth(prevProps.linewidth)
+                if (prevProps.linewidth !== undefined)
+                    setDefaultLinewidth(prevProps.linewidth)
                 if (prevProps.strokeType !== undefined) {
                     setDefaultStrokeType(
-                        prevProps.strokeType === 'solid' ? null : prevProps.strokeType
+                        prevProps.strokeType === 'solid'
+                            ? null
+                            : prevProps.strokeType
                     )
                 }
             }
@@ -878,9 +825,17 @@ const BoardViewPage = (props) => {
                                 pencilStrokeColor={pencilStrokeColor}
                                 defaultLinewidth={pencilDefaultLinewidth}
                                 defaultStrokeType={pencilDefaultStrokeType}
-                                onColorChange={(color) => setPencilStrokeColor(color)}
-                                onLinewidthChange={(value) => setPencilDefaultLinewidth(value)}
-                                onStrokeTypeChange={(type) => setPencilDefaultStrokeType(type === 'solid' ? null : type)}
+                                onColorChange={(color) =>
+                                    setPencilStrokeColor(color)
+                                }
+                                onLinewidthChange={(value) =>
+                                    setPencilDefaultLinewidth(value)
+                                }
+                                onStrokeTypeChange={(type) =>
+                                    setPencilDefaultStrokeType(
+                                        type === 'solid' ? null : type
+                                    )
+                                }
                             />
                         )}
                         <Canvas

@@ -115,3 +115,20 @@ The following were added to `contextValueForSidebar`:
 - The sidebar (`src/components/sidebar/primary.js`) reads `boardId` from context instead of `routeParams.id`
 - "Create Board" button only shows in persisted mode as "New Canvas" (navigates to `/`)
 - `newCanvas.js` resets `scenario` to `SCENARIO_DEFAULT` at the start of every mousedown and cleans up orphaned draw state to prevent crashes when mouse is released outside the canvas
+
+### Difference between "craftbase_local_draft.boardId" and "craftbase_background_board_id"
+
+craftbase_local_draft.boardId (src/views/Board/board.js:176)
+
+- Set to localBoardId, which is a client-generated UUID: useState(() => boardIdFromUrl || generateUUID())
+- Created immediately on mount, lives only in the browser
+- Used as the ephemeral local identity for this canvas session
+
+craftbase_background_board_id
+
+- Set to the server-generated UUID returned by the CREATE_BOARD mutation (board.js:402-405)
+- Created asynchronously in the background when the user first interacts
+- This is the real DB row ID on Hasura
+
+When persistBoard runs on Share, it uses backgroundBoardId as the canonical ID and navigates to /board/${backgroundBoardId}, discarding localBoardId entirely. The local draft
+boardId field is essentially unused for any DB operations — it's just metadata stored alongside the components snapshot.

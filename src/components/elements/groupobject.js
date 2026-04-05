@@ -5,7 +5,6 @@ import Two from 'two.js'
 import interact from 'interactjs'
 import { useBoardContext } from 'views/Board/board'
 import { useMutation } from '@apollo/client'
-import { useNavigate } from 'react-router-dom'
 import {
     UPDATE_COMPONENT_INFO,
     INSERT_BULK_COMPONENTS,
@@ -38,7 +37,6 @@ function getComponentSchema(obj, boardId, parentGroupX, parentGroupY) {
 }
 
 function GroupedObjectWrapper(props) {
-    const history = useNavigate()
     // console.log('history', history)
     const [
         insertComponents,
@@ -121,7 +119,8 @@ function GroupedObjectWrapper(props) {
                     if (element.elementData.componentType === 'pencil') {
                         newMetadata = element.elementData.metadata.map(
                             (vert, index) => {
-                                const lwProp = vert.lw !== undefined ? { lw: vert.lw } : {}
+                                const lwProp =
+                                    vert.lw !== undefined ? { lw: vert.lw } : {}
                                 if (index === 0) {
                                     return { x: newX, y: newY, ...lwProp }
                                 } else if (index > 0) {
@@ -338,29 +337,31 @@ function GroupedObjectWrapper(props) {
         for (let index = 0; index < props.children.length; index++) {
             const item = props.children[index]
             // console.log('item in children', item)
-            factoryModules[`../../factory/${item.componentType}.js`]().then((component) => {
-                const componentFactory = new component.default(
-                    two,
-                    item.x,
-                    item.y,
-                    { ...item }
-                )
-                const factoryObject = componentFactory.createElement()
-                const coreObject = factoryObject.group
-                // console.log('factoryObject', factoryObject)
-                // set component's coordinates
-                coreObject.translation.x = item.x
-                coreObject.translation.y = item.y
-                // console.log(
-                //     'component coreObject generation in group wrapper',
-                //     item.componentType,
-                //     item.x,
-                //     item.y
-                // )
-                group.add(coreObject)
-                // group.children.unshift(coreObject)
-                two.update()
-            })
+            factoryModules[`../../factory/${item.componentType}.js`]().then(
+                (component) => {
+                    const componentFactory = new component.default(
+                        two,
+                        item.x,
+                        item.y,
+                        { ...item }
+                    )
+                    const factoryObject = componentFactory.createElement()
+                    const coreObject = factoryObject.group
+                    // console.log('factoryObject', factoryObject)
+                    // set component's coordinates
+                    coreObject.translation.x = item.x
+                    coreObject.translation.y = item.y
+                    // console.log(
+                    //     'component coreObject generation in group wrapper',
+                    //     item.componentType,
+                    //     item.x,
+                    //     item.y
+                    // )
+                    group.add(coreObject)
+                    // group.children.unshift(coreObject)
+                    two.update()
+                }
+            )
         }
 
         // console.log('after group children has been added', group.children)
@@ -517,9 +518,10 @@ function GroupedObjectWrapper(props) {
     // When pencil mode is active, disable pointer events on this component
     useEffect(() => {
         if (groupId && document.getElementById(groupId)) {
-            document.getElementById(groupId).style.pointerEvents = (isPencilMode || isArrowDrawMode || isArrowSelected)
-                ? 'none'
-                : 'auto'
+            document.getElementById(groupId).style.pointerEvents =
+                isPencilMode || isArrowDrawMode || isArrowSelected
+                    ? 'none'
+                    : 'auto'
         }
     }, [isPencilMode, isArrowDrawMode, isArrowSelected, groupId])
 
