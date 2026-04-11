@@ -1,4 +1,4 @@
-import React, { Component, useEffect } from 'react'
+import React, { Component, useEffect, useState } from 'react'
 import { Routes, Route, BrowserRouter } from 'react-router-dom'
 
 import {
@@ -110,19 +110,24 @@ function getApolloClient() {
 const apolloClient = getApolloClient()
 
 function AppInit({ children }) {
+    const [userReady, setUserReady] = useState(
+        () => !!localStorage.getItem('userId')
+    )
     const [insertUser] = useMutation(INSERT_USER_ONE)
 
     useEffect(() => {
-        const userId = localStorage.getItem('userId')
-        if (!userId) {
+        if (!userReady) {
             const { nickname, firstName, lastName } = generateRandomUsernames()
             insertUser({
                 variables: { object: { nickname, firstName, lastName } },
             }).then(({ data }) => {
                 localStorage.setItem('userId', data.user.id)
+                setUserReady(true)
             })
         }
     }, [])
+
+    if (!userReady) return null
 
     return children
 }
