@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react'
+import { useMutation } from '@apollo/client'
 
 import Button from 'components/common/button'
 import Modal from 'components/common/modal'
@@ -6,6 +7,7 @@ import LinkIcon from 'assets/link_white.svg'
 import CopyIcon from 'assets/copy.svg'
 import Spinner from 'components/common/spinnerWithSize'
 import { useBoardContext } from 'views/Board/board'
+import { UPDATE_BOARD_VISIBILITY } from 'schema/mutations'
 
 const ShareLinkPopup = ({}) => {
     const refNode = useRef(null)
@@ -14,6 +16,7 @@ const ShareLinkPopup = ({}) => {
     const [isPersisting, setIsPersisting] = useState(false)
     const [shareUrl, setShareUrl] = useState(null)
     const { isPersisted, persistBoard, backgroundBoardId } = useBoardContext()
+    const [updateBoardVisibility] = useMutation(UPDATE_BOARD_VISIBILITY)
 
     useEffect(() => {
         document.addEventListener('mousedown', handleClick, false)
@@ -45,6 +48,7 @@ const ShareLinkPopup = ({}) => {
         setIsPersisting(true)
         try {
             const serverBoardId = await persistBoard()
+            await updateBoardVisibility({ variables: { id: serverBoardId } })
             const url = `${window.location.origin}/board/${serverBoardId}`
             setShareUrl(url)
             setShowConfirmModal(false)

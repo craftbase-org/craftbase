@@ -184,6 +184,7 @@ See detailed notes in `.claude/context/` for feature-specific implementation det
 - `.claude/context/floating-toolbar.md` - Floating toolbar activation and structure
 - `.claude/context/text-element-creation.md` - Details on how text element works in canvas (the flow from first mouse click to scaling text element size in canvas).
 - `.claude/context/shape-selection.md` - It describes regarding shape selection & its placement flow on canvas
+- `.claude/context/undo-history.md` - Undo/history stack: action entry shapes, `recordToHistoryLog`, and `undoLastAction()` as the canonical rollback for any failed mutation
 
 ### Component schema (from DB)
 

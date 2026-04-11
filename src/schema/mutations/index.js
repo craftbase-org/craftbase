@@ -83,6 +83,15 @@ export const DELETE_BULK_COMPONENTS = gql`
     }
 `
 
+export const UPDATE_BOARD_VISIBILITY = gql`
+    mutation updateBoardVisibility($id: uuid = "") {
+        update_boards_board_by_pk(pk_columns: { id: $id }, _set: { isPublic: true }) {
+            id
+            isPublic
+        }
+    }
+`
+
 export const UPDATE_USER_REVISIT_COUNT = gql`
     mutation updateUserRevisitCount($userId: String!) {
         update_users_user_revisits_by_pk(
