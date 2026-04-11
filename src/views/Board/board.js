@@ -116,6 +116,8 @@ const BoardViewPage = (props) => {
     const LOCAL_DRAFT_KEY = 'craftbase_local_draft'
     const DRAFT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
     const [showStorageLimitModal, setShowStorageLimitModal] = useState(false)
+    const [showPermissionErrorModal, setShowPermissionErrorModal] =
+        useState(false)
     const [storageLimitBoardUrl, setStorageLimitBoardUrl] = useState(null)
     const draftSaveTimerRef = useRef(null)
 
@@ -349,9 +351,7 @@ const BoardViewPage = (props) => {
         try {
             const userId = localStorage.getItem('userId')
             const { data: boardData } = await createBoard({
-                variables: {
-                    object: { createdBy: userId },
-                },
+                variables: { object: {} },
             })
             const newBoardId = boardData.board.id
             backgroundBoardIdRef.current = newBoardId
@@ -383,7 +383,17 @@ const BoardViewPage = (props) => {
         setComponentStore(updatedComponentStore)
 
         if (isPersistedRef.current && componentInfo) {
-            insertComponent({ variables: { object: componentInfo } })
+            insertComponent({ variables: { object: componentInfo } }).catch(
+                (error) => {
+                    const isPermissionError = error.graphQLErrors?.some(
+                        (e) => e.extensions?.code === 'permission-error'
+                    )
+                    if (isPermissionError) {
+                        undoLastAction()
+                        setShowPermissionErrorModal(true)
+                    }
+                }
+            )
         }
     }
 
@@ -529,9 +539,7 @@ const BoardViewPage = (props) => {
         const userId = localStorage.getItem('userId')
         createBoard({
             variables: {
-                object: {
-                    createdBy: userId,
-                },
+                object: {},
             },
         })
     }
@@ -545,7 +553,7 @@ const BoardViewPage = (props) => {
             const userId = localStorage.getItem('userId')
             const { data: boardData } = await createBoard({
                 variables: {
-                    object: { createdBy: userId },
+                    object: {},
                 },
             })
             serverBoardId = boardData.board.id
@@ -637,6 +645,7 @@ const BoardViewPage = (props) => {
                 (c) => c?.elementData?.id === id
             )
             if (group) {
+                console.log('Group ID FOUND while doing undo')
                 two.remove([group])
             }
             const updatedStore = { ...stateRefForComponentStore.current }
@@ -649,7 +658,7 @@ const BoardViewPage = (props) => {
                     errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
                 })
             }
-            requestAnimationFrame(() => two?.update())
+            requestAnimationFrame(() => two.update())
         } else if (action === 'DELETE') {
             const { prevState } = lastEntry
             const restoredState = { ...prevState, boardId: boardId }
@@ -662,6 +671,14 @@ const BoardViewPage = (props) => {
             if (isPersistedRef.current) {
                 insertComponent({
                     variables: { object: stripTypename(restoredState) },
+                }).catch((error) => {
+                    const isPermissionError = error.graphQLErrors?.some(
+                        (e) => e.extensions?.code === 'permission-error'
+                    )
+                    if (isPermissionError) {
+                        undoLastAction()
+                        setShowPermissionErrorModal(true)
+                    }
                 })
             }
         } else if (action === 'UPDATE_VERTICES') {
@@ -864,6 +881,36 @@ const BoardViewPage = (props) => {
                     </div>
                 </div>
             ) : null}
+            <Modal
+                open={showPermissionErrorModal}
+                onClose={() => setShowPermissionErrorModal(false)}
+                locked={false}
+            >
+                <div className="p-4" style={{ minWidth: '400px' }}>
+                    <h2 className="text-lg font-semibold mb-2">
+                        Permission Denied
+                    </h2>
+                    <p className="text-sm text-neutrals-n700 mb-4">
+                        You don't have permission to add components to this
+                        board. If you already have access, please refresh the
+                        page and try again.
+                    </p>
+                    <div className="flex gap-2">
+                        <Button
+                            intent="primary"
+                            size="medium"
+                            label="Refresh"
+                            onClick={() => window.location.reload()}
+                        />
+                        <Button
+                            intent="secondary"
+                            size="medium"
+                            label="Dismiss"
+                            onClick={() => setShowPermissionErrorModal(false)}
+                        />
+                    </div>
+                </div>
+            </Modal>
             <Modal
                 open={showStorageLimitModal}
                 onClose={() => setShowStorageLimitModal(false)}

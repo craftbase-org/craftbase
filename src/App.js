@@ -9,6 +9,7 @@ import {
     split,
     useMutation,
 } from '@apollo/client'
+import { setContext } from '@apollo/client/link/context'
 import { getMainDefinition } from '@apollo/client/utilities'
 import { WebSocketLink } from '@apollo/client/link/ws'
 
@@ -47,15 +48,39 @@ function getApolloClient() {
 
         options: {
             reconnect: true,
-            connectionParams: {
-                headers: {
-                    // authorization: `Bearer ${accessToken}`,
-                    'content-type': 'application/json',
-                    'x-hasura-admin-secret': import.meta.env
-                        .VITE_HASURA_ADMIN_SECRET,
-                },
+            connectionParams: () => {
+                const userId = localStorage.getItem('userId')
+                return {
+                    headers: {
+                        'content-type': 'application/json',
+                        'x-hasura-admin-secret': import.meta.env
+                            .VITE_HASURA_ADMIN_SECRET,
+                        'x-hasura-role': 'user',
+                        ...(userId ? { 'x-hasura-user-id': userId } : {}),
+                    },
+                }
             },
         },
+    })
+
+    const authLink = setContext((operation, { headers }) => {
+        const userId = localStorage.getItem('userId')
+        const isUserInsert = operation.operationName === 'insertUser'
+
+        if (!userId && !isUserInsert) {
+            console.error(
+                '[Apollo] x-hasura-user-id is missing for operation:',
+                operation.operationName
+            )
+        }
+
+        return {
+            headers: {
+                ...headers,
+                'x-hasura-role': 'user',
+                ...(userId ? { 'x-hasura-user-id': userId } : {}),
+            },
+        }
     })
 
     // The split function takes three parameters:
@@ -72,7 +97,7 @@ function getApolloClient() {
             )
         },
         wsLink,
-        httpLink
+        authLink.concat(httpLink)
     )
 
     const client = new ApolloClient({
