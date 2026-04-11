@@ -46,7 +46,6 @@ Reusable React UI components.
     - Drawing: `pencil.js`
     - Text components: `newText.js`
     - Other: `groupobject.js`
-    - `template.js` - Component template definitions
 
 - **`sidebar/`**: Left sidebar UI
     - `primary.js` - Main sidebar component
