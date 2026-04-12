@@ -36,7 +36,7 @@ const BoardContext = createContext()
 const BoardViewPage = (props) => {
     const routeParams = useParams()
     const boardIdFromUrl = routeParams.id
-    const [localBoardId] = useState(() => {
+    const [localBoardId, setLocalBoardId] = useState(() => {
         if (boardIdFromUrl) return boardIdFromUrl
         // Reuse the boardId stored with the local draft so viewport persistence
         // keys stay stable across page refreshes in local (non-persisted) mode.
@@ -124,6 +124,7 @@ const BoardViewPage = (props) => {
 
     const stateRefForComponentStore = useRef()
     const twoJSInstanceRef = useRef(null)
+    const skipComponentStoreResetRef = useRef(false)
     const [historyLog, setHistoryLog] = useState([])
     const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
     const historyLogRef = useRef([])
@@ -249,10 +250,14 @@ const BoardViewPage = (props) => {
 
     // Reset component store whenever the board changes (persisted mode only).
     // In local mode the boardId is a stable UUID and draft restore handles initialization.
+    // skipComponentStoreResetRef lets persistBoard() rotate localBoardId without wiping the store.
     const prevBoardIdRef = useRef(boardId)
     useEffect(() => {
         if (prevBoardIdRef.current !== boardId) {
-            setComponentStore({})
+            if (!skipComponentStoreResetRef.current) {
+                setComponentStore({})
+            }
+            skipComponentStoreResetRef.current = false
             prevBoardIdRef.current = boardId
         }
     }, [boardId])
@@ -585,43 +590,63 @@ const BoardViewPage = (props) => {
         // If background board wasn't created yet (e.g. user shares before first draw),
         // create it now
         if (!serverBoardId) {
-            const userId = localStorage.getItem('userId')
             const { data: boardData } = await createBoard({
-                variables: {
-                    object: {},
-                },
+                variables: { object: {} },
             })
             serverBoardId = boardData.board.id
         }
 
-        const components = Object.values(stateRefForComponentStore.current).map(
-            (comp) => {
-                const cleaned = stripTypename(comp)
-                return { ...cleaned, boardId: serverBoardId }
-            }
-        )
+        // Insert all components to DB under the server board ID.
+        // Generate a fresh UUID for each component's id so re-sharing from '/'
+        // never hits a "duplicate key" uniqueness violation.
+        const componentsForDB = Object.values(
+            stateRefForComponentStore.current
+        ).map((comp) => {
+            const cleaned = stripTypename(comp)
+            return { ...cleaned, id: generateUUID(), boardId: serverBoardId }
+        })
 
-        if (components.length > 0) {
-            await insertBulkComponents({ variables: { objects: components } })
+        if (componentsForDB.length > 0) {
+            await insertBulkComponents({ variables: { objects: componentsForDB } })
         }
 
-        // Update local component store with the server boardId
+        // Mint a new local board ID so the '/' session continues independently
+        // from the now-shared board. Components keep their visual state; only the
+        // local identity rotates.
+        const newLocalId = generateUUID()
+
         const updatedStore = {}
         Object.entries(stateRefForComponentStore.current).forEach(
             ([id, comp]) => {
-                updatedStore[id] = { ...comp, boardId: serverBoardId }
+                updatedStore[id] = { ...comp, boardId: newLocalId }
             }
         )
         stateRefForComponentStore.current = updatedStore
+
+        // Rotate localBoardId without wiping the Two.js scene or componentStore
+        skipComponentStoreResetRef.current = true
+        setLocalBoardId(newLocalId)
         setComponentStore(updatedStore)
 
-        setIsPersisted(true)
-        isPersistedRef.current = true
-        localStorage.removeItem('craftbase_local_draft')
+        // Persist draft immediately under the new local ID
+        try {
+            localStorage.setItem(
+                LOCAL_DRAFT_KEY,
+                JSON.stringify({
+                    boardId: newLocalId,
+                    components: updatedStore,
+                    timestamp: Date.now(),
+                })
+            )
+        } catch (_) {}
+
+        // Clear the background board (its work is now on the shared board)
+        backgroundBoardIdRef.current = null
+        setBackgroundBoardId(null)
         localStorage.removeItem('craftbase_background_board_id')
         localStorage.setItem('lastOpenBoard', serverBoardId)
-        navigate(`/board/${serverBoardId}`, { replace: true })
 
+        // Stay in local (non-persisted) mode — new drawings on '/' are a fresh session
         return serverBoardId
     }
 

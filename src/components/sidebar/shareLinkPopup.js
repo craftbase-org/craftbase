@@ -53,6 +53,7 @@ const ShareLinkPopup = ({}) => {
             setShareUrl(url)
             setShowConfirmModal(false)
             setShowLink(true)
+            window.open(url, '_blank', 'noopener,noreferrer')
         } finally {
             setIsPersisting(false)
         }
