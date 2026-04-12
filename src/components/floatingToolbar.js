@@ -183,8 +183,11 @@ const Toolbar = (props) => {
         opacity: 1,
         hideColorSection: hideColorSection,
         selectedTextSize:
-            TEXT_SIZES_ARRAY.find((s) => s.value === currentFontSize)?.label ||
-            null,
+            TEXT_SIZES_ARRAY.find((s) =>
+                isMobile
+                    ? s.mobileValue === currentFontSize
+                    : s.value === currentFontSize
+            )?.label || null,
     })
 
     useEffect(() => {
@@ -230,7 +233,7 @@ const Toolbar = (props) => {
                 <div className="px-2 py-1 w-full">
                     <p className="text-xs text-gray-400 mb-2">Text Size</p>
                     <div className="flex flex-row gap-2">
-                        {TEXT_SIZES_ARRAY.map(({ label, value }) => (
+                        {TEXT_SIZES_ARRAY.map(({ label, value, mobileValue }) => (
                             <button
                                 key={label}
                                 onClick={() => {
@@ -246,7 +249,8 @@ const Toolbar = (props) => {
                                                 classNameLabel
                                             )
                                         if (els.length > 0) {
-                                            els[0].style.fontSize = `${value}px`
+                                            const px = isMobile ? mobileValue : value
+                                            els[0].style.fontSize = `${px}px`
                                         }
                                     }
                                     // updateComponent('fontSize', value)

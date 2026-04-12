@@ -185,10 +185,10 @@ export const staticPrimaryElementData = [
 ]
 
 export const TEXT_SIZES_ARRAY = [
-    { label: 'S', value: 24 },
-    { label: 'M', value: 36 },
-    { label: 'L', value: 60 },
-    { label: 'XL', value: 72 },
+    { label: 'S', value: 24, mobileValue: 12 },
+    { label: 'M', value: 36, mobileValue: 18 },
+    { label: 'L', value: 60, mobileValue: 28 },
+    { label: 'XL', value: 72, mobileValue: 36 },
 ]
 
 export const TEXT_SIZES_OBJECT = {
@@ -196,4 +196,11 @@ export const TEXT_SIZES_OBJECT = {
     M: 36,
     L: 60,
     XL: 72,
+}
+
+export const MOBILE_TEXT_SIZES_OBJECT = {
+    S: 12,
+    M: 18,
+    L: 28,
+    XL: 36,
 }
