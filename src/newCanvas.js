@@ -93,6 +93,9 @@ function addZUI(
     let touchStartY = 0
     let twoFingerMidX = 0
     let twoFingerMidY = 0
+    let lastTapTime = 0
+    let lastTapX = 0
+    let lastTapY = 0
     let dragging = false
     let isResizeEvent = false
     let currentPath
@@ -1429,6 +1432,24 @@ function addZUI(
             const dy = endY - touchStartY
             const moved = Math.sqrt(dx * dx + dy * dy)
             if (moved < 10) {
+                // Blur any focused element (e.g. an active text-editing
+                // textarea) so it commits + removes itself before we
+                // re-query elementFromPoint and dispatch the tap click.
+                // On mobile, synthetic mouse events don't transfer focus,
+                // so blur never fires naturally when tapping elsewhere.
+                if (
+                    document.activeElement &&
+                    document.activeElement !== document.body
+                ) {
+                    document.activeElement.blur()
+                }
+
+                const now = Date.now()
+                const tapDx = endX - lastTapX
+                const tapDy = endY - lastTapY
+                const tapDist = Math.sqrt(tapDx * tapDx + tapDy * tapDy)
+                const isDoubleTap = now - lastTapTime < 300 && tapDist < 30
+
                 // Clear all existing selectors first — on desktop this happens
                 // via blur when focus shifts between elements, but synthetic
                 // mouse events don't transfer browser focus on mobile.
@@ -1436,15 +1457,35 @@ function addZUI(
 
                 const target =
                     document.elementFromPoint(endX, endY) || domElement
-                target.dispatchEvent(
-                    new MouseEvent('click', {
-                        bubbles: true,
-                        cancelable: true,
-                        view: window,
-                        clientX: endX,
-                        clientY: endY,
-                    })
-                )
+
+                if (isDoubleTap) {
+                    // Reset so a third tap doesn't re-trigger
+                    lastTapTime = 0
+                    lastTapX = 0
+                    lastTapY = 0
+                    target.dispatchEvent(
+                        new MouseEvent('dblclick', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            clientX: endX,
+                            clientY: endY,
+                        })
+                    )
+                } else {
+                    lastTapTime = now
+                    lastTapX = endX
+                    lastTapY = endY
+                    target.dispatchEvent(
+                        new MouseEvent('click', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            clientX: endX,
+                            clientY: endY,
+                        })
+                    )
+                }
             }
 
             lastTouch = null

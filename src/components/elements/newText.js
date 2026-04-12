@@ -24,6 +24,7 @@ function NewText(props) {
     const [showToolbar, toggleToolbar] = useState(false)
     const [showMobilePanel, setShowMobilePanel] = useState(false)
     const [internalState, setInternalState] = useImmer({})
+    const mobileTriggerRef = useRef(null)
     const [textValue, setTextValue] = useState(
         props?.metadata?.content || 'Text'
     )
@@ -426,7 +427,13 @@ function NewText(props) {
             const path = e.composedPath ? e.composedPath() : e.path || []
             const isOnGroup = path.some((el) => el.id === group.id)
             const isOnToolbar = path.some((el) => el.id === 'floating-toolbar')
-            if (!isOnGroup && !isOnToolbar) {
+            // Also exclude the mobile trigger button — its mousedown fires
+            // before the click, so without this check toggleToolbar(false)
+            // unmounts the button before the click can toggle the panel.
+            const isOnMobileTrigger =
+                mobileTriggerRef.current &&
+                path.includes(mobileTriggerRef.current)
+            if (!isOnGroup && !isOnToolbar && !isOnMobileTrigger) {
                 selectorInstance.hide()
                 toggleToolbar(false)
                 two.update()
@@ -508,6 +515,7 @@ function NewText(props) {
             <div id="two-new-text"></div>
             {showToolbar && isMobile && (
                 <button
+                    ref={mobileTriggerRef}
                     title="Text properties"
                     onClick={() => setShowMobilePanel((prev) => !prev)}
                     style={{
