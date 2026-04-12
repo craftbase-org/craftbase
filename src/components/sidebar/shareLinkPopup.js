@@ -3,7 +3,7 @@ import { useMutation } from '@apollo/client'
 
 import Button from 'components/common/button'
 import Modal from 'components/common/modal'
-import LinkIcon from 'assets/link_white.svg'
+import ShareIcon from 'assets/share-android.svg'
 import CopyIcon from 'assets/copy.svg'
 import Spinner from 'components/common/spinnerWithSize'
 import { useBoardContext } from 'views/Board/board'
@@ -64,14 +64,13 @@ const ShareLinkPopup = ({}) => {
 
     return (
         <>
-            <div className="relative text-sm pr-2" ref={refNode}>
-                <a
-                    className=" flex items-center px-4 py-2 rounded-md bg-primary-blue text-white shadow-md"
-                    href=""
+            <div className="relative " ref={refNode}>
+                <div
+                    className=" w-12 h-9 flex items-center justify-center rounded-md bg-primary-blue text-white shadow-md cursor-pointer"
                     onClick={handleShareClick}
                 >
-                    <img src={LinkIcon} className="w-5 h-5" />
-                </a>
+                    <img src={ShareIcon} className="w-5 h-5" />
+                </div>
 
                 <div
                     className="absolute top-12 right-0 transition-all ease-in duration-200"
@@ -142,9 +141,7 @@ const ShareLinkPopup = ({}) => {
                                     intent="secondary"
                                     size="medium"
                                     label="Cancel"
-                                    onClick={() =>
-                                        setShowConfirmModal(false)
-                                    }
+                                    onClick={() => setShowConfirmModal(false)}
                                     disabled={isPersisting}
                                 />
                                 <Button
@@ -163,17 +160,15 @@ const ShareLinkPopup = ({}) => {
                                 Nothing to share yet
                             </h2>
                             <p className="text-sm text-neutrals-n700 mb-4">
-                                Before you share, please create something on
-                                the board to make it shareable.
+                                Before you share, please create something on the
+                                board to make it shareable.
                             </p>
                             <div className="flex justify-end">
                                 <Button
                                     intent="primary"
                                     size="medium"
                                     label="Okay"
-                                    onClick={() =>
-                                        setShowConfirmModal(false)
-                                    }
+                                    onClick={() => setShowConfirmModal(false)}
                                 />
                             </div>
                         </>
