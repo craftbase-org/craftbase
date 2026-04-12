@@ -119,7 +119,7 @@ const ShareLinkPopup = ({}) => {
                 <div style={{ minWidth: '440px', maxWidth: '520px' }}>
                     {backgroundBoardId ? (
                         <>
-                            <h2 className="text-lg font-semibold mb-3">
+                            <h2 className="text-lg font-semibold mb-3 font-display">
                                 Share this board
                             </h2>
                             <p className="text-sm text-neutrals-n700 mb-2">
@@ -156,7 +156,7 @@ const ShareLinkPopup = ({}) => {
                         </>
                     ) : (
                         <>
-                            <h2 className="text-lg font-semibold mb-3">
+                            <h2 className="text-lg font-semibold mb-3 font-display">
                                 Nothing to share yet
                             </h2>
                             <p className="text-sm text-neutrals-n700 mb-4">

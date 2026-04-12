@@ -36,7 +36,19 @@ const BoardContext = createContext()
 const BoardViewPage = (props) => {
     const routeParams = useParams()
     const boardIdFromUrl = routeParams.id
-    const [localBoardId] = useState(() => boardIdFromUrl || generateUUID())
+    const [localBoardId] = useState(() => {
+        if (boardIdFromUrl) return boardIdFromUrl
+        // Reuse the boardId stored with the local draft so viewport persistence
+        // keys stay stable across page refreshes in local (non-persisted) mode.
+        try {
+            const draft = localStorage.getItem('craftbase_local_draft')
+            if (draft) {
+                const parsed = JSON.parse(draft)
+                if (parsed?.boardId) return parsed.boardId
+            }
+        } catch (_) {}
+        return generateUUID()
+    })
     const [isPersisted, setIsPersisted] = useState(!!boardIdFromUrl)
     const isPersistedRef = useRef(!!boardIdFromUrl)
     const boardId = boardIdFromUrl || localBoardId

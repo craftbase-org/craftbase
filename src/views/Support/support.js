@@ -52,7 +52,7 @@ const SupportPage = () => {
             {/* Nav */}
             <nav className="sticky top-0 z-10 bg-white border-b border-neutrals-n40 shadow-sm">
                 <div className="w-full max-w-2xl laptop:max-w-full mx-auto px-4 tablet-landscape:px-6 py-3 flex items-center justify-between">
-                    <span className="text-primary-blue font-bold text-sm tablet-landscape:text-base tracking-tight">
+                    <span className="text-primary-blue font-bold text-sm tablet-landscape:text-base tracking-tight font-display">
                         Craftbase
                     </span>
                     <Link
@@ -71,7 +71,7 @@ const SupportPage = () => {
             <main className="w-full max-w-2xl mx-auto px-4 tablet-landscape:px-6 py-8 tablet-landscape:py-12">
                 {/* Header */}
                 <div className="mb-6 tablet-landscape:mb-10">
-                    <h1 className="text-xl tablet-landscape:text-2xl font-bold text-neutrals-n700 tracking-tight mb-2">
+                    <h1 className="text-xl tablet-landscape:text-2xl font-bold text-neutrals-n700 tracking-tight mb-2 font-display">
                         Support
                     </h1>
                     <p className="text-xs tablet-landscape:text-sm text-neutrals-n300 leading-relaxed">
@@ -108,7 +108,7 @@ const SupportPage = () => {
                             </div>
                         )}
                         <div className="text-xs text-blues-b500">
-                            Email us at{' '}
+                            Email the contact person at{' '}
                             <a
                                 href="mailto:meetzaveri96@gmail.com"
                                 className="text-primary-blue font-semibold no-underline border-b border-primary-blue"

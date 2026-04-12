@@ -6,7 +6,7 @@ export default class NewTextFactory extends Main {
         const prevX = this.x
         const prevY = this.y
         const { textColor } = this.properties || {}
-        const { content = 'Text', fontSize = 16 } =
+        const { content = 'Text', fontSize = 36 } =
             this.properties?.metadata || {}
 
         // Use native Two.js text instead of a foreignObject wrapper
@@ -15,7 +15,7 @@ export default class NewTextFactory extends Main {
         twoText.size = fontSize
         twoText.alignment = 'left'
         twoText.baseline = 'middle'
-        twoText.family = 'sans-serif'
+        twoText.family = 'Caveat'
 
         const group = two.makeGroup(twoText)
         group.translation.x = parseInt(prevX)

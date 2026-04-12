@@ -93,7 +93,6 @@ function addZUI(
     let touchStartY = 0
     let twoFingerMidX = 0
     let twoFingerMidY = 0
-    let wasTwoFingerGesture = false
     let dragging = false
     let isResizeEvent = false
     let currentPath
@@ -1450,21 +1449,19 @@ function addZUI(
 
             lastTouch = null
         }
-        // Drop below 2 fingers — reset 2-finger tracking state, save viewport
+        // Drop below 2 fingers — save viewport then reset 2-finger tracking state.
+        // distance > 0 means twoFingerStart ran (a real 2-finger gesture was active).
         if (e.touches.length < 2) {
-            if (wasTwoFingerGesture && props.boardId) {
-                try {
-                    localStorage.setItem(
-                        `craftbase_mobile_viewport_${props.boardId}`,
-                        JSON.stringify({
-                            tx: two.scene.translation.x,
-                            ty: two.scene.translation.y,
-                            scale: two.scene.scale,
-                        })
-                    )
-                } catch (_) {}
+            if (distance > 0 && props.boardId) {
+                localStorage.setItem(
+                    `craftbase_mobile_viewport_${props.boardId}`,
+                    JSON.stringify({
+                        tx: two.scene.translation.x,
+                        ty: two.scene.translation.y,
+                        scale: two.scene.scale,
+                    })
+                )
             }
-            wasTwoFingerGesture = false
             touches = {}
             distance = 0
         }
@@ -1500,6 +1497,16 @@ function addZUI(
         const newMidX = (a.clientX + b.clientX) / 2
         const newMidY = (a.clientY + b.clientY) / 2
 
+        // Safety: if twoFingerStart was never called (e.g. second finger
+        // landed outside the canvas element), initialise from current state
+        // and skip this frame to avoid a large jump.
+        if (distance === 0) {
+            distance = newDist
+            twoFingerMidX = newMidX
+            twoFingerMidY = newMidY
+            return
+        }
+
         // Pan: translate by midpoint delta
         zui.translateSurface(newMidX - twoFingerMidX, newMidY - twoFingerMidY)
 
@@ -1512,7 +1519,6 @@ function addZUI(
         twoFingerMidX = newMidX
         twoFingerMidY = newMidY
         distance = newDist
-        wasTwoFingerGesture = true
 
         two.update()
     }
@@ -1651,20 +1657,25 @@ const Canvas = (props) => {
         setTwoJSInstance(two)
         setTwoJSInstanceInBoard(two)
 
-        // Restore last mobile viewport (zoom + pan) from localStorage
+        // Restore last mobile viewport (zoom + pan) from localStorage.
+        // Use ZUI's own API so its internal zScale stays in sync with the
+        // scene — setting two.scene.scale directly desynchronises ZUI and
+        // causes the first pan gesture to jump back to the origin.
         if (isMobile && props.boardId) {
-            try {
-                const saved = localStorage.getItem(
-                    `craftbase_mobile_viewport_${props.boardId}`
-                )
-                if (saved) {
-                    const { tx, ty, scale } = JSON.parse(saved)
-                    two.scene.translation.set(tx, ty)
-                    two.scene.scale = scale
-                    zui_instance.zui.zScale = scale
-                    two.update()
-                }
-            } catch (_) {}
+            const saved = localStorage.getItem(
+                `craftbase_mobile_viewport_${props.boardId}`
+            )
+            if (saved) {
+                const { tx, ty, scale } = JSON.parse(saved)
+                // zoomSet updates zui.zScale + surface.scale atomically.
+                // Centering at (0,0) with initial translation (0,0) means no
+                // translation side-effect from the zoom.
+                zui_instance.zui.zoomSet(scale, 0, 0)
+                // translateSurface increments from the post-zoom translation
+                // (still 0,0) to the saved position.
+                zui_instance.zui.translateSurface(tx, ty)
+                two.update()
+            }
         }
 
         const boardId = props.boardId

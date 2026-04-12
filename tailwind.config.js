@@ -12,8 +12,9 @@ module.exports = {
         // },
 
         fontFamily: {
-            display: ['Gilroy', 'sans-serif'],
-            body: ['Graphik', 'sans-serif'],
+            ui: ['Geist', 'system-ui', 'sans-serif'],
+            display: ['Fraunces', 'Georgia', 'serif'],
+            sketch: ['Caveat', 'cursive'],
         },
         // borderWidth: {
         //     default: '1px',
