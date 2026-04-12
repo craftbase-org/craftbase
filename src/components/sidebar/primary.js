@@ -245,6 +245,10 @@ const PrimarySidebar = () => {
                     )
                 }
 
+                // shapeData is null if getComponentTypesData hasn't loaded yet (e.g. incognito
+                // on first page load). Bail out — user can click again once data is ready.
+                if (!shapeData) return
+
                 if (DRAW_SHAPE_TYPES.includes(label)) {
                     // Draw-to-place: store pending shape props, canvas will create on mouseup
                     localStorage.setItem('pendingShapeType', label)

@@ -537,6 +537,9 @@ const BoardViewPage = (props) => {
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
+        // Tell Canvas to untrack this id so a future restore (undo) gets a fresh wrapper
+        window.dispatchEvent(new CustomEvent('elementRemoved', { detail: { id } }))
+
         if (isPersistedRef.current) {
             deleteComponent({
                 variables: { id },
@@ -712,6 +715,10 @@ const BoardViewPage = (props) => {
             delete updatedStore[id]
             stateRefForComponentStore.current = updatedStore
             setComponentStore(updatedStore)
+
+            // Tell Canvas to untrack this id so undo-of-undo (redo) can create a fresh wrapper
+            window.dispatchEvent(new CustomEvent('elementRemoved', { detail: { id } }))
+
             if (isPersistedRef.current) {
                 deleteComponent({
                     variables: { id },
