@@ -816,63 +816,61 @@ const BoardViewPage = (props) => {
 
     return (
         <>
-            {!isMobile ? (
-                <BoardContext.Provider value={contextValueForSidebar}>
-                    <div>
-                        <Sidebar />
-                        {selectedComponent && showToolbar && (
-                            <Toolbar
-                                hideColorText={true}
-                                hideColorIcon={true}
-                                hideColorBackground={isArrowSelected}
-                                toggle={showToolbar}
-                                componentState={selectedComponent}
-                                closeToolbar={closeToolbar}
-                                refreshKey={toolbarRefreshKey}
-                                updateComponentBulkProperties={
-                                    updateComponentBulkPropertiesInLocalStore
-                                }
-                                postToolbarUpdate={() => {
-                                    twoJSInstance.update()
-                                }}
-                            />
-                        )}
-                        {isPencilMode && (
-                            <PencilToolbar
-                                pencilStrokeColor={pencilStrokeColor}
-                                defaultLinewidth={pencilDefaultLinewidth}
-                                defaultStrokeType={pencilDefaultStrokeType}
-                                onColorChange={(color) =>
-                                    setPencilStrokeColor(color)
-                                }
-                                onLinewidthChange={(value) =>
-                                    setPencilDefaultLinewidth(value)
-                                }
-                                onStrokeTypeChange={(type) =>
-                                    setPencilDefaultStrokeType(
-                                        type === 'solid' ? null : type
-                                    )
-                                }
-                            />
-                        )}
-                        <Canvas
-                            pointerToggle={pointerToggle}
-                            isPencilMode={isPencilMode}
-                            selectPanMode={false}
-                            boardId={boardId}
-                            selectedComponent={selectedComponent}
-                            lastAddedElement={lastAddedElement}
-                            componentStore={componentStore}
-                            defaultLinewidth={defaultLinewidth}
-                            defaultStrokeType={defaultStrokeType}
-                            pencilDefaultLinewidth={pencilDefaultLinewidth}
-                            pencilDefaultStrokeType={pencilDefaultStrokeType}
-                            pencilStrokeColor={pencilStrokeColor}
+            <BoardContext.Provider value={contextValueForSidebar}>
+                <div>
+                    <Sidebar />
+                    {selectedComponent && showToolbar && (
+                        <Toolbar
+                            hideColorText={true}
+                            hideColorIcon={true}
+                            hideColorBackground={isArrowSelected}
+                            toggle={showToolbar}
+                            componentState={selectedComponent}
+                            closeToolbar={closeToolbar}
+                            refreshKey={toolbarRefreshKey}
+                            updateComponentBulkProperties={
+                                updateComponentBulkPropertiesInLocalStore
+                            }
+                            postToolbarUpdate={() => {
+                                twoJSInstance.update()
+                            }}
                         />
-                    </div>
-                </BoardContext.Provider>
-            ) : null}
-            {isMobile ? (
+                    )}
+                    {isPencilMode && (
+                        <PencilToolbar
+                            pencilStrokeColor={pencilStrokeColor}
+                            defaultLinewidth={pencilDefaultLinewidth}
+                            defaultStrokeType={pencilDefaultStrokeType}
+                            onColorChange={(color) =>
+                                setPencilStrokeColor(color)
+                            }
+                            onLinewidthChange={(value) =>
+                                setPencilDefaultLinewidth(value)
+                            }
+                            onStrokeTypeChange={(type) =>
+                                setPencilDefaultStrokeType(
+                                    type === 'solid' ? null : type
+                                )
+                            }
+                        />
+                    )}
+                    <Canvas
+                        pointerToggle={pointerToggle}
+                        isPencilMode={isPencilMode}
+                        selectPanMode={false}
+                        boardId={boardId}
+                        selectedComponent={selectedComponent}
+                        lastAddedElement={lastAddedElement}
+                        componentStore={componentStore}
+                        defaultLinewidth={defaultLinewidth}
+                        defaultStrokeType={defaultStrokeType}
+                        pencilDefaultLinewidth={pencilDefaultLinewidth}
+                        pencilDefaultStrokeType={pencilDefaultStrokeType}
+                        pencilStrokeColor={pencilStrokeColor}
+                    />
+                </div>
+            </BoardContext.Provider>
+            {/* {isMobile ? (
                 <div>
                     <div className="px-4 py-4 text-xl ">
                         The mobile version isn't here yet. Please view Craftbase
@@ -880,7 +878,7 @@ const BoardViewPage = (props) => {
                         meantime.
                     </div>
                 </div>
-            ) : null}
+            ) : null} */}
             <Modal
                 open={showPermissionErrorModal}
                 onClose={() => setShowPermissionErrorModal(false)}

@@ -12,6 +12,7 @@ import { useBoardContext } from 'views/Board/board'
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
+import MenuDrawer from './menuDrawer'
 
 const DRAW_SHAPE_TYPES = ['circle', 'rectangle']
 
@@ -269,9 +270,10 @@ const PrimarySidebar = () => {
     return (
         <>
             <ShapesToolbar addElement={addElement} />
+            <MenuDrawer />
             <div
                 id="sidebar-container"
-                className="sidebar-container flex items-center "
+                className="sidebar-container flex items-center"
             >
                 <div className=" relative ">
                     <DefaultsDropdown />
