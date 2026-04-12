@@ -15,8 +15,8 @@ It toggles off when
 
 ## Persists toolbar changes to DB/cloud (sync)
 
-The updateComponent function in floatingToolbar.js (lines 189-201) has the entire updateComponentInfo mutation call with postToolbarUpdate() (which just calls
-two.update() via props handler fn) runs. So fill, border (stroke) color, and border(stroke) width changes (from toolbar) update the canvas visually but also gets persisted to the DB (when mutation is completed).
+The updateComponent function in floatingToolbar.js has the entire updateComponentInfo mutation call with postToolbarUpdate() (which just calls
+two.update() via props handler fn) runs. So fill, border (stroke) color, and border(stroke) width changes (from toolbar) update the canvas visually. DB persistence only happens when `isPersisted` is true — in local mode (on `/`), changes stay in React state + localStorage draft only. See `canvas-first-ux.md` for details.
 
 ## Caveat
 

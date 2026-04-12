@@ -43,7 +43,9 @@ export const DELETE_COMPONENT_BY_ID = gql`
 `
 
 export const INSERT_BULK_COMPONENTS = gql`
-    mutation MyMutation($objects: [components_component_insert_input!]! = {}) {
+    mutation insertBulkComponents(
+        $objects: [components_component_insert_input!]! = {}
+    ) {
         insert_components_component(objects: $objects) {
             affected_rows
             returning {
@@ -79,6 +81,18 @@ export const DELETE_BULK_COMPONENTS = gql`
             where: { id: { _in: $_in } }
         ) {
             affected_rows
+        }
+    }
+`
+
+export const UPDATE_BOARD_VISIBILITY = gql`
+    mutation updateBoardVisibility($id: uuid = "") {
+        update_boards_board_by_pk(
+            pk_columns: { id: $id }
+            _set: { isPublic: true }
+        ) {
+            id
+            isPublic
         }
     }
 `

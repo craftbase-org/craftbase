@@ -24,7 +24,7 @@ export const GET_COMPONENT_TYPES = gql`
 `
 
 export const GET_COMPONENTS_FOR_BOARD_QUERY = gql`
-    query getComponentsForBoard($boardId: String = "") {
+    query getComponentsForBoard($boardId: uuid = "") {
         components: components_component(
             where: { boardId: { _eq: $boardId } }
         ) {

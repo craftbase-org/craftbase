@@ -1,11 +1,9 @@
 import React, { useEffect, useState, useRef, Suspense } from 'react'
 import Two from 'two.js'
-import { useNavigate } from 'react-router-dom'
 
 import { ZUI } from 'two.js/extras/jsm/zui'
 import { useBoardContext } from 'views/Board/board'
 
-import Zoomer from 'components/utils/zoomer'
 import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
 
@@ -157,6 +155,26 @@ function addZUI(
             window.dispatchEvent(evt)
         }
 
+        // Reset scenario to prevent stale state from a previous interaction
+        // (e.g. mouse released outside the canvas during a draw)
+        scenario = SCENARIO_DEFAULT
+
+        // Clean up orphaned draw state from an interrupted drag
+        // (e.g. user moved cursor outside canvas and released mouse there)
+        if (previewShape) {
+            two.remove(previewShape)
+            two.update()
+            previewShape = null
+        }
+        if (drawOrigin) {
+            drawOrigin = null
+            drawCurrentCoords = null
+            drawShapeType = null
+            drawShapeProps = null
+            domElement.removeEventListener('mousemove', mousemove, false)
+            domElement.removeEventListener('mouseup', mouseup, false)
+        }
+
         if (isDrawing === true) {
             scenario = SCENARIO_PENCIL_MODE
         }
@@ -205,8 +223,22 @@ function addZUI(
                         const pointCircle1Group = arrowDrawElement.children[1]
                         const pointCircle2Group = arrowDrawElement.children[2]
 
-                        updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
-                        updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
+                        updateX1Y1Vertices(
+                            Two,
+                            line,
+                            0,
+                            0,
+                            pointCircle1Group,
+                            two
+                        )
+                        updateX2Y2Vertices(
+                            Two,
+                            line,
+                            0,
+                            0,
+                            pointCircle2Group,
+                            two
+                        )
 
                         two.update()
                     } else if (retries < 30) {
@@ -1759,7 +1791,9 @@ const Canvas = (props) => {
                 } else {
                     arr.push(item.id)
                     const ElementToRender = React.lazy(() =>
-                        elementModules[`./components/elements/${item.componentType}.js`]()
+                        elementModules[
+                            `./components/elements/${item.componentType}.js`
+                        ]()
                     )
                     const data = {
                         twoJSInstance: twoJSInstance,

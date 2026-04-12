@@ -9,7 +9,7 @@ When the user clicks the text tool in the sidebar:
 1. Sets textDrawMode = 'true' in localStorage
 2. Stores the new element's ID in localStorage as lastAddedElementId
 3. Calls setTextDrawModeInBoard(true) on BoardContext
-4. Calls addToLocalComponentStore(...) to register the new component in state
+4. Calls addToLocalComponentStore(...) to register the new component in state (DB persist only if `isPersisted` is true; also triggers background board creation on first draw)
 5. Sets cursor to crosshair (waiting for user to click on the canvas)
 
 ---
