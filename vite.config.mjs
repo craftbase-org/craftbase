@@ -30,9 +30,4 @@ export default defineConfig({
         environment: 'jsdom',
         setupFiles: './src/setupTests.js',
     },
-    server: {
-        host: true, // exposes on all network interfaces
-        port: 5173, // or whatever port you use
-        allowedHosts: ['10.151.106.95'],
-    },
 })
