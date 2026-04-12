@@ -87,6 +87,9 @@ function addZUI(
     let mouse = new Two.Vector()
     let touches = {}
     let distance = 0
+    let lastTouch = null
+    let twoFingerMidX = 0
+    let twoFingerMidY = 0
     let dragging = false
     let isResizeEvent = false
     let currentPath
@@ -123,8 +126,8 @@ function addZUI(
     domElement.addEventListener('mousewheel', mousewheel, false)
     domElement.addEventListener('wheel', mousewheel, false)
 
-    domElement.addEventListener('touchstart', touchstart, false)
-    domElement.addEventListener('touchmove', touchmove, false)
+    domElement.addEventListener('touchstart', touchstart, { passive: false })
+    domElement.addEventListener('touchmove', touchmove, { passive: false })
     domElement.addEventListener('touchend', touchend, false)
     domElement.addEventListener('touchcancel', touchend, false)
 
@@ -1332,81 +1335,137 @@ function addZUI(
         two.update()
     }
 
+    // --- Touch handlers ---
+    // Routing:
+    //   1 finger  → synthetic MouseEvent → existing mouse pipeline (select, drag, pencil, draw)
+    //   2 fingers → pan canvas (midpoint delta) + pinch zoom (distance delta) simultaneously
+
     function touchstart(e) {
-        switch (e.touches.length) {
-            case 2:
-                pinchstart(e)
-                break
-            case 1:
-                panstart(e)
-                break
+        e.preventDefault()
+
+        if (e.touches.length === 1) {
+            lastTouch = e.touches[0]
+            // Dispatch mousedown on the actual element under the finger so
+            // element-level listeners (interactjs resize handles, click handlers) fire correctly.
+            const target =
+                document.elementFromPoint(
+                    lastTouch.clientX,
+                    lastTouch.clientY
+                ) || domElement
+            target.dispatchEvent(
+                new MouseEvent('mousedown', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: lastTouch.clientX,
+                    clientY: lastTouch.clientY,
+                    screenX: lastTouch.screenX,
+                    screenY: lastTouch.screenY,
+                })
+            )
+        } else if (e.touches.length === 2) {
+            // Second finger added — cancel any in-progress 1-finger interaction
+            if (lastTouch) {
+                domElement.dispatchEvent(
+                    new MouseEvent('mouseup', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window,
+                        clientX: lastTouch.clientX,
+                        clientY: lastTouch.clientY,
+                    })
+                )
+                lastTouch = null
+            }
+            twoFingerStart(e)
         }
     }
 
     function touchmove(e) {
-        switch (e.touches.length) {
-            case 2:
-                pinchmove(e)
-                break
-            case 1:
-                panmove(e)
-                break
+        e.preventDefault()
+
+        if (e.touches.length === 1) {
+            lastTouch = e.touches[0]
+            domElement.dispatchEvent(
+                new MouseEvent('mousemove', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: lastTouch.clientX,
+                    clientY: lastTouch.clientY,
+                    screenX: lastTouch.screenX,
+                    screenY: lastTouch.screenY,
+                })
+            )
+        } else if (e.touches.length >= 2) {
+            twoFingerMove(e)
         }
     }
 
     function touchend(e) {
+        if (e.touches.length === 0 && lastTouch) {
+            domElement.dispatchEvent(
+                new MouseEvent('mouseup', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: lastTouch.clientX,
+                    clientY: lastTouch.clientY,
+                })
+            )
+            lastTouch = null
+        }
+        // Drop below 2 fingers — reset 2-finger tracking state
+        if (e.touches.length < 2) {
+            touches = {}
+            distance = 0
+        }
+    }
+
+    function twoFingerStart(e) {
         touches = {}
-        let touch = e.touches[0]
-        if (touch) {
-            // Pass through for panning after pinching
-            mouse.x = touch.clientX
-            mouse.y = touch.clientY
-        }
-    }
-
-    function panstart(e) {
-        let touch = e.touches[0]
-        mouse.x = touch.clientX
-        mouse.y = touch.clientY
-        two.update()
-    }
-
-    function panmove(e) {
-        let touch = e.touches[0]
-        let dx = touch.clientX - mouse.x
-        let dy = touch.clientY - mouse.y
-        zui.translateSurface(dx, dy)
-        mouse.set(touch.clientX, touch.clientY)
-        two.update()
-    }
-
-    function pinchstart(e) {
         for (let i = 0; i < e.touches.length; i++) {
-            let touch = e.touches[i]
-            touches[touch.identifier] = touch
+            touches[e.touches[i].identifier] = e.touches[i]
         }
-        let a = touches[0]
-        let b = touches[1]
-        let dx = b.clientX - a.clientX
-        let dy = b.clientY - a.clientY
+        const ids = Object.keys(touches)
+        const a = touches[ids[0]]
+        const b = touches[ids[1]]
+        const dx = b.clientX - a.clientX
+        const dy = b.clientY - a.clientY
         distance = Math.sqrt(dx * dx + dy * dy)
-        mouse.x = dx / 2 + a.clientX
-        mouse.y = dy / 2 + a.clientY
+        twoFingerMidX = (a.clientX + b.clientX) / 2
+        twoFingerMidY = (a.clientY + b.clientY) / 2
     }
 
-    function pinchmove(e) {
+    function twoFingerMove(e) {
         for (let i = 0; i < e.touches.length; i++) {
-            let touch = e.touches[i]
-            touches[touch.identifier] = touch
+            touches[e.touches[i].identifier] = e.touches[i]
         }
-        let a = touches[0]
-        let b = touches[1]
-        let dx = b.clientX - a.clientX
-        let dy = b.clientY - a.clientY
-        let d = Math.sqrt(dx * dx + dy * dy)
-        let delta = d - distance
-        zui.zoomBy(delta / 250, mouse.x, mouse.y)
-        distance = d
+        const ids = Object.keys(touches)
+        if (ids.length < 2) return
+
+        const a = touches[ids[0]]
+        const b = touches[ids[1]]
+        const dx = b.clientX - a.clientX
+        const dy = b.clientY - a.clientY
+        const newDist = Math.sqrt(dx * dx + dy * dy)
+        const newMidX = (a.clientX + b.clientX) / 2
+        const newMidY = (a.clientY + b.clientY) / 2
+
+        // Pan: translate by midpoint delta
+        zui.translateSurface(newMidX - twoFingerMidX, newMidY - twoFingerMidY)
+
+        // Zoom: scale by distance delta (pinch)
+        const distDelta = newDist - distance
+        if (Math.abs(distDelta) > 0.5) {
+            zui.zoomBy(distDelta / 250, newMidX, newMidY)
+        }
+
+        twoFingerMidX = newMidX
+        twoFingerMidY = newMidY
+        distance = newDist
+
+        two.update()
     }
 
     return {

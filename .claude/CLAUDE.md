@@ -176,6 +176,19 @@ Child components access this context via `useContext(BoardContext)`.
 - Be sure to typecheck when you're done making a series of code changes
 - Prefer running single tests, and not the whole test suite, for performance
 
+## Mobile testing on local network
+
+When testing on a real mobile device (laptop and phone on same WiFi):
+
+1. Replace `localhost` with the laptop's LAN IP (e.g. `10.151.106.95`) in `.env`:
+   ```
+   VITE_GRAPHQL_ENDPOINT=http://<LAN_IP>:8080/v1/graphql
+   VITE_WS_GRAPHQL_ENDPOINT=ws://<LAN_IP>:8080/v1/graphql
+   ```
+2. Ensure `vite.config.mjs` has `host: true` and `allowedHosts: ['<LAN_IP>']` (no `http://` prefix).
+3. Restart the dev server, then open `http://<LAN_IP>:5173` on mobile.
+4. **Revert `.env` before committing** — or use `.env.local` for the override so it stays out of git.
+
 # Feature Context
 
 See detailed notes in `.claude/context/` for feature-specific implementation details:
