@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React, { Component, useEffect, useState } from 'react'
 import { Routes, Route, BrowserRouter } from 'react-router-dom'
 
 import {
@@ -7,7 +7,9 @@ import {
     InMemoryCache,
     HttpLink,
     split,
+    useMutation,
 } from '@apollo/client'
+import { setContext } from '@apollo/client/link/context'
 import { getMainDefinition } from '@apollo/client/utilities'
 import { WebSocketLink } from '@apollo/client/link/ws'
 
@@ -15,6 +17,8 @@ import BoardViewContainer from 'views/Board'
 import HomePageViewContainer from 'views/Home'
 
 import routes from './routes'
+import { INSERT_USER_ONE } from 'schema/mutations'
+import { generateRandomUsernames } from 'utils/misc'
 
 import './App.css'
 
@@ -44,15 +48,39 @@ function getApolloClient() {
 
         options: {
             reconnect: true,
-            connectionParams: {
-                headers: {
-                    // authorization: `Bearer ${accessToken}`,
-                    'content-type': 'application/json',
-                    'x-hasura-admin-secret':
-                        import.meta.env.VITE_HASURA_ADMIN_SECRET,
-                },
+            connectionParams: () => {
+                const userId = localStorage.getItem('userId')
+                return {
+                    headers: {
+                        'content-type': 'application/json',
+                        'x-hasura-admin-secret': import.meta.env
+                            .VITE_HASURA_ADMIN_SECRET,
+                        'x-hasura-role': 'user',
+                        ...(userId ? { 'x-hasura-user-id': userId } : {}),
+                    },
+                }
             },
         },
+    })
+
+    const authLink = setContext((operation, { headers }) => {
+        const userId = localStorage.getItem('userId')
+        const isUserInsert = operation.operationName === 'insertUser'
+
+        if (!userId && !isUserInsert) {
+            console.error(
+                '[Apollo] x-hasura-user-id is missing for operation:',
+                operation.operationName
+            )
+        }
+
+        return {
+            headers: {
+                ...headers,
+                'x-hasura-role': 'user',
+                ...(userId ? { 'x-hasura-user-id': userId } : {}),
+            },
+        }
     })
 
     // The split function takes three parameters:
@@ -69,7 +97,7 @@ function getApolloClient() {
             )
         },
         wsLink,
-        httpLink
+        authLink.concat(httpLink)
     )
 
     const client = new ApolloClient({
@@ -79,28 +107,58 @@ function getApolloClient() {
     return client
 }
 
+const apolloClient = getApolloClient()
+
+function AppInit({ children }) {
+    const [userReady, setUserReady] = useState(
+        () => !!localStorage.getItem('userId')
+    )
+    const [insertUser] = useMutation(INSERT_USER_ONE)
+
+    useEffect(() => {
+        if (!userReady) {
+            const { nickname, firstName, lastName } = generateRandomUsernames()
+            insertUser({
+                variables: { object: { nickname, firstName, lastName } },
+            }).then(({ data }) => {
+                localStorage.setItem('userId', data.user.id)
+                setUserReady(true)
+            })
+        }
+    }, [])
+
+    if (!userReady) return null
+
+    return children
+}
+
 class App extends Component {
     constructor(props) {
         super(props)
     }
 
     render() {
-        const apolloClient = getApolloClient()
         return (
             <BrowserRouter>
                 <ApolloProvider client={apolloClient}>
-                    <div className="App ">
-                        <Routes>
-                            <Route
-                                path={routes.home}
-                                element={<HomePageViewContainer />}
-                            />
-                            <Route
-                                path={routes.board}
-                                element={<BoardViewContainer />}
-                            />
-                        </Routes>
-                    </div>
+                    <AppInit>
+                        <div className="App ">
+                            <Routes>
+                                <Route
+                                    path={routes.index}
+                                    element={<BoardViewContainer />}
+                                />
+                                <Route
+                                    path={routes.board}
+                                    element={<BoardViewContainer />}
+                                />
+                                <Route
+                                    path={routes.marketing}
+                                    element={<HomePageViewContainer />}
+                                />
+                            </Routes>
+                        </div>
+                    </AppInit>
                 </ApolloProvider>
             </BrowserRouter>
         )

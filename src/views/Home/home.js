@@ -1,9 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@apollo/client'
-
-import { INSERT_USER_ONE, CREATE_BOARD } from 'schema/mutations'
-import routes from 'routes'
 import StickerSVG from 'assets/sticker.svg'
 import TwitterLogoSVG from 'assets/twitter_logo.svg'
 import GithubLogoSVG from 'assets/github_logo.svg'
@@ -16,38 +12,10 @@ import BlueStarSVG from 'assets/blue_star.svg'
 // import CraftbaseBoardScreenshotPNG from 'assets/craftbase_board_screenshot.png'
 // import CraftbaseBoardScreenshotBlurJPG from 'assets/blur_craftbase_screenshot.jpg'
 import WhiteboardingPNG from 'assets/whiteboarding.png'
-import HomeShapeToolbarJPG from 'assets/home_shape_toolbar.png'
-import RadioCheckboxPNG from 'assets/radio_check.png'
-import BasicShapesPNG from 'assets/basic_shapes.png'
 import Button from 'components/common/button'
-import ModalContainer from 'components/common/modalContainer'
-import { generateRandomUsernames } from 'utils/misc'
 
 const HomePage = (props) => {
-    const lastOpenBoard = localStorage.getItem('lastOpenBoard')
-    const [showLastOpenBoardModal, setShowLastOpenBoardModal] = useState(false)
     // create user mutation
-    const [
-        insertUser,
-        {
-            loading: insertUserLoading,
-            data: insertUserData,
-            error: insertUserError,
-            reset: resetInsertUserMutation,
-        },
-    ] = useMutation(INSERT_USER_ONE)
-
-    // create board mutation
-    const [
-        createBoard,
-        {
-            loading: createBoardLoading,
-            data: createBoardData,
-            error: createBoardError,
-            reset: resetCreateBoardMutation,
-        },
-    ] = useMutation(CREATE_BOARD)
-
     const [pageHeight, setPageHeight] = useState(0)
     const [btnId, setBtnId] = useState(null)
     const navigate = useNavigate()
@@ -55,61 +23,11 @@ const HomePage = (props) => {
     useEffect(() => {
         console.log('window.innerHeight', window.innerHeight)
         setPageHeight(window.innerHeight - 200)
-        lastOpenBoard !== null && setShowLastOpenBoardModal(true)
     }, [window.innerHeight])
 
-    useEffect(() => {
-        if (insertUserData) {
-            const userId = insertUserData.user.id
-            console.log('insertUserData', insertUserData)
-            localStorage.setItem('userId', userId)
-            // createBoard({
-            //     variables: {
-            //         object: {
-            //             createdBy: userId,
-            //         },
-            //     },
-            // })
-            // resetInsertUserMutation()
-        }
-    }, [insertUserData])
-
-    // we listen for create board mutation success and trigger navigation
-    useEffect(() => {
-        if (createBoardData) {
-            const boardId = createBoardData.board.id
-            console.log('createBoardData', createBoardData)
-            navigate(`/board/${boardId}`)
-            // resetCreateBoardMutation()
-        }
-    }, [createBoardData])
-
-    const onCreateBoard = (e) => {
+    const onCreateCanvas = (e) => {
         setBtnId(e.target.name)
-        const userId = localStorage.getItem('userId')
-        if (userId === null) {
-            const { nickname, firstName, lastName } = generateRandomUsernames()
-            insertUser({
-                variables: {
-                    object: {
-                        nickname,
-                        firstName,
-                        lastName,
-                    },
-                },
-            })
-        }
-        createBoard({
-            variables: {
-                object: {
-                    createdBy: userId,
-                },
-            },
-        })
-    }
-
-    const closeLastOpenBoardModal = () => {
-        setShowLastOpenBoardModal(false)
+        navigate(`/`)
     }
 
     return (
@@ -119,31 +37,6 @@ const HomePage = (props) => {
                 className="home-page-container relative bg-neutrals-n20 "
                 // style={{ height: `${pageHeight}px` }}
             >
-                {/* <ModalContainer
-                    showModal={showLastOpenBoardModal}
-                    closeModal={closeLastOpenBoardModal}
-                >
-                    <div className="text-xl">
-                        Do you want to continue on your last board ?
-                    </div>
-                    <div className="mt-4 flex items-center justify-center ">
-                        <Button
-                            intent="primary"
-                            label="Yes"
-                            size="large"
-                            onClick={() => {
-                                navigate.push(`/board/${lastOpenBoard}`)
-                            }}
-                        />
-                        <Button
-                            extendClass="ml-4"
-                            intent="secondary"
-                            label="No"
-                            size="large"
-                            onClick={closeLastOpenBoardModal}
-                        />
-                    </div>
-                </ModalContainer> */}
                 <nav
                     className="flex items-center w-full px-5 py-1 lg:py-2 2xl:py-4
                  bg-white shadow-md
@@ -194,17 +87,10 @@ const HomePage = (props) => {
                             <Button
                                 intent="primary"
                                 size="medium"
-                                name="create_board"
-                                label="Create Board"
-                                onClick={onCreateBoard}
+                                name="create_canvas"
+                                label="New Canvas"
+                                onClick={onCreateCanvas}
                                 extendClass="font-semibold shadow-lg ml-4"
-                                loading={
-                                    btnId === 'create_board' &&
-                                    (insertUserLoading || createBoardLoading)
-                                }
-                                disabled={
-                                    insertUserLoading || createBoardLoading
-                                }
                             />
                         </div>
                     </div>
@@ -240,20 +126,11 @@ const HomePage = (props) => {
                                         // label="Let's create board"
 
                                         size="large"
-                                        onClick={onCreateBoard}
+                                        onClick={onCreateCanvas}
                                         extendClass="font-semibold shadow-lg primary-btn-home hover:shadow-xl"
-                                        loading={
-                                            btnId === 'start_now' &&
-                                            (insertUserLoading ||
-                                                createBoardLoading)
-                                        }
-                                        disabled={
-                                            insertUserLoading ||
-                                            createBoardLoading
-                                        }
                                     >
                                         <div className="flex items-center">
-                                            <span>Let's create board</span>
+                                            <span>Start on empty canvas</span>
                                             <img
                                                 className="ml-2 home-arrow-icon w-6 h-6"
                                                 src={RightArrowWhiteSVG}

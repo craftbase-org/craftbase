@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react'
 import { useQuery } from '@apollo/client'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import DefaultsDropdown from './defaults'
 import ShapesToolbar from './shapesToolbar'
@@ -17,6 +17,8 @@ const DRAW_SHAPE_TYPES = ['circle', 'rectangle']
 
 const PrimarySidebar = () => {
     const {
+        boardId,
+        isPersisted,
         updateLastAddedElement,
         togglePointer,
         togglePencilMode,
@@ -39,8 +41,6 @@ const PrimarySidebar = () => {
     } = useQuery(GET_COMPONENT_TYPES)
 
     const history = useNavigate()
-    const routeParams = useParams()
-    // console.log('boardId', routeParams.id)
 
     // A check to see if the component types seeds are already populated in DB.
     // We need all the component types being inserted as DB seeds otherwise we insert component functionality will be affected
@@ -87,7 +87,7 @@ const PrimarySidebar = () => {
                         x: -9999,
                         y: -9999,
                         x2: 0,
-                        boardId: routeParams.id,
+                        boardId: boardId,
                         metadata: item.metadata,
                         width: item.width,
                         height: item.height,
@@ -142,7 +142,7 @@ const PrimarySidebar = () => {
                         x: -9999,
                         y: -9999,
                         x2: 0,
-                        boardId: routeParams.id,
+                        boardId: boardId,
                         width: item.width,
                         height: item.height,
                         fill: item.fill,
@@ -230,7 +230,7 @@ const PrimarySidebar = () => {
                                                 100
                                     ),
                                     x2: label.includes('divider') ? 100 : 0,
-                                    boardId: routeParams.id,
+                                    boardId: boardId,
                                     metadata: item.metadata,
                                     width: item.width,
                                     height: item.height,
@@ -295,66 +295,64 @@ const PrimarySidebar = () => {
                     </div>
                 </div>
             </div>
-            <div className="absolute right-1rem mt-2">
-                <div className="flex items-center">
+            <div className="absolute top-2 right-1rem flex items-center px-2 py-1 gap-1">
+                <div
+                    id="show-saving-loader"
+                    className="w-28 h-9 pr-2 transition-all opacity-0"
+                    style={{ zIndex: '-1' }}
+                >
                     <div
-                        id="show-saving-loader"
-                        className="pr-2 transition-all opacity-0"
-                        style={{ zIndex: '-1' }}
-                    >
-                        <div
-                            className="w-auto  
+                        className="w-auto  
                              
                              bg-greens-g400 text-greens-g75  
                             px-4 py-2 rounded-md shadow-md
                             "
-                        >
-                            <div className="flex items-center ">
-                                <div className="w-auto text-sm text-left">
-                                    Saving
-                                </div>
-                                <div>
-                                    <SpinnerWithSize
-                                        loaderSize="sm"
-                                        customStyles={{
-                                            margin: 0,
-                                            marginLeft: '4px',
-                                            borderBottomColor: '#ABF5D1',
-                                        }}
-                                    />
-                                </div>
+                    >
+                        <div className="flex items-center ">
+                            <div className="w-auto text-sm text-left">
+                                Saving
+                            </div>
+                            <div>
+                                <SpinnerWithSize
+                                    loaderSize="sm"
+                                    customStyles={{
+                                        margin: 0,
+                                        marginLeft: '4px',
+                                        borderBottomColor: '#ABF5D1',
+                                    }}
+                                />
                             </div>
                         </div>
                     </div>
-
-                    {isLiveSession ? (
-                        <>
-                            <div className="text-sm pr-2">
-                                <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
-                                    <span className="text-sm ">Live</span>
-
-                                    <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
-                                        <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
-                                    </div>
-                                </a>
-                            </div>
-                        </>
-                    ) : (
-                        <></>
-                    )}
-
-                    <ShareLinkPopup />
-                    <Button
-                        intent="primary"
-                        size="medium"
-                        label="Create Board"
-                        onClick={onCreateBoard}
-                        extendClass="font-semibold shadow-lg ml-2"
-                        loading={createBoardLoading}
-                        disabled={createBoardLoading}
-                    />
-                    {/* <UserDetailsPopup /> */}
                 </div>
+
+                {isLiveSession ? (
+                    <>
+                        <div className="w-9 h-9 text-sm pr-2">
+                            <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
+                                <span className="text-sm ">Live</span>
+
+                                <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
+                                    <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
+                                </div>
+                            </a>
+                        </div>
+                    </>
+                ) : (
+                    <></>
+                )}
+
+                <ShareLinkPopup />
+                {/* {isPersisted && (
+                        <Button
+                            intent="primary"
+                            size="medium"
+                            label="New Board"
+                            onClick={() => history('/')}
+                            extendClass="font-semibold shadow-lg ml-2"
+                        />
+                    )} */}
+                {/* <UserDetailsPopup /> */}
             </div>
         </>
     )

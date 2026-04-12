@@ -10,9 +10,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useMediaQueryUtils } from 'constants/exportHooks'
 import { GET_COMPONENTS_FOR_BOARD_QUERY } from 'schema/queries'
 import {
-    INSERT_USER_ONE,
     UPDATE_USER_REVISIT_COUNT,
     INSERT_COMPONENT,
+    INSERT_BULK_COMPONENTS,
     DELETE_COMPONENT_BY_ID,
     UPDATE_COMPONENT_INFO,
     CREATE_BOARD,
@@ -22,14 +22,26 @@ import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import PencilToolbar from 'components/pencilToolbar'
 import Spinner from 'components/common/spinnerWithSize'
-import { generateRandomUsernames, strokeTypeToDashes, clearDashesOnTwoJSShape } from 'utils/misc'
+import Modal from 'components/common/modal'
+import Button from 'components/common/button'
+import {
+    generateUUID,
+    strokeTypeToDashes,
+    clearDashesOnTwoJSShape,
+} from 'utils/misc'
 
 const BoardContext = createContext()
 
 const BoardViewPage = (props) => {
     const routeParams = useParams()
-    // console.log('params in board', routeParams)
-    const boardId = routeParams.id
+    const boardIdFromUrl = routeParams.id
+    const [localBoardId] = useState(() => boardIdFromUrl || generateUUID())
+    const [isPersisted, setIsPersisted] = useState(!!boardIdFromUrl)
+    const isPersistedRef = useRef(!!boardIdFromUrl)
+    const boardId = boardIdFromUrl || localBoardId
+    const [backgroundBoardId, setBackgroundBoardId] = useState(null)
+    const backgroundBoardIdRef = useRef(null)
+    const boardCreationInFlightRef = useRef(false)
 
     const {
         loading: getComponentsForBoardLoading,
@@ -38,6 +50,7 @@ const BoardViewPage = (props) => {
     } = useQuery(GET_COMPONENTS_FOR_BOARD_QUERY, {
         variables: { boardId },
         fetchPolicy: 'cache-first',
+        skip: !isPersisted,
     })
 
     const [insertComponent] = useMutation(INSERT_COMPONENT, {
@@ -58,15 +71,6 @@ const BoardViewPage = (props) => {
     ] = useMutation(DELETE_COMPONENT_BY_ID)
 
     const [
-        insertUser,
-        {
-            loading: insertUserLoading,
-            data: insertUserData,
-            error: insertUserError,
-            reset: resetInsertUserMutation,
-        },
-    ] = useMutation(INSERT_USER_ONE)
-    const [
         updateUserRevisit,
         {
             loading: updateUserRevisitLoading,
@@ -81,6 +85,10 @@ const BoardViewPage = (props) => {
         createBoard,
         { loading: createBoardLoading, data: createBoardData },
     ] = useMutation(CREATE_BOARD)
+
+    const [insertBulkComponents] = useMutation(INSERT_BULK_COMPONENTS, {
+        ignoreResults: true,
+    })
 
     const [componentStore, setComponentStore] = useState({})
     const [lastAddedElement, setLastAddedElement] = useState(null)
@@ -105,41 +113,124 @@ const BoardViewPage = (props) => {
     const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
     const historyLogRef = useRef([])
 
-    // Reset component store whenever the board changes
-    useEffect(() => {
-        setComponentStore({})
-    }, [boardId])
+    const LOCAL_DRAFT_KEY = 'craftbase_local_draft'
+    const DRAFT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+    const [showStorageLimitModal, setShowStorageLimitModal] = useState(false)
+    const [showPermissionErrorModal, setShowPermissionErrorModal] =
+        useState(false)
+    const [storageLimitBoardUrl, setStorageLimitBoardUrl] = useState(null)
+    const draftSaveTimerRef = useRef(null)
 
-    // check if user exists or not
+    // Restore draft and background board ID from localStorage on mount (local mode only)
     useEffect(() => {
-        const userId = localStorage.getItem('userId')
-        if (userId === null) {
-            const { nickname, firstName, lastName } = generateRandomUsernames()
-            insertUser({
-                variables: {
-                    object: {
-                        nickname,
-                        firstName,
-                        lastName,
-                    },
-                },
-            })
-        } else if (userId !== null || userId !== undefined) {
-            updateUserRevisit({
-                variables: {
-                    userId: userId,
-                },
-            })
+        if (isPersisted) return
+
+        const savedBgBoardId = localStorage.getItem(
+            'craftbase_background_board_id'
+        )
+        if (savedBgBoardId) {
+            backgroundBoardIdRef.current = savedBgBoardId
+            setBackgroundBoardId(savedBgBoardId)
         }
-        localStorage.setItem('lastOpenBoard', routeParams.id)
+
+        try {
+            const draft = localStorage.getItem(LOCAL_DRAFT_KEY)
+            if (draft) {
+                const parsed = JSON.parse(draft)
+                const age = Date.now() - (parsed.timestamp || 0)
+                if (age < DRAFT_EXPIRY_MS && parsed.components) {
+                    setComponentStore(parsed.components)
+                } else {
+                    localStorage.removeItem(LOCAL_DRAFT_KEY)
+                    localStorage.removeItem('craftbase_background_board_id')
+                }
+            }
+        } catch (e) {
+            localStorage.removeItem(LOCAL_DRAFT_KEY)
+            localStorage.removeItem('craftbase_background_board_id')
+        }
     }, [])
 
+    // Save draft to localStorage on changes (debounced, local mode only)
     useEffect(() => {
-        if (createBoardData) {
-            const newBoardId = createBoardData.board.id
-            navigate(`/board/${newBoardId}`)
+        if (isPersisted) return
+        if (Object.keys(componentStore).length === 0) return
+
+        if (draftSaveTimerRef.current) {
+            clearTimeout(draftSaveTimerRef.current)
         }
-    }, [createBoardData])
+        draftSaveTimerRef.current = setTimeout(() => {
+            try {
+                localStorage.setItem(
+                    LOCAL_DRAFT_KEY,
+                    JSON.stringify({
+                        boardId: localBoardId,
+                        components: componentStore,
+                        timestamp: Date.now(),
+                    })
+                )
+            } catch (e) {
+                if (
+                    e instanceof DOMException &&
+                    e.name === 'QuotaExceededError'
+                ) {
+                    handleStorageLimitReached()
+                }
+            }
+        }, 500)
+
+        return () => {
+            if (draftSaveTimerRef.current) {
+                clearTimeout(draftSaveTimerRef.current)
+            }
+        }
+    }, [componentStore, isPersisted])
+
+    const handleStorageLimitReached = async () => {
+        try {
+            const serverBoardId = await persistBoard()
+            setStorageLimitBoardUrl(
+                `${window.location.origin}/board/${serverBoardId}`
+            )
+            setShowStorageLimitModal(true)
+        } catch (e) {
+            console.error('Failed to auto-persist board on storage limit:', e)
+        }
+    }
+
+    const handleStartNewCanvas = () => {
+        localStorage.removeItem(LOCAL_DRAFT_KEY)
+        setShowStorageLimitModal(false)
+        setStorageLimitBoardUrl(null)
+        window.location.href = '/'
+    }
+
+    const handleContinueOnSavedBoard = () => {
+        setShowStorageLimitModal(false)
+        if (storageLimitBoardUrl) {
+            window.location.href = storageLimitBoardUrl
+        }
+    }
+
+    // Reset component store whenever the board changes (persisted mode only).
+    // In local mode the boardId is a stable UUID and draft restore handles initialization.
+    const prevBoardIdRef = useRef(boardId)
+    useEffect(() => {
+        if (prevBoardIdRef.current !== boardId) {
+            setComponentStore({})
+            prevBoardIdRef.current = boardId
+        }
+    }, [boardId])
+
+    // Update revisit count when loading a persisted board
+    useEffect(() => {
+        if (!isPersisted) return
+        const userId = localStorage.getItem('userId')
+        if (userId) {
+            updateUserRevisit({ variables: { userId } })
+        }
+        localStorage.setItem('lastOpenBoard', boardId)
+    }, [isPersisted])
 
     useEffect(() => {
         if (
@@ -167,12 +258,15 @@ const BoardViewPage = (props) => {
     }, [getComponentsForBoardData])
 
     useEffect(() => {
+        isPersistedRef.current = isPersisted
+    }, [isPersisted])
+
+    useEffect(() => {
         console.log('change in componentStore in Board', componentStore)
         stateRefForComponentStore.current = componentStore
     }, [componentStore])
 
-
-    if (getComponentsForBoardLoading) {
+    if (isPersisted && getComponentsForBoardLoading) {
         return (
             <>
                 <div className="w-full h-full flex items-center justify-center">
@@ -180,14 +274,6 @@ const BoardViewPage = (props) => {
                 </div>
             </>
         )
-    }
-
-    if (insertUserData) {
-        const userId = insertUserData.user.id
-
-        localStorage.setItem('userId', userId)
-        // console.log('insertUserData', insertUserData)
-        // window.location.reload()
     }
 
     const updateLastAddedElement = (obj) => {
@@ -254,8 +340,35 @@ const BoardViewPage = (props) => {
         setHistoryLog(updatedLog)
     }
 
+    // Creates a board in the background on first interaction (non-blocking).
+    // Stores the server board ID in state + ref + localStorage for later use.
+    const ensureBackgroundBoard = async () => {
+        if (isPersistedRef.current) return
+        if (backgroundBoardIdRef.current) return
+        if (boardCreationInFlightRef.current) return
+
+        boardCreationInFlightRef.current = true
+        try {
+            const userId = localStorage.getItem('userId')
+            const { data: boardData } = await createBoard({
+                variables: { object: {} },
+            })
+            const newBoardId = boardData.board.id
+            backgroundBoardIdRef.current = newBoardId
+            setBackgroundBoardId(newBoardId)
+            localStorage.setItem('craftbase_background_board_id', newBoardId)
+        } catch (e) {
+            console.error('Background board creation failed:', e)
+        } finally {
+            boardCreationInFlightRef.current = false
+        }
+    }
+
     // Records ADD action, updates store and syncs to DB
     const addToLocalComponentStore = (id, type, componentInfo) => {
+        // Trigger background board creation on first interaction
+        ensureBackgroundBoard()
+
         recordToHistoryLog({
             action: 'ADD',
             id,
@@ -269,12 +382,28 @@ const BoardViewPage = (props) => {
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
-        componentInfo &&
-            insertComponent({ variables: { object: componentInfo } })
+        if (isPersistedRef.current && componentInfo) {
+            insertComponent({ variables: { object: componentInfo } }).catch(
+                (error) => {
+                    const isPermissionError = error.graphQLErrors?.some(
+                        (e) => e.extensions?.code === 'permission-error'
+                    )
+                    if (isPermissionError) {
+                        undoLastAction()
+                        setShowPermissionErrorModal(true)
+                    }
+                }
+            )
+        }
     }
 
     // Snapshots only the properties being changed before applying bulk updates
-    const updateComponentBulkPropertiesInLocalStore = (id, bulkObj, skipHistory = false, syncDefaults = false) => {
+    const updateComponentBulkPropertiesInLocalStore = (
+        id,
+        bulkObj,
+        skipHistory = false,
+        syncDefaults = false
+    ) => {
         const userId = localStorage.getItem('userId')
 
         if (!skipHistory) {
@@ -305,15 +434,17 @@ const BoardViewPage = (props) => {
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
-        updateComponentInfo({
-            variables: {
-                id: id,
-                updateObj: {
-                    ...bulkObj,
-                    updatedBy: userId,
+        if (isPersistedRef.current) {
+            updateComponentInfo({
+                variables: {
+                    id: id,
+                    updateObj: {
+                        ...bulkObj,
+                        updatedBy: userId,
+                    },
                 },
-            },
-        })
+            })
+        }
     }
 
     // Snapshots current x,y before updating position, then updates store and DB
@@ -339,16 +470,18 @@ const BoardViewPage = (props) => {
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
-        updateComponentInfo({
-            variables: {
-                id: id,
-                updateObj: {
-                    x: parseInt(x),
-                    y: parseInt(y),
-                    updatedBy: userId,
+        if (isPersistedRef.current) {
+            updateComponentInfo({
+                variables: {
+                    id: id,
+                    updateObj: {
+                        x: parseInt(x),
+                        y: parseInt(y),
+                        updatedBy: userId,
+                    },
                 },
-            },
-        })
+            })
+        }
     }
 
     // Snapshots full component state before deletion, then removes from store and DB
@@ -364,10 +497,12 @@ const BoardViewPage = (props) => {
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
-        deleteComponent({
-            variables: { id },
-            errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
-        })
+        if (isPersistedRef.current) {
+            deleteComponent({
+                variables: { id },
+                errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
+            })
+        }
     }
 
     const setArrowDrawModeInBoard = (val) => {
@@ -402,25 +537,57 @@ const BoardViewPage = (props) => {
 
     const onCreateBoard = () => {
         const userId = localStorage.getItem('userId')
-        if (userId === null) {
-            const { nickname, firstName, lastName } = generateRandomUsernames()
-            insertUser({
-                variables: {
-                    object: {
-                        nickname,
-                        firstName,
-                        lastName,
-                    },
-                },
-            })
-        }
         createBoard({
             variables: {
-                object: {
-                    createdBy: userId,
-                },
+                object: {},
             },
         })
+    }
+
+    const persistBoard = async () => {
+        let serverBoardId = backgroundBoardIdRef.current
+
+        // If background board wasn't created yet (e.g. user shares before first draw),
+        // create it now
+        if (!serverBoardId) {
+            const userId = localStorage.getItem('userId')
+            const { data: boardData } = await createBoard({
+                variables: {
+                    object: {},
+                },
+            })
+            serverBoardId = boardData.board.id
+        }
+
+        const components = Object.values(stateRefForComponentStore.current).map(
+            (comp) => {
+                const cleaned = stripTypename(comp)
+                return { ...cleaned, boardId: serverBoardId }
+            }
+        )
+
+        if (components.length > 0) {
+            await insertBulkComponents({ variables: { objects: components } })
+        }
+
+        // Update local component store with the server boardId
+        const updatedStore = {}
+        Object.entries(stateRefForComponentStore.current).forEach(
+            ([id, comp]) => {
+                updatedStore[id] = { ...comp, boardId: serverBoardId }
+            }
+        )
+        stateRefForComponentStore.current = updatedStore
+        setComponentStore(updatedStore)
+
+        setIsPersisted(true)
+        isPersistedRef.current = true
+        localStorage.removeItem('craftbase_local_draft')
+        localStorage.removeItem('craftbase_background_board_id')
+        localStorage.setItem('lastOpenBoard', serverBoardId)
+        navigate(`/board/${serverBoardId}`, { replace: true })
+
+        return serverBoardId
     }
 
     // Applies a single property back to a Two.js shape during undo.
@@ -478,17 +645,20 @@ const BoardViewPage = (props) => {
                 (c) => c?.elementData?.id === id
             )
             if (group) {
+                console.log('Group ID FOUND while doing undo')
                 two.remove([group])
             }
             const updatedStore = { ...stateRefForComponentStore.current }
             delete updatedStore[id]
             stateRefForComponentStore.current = updatedStore
             setComponentStore(updatedStore)
-            deleteComponent({
-                variables: { id },
-                errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
-            })
-            requestAnimationFrame(() => two?.update())
+            if (isPersistedRef.current) {
+                deleteComponent({
+                    variables: { id },
+                    errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
+                })
+            }
+            requestAnimationFrame(() => two.update())
         } else if (action === 'DELETE') {
             const { prevState } = lastEntry
             const restoredState = { ...prevState, boardId: boardId }
@@ -498,9 +668,19 @@ const BoardViewPage = (props) => {
             }
             stateRefForComponentStore.current = updatedStore
             setComponentStore(updatedStore)
-            insertComponent({
-                variables: { object: stripTypename(restoredState) },
-            })
+            if (isPersistedRef.current) {
+                insertComponent({
+                    variables: { object: stripTypename(restoredState) },
+                }).catch((error) => {
+                    const isPermissionError = error.graphQLErrors?.some(
+                        (e) => e.extensions?.code === 'permission-error'
+                    )
+                    if (isPermissionError) {
+                        undoLastAction()
+                        setShowPermissionErrorModal(true)
+                    }
+                })
+            }
         } else if (action === 'UPDATE_VERTICES') {
             const { prevX, prevY } = lastEntry
 
@@ -519,9 +699,11 @@ const BoardViewPage = (props) => {
                 group.translation.y = prevY
                 two?.update()
             }
-            updateComponentInfo({
-                variables: { id, updateObj: { x: prevX, y: prevY } },
-            })
+            if (isPersistedRef.current) {
+                updateComponentInfo({
+                    variables: { id, updateObj: { x: prevX, y: prevY } },
+                })
+            }
             requestAnimationFrame(() => two?.update())
         } else if (action === 'UPDATE_BULK') {
             const { prevProps } = lastEntry
@@ -547,18 +729,26 @@ const BoardViewPage = (props) => {
                 })
                 two?.update()
 
-                if (prevProps.width !== undefined || prevProps.height !== undefined) {
+                if (
+                    prevProps.width !== undefined ||
+                    prevProps.height !== undefined
+                ) {
                     window.dispatchEvent(
-                        new CustomEvent('undoSelectorSync', { detail: { elementId: id } })
+                        new CustomEvent('undoSelectorSync', {
+                            detail: { elementId: id },
+                        })
                     )
                 }
             }
 
             if (lastEntry.syncDefaults) {
-                if (prevProps.linewidth !== undefined) setDefaultLinewidth(prevProps.linewidth)
+                if (prevProps.linewidth !== undefined)
+                    setDefaultLinewidth(prevProps.linewidth)
                 if (prevProps.strokeType !== undefined) {
                     setDefaultStrokeType(
-                        prevProps.strokeType === 'solid' ? null : prevProps.strokeType
+                        prevProps.strokeType === 'solid'
+                            ? null
+                            : prevProps.strokeType
                     )
                 }
             }
@@ -575,9 +765,11 @@ const BoardViewPage = (props) => {
                 setToolbarRefreshKey((k) => k + 1)
             }
 
-            updateComponentInfo({
-                variables: { id, updateObj: prevProps },
-            })
+            if (isPersistedRef.current) {
+                updateComponentInfo({
+                    variables: { id, updateObj: prevProps },
+                })
+            }
             requestAnimationFrame(() => two?.update())
         }
     }
@@ -588,6 +780,10 @@ const BoardViewPage = (props) => {
             selectedComponent?.group?.data?.elementData?.isLineCircle === true)
 
     const contextValueForSidebar = {
+        boardId,
+        isPersisted,
+        persistBoard,
+        backgroundBoardId,
         isPencilMode,
         isArrowDrawMode,
         isTextDrawMode,
@@ -646,9 +842,17 @@ const BoardViewPage = (props) => {
                                 pencilStrokeColor={pencilStrokeColor}
                                 defaultLinewidth={pencilDefaultLinewidth}
                                 defaultStrokeType={pencilDefaultStrokeType}
-                                onColorChange={(color) => setPencilStrokeColor(color)}
-                                onLinewidthChange={(value) => setPencilDefaultLinewidth(value)}
-                                onStrokeTypeChange={(type) => setPencilDefaultStrokeType(type === 'solid' ? null : type)}
+                                onColorChange={(color) =>
+                                    setPencilStrokeColor(color)
+                                }
+                                onLinewidthChange={(value) =>
+                                    setPencilDefaultLinewidth(value)
+                                }
+                                onStrokeTypeChange={(type) =>
+                                    setPencilDefaultStrokeType(
+                                        type === 'solid' ? null : type
+                                    )
+                                }
                             />
                         )}
                         <Canvas
@@ -677,6 +881,76 @@ const BoardViewPage = (props) => {
                     </div>
                 </div>
             ) : null}
+            <Modal
+                open={showPermissionErrorModal}
+                onClose={() => setShowPermissionErrorModal(false)}
+                locked={false}
+            >
+                <div className="p-4" style={{ minWidth: '400px' }}>
+                    <h2 className="text-lg font-semibold mb-2">
+                        Permission Denied
+                    </h2>
+                    <p className="text-sm text-neutrals-n700 mb-4">
+                        You don't have permission to add components to this
+                        board. If you already have access, please refresh the
+                        page and try again.
+                    </p>
+                    <div className="flex gap-2">
+                        <Button
+                            intent="primary"
+                            size="medium"
+                            label="Refresh"
+                            onClick={() => window.location.reload()}
+                        />
+                        <Button
+                            intent="secondary"
+                            size="medium"
+                            label="Dismiss"
+                            onClick={() => setShowPermissionErrorModal(false)}
+                        />
+                    </div>
+                </div>
+            </Modal>
+            <Modal
+                open={showStorageLimitModal}
+                onClose={() => setShowStorageLimitModal(false)}
+                locked={false}
+            >
+                <div className="p-4" style={{ minWidth: '400px' }}>
+                    <h2 className="text-lg font-semibold mb-2">
+                        Storage Limit Reached
+                    </h2>
+                    <p className="text-sm text-neutrals-n700 mb-4">
+                        Your local storage is full. Your current work has been
+                        saved to the server.
+                    </p>
+                    {storageLimitBoardUrl && (
+                        <p className="text-sm text-neutrals-n700 mb-4 break-all">
+                            Saved board URL:{' '}
+                            <a
+                                href={storageLimitBoardUrl}
+                                className="text-primary-blue underline"
+                            >
+                                {storageLimitBoardUrl}
+                            </a>
+                        </p>
+                    )}
+                    <div className="flex gap-2">
+                        <Button
+                            intent="primary"
+                            size="medium"
+                            label="Start New Canvas"
+                            onClick={handleStartNewCanvas}
+                        />
+                        <Button
+                            intent="secondary"
+                            size="medium"
+                            label="Continue on Saved Board"
+                            onClick={handleContinueOnSavedBoard}
+                        />
+                    </div>
+                </div>
+            </Modal>
         </>
     )
 }

@@ -34,7 +34,7 @@ Top-level page views/routes.
     - `index.js` - Entry point with error boundary
     - `errorBoundary.js` - Error boundary wrapper
 
-- **`Home/`**: Landing/home page
+- **`Home/`**: Marketing/landing page (served at `/home`, no longer the default route)
 
 ### `/src/components`
 
@@ -46,7 +46,6 @@ Reusable React UI components.
     - Drawing: `pencil.js`
     - Text components: `newText.js`
     - Other: `groupobject.js`
-    - `template.js` - Component template definitions
 
 - **`sidebar/`**: Left sidebar UI
     - `primary.js` - Main sidebar component
@@ -133,7 +132,7 @@ Global stylesheets.
 
 ### Root Level (`/src`)
 
-- **`App.js`**: Root application component with routing
+- **`App.js`**: Root application component with routing (`/` → Board, `/board/:id` → Board, `/home` → Marketing)
 - **`newCanvas.js`**: Main canvas rendering logic using Two.js
 - **`routes.js`**: Application routes configuration
 - **`index.js`**: Application entry point
@@ -144,7 +143,7 @@ Global stylesheets.
 1. **User Interaction** → Canvas event listeners (mouse, drag, zoom)
 2. **Component Creation** → Factory generates template → Element renderer creates Two.js object
 3. **State Updates** → React Context (BoardContext) + local component state → Component re-renders
-4. **Backend Sync** → GraphQL mutations/subscriptions → Hasura backend
+4. **Backend Sync** → GraphQL mutations fire only when `isPersisted` is true. In local mode (`/`), state lives in React + localStorage draft only. See `.claude/context/canvas-first-ux.md` for the full deferred persistence flow.
 
 ## React Context
 
@@ -156,6 +155,7 @@ The **BoardContext** (created in `src/views/Board/board.js`) provides:
 - Pencil mode state
 - Toolbar visibility
 - GraphQL mutation functions
+- `boardId`, `isPersisted`, `persistBoard`, `backgroundBoardId` (canvas-first UX)
 - Other board-level state and handlers
 
 Child components access this context via `useContext(BoardContext)`.
@@ -180,9 +180,11 @@ Child components access this context via `useContext(BoardContext)`.
 
 See detailed notes in `.claude/context/` for feature-specific implementation details:
 
+- `.claude/context/canvas-first-ux.md` - Canvas-first UX: deferred persistence, dual-mode board, localStorage drafts, background board creation, share flow, storage quota handling
 - `.claude/context/floating-toolbar.md` - Floating toolbar activation and structure
 - `.claude/context/text-element-creation.md` - Details on how text element works in canvas (the flow from first mouse click to scaling text element size in canvas).
 - `.claude/context/shape-selection.md` - It describes regarding shape selection & its placement flow on canvas
+- `.claude/context/undo-history.md` - Undo/history stack: action entry shapes, `recordToHistoryLog`, and `undoLastAction()` as the canonical rollback for any failed mutation
 
 ### Component schema (from DB)
 
