@@ -1982,15 +1982,19 @@ const Canvas = (props) => {
                 // created — which would produce a second wrapper and a duplicate shape.
                 // Deletion removes the id from prevElements via the 'elementRemoved' event,
                 // so undo-of-delete still gets a fresh wrapper.
+                const moduleLoader = elementModules[`./components/elements/${item.componentType}.js`]
+                if (!moduleLoader) {
+                    // componentType doesn't map to a known element file — skip to avoid a crash.
+                    // This can happen if shapeData was null when stored (e.g. componentTypes
+                    // query hadn't resolved yet).
+                    return
+                }
+
                 if (prevElements.includes(item.id)) {
                     // do nothing
                 } else {
                     arr.push(item.id)
-                    const ElementToRender = React.lazy(() =>
-                        elementModules[
-                            `./components/elements/${item.componentType}.js`
-                        ]()
-                    )
+                    const ElementToRender = React.lazy(() => moduleLoader())
                     const data = {
                         twoJSInstance: twoJSInstance,
                         id: item.id,
