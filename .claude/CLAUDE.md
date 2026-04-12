@@ -199,6 +199,7 @@ See detailed notes in `.claude/context/` for feature-specific implementation det
 - `.claude/context/shape-selection.md` - It describes regarding shape selection & its placement flow on canvas
 - `.claude/context/undo-history.md` - Undo/history stack: action entry shapes, `recordToHistoryLog`, and `undoLastAction()` as the canonical rollback for any failed mutation
 - `.claude/context/responsive-design.md` - When to use Tailwind responsive prefixes vs `useMediaQueryUtils` hook; breakpoint values for both; the core decision rule
+- `.claude/context/font-guide.md` - Font system: Geist (UI chrome), Fraunces (branding/headings), Caveat (canvas sketch); CSS variables, Tailwind config, and usage rules per area
 
 ### Component schema (from DB)
 

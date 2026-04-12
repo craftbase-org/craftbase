@@ -32,8 +32,8 @@ const PencilToolbar = ({
             <div
                 style={{
                     position: 'fixed',
-                    bottom: '16px',
-                    right: '16px',
+                    bottom: '60px',
+                    right: '10px',
                     zIndex: 10,
                     background: 'rgba(255,255,255,1)',
                     width: '192px',
@@ -87,7 +87,9 @@ const PencilToolbar = ({
                                 <span
                                     className="text-sm font-bold tracking-widest"
                                     style={{
-                                        color: isSelected ? '#0052cc' : '#6b7280',
+                                        color: isSelected
+                                            ? '#0052cc'
+                                            : '#6b7280',
                                         paddingBottom:
                                             type.value === 'dotted'
                                                 ? '0.35rem'
@@ -226,7 +228,9 @@ const PencilToolbar = ({
                                 <span
                                     className="text-base font-bold tracking-widest"
                                     style={{
-                                        color: isSelected ? '#0052cc' : '#6b7280',
+                                        color: isSelected
+                                            ? '#0052cc'
+                                            : '#6b7280',
                                         paddingBottom:
                                             type.value === 'dotted'
                                                 ? '0.4rem'

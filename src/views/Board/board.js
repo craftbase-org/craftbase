@@ -21,6 +21,7 @@ import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import PencilToolbar from 'components/pencilToolbar'
+import controlsIcon from 'assets/controls.svg'
 import Spinner from 'components/common/spinnerWithSize'
 import Modal from 'components/common/modal'
 import Button from 'components/common/button'
@@ -124,6 +125,16 @@ const BoardViewPage = (props) => {
     useEffect(() => {
         if (!isPencilMode) setShowMobilePencilPanel(false)
     }, [isPencilMode])
+
+    // Close pencil panel as soon as the user touches the canvas on mobile
+    useEffect(() => {
+        if (!isPencilMode || !isMobile) return
+        const canvasEl = document.getElementById('main-two-root')
+        if (!canvasEl) return
+        const handleCanvasTouch = () => setShowMobilePencilPanel(false)
+        canvasEl.addEventListener('touchstart', handleCanvasTouch, { passive: true })
+        return () => canvasEl.removeEventListener('touchstart', handleCanvasTouch)
+    }, [isPencilMode, isMobile])
 
     const LOCAL_DRAFT_KEY = 'craftbase_local_draft'
     const DRAFT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -840,46 +851,39 @@ const BoardViewPage = (props) => {
                             style={{
                                 position: 'fixed',
                                 bottom: '16px',
-                                left: '16px',
+                                right: '10px',
                                 zIndex: 20,
                             }}
-                            className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-colors duration-150
-                                ${showMobileToolbarPanel ? 'bg-blues-b400' : 'bg-white'}`}
+                            className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
+                                ${showMobileToolbarPanel ? 'bg-blues-b50' : 'bg-white'}`}
                         >
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 16 16"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <line x1="2" y1="4" x2="14" y2="4" stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
-                                <circle cx="5" cy="4" r="1.5" fill={showMobileToolbarPanel ? '#fff' : 'white'} stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
-                                <line x1="2" y1="8" x2="14" y2="8" stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
-                                <circle cx="11" cy="8" r="1.5" fill={showMobileToolbarPanel ? '#fff' : 'white'} stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
-                                <line x1="2" y1="12" x2="14" y2="12" stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
-                                <circle cx="7" cy="12" r="1.5" fill={showMobileToolbarPanel ? '#fff' : 'white'} stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
-                            </svg>
+                            <img
+                                src={controlsIcon}
+                                className="w-5 h-5"
+                                alt="Element properties"
+                            />
                         </button>
                     )}
-                    {selectedComponent && showToolbar && (!isMobile || showMobileToolbarPanel) && (
-                        <Toolbar
-                            hideColorText={true}
-                            hideColorIcon={true}
-                            hideColorBackground={isArrowSelected}
-                            toggle={showToolbar}
-                            componentState={selectedComponent}
-                            closeToolbar={closeToolbar}
-                            refreshKey={toolbarRefreshKey}
-                            isMobile={isMobile}
-                            updateComponentBulkProperties={
-                                updateComponentBulkPropertiesInLocalStore
-                            }
-                            postToolbarUpdate={() => {
-                                twoJSInstance.update()
-                            }}
-                        />
-                    )}
+                    {selectedComponent &&
+                        showToolbar &&
+                        (!isMobile || showMobileToolbarPanel) && (
+                            <Toolbar
+                                hideColorText={true}
+                                hideColorIcon={true}
+                                hideColorBackground={isArrowSelected}
+                                toggle={showToolbar}
+                                componentState={selectedComponent}
+                                closeToolbar={closeToolbar}
+                                refreshKey={toolbarRefreshKey}
+                                isMobile={isMobile}
+                                updateComponentBulkProperties={
+                                    updateComponentBulkPropertiesInLocalStore
+                                }
+                                postToolbarUpdate={() => {
+                                    twoJSInstance.update()
+                                }}
+                            />
+                        )}
                     {isPencilMode && isMobile && (
                         <button
                             title="Pencil properties"
@@ -889,26 +893,17 @@ const BoardViewPage = (props) => {
                             style={{
                                 position: 'fixed',
                                 bottom: '16px',
-                                left: '16px',
+                                right: '10px',
                                 zIndex: 20,
                             }}
-                            className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-colors duration-150
-                                ${showMobilePencilPanel ? 'bg-blues-b400' : 'bg-white'}`}
+                            className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
+                                ${showMobilePencilPanel ? 'bg-blues-b50' : 'bg-white'}`}
                         >
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 16 16"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <line x1="2" y1="4" x2="14" y2="4" stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
-                                <circle cx="5" cy="4" r="1.5" fill={showMobilePencilPanel ? '#fff' : 'white'} stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
-                                <line x1="2" y1="8" x2="14" y2="8" stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
-                                <circle cx="11" cy="8" r="1.5" fill={showMobilePencilPanel ? '#fff' : 'white'} stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
-                                <line x1="2" y1="12" x2="14" y2="12" stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
-                                <circle cx="7" cy="12" r="1.5" fill={showMobilePencilPanel ? '#fff' : 'white'} stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
-                            </svg>
+                            <img
+                                src={controlsIcon}
+                                className="w-5 h-5"
+                                alt="Pencil properties"
+                            />
                         </button>
                     )}
                     {isPencilMode && (!isMobile || showMobilePencilPanel) && (

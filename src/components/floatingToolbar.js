@@ -443,7 +443,9 @@ const Toolbar = (props) => {
                             componentState.shape.data.dashes =
                                 strokeTypeToDashes(type)
                             if (type === 'solid') {
-                                clearDashesOnTwoJSShape(componentState.shape.data)
+                                clearDashesOnTwoJSShape(
+                                    componentState.shape.data
+                                )
                             }
                         }
                         if (componentState?.group?.data?.elementData) {
@@ -576,16 +578,20 @@ const Toolbar = (props) => {
                         transition={{ duration: 0.01 }}
                         variants={variants}
                         id="floating-toolbar"
-                        style={isMobile ? {
-                            bottom: '72px',
-                            left: '16px',
-                            top: 'auto',
-                            right: 'auto',
-                            height: 'auto',
-                            maxHeight: '60vh',
-                            overflowY: 'auto',
-                            zIndex: 20,
-                        } : {}}
+                        style={
+                            isMobile
+                                ? {
+                                      bottom: '60px',
+                                      left: 'auto',
+                                      top: 'auto',
+                                      right: '10px',
+                                      height: 'auto',
+                                      maxHeight: '60vh',
+                                      overflowY: 'auto',
+                                      zIndex: 20,
+                                  }
+                                : {}
+                        }
                     >
                         {allowedProperties.map((i, index) =>
                             i.hide === true ? null : (

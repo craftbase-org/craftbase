@@ -3,6 +3,7 @@ import Two from 'two.js'
 
 import { ZUI } from 'two.js/extras/jsm/zui'
 import { useBoardContext } from 'views/Board/board'
+import { useMediaQueryUtils } from 'constants/exportHooks'
 
 import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
@@ -88,8 +89,11 @@ function addZUI(
     let touches = {}
     let distance = 0
     let lastTouch = null
+    let touchStartX = 0
+    let touchStartY = 0
     let twoFingerMidX = 0
     let twoFingerMidY = 0
+    let wasTwoFingerGesture = false
     let dragging = false
     let isResizeEvent = false
     let currentPath
@@ -1345,6 +1349,8 @@ function addZUI(
 
         if (e.touches.length === 1) {
             lastTouch = e.touches[0]
+            touchStartX = lastTouch.clientX
+            touchStartY = lastTouch.clientY
             // Dispatch mousedown on the actual element under the finger so
             // element-level listeners (interactjs resize handles, click handlers) fire correctly.
             const target =
@@ -1404,19 +1410,61 @@ function addZUI(
 
     function touchend(e) {
         if (e.touches.length === 0 && lastTouch) {
+            const endX = lastTouch.clientX
+            const endY = lastTouch.clientY
+
             domElement.dispatchEvent(
                 new MouseEvent('mouseup', {
                     bubbles: true,
                     cancelable: true,
                     view: window,
-                    clientX: lastTouch.clientX,
-                    clientY: lastTouch.clientY,
+                    clientX: endX,
+                    clientY: endY,
                 })
             )
+
+            // If finger barely moved, treat as a tap and fire a click on the
+            // actual element so interactjs `.on('click')` handlers (which draw
+            // the selection outline) are triggered.
+            const dx = endX - touchStartX
+            const dy = endY - touchStartY
+            const moved = Math.sqrt(dx * dx + dy * dy)
+            if (moved < 10) {
+                // Clear all existing selectors first — on desktop this happens
+                // via blur when focus shifts between elements, but synthetic
+                // mouse events don't transfer browser focus on mobile.
+                window.dispatchEvent(new CustomEvent('clearSelector', {}))
+
+                const target =
+                    document.elementFromPoint(endX, endY) || domElement
+                target.dispatchEvent(
+                    new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window,
+                        clientX: endX,
+                        clientY: endY,
+                    })
+                )
+            }
+
             lastTouch = null
         }
-        // Drop below 2 fingers — reset 2-finger tracking state
+        // Drop below 2 fingers — reset 2-finger tracking state, save viewport
         if (e.touches.length < 2) {
+            if (wasTwoFingerGesture && props.boardId) {
+                try {
+                    localStorage.setItem(
+                        `craftbase_mobile_viewport_${props.boardId}`,
+                        JSON.stringify({
+                            tx: two.scene.translation.x,
+                            ty: two.scene.translation.y,
+                            scale: two.scene.scale,
+                        })
+                    )
+                } catch (_) {}
+            }
+            wasTwoFingerGesture = false
             touches = {}
             distance = 0
         }
@@ -1464,6 +1512,7 @@ function addZUI(
         twoFingerMidX = newMidX
         twoFingerMidY = newMidY
         distance = newDist
+        wasTwoFingerGesture = true
 
         two.update()
     }
@@ -1540,6 +1589,8 @@ const GroupRenderWrapper = (ElementToRender, data) => {
 const Canvas = (props) => {
     // console.log('getComponentsForBoardData', getComponentsForBoardData)
 
+    const { isMobile } = useMediaQueryUtils()
+
     const {
         addToLocalComponentStore,
         deleteComponentFromLocalStore,
@@ -1599,6 +1650,22 @@ const Canvas = (props) => {
         setZuiInstance(zui_instance)
         setTwoJSInstance(two)
         setTwoJSInstanceInBoard(two)
+
+        // Restore last mobile viewport (zoom + pan) from localStorage
+        if (isMobile && props.boardId) {
+            try {
+                const saved = localStorage.getItem(
+                    `craftbase_mobile_viewport_${props.boardId}`
+                )
+                if (saved) {
+                    const { tx, ty, scale } = JSON.parse(saved)
+                    two.scene.translation.set(tx, ty)
+                    two.scene.scale = scale
+                    zui_instance.zui.zScale = scale
+                    two.update()
+                }
+            } catch (_) {}
+        }
 
         const boardId = props.boardId
         const tabsOpen = localStorage.getItem(`tabs_open_${boardId}`)

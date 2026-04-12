@@ -51,7 +51,7 @@ const SupportPage = () => {
         <div className="min-h-screen bg-neutrals-n20">
             {/* Nav */}
             <nav className="sticky top-0 z-10 bg-white border-b border-neutrals-n40 shadow-sm">
-                <div className="w-full max-w-2xl mx-auto px-4 tablet-landscape:px-6 py-3 flex items-center justify-between">
+                <div className="w-full max-w-2xl laptop:max-w-full mx-auto px-4 tablet-landscape:px-6 py-3 flex items-center justify-between">
                     <span className="text-primary-blue font-bold text-sm tablet-landscape:text-base tracking-tight">
                         Craftbase
                     </span>
