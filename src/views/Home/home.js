@@ -53,8 +53,8 @@ const HomePage = (props) => {
                             />
                         </div>
                         <div
-                            className="pl-2 
-                        text-primary-blue text-base lg:text-xl 2xl:text-2xl font-bold"
+                            className="pl-2
+                        text-primary-blue text-base lg:text-xl 2xl:text-2xl font-bold font-display"
                         >
                             craftbase
                         </div>
@@ -104,7 +104,7 @@ const HomePage = (props) => {
                     >
                         <div className="w-full lg:w-5/12 h-full flex items-center justify-center">
                             <div className="text-left transition-opacity duration-300 ease-in-out">
-                                <h1 className="text-base lg:text-3xl 2xl:text-4xl font-bold ">
+                                <h1 className="text-base lg:text-3xl 2xl:text-4xl font-bold font-display">
                                     Instant Infinite Whiteboard with Unique
                                     Board Links
                                 </h1>
@@ -161,7 +161,7 @@ const HomePage = (props) => {
                                     />
                                 </div>
                                 <div className=" px-8 lg:px-20 big-desktop:text-lg">
-                                    <p className="mt-4 text-primary-blue font-bold">
+                                    <p className="mt-4 text-primary-blue font-bold font-display">
                                         No sign-up(s) needed
                                     </p>
                                     <p className="mt-2">
@@ -178,7 +178,7 @@ const HomePage = (props) => {
                                     />
                                 </div>
                                 <div className=" px-8 lg:px-20 big-desktop:text-lg">
-                                    <p className="mt-4 text-primary-blue font-bold">
+                                    <p className="mt-4 text-primary-blue font-bold font-display">
                                         Open Source at its core
                                     </p>
                                     <p className="mt-2">
@@ -197,7 +197,7 @@ const HomePage = (props) => {
                                     />
                                 </div>
                                 <div className=" px-8 lg:px-20 big-desktop:text-lg">
-                                    <p className="mt-4 text-primary-blue font-bold">
+                                    <p className="mt-4 text-primary-blue font-bold font-display">
                                         Customization
                                     </p>
                                     <p className="mt-2">

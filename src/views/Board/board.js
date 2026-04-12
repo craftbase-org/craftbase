@@ -21,6 +21,7 @@ import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import PencilToolbar from 'components/pencilToolbar'
+import controlsIcon from 'assets/controls.svg'
 import Spinner from 'components/common/spinnerWithSize'
 import Modal from 'components/common/modal'
 import Button from 'components/common/button'
@@ -35,7 +36,19 @@ const BoardContext = createContext()
 const BoardViewPage = (props) => {
     const routeParams = useParams()
     const boardIdFromUrl = routeParams.id
-    const [localBoardId] = useState(() => boardIdFromUrl || generateUUID())
+    const [localBoardId, setLocalBoardId] = useState(() => {
+        if (boardIdFromUrl) return boardIdFromUrl
+        // Reuse the boardId stored with the local draft so viewport persistence
+        // keys stay stable across page refreshes in local (non-persisted) mode.
+        try {
+            const draft = localStorage.getItem('craftbase_local_draft')
+            if (draft) {
+                const parsed = JSON.parse(draft)
+                if (parsed?.boardId) return parsed.boardId
+            }
+        } catch (_) {}
+        return generateUUID()
+    })
     const [isPersisted, setIsPersisted] = useState(!!boardIdFromUrl)
     const isPersistedRef = useRef(!!boardIdFromUrl)
     const boardId = boardIdFromUrl || localBoardId
@@ -97,6 +110,8 @@ const BoardViewPage = (props) => {
     const [isArrowDrawMode, setIsArrowDrawMode] = useState(false)
     const [isTextDrawMode, setIsTextDrawMode] = useState(false)
     const [showToolbar, toggleToolbar] = useState(false)
+    const [showMobileToolbarPanel, setShowMobileToolbarPanel] = useState(false)
+    const [showMobilePencilPanel, setShowMobilePencilPanel] = useState(false)
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
     const [defaultLinewidth, setDefaultLinewidth] = useState(2)
@@ -109,9 +124,30 @@ const BoardViewPage = (props) => {
 
     const stateRefForComponentStore = useRef()
     const twoJSInstanceRef = useRef(null)
+    const skipComponentStoreResetRef = useRef(false)
     const [historyLog, setHistoryLog] = useState([])
     const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
     const historyLogRef = useRef([])
+
+    // Reset mobile toolbar panel whenever the selected component changes
+    useEffect(() => {
+        setShowMobileToolbarPanel(false)
+    }, [selectedComponent])
+
+    // Reset mobile pencil panel when pencil mode is turned off
+    useEffect(() => {
+        if (!isPencilMode) setShowMobilePencilPanel(false)
+    }, [isPencilMode])
+
+    // Close pencil panel as soon as the user touches the canvas on mobile
+    useEffect(() => {
+        if (!isPencilMode || !isMobile) return
+        const canvasEl = document.getElementById('main-two-root')
+        if (!canvasEl) return
+        const handleCanvasTouch = () => setShowMobilePencilPanel(false)
+        canvasEl.addEventListener('touchstart', handleCanvasTouch, { passive: true })
+        return () => canvasEl.removeEventListener('touchstart', handleCanvasTouch)
+    }, [isPencilMode, isMobile])
 
     const LOCAL_DRAFT_KEY = 'craftbase_local_draft'
     const DRAFT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -214,10 +250,14 @@ const BoardViewPage = (props) => {
 
     // Reset component store whenever the board changes (persisted mode only).
     // In local mode the boardId is a stable UUID and draft restore handles initialization.
+    // skipComponentStoreResetRef lets persistBoard() rotate localBoardId without wiping the store.
     const prevBoardIdRef = useRef(boardId)
     useEffect(() => {
         if (prevBoardIdRef.current !== boardId) {
-            setComponentStore({})
+            if (!skipComponentStoreResetRef.current) {
+                setComponentStore({})
+            }
+            skipComponentStoreResetRef.current = false
             prevBoardIdRef.current = boardId
         }
     }, [boardId])
@@ -550,43 +590,63 @@ const BoardViewPage = (props) => {
         // If background board wasn't created yet (e.g. user shares before first draw),
         // create it now
         if (!serverBoardId) {
-            const userId = localStorage.getItem('userId')
             const { data: boardData } = await createBoard({
-                variables: {
-                    object: {},
-                },
+                variables: { object: {} },
             })
             serverBoardId = boardData.board.id
         }
 
-        const components = Object.values(stateRefForComponentStore.current).map(
-            (comp) => {
-                const cleaned = stripTypename(comp)
-                return { ...cleaned, boardId: serverBoardId }
-            }
-        )
+        // Insert all components to DB under the server board ID.
+        // Generate a fresh UUID for each component's id so re-sharing from '/'
+        // never hits a "duplicate key" uniqueness violation.
+        const componentsForDB = Object.values(
+            stateRefForComponentStore.current
+        ).map((comp) => {
+            const cleaned = stripTypename(comp)
+            return { ...cleaned, id: generateUUID(), boardId: serverBoardId }
+        })
 
-        if (components.length > 0) {
-            await insertBulkComponents({ variables: { objects: components } })
+        if (componentsForDB.length > 0) {
+            await insertBulkComponents({ variables: { objects: componentsForDB } })
         }
 
-        // Update local component store with the server boardId
+        // Mint a new local board ID so the '/' session continues independently
+        // from the now-shared board. Components keep their visual state; only the
+        // local identity rotates.
+        const newLocalId = generateUUID()
+
         const updatedStore = {}
         Object.entries(stateRefForComponentStore.current).forEach(
             ([id, comp]) => {
-                updatedStore[id] = { ...comp, boardId: serverBoardId }
+                updatedStore[id] = { ...comp, boardId: newLocalId }
             }
         )
         stateRefForComponentStore.current = updatedStore
+
+        // Rotate localBoardId without wiping the Two.js scene or componentStore
+        skipComponentStoreResetRef.current = true
+        setLocalBoardId(newLocalId)
         setComponentStore(updatedStore)
 
-        setIsPersisted(true)
-        isPersistedRef.current = true
-        localStorage.removeItem('craftbase_local_draft')
+        // Persist draft immediately under the new local ID
+        try {
+            localStorage.setItem(
+                LOCAL_DRAFT_KEY,
+                JSON.stringify({
+                    boardId: newLocalId,
+                    components: updatedStore,
+                    timestamp: Date.now(),
+                })
+            )
+        } catch (_) {}
+
+        // Clear the background board (its work is now on the shared board)
+        backgroundBoardIdRef.current = null
+        setBackgroundBoardId(null)
         localStorage.removeItem('craftbase_background_board_id')
         localStorage.setItem('lastOpenBoard', serverBoardId)
-        navigate(`/board/${serverBoardId}`, { replace: true })
 
+        // Stay in local (non-persisted) mode — new drawings on '/' are a fresh session
         return serverBoardId
     }
 
@@ -816,11 +876,34 @@ const BoardViewPage = (props) => {
 
     return (
         <>
-            {!isMobile ? (
-                <BoardContext.Provider value={contextValueForSidebar}>
-                    <div>
-                        <Sidebar />
-                        {selectedComponent && showToolbar && (
+            <BoardContext.Provider value={contextValueForSidebar}>
+                <div>
+                    <Sidebar />
+                    {selectedComponent && showToolbar && isMobile && (
+                        <button
+                            title="Element properties"
+                            onClick={() =>
+                                setShowMobileToolbarPanel((prev) => !prev)
+                            }
+                            style={{
+                                position: 'fixed',
+                                bottom: '16px',
+                                right: '10px',
+                                zIndex: 20,
+                            }}
+                            className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
+                                ${showMobileToolbarPanel ? 'bg-blues-b50' : 'bg-white'}`}
+                        >
+                            <img
+                                src={controlsIcon}
+                                className="w-5 h-5"
+                                alt="Element properties"
+                            />
+                        </button>
+                    )}
+                    {selectedComponent &&
+                        showToolbar &&
+                        (!isMobile || showMobileToolbarPanel) && (
                             <Toolbar
                                 hideColorText={true}
                                 hideColorIcon={true}
@@ -829,6 +912,7 @@ const BoardViewPage = (props) => {
                                 componentState={selectedComponent}
                                 closeToolbar={closeToolbar}
                                 refreshKey={toolbarRefreshKey}
+                                isMobile={isMobile}
                                 updateComponentBulkProperties={
                                     updateComponentBulkPropertiesInLocalStore
                                 }
@@ -837,42 +921,63 @@ const BoardViewPage = (props) => {
                                 }}
                             />
                         )}
-                        {isPencilMode && (
-                            <PencilToolbar
-                                pencilStrokeColor={pencilStrokeColor}
-                                defaultLinewidth={pencilDefaultLinewidth}
-                                defaultStrokeType={pencilDefaultStrokeType}
-                                onColorChange={(color) =>
-                                    setPencilStrokeColor(color)
-                                }
-                                onLinewidthChange={(value) =>
-                                    setPencilDefaultLinewidth(value)
-                                }
-                                onStrokeTypeChange={(type) =>
-                                    setPencilDefaultStrokeType(
-                                        type === 'solid' ? null : type
-                                    )
-                                }
+                    {isPencilMode && isMobile && (
+                        <button
+                            title="Pencil properties"
+                            onClick={() =>
+                                setShowMobilePencilPanel((prev) => !prev)
+                            }
+                            style={{
+                                position: 'fixed',
+                                bottom: '16px',
+                                right: '10px',
+                                zIndex: 20,
+                            }}
+                            className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
+                                ${showMobilePencilPanel ? 'bg-blues-b50' : 'bg-white'}`}
+                        >
+                            <img
+                                src={controlsIcon}
+                                className="w-5 h-5"
+                                alt="Pencil properties"
                             />
-                        )}
-                        <Canvas
-                            pointerToggle={pointerToggle}
-                            isPencilMode={isPencilMode}
-                            selectPanMode={false}
-                            boardId={boardId}
-                            selectedComponent={selectedComponent}
-                            lastAddedElement={lastAddedElement}
-                            componentStore={componentStore}
-                            defaultLinewidth={defaultLinewidth}
-                            defaultStrokeType={defaultStrokeType}
-                            pencilDefaultLinewidth={pencilDefaultLinewidth}
-                            pencilDefaultStrokeType={pencilDefaultStrokeType}
+                        </button>
+                    )}
+                    {isPencilMode && (!isMobile || showMobilePencilPanel) && (
+                        <PencilToolbar
                             pencilStrokeColor={pencilStrokeColor}
+                            defaultLinewidth={pencilDefaultLinewidth}
+                            defaultStrokeType={pencilDefaultStrokeType}
+                            onColorChange={(color) =>
+                                setPencilStrokeColor(color)
+                            }
+                            onLinewidthChange={(value) =>
+                                setPencilDefaultLinewidth(value)
+                            }
+                            onStrokeTypeChange={(type) =>
+                                setPencilDefaultStrokeType(
+                                    type === 'solid' ? null : type
+                                )
+                            }
                         />
-                    </div>
-                </BoardContext.Provider>
-            ) : null}
-            {isMobile ? (
+                    )}
+                    <Canvas
+                        pointerToggle={pointerToggle}
+                        isPencilMode={isPencilMode}
+                        selectPanMode={false}
+                        boardId={boardId}
+                        selectedComponent={selectedComponent}
+                        lastAddedElement={lastAddedElement}
+                        componentStore={componentStore}
+                        defaultLinewidth={defaultLinewidth}
+                        defaultStrokeType={defaultStrokeType}
+                        pencilDefaultLinewidth={pencilDefaultLinewidth}
+                        pencilDefaultStrokeType={pencilDefaultStrokeType}
+                        pencilStrokeColor={pencilStrokeColor}
+                    />
+                </div>
+            </BoardContext.Provider>
+            {/* {isMobile ? (
                 <div>
                     <div className="px-4 py-4 text-xl ">
                         The mobile version isn't here yet. Please view Craftbase
@@ -880,7 +985,7 @@ const BoardViewPage = (props) => {
                         meantime.
                     </div>
                 </div>
-            ) : null}
+            ) : null} */}
             <Modal
                 open={showPermissionErrorModal}
                 onClose={() => setShowPermissionErrorModal(false)}

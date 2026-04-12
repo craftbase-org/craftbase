@@ -3,4 +3,5 @@ export default {
     board: '/board/:id',
     marketing: '/home',
     about: '/about',
+    support: '/support',
 }

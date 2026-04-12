@@ -1,6 +1,12 @@
+:root {
+    --font-ui: 'Geist', system-ui, sans-serif;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-sketch: 'Caveat', cursive;
+}
+
 body {
     margin: 0;
-    font-family: 'Public Sans', sans-serif;
+    font-family: var(--font-ui);
 
     /* font-weight: 700; */
     -webkit-font-smoothing: antialiased;
@@ -59,7 +65,6 @@ text
  g
  path */ {
     cursor: pointer !important;
-    font-family: sans-serif;
 }
 
 g {

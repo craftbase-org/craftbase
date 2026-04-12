@@ -15,6 +15,7 @@ import { WebSocketLink } from '@apollo/client/link/ws'
 
 import BoardViewContainer from 'views/Board'
 import HomePageViewContainer from 'views/Home'
+import SupportViewContainer from 'views/Support'
 
 import routes from './routes'
 import { INSERT_USER_ONE } from 'schema/mutations'
@@ -155,6 +156,10 @@ class App extends Component {
                                 <Route
                                     path={routes.marketing}
                                     element={<HomePageViewContainer />}
+                                />
+                                <Route
+                                    path={routes.support}
+                                    element={<SupportViewContainer />}
                                 />
                             </Routes>
                         </div>

@@ -158,6 +158,7 @@ const Toolbar = (props) => {
         currentFontSize,
         onTextSizeChange,
         refreshKey,
+        isMobile,
     } = props
     console.log('Toolbar props', props)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
@@ -182,8 +183,11 @@ const Toolbar = (props) => {
         opacity: 1,
         hideColorSection: hideColorSection,
         selectedTextSize:
-            TEXT_SIZES_ARRAY.find((s) => s.value === currentFontSize)?.label ||
-            null,
+            TEXT_SIZES_ARRAY.find((s) =>
+                isMobile
+                    ? s.mobileValue === currentFontSize
+                    : s.value === currentFontSize
+            )?.label || null,
     })
 
     useEffect(() => {
@@ -229,7 +233,7 @@ const Toolbar = (props) => {
                 <div className="px-2 py-1 w-full">
                     <p className="text-xs text-gray-400 mb-2">Text Size</p>
                     <div className="flex flex-row gap-2">
-                        {TEXT_SIZES_ARRAY.map(({ label, value }) => (
+                        {TEXT_SIZES_ARRAY.map(({ label, value, mobileValue }) => (
                             <button
                                 key={label}
                                 onClick={() => {
@@ -245,7 +249,8 @@ const Toolbar = (props) => {
                                                 classNameLabel
                                             )
                                         if (els.length > 0) {
-                                            els[0].style.fontSize = `${value}px`
+                                            const px = isMobile ? mobileValue : value
+                                            els[0].style.fontSize = `${px}px`
                                         }
                                     }
                                     // updateComponent('fontSize', value)
@@ -442,7 +447,9 @@ const Toolbar = (props) => {
                             componentState.shape.data.dashes =
                                 strokeTypeToDashes(type)
                             if (type === 'solid') {
-                                clearDashesOnTwoJSShape(componentState.shape.data)
+                                clearDashesOnTwoJSShape(
+                                    componentState.shape.data
+                                )
                             }
                         }
                         if (componentState?.group?.data?.elementData) {
@@ -574,9 +581,21 @@ const Toolbar = (props) => {
                         animate="closed"
                         transition={{ duration: 0.01 }}
                         variants={variants}
-                        // toggleToolbar={toggle}
                         id="floating-toolbar"
-                        // tabIndex="1"
+                        style={
+                            isMobile
+                                ? {
+                                      bottom: '60px',
+                                      left: 'auto',
+                                      top: 'auto',
+                                      right: '10px',
+                                      height: 'auto',
+                                      maxHeight: '60vh',
+                                      overflowY: 'auto',
+                                      zIndex: 20,
+                                  }
+                                : {}
+                        }
                     >
                         {allowedProperties.map((i, index) =>
                             i.hide === true ? null : (

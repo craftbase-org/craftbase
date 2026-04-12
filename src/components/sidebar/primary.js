@@ -9,9 +9,11 @@ import SpinnerWithSize from 'components/common/spinnerWithSize'
 import Button from 'components/common/button'
 import { generateUUID } from 'utils/misc'
 import { useBoardContext } from 'views/Board/board'
+import { useMediaQueryUtils } from 'constants/exportHooks'
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
+import MenuDrawer from './menuDrawer'
 
 const DRAW_SHAPE_TYPES = ['circle', 'rectangle']
 
@@ -265,13 +267,15 @@ const PrimarySidebar = () => {
                 }
         }
     }
+    const { isMobile } = useMediaQueryUtils()
     let isLiveSession = false
     return (
         <>
             <ShapesToolbar addElement={addElement} />
+            <MenuDrawer />
             <div
                 id="sidebar-container"
-                className="sidebar-container flex items-center "
+                className="sidebar-container flex items-center"
             >
                 <div className=" relative ">
                     <DefaultsDropdown />
@@ -342,7 +346,7 @@ const PrimarySidebar = () => {
                     <></>
                 )}
 
-                <ShareLinkPopup />
+                {!isMobile && <ShareLinkPopup />}
                 {/* {isPersisted && (
                         <Button
                             intent="primary"

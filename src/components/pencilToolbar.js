@@ -1,5 +1,7 @@
 import React, { Fragment } from 'react'
 import ColorPicker from 'components/utils/colorPicker'
+import { useMediaQueryUtils } from 'constants/exportHooks'
+import { essentialShades } from 'utils/constants'
 
 const STROKE_TYPES = [
     { value: 'solid', display: '—' },
@@ -22,8 +24,122 @@ const PencilToolbar = ({
     onLinewidthChange,
     onStrokeTypeChange,
 }) => {
+    const { isMobile } = useMediaQueryUtils()
     const currentType = defaultStrokeType ?? 'solid'
 
+    if (isMobile) {
+        return (
+            <div
+                style={{
+                    position: 'fixed',
+                    bottom: '60px',
+                    right: '10px',
+                    zIndex: 10,
+                    background: 'rgba(255,255,255,1)',
+                    width: '192px',
+                }}
+                className="shadow-lg px-3 py-2.5 rounded-xl flex flex-col gap-2"
+            >
+                {/* Color dots */}
+                <div className="flex flex-row flex-wrap gap-1.5">
+                    {essentialShades.map((color) => {
+                        const isSelected = pencilStrokeColor === color
+                        return (
+                            <button
+                                key={color}
+                                title={color}
+                                onClick={() => onColorChange(color)}
+                                style={{
+                                    background: color,
+                                    border:
+                                        color === '#FFFFFF'
+                                            ? '1px solid #d1d5db'
+                                            : '1px solid transparent',
+                                    outline: isSelected
+                                        ? '2px solid #0052cc'
+                                        : 'none',
+                                    outlineOffset: '1px',
+                                }}
+                                className="w-6 h-6 rounded-full flex-shrink-0 cursor-pointer transition-all duration-150"
+                            />
+                        )
+                    })}
+                </div>
+
+                <hr className="border-gray-100" />
+
+                {/* Stroke type */}
+                <div className="flex flex-row gap-1.5">
+                    {STROKE_TYPES.map((type) => {
+                        const isSelected = currentType === type.value
+                        return (
+                            <button
+                                key={type.value}
+                                onClick={() => onStrokeTypeChange(type.value)}
+                                className={`flex-1 h-7 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200
+                                    ${isSelected ? 'bg-blues-b50' : 'hover:bg-blues-b50'}`}
+                                style={{
+                                    border: isSelected
+                                        ? '2px solid #0052cc'
+                                        : '1px solid #e5e7eb',
+                                }}
+                            >
+                                <span
+                                    className="text-sm font-bold tracking-widest"
+                                    style={{
+                                        color: isSelected
+                                            ? '#0052cc'
+                                            : '#6b7280',
+                                        paddingBottom:
+                                            type.value === 'dotted'
+                                                ? '0.35rem'
+                                                : '0px',
+                                    }}
+                                >
+                                    {type.display}
+                                </span>
+                            </button>
+                        )
+                    })}
+                </div>
+
+                <hr className="border-gray-100" />
+
+                {/* Stroke width */}
+                <div className="flex flex-row gap-1.5">
+                    {STROKE_WIDTHS.map(({ value, strokeHeight }) => {
+                        const isSelected = defaultLinewidth === value
+                        return (
+                            <button
+                                key={value}
+                                onClick={() => onLinewidthChange(value)}
+                                className={`flex-1 h-7 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200
+                                    ${isSelected ? 'bg-blues-b50' : 'hover:bg-blues-b50'}`}
+                                style={{
+                                    border: isSelected
+                                        ? '2px solid #0052cc'
+                                        : '1px solid #e5e7eb',
+                                }}
+                            >
+                                <div
+                                    className="rounded-full"
+                                    style={{
+                                        width: '16px',
+                                        height: strokeHeight,
+                                        backgroundColor: isSelected
+                                            ? '#0052cc'
+                                            : '#6b7280',
+                                    }}
+                                />
+                            </button>
+                        )
+                    })}
+                </div>
+            </div>
+        )
+    }
+
+    // Desktop — unchanged from original
     return (
         <div
             style={{
