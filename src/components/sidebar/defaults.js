@@ -1,6 +1,7 @@
 import React from 'react'
 
 import { useBoardContext } from 'views/Board/board'
+import { useMediaQueryUtils } from 'constants/exportHooks'
 
 const STROKE_TYPES = [
     { label: '—', value: 'solid' },
@@ -23,13 +24,16 @@ const DefaultsDropdown = () => {
         currentElement,
         setCurrentElementInBoard,
     } = useBoardContext()
+    const { isMobile } = useMediaQueryUtils()
+
+    if (isMobile) return null
 
     return (
         <div
             className="secondary-sidebar-content fixed bg-white block text-left pb-4 rounded-md shadow-lg w-36"
-            style={{ left: '10px' }}
+            style={{ left: '10px', top: '56px' }}
         >
-            <div className="w-full px-2 font-bold text-xs pt-1 pb-1 border-b-2">
+            <div className="w-full px-2 font-semibold text-xs pt-1 pb-1 border-b-2">
                 {' '}
                 Defaults{' '}
             </div>

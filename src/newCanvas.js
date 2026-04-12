@@ -3,6 +3,7 @@ import Two from 'two.js'
 
 import { ZUI } from 'two.js/extras/jsm/zui'
 import { useBoardContext } from 'views/Board/board'
+import { useMediaQueryUtils } from 'constants/exportHooks'
 
 import { GROUP_COMPONENT } from 'constants/misc'
 import Spinner from 'components/common/spinner'
@@ -87,6 +88,14 @@ function addZUI(
     let mouse = new Two.Vector()
     let touches = {}
     let distance = 0
+    let lastTouch = null
+    let touchStartX = 0
+    let touchStartY = 0
+    let twoFingerMidX = 0
+    let twoFingerMidY = 0
+    let lastTapTime = 0
+    let lastTapX = 0
+    let lastTapY = 0
     let dragging = false
     let isResizeEvent = false
     let currentPath
@@ -123,8 +132,8 @@ function addZUI(
     domElement.addEventListener('mousewheel', mousewheel, false)
     domElement.addEventListener('wheel', mousewheel, false)
 
-    domElement.addEventListener('touchstart', touchstart, false)
-    domElement.addEventListener('touchmove', touchmove, false)
+    domElement.addEventListener('touchstart', touchstart, { passive: false })
+    domElement.addEventListener('touchmove', touchmove, { passive: false })
     domElement.addEventListener('touchend', touchend, false)
     domElement.addEventListener('touchcancel', touchend, false)
 
@@ -1332,81 +1341,227 @@ function addZUI(
         two.update()
     }
 
+    // --- Touch handlers ---
+    // Routing:
+    //   1 finger  → synthetic MouseEvent → existing mouse pipeline (select, drag, pencil, draw)
+    //   2 fingers → pan canvas (midpoint delta) + pinch zoom (distance delta) simultaneously
+
     function touchstart(e) {
-        switch (e.touches.length) {
-            case 2:
-                pinchstart(e)
-                break
-            case 1:
-                panstart(e)
-                break
+        e.preventDefault()
+
+        if (e.touches.length === 1) {
+            lastTouch = e.touches[0]
+            touchStartX = lastTouch.clientX
+            touchStartY = lastTouch.clientY
+            // Dispatch mousedown on the actual element under the finger so
+            // element-level listeners (interactjs resize handles, click handlers) fire correctly.
+            const target =
+                document.elementFromPoint(
+                    lastTouch.clientX,
+                    lastTouch.clientY
+                ) || domElement
+            target.dispatchEvent(
+                new MouseEvent('mousedown', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: lastTouch.clientX,
+                    clientY: lastTouch.clientY,
+                    screenX: lastTouch.screenX,
+                    screenY: lastTouch.screenY,
+                })
+            )
+        } else if (e.touches.length === 2) {
+            // Second finger added — cancel any in-progress 1-finger interaction
+            if (lastTouch) {
+                domElement.dispatchEvent(
+                    new MouseEvent('mouseup', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window,
+                        clientX: lastTouch.clientX,
+                        clientY: lastTouch.clientY,
+                    })
+                )
+                lastTouch = null
+            }
+            twoFingerStart(e)
         }
     }
 
     function touchmove(e) {
-        switch (e.touches.length) {
-            case 2:
-                pinchmove(e)
-                break
-            case 1:
-                panmove(e)
-                break
+        e.preventDefault()
+
+        if (e.touches.length === 1) {
+            lastTouch = e.touches[0]
+            domElement.dispatchEvent(
+                new MouseEvent('mousemove', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: lastTouch.clientX,
+                    clientY: lastTouch.clientY,
+                    screenX: lastTouch.screenX,
+                    screenY: lastTouch.screenY,
+                })
+            )
+        } else if (e.touches.length >= 2) {
+            twoFingerMove(e)
         }
     }
 
     function touchend(e) {
+        if (e.touches.length === 0 && lastTouch) {
+            const endX = lastTouch.clientX
+            const endY = lastTouch.clientY
+
+            domElement.dispatchEvent(
+                new MouseEvent('mouseup', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: endX,
+                    clientY: endY,
+                })
+            )
+
+            // If finger barely moved, treat as a tap and fire a click on the
+            // actual element so interactjs `.on('click')` handlers (which draw
+            // the selection outline) are triggered.
+            const dx = endX - touchStartX
+            const dy = endY - touchStartY
+            const moved = Math.sqrt(dx * dx + dy * dy)
+            if (moved < 10) {
+                // Blur any focused element (e.g. an active text-editing
+                // textarea) so it commits + removes itself before we
+                // re-query elementFromPoint and dispatch the tap click.
+                // On mobile, synthetic mouse events don't transfer focus,
+                // so blur never fires naturally when tapping elsewhere.
+                if (
+                    document.activeElement &&
+                    document.activeElement !== document.body
+                ) {
+                    document.activeElement.blur()
+                }
+
+                const now = Date.now()
+                const tapDx = endX - lastTapX
+                const tapDy = endY - lastTapY
+                const tapDist = Math.sqrt(tapDx * tapDx + tapDy * tapDy)
+                const isDoubleTap = now - lastTapTime < 300 && tapDist < 30
+
+                // Clear all existing selectors first — on desktop this happens
+                // via blur when focus shifts between elements, but synthetic
+                // mouse events don't transfer browser focus on mobile.
+                window.dispatchEvent(new CustomEvent('clearSelector', {}))
+
+                const target =
+                    document.elementFromPoint(endX, endY) || domElement
+
+                if (isDoubleTap) {
+                    // Reset so a third tap doesn't re-trigger
+                    lastTapTime = 0
+                    lastTapX = 0
+                    lastTapY = 0
+                    target.dispatchEvent(
+                        new MouseEvent('dblclick', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            clientX: endX,
+                            clientY: endY,
+                        })
+                    )
+                } else {
+                    lastTapTime = now
+                    lastTapX = endX
+                    lastTapY = endY
+                    target.dispatchEvent(
+                        new MouseEvent('click', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            clientX: endX,
+                            clientY: endY,
+                        })
+                    )
+                }
+            }
+
+            lastTouch = null
+        }
+        // Drop below 2 fingers — save viewport then reset 2-finger tracking state.
+        // distance > 0 means twoFingerStart ran (a real 2-finger gesture was active).
+        if (e.touches.length < 2) {
+            if (distance > 0 && props.boardId) {
+                localStorage.setItem(
+                    `craftbase_mobile_viewport_${props.boardId}`,
+                    JSON.stringify({
+                        tx: two.scene.translation.x,
+                        ty: two.scene.translation.y,
+                        scale: two.scene.scale,
+                    })
+                )
+            }
+            touches = {}
+            distance = 0
+        }
+    }
+
+    function twoFingerStart(e) {
         touches = {}
-        let touch = e.touches[0]
-        if (touch) {
-            // Pass through for panning after pinching
-            mouse.x = touch.clientX
-            mouse.y = touch.clientY
-        }
-    }
-
-    function panstart(e) {
-        let touch = e.touches[0]
-        mouse.x = touch.clientX
-        mouse.y = touch.clientY
-        two.update()
-    }
-
-    function panmove(e) {
-        let touch = e.touches[0]
-        let dx = touch.clientX - mouse.x
-        let dy = touch.clientY - mouse.y
-        zui.translateSurface(dx, dy)
-        mouse.set(touch.clientX, touch.clientY)
-        two.update()
-    }
-
-    function pinchstart(e) {
         for (let i = 0; i < e.touches.length; i++) {
-            let touch = e.touches[i]
-            touches[touch.identifier] = touch
+            touches[e.touches[i].identifier] = e.touches[i]
         }
-        let a = touches[0]
-        let b = touches[1]
-        let dx = b.clientX - a.clientX
-        let dy = b.clientY - a.clientY
+        const ids = Object.keys(touches)
+        const a = touches[ids[0]]
+        const b = touches[ids[1]]
+        const dx = b.clientX - a.clientX
+        const dy = b.clientY - a.clientY
         distance = Math.sqrt(dx * dx + dy * dy)
-        mouse.x = dx / 2 + a.clientX
-        mouse.y = dy / 2 + a.clientY
+        twoFingerMidX = (a.clientX + b.clientX) / 2
+        twoFingerMidY = (a.clientY + b.clientY) / 2
     }
 
-    function pinchmove(e) {
+    function twoFingerMove(e) {
         for (let i = 0; i < e.touches.length; i++) {
-            let touch = e.touches[i]
-            touches[touch.identifier] = touch
+            touches[e.touches[i].identifier] = e.touches[i]
         }
-        let a = touches[0]
-        let b = touches[1]
-        let dx = b.clientX - a.clientX
-        let dy = b.clientY - a.clientY
-        let d = Math.sqrt(dx * dx + dy * dy)
-        let delta = d - distance
-        zui.zoomBy(delta / 250, mouse.x, mouse.y)
-        distance = d
+        const ids = Object.keys(touches)
+        if (ids.length < 2) return
+
+        const a = touches[ids[0]]
+        const b = touches[ids[1]]
+        const dx = b.clientX - a.clientX
+        const dy = b.clientY - a.clientY
+        const newDist = Math.sqrt(dx * dx + dy * dy)
+        const newMidX = (a.clientX + b.clientX) / 2
+        const newMidY = (a.clientY + b.clientY) / 2
+
+        // Safety: if twoFingerStart was never called (e.g. second finger
+        // landed outside the canvas element), initialise from current state
+        // and skip this frame to avoid a large jump.
+        if (distance === 0) {
+            distance = newDist
+            twoFingerMidX = newMidX
+            twoFingerMidY = newMidY
+            return
+        }
+
+        // Pan: translate by midpoint delta
+        zui.translateSurface(newMidX - twoFingerMidX, newMidY - twoFingerMidY)
+
+        // Zoom: scale by distance delta (pinch)
+        const distDelta = newDist - distance
+        if (Math.abs(distDelta) > 0.5) {
+            zui.zoomBy(distDelta / 250, newMidX, newMidY)
+        }
+
+        twoFingerMidX = newMidX
+        twoFingerMidY = newMidY
+        distance = newDist
+
+        two.update()
     }
 
     return {
@@ -1481,6 +1636,8 @@ const GroupRenderWrapper = (ElementToRender, data) => {
 const Canvas = (props) => {
     // console.log('getComponentsForBoardData', getComponentsForBoardData)
 
+    const { isMobile } = useMediaQueryUtils()
+
     const {
         addToLocalComponentStore,
         deleteComponentFromLocalStore,
@@ -1540,6 +1697,27 @@ const Canvas = (props) => {
         setZuiInstance(zui_instance)
         setTwoJSInstance(two)
         setTwoJSInstanceInBoard(two)
+
+        // Restore last mobile viewport (zoom + pan) from localStorage.
+        // Use ZUI's own API so its internal zScale stays in sync with the
+        // scene — setting two.scene.scale directly desynchronises ZUI and
+        // causes the first pan gesture to jump back to the origin.
+        if (isMobile && props.boardId) {
+            const saved = localStorage.getItem(
+                `craftbase_mobile_viewport_${props.boardId}`
+            )
+            if (saved) {
+                const { tx, ty, scale } = JSON.parse(saved)
+                // zoomSet updates zui.zScale + surface.scale atomically.
+                // Centering at (0,0) with initial translation (0,0) means no
+                // translation side-effect from the zoom.
+                zui_instance.zui.zoomSet(scale, 0, 0)
+                // translateSurface increments from the post-zoom translation
+                // (still 0,0) to the saved position.
+                zui_instance.zui.translateSurface(tx, ty)
+                two.update()
+            }
+        }
 
         const boardId = props.boardId
         const tabsOpen = localStorage.getItem(`tabs_open_${boardId}`)

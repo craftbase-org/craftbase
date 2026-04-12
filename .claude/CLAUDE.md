@@ -176,6 +176,19 @@ Child components access this context via `useContext(BoardContext)`.
 - Be sure to typecheck when you're done making a series of code changes
 - Prefer running single tests, and not the whole test suite, for performance
 
+## Mobile testing on local network
+
+When testing on a real mobile device (laptop and phone on same WiFi):
+
+1. Replace `localhost` with the laptop's LAN IP (e.g. `10.151.106.95`) in `.env`:
+   ```
+   VITE_GRAPHQL_ENDPOINT=http://<LAN_IP>:8080/v1/graphql
+   VITE_WS_GRAPHQL_ENDPOINT=ws://<LAN_IP>:8080/v1/graphql
+   ```
+2. Ensure `vite.config.mjs` has `host: true` and `allowedHosts: ['<LAN_IP>']` (no `http://` prefix).
+3. Restart the dev server, then open `http://<LAN_IP>:5173` on mobile.
+4. **Revert `.env` before committing** — or use `.env.local` for the override so it stays out of git.
+
 # Feature Context
 
 See detailed notes in `.claude/context/` for feature-specific implementation details:
@@ -185,6 +198,8 @@ See detailed notes in `.claude/context/` for feature-specific implementation det
 - `.claude/context/text-element-creation.md` - Details on how text element works in canvas (the flow from first mouse click to scaling text element size in canvas).
 - `.claude/context/shape-selection.md` - It describes regarding shape selection & its placement flow on canvas
 - `.claude/context/undo-history.md` - Undo/history stack: action entry shapes, `recordToHistoryLog`, and `undoLastAction()` as the canonical rollback for any failed mutation
+- `.claude/context/responsive-design.md` - When to use Tailwind responsive prefixes vs `useMediaQueryUtils` hook; breakpoint values for both; the core decision rule
+- `.claude/context/font-guide.md` - Font system: Geist (UI chrome), Fraunces (branding/headings), Caveat (canvas sketch); CSS variables, Tailwind config, and usage rules per area
 
 ### Component schema (from DB)
 

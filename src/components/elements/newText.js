@@ -7,7 +7,9 @@ import { elementOnBlurHandler } from 'utils/misc'
 import getEditComponents from 'components/utils/editWrapper'
 import NewTextFactory from 'factory/newText'
 import Toolbar from 'components/floatingToolbar'
-import { TEXT_SIZES_OBJECT } from 'utils/constants'
+import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
+import { useMediaQueryUtils } from 'constants/exportHooks'
+import controlsIcon from 'assets/controls.svg'
 
 function NewText(props) {
     const {
@@ -18,12 +20,15 @@ function NewText(props) {
         isArrowSelected,
     } = useBoardContext()
 
+    const { isMobile } = useMediaQueryUtils()
     const [showToolbar, toggleToolbar] = useState(false)
+    const [showMobilePanel, setShowMobilePanel] = useState(false)
     const [internalState, setInternalState] = useImmer({})
+    const mobileTriggerRef = useRef(null)
     const [textValue, setTextValue] = useState(
         props?.metadata?.content || 'Text'
     )
-    const [textSize, setTextSize] = useState(props?.metadata?.fontSize || 16)
+    const [textSize, setTextSize] = useState(props?.metadata?.fontSize || 36)
     const textValueRef = useRef(textValue)
     const twoTextRef = useRef(null)
 
@@ -64,7 +69,8 @@ function NewText(props) {
     }
 
     const handleTextSizeChange = (newLabel) => {
-        const textSize = TEXT_SIZES_OBJECT[newLabel]
+        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
+        const textSize = sizesMap[newLabel]
         const twoText = twoTextRef.current
         twoText.size = textSize
 
@@ -236,7 +242,7 @@ function NewText(props) {
             // Hide the Two.js group so the textarea sits on top cleanly
             groupDomElem.style.display = 'none'
 
-            const fontSize = twoText.size || 16
+            const fontSize = twoText.size || 36
             // Use a generous line-height so ascenders/descenders are
             // never clipped. A 1.6× multiplier covers most font metrics.
             const lineH = Math.ceil(fontSize * 1.6)
@@ -256,7 +262,7 @@ function NewText(props) {
             input.style.padding = `${vertPad}px 8px`
             input.style.color = twoText.fill || '#000000'
             input.style.fontSize = `${fontSize}px`
-            input.style.fontFamily = twoText.family || 'sans-serif'
+            input.style.fontFamily = twoText.family || 'Caveat'
             input.style.fontWeight = twoText.weight || 'normal'
             input.style.lineHeight = `${lineH}px`
             input.style.letterSpacing = '0px'
@@ -285,7 +291,7 @@ function NewText(props) {
             measureSpan.style.visibility = 'hidden'
             measureSpan.style.whiteSpace = 'pre'
             measureSpan.style.fontSize = `${fontSize}px`
-            measureSpan.style.fontFamily = twoText.family || 'sans-serif'
+            measureSpan.style.fontFamily = twoText.family || 'Caveat'
             measureSpan.style.fontWeight = twoText.weight || 'normal'
             measureSpan.style.lineHeight = `${lineH}px`
             measureSpan.style.letterSpacing = '0px'
@@ -422,7 +428,13 @@ function NewText(props) {
             const path = e.composedPath ? e.composedPath() : e.path || []
             const isOnGroup = path.some((el) => el.id === group.id)
             const isOnToolbar = path.some((el) => el.id === 'floating-toolbar')
-            if (!isOnGroup && !isOnToolbar) {
+            // Also exclude the mobile trigger button — its mousedown fires
+            // before the click, so without this check toggleToolbar(false)
+            // unmounts the button before the click can toggle the panel.
+            const isOnMobileTrigger =
+                mobileTriggerRef.current &&
+                path.includes(mobileTriggerRef.current)
+            if (!isOnGroup && !isOnToolbar && !isOnMobileTrigger) {
                 selectorInstance.hide()
                 toggleToolbar(false)
                 two.update()
@@ -474,6 +486,11 @@ function NewText(props) {
         }
     }, [props.x, props.y, props.textColor, props.metadata])
 
+    // Reset mobile panel when toolbar is dismissed
+    useEffect(() => {
+        if (!showToolbar) setShowMobilePanel(false)
+    }, [showToolbar])
+
     // Disable pointer events while another draw mode is active
     useEffect(() => {
         const groupId = internalState?.group?.id
@@ -497,7 +514,24 @@ function NewText(props) {
     return (
         <React.Fragment>
             <div id="two-new-text"></div>
-            {showToolbar ? (
+            {showToolbar && isMobile && (
+                <button
+                    ref={mobileTriggerRef}
+                    title="Text properties"
+                    onClick={() => setShowMobilePanel((prev) => !prev)}
+                    style={{
+                        position: 'fixed',
+                        bottom: '16px',
+                        right: '10px',
+                        zIndex: 20,
+                    }}
+                    className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
+                        ${showMobilePanel ? 'bg-blues-b50' : 'bg-white'}`}
+                >
+                    <img src={controlsIcon} className="w-5 h-5" alt="Text properties" />
+                </button>
+            )}
+            {showToolbar && (!isMobile || showMobilePanel) ? (
                 <Toolbar
                     // Show only text color and opacity; hide everything else
                     hideColorBackground={true}
@@ -510,6 +544,7 @@ function NewText(props) {
                     componentState={internalState}
                     closeToolbar={closeToolbar}
                     componentId={props.id}
+                    isMobile={isMobile}
                     postToolbarUpdate={() => {
                         two.update()
                     }}
