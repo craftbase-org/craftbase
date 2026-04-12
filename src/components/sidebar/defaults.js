@@ -1,6 +1,7 @@
 import React from 'react'
 
 import { useBoardContext } from 'views/Board/board'
+import { useMediaQueryUtils } from 'constants/exportHooks'
 
 const STROKE_TYPES = [
     { label: '—', value: 'solid' },
@@ -23,6 +24,9 @@ const DefaultsDropdown = () => {
         currentElement,
         setCurrentElementInBoard,
     } = useBoardContext()
+    const { isMobile } = useMediaQueryUtils()
+
+    if (isMobile) return null
 
     return (
         <div

@@ -44,7 +44,6 @@ const ExternalIcon = () => (
 const MenuDrawer = () => {
     const refNode = useRef(null)
     const [showMenu, setShowMenu] = useState(false)
-
     useEffect(() => {
         document.addEventListener('mousedown', handleClick, false)
         return () => {

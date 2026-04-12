@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { staticPrimaryElementData } from 'utils/constants'
 import { useBoardContext } from 'views/Board/board'
 import undoIcon from 'assets/undo_amber.svg'
+import { useMediaQueryUtils } from 'constants/exportHooks'
 
 const allElements = staticPrimaryElementData.flatMap(
     (section) => section.elements
@@ -14,6 +15,7 @@ const ShapesToolbar = ({ addElement }) => {
         undoLastAction,
         historyLog,
     } = useBoardContext()
+    const { isMobile } = useMediaQueryUtils()
 
     useEffect(() => {
         setCurrentElementInBoard('pointer')
@@ -21,8 +23,12 @@ const ShapesToolbar = ({ addElement }) => {
 
     return (
         <div
-            className="fixed top-2 left-1/2 bg-white rounded-lg shadow-md flex items-center px-2 py-1 gap-1"
-            style={{ transform: 'translateX(-50%)', zIndex: 10 }}
+            className={`fixed bg-white rounded-lg shadow-md px-2 py-1 gap-1
+                ${isMobile ? 'flex flex-col' : 'top-2 left-1/2 flex flex-row items-center'}`}
+            style={isMobile
+                ? { top: '56px', left: '10px', zIndex: 10 }
+                : { transform: 'translateX(-50%)', zIndex: 10 }
+            }
         >
             {allElements.map((element) => (
                 <div

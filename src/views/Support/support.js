@@ -35,9 +35,7 @@ const cards = [
     },
     {
         href: 'https://github.com/craftbase-org/craftbase/discussions',
-        icon: (
-            <img src={chatAltIcon} className="w-5 h-5" alt="Discussions" />
-        ),
+        icon: <img src={chatAltIcon} className="w-5 h-5" alt="Discussions" />,
         label: 'GitHub Discussions',
         description:
             'Have a question or idea to share? Join the conversation with the community.',
@@ -77,16 +75,23 @@ const SupportPage = () => {
                         Support
                     </h1>
                     <p className="text-xs tablet-landscape:text-sm text-neutrals-n300 leading-relaxed">
-                        We're here to help. Choose how you'd like to get in touch.
+                        We're here to help. Choose how you'd like to get in
+                        touch.
                     </p>
                 </div>
 
                 {/* Contact banner — layout flips on mobile */}
-                <div className="bg-blues-b50 border border-blues-b75 rounded-lg p-3 tablet-landscape:p-4 mb-6 tablet-landscape:mb-8
-                    flex flex-col tablet-landscape:flex-row tablet-landscape:items-center gap-3">
+                <div
+                    className="bg-blues-b50 border border-blues-b75 rounded-lg p-3 tablet-landscape:p-4 mb-6 tablet-landscape:mb-8
+                    flex flex-col tablet-landscape:flex-row tablet-landscape:items-center gap-3"
+                >
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-primary-blue flex items-center justify-center flex-shrink-0">
-                            <img src={EnvelopeIcon} className="w-5 h-5" alt="Email" />
+                            <img
+                                src={EnvelopeIcon}
+                                className="w-5 h-5"
+                                alt="Email"
+                            />
                         </div>
                         {/* Label sits beside icon on mobile since banner is flex-col */}
                         {isMobile && (
@@ -95,7 +100,7 @@ const SupportPage = () => {
                             </div>
                         )}
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex items-start flex-col gap-1">
                         {/* Label sits above email on tablet+ since banner is flex-row */}
                         {!isMobile && (
                             <div className="text-xs font-semibold text-blues-b400">
