@@ -1108,14 +1108,24 @@ function addZUI(
                         (child) => child?.elementData?.id === id
                     )
                     if (el && el.children?.[0]) {
+                        console.log('[waitForNewElement] found real element for', id, 'at retry', retries, '— removing preview')
                         if (capturedPreview) {
                             two.remove(capturedPreview)
                             two.update()
                         }
-                    } else if (retries < 30) {
+                    } else if (retries < 300) {
                         requestAnimationFrame(() =>
                             waitForNewElement(id, retries + 1)
                         )
+                    } else {
+                        // Element took too long to mount (e.g. slow network).
+                        // Remove the preview unconditionally to prevent a ghost
+                        // shape lingering on the canvas after the real element loads.
+                        console.log('[waitForNewElement] TIMEOUT (300 retries) for', id, '— force-removing preview')
+                        if (capturedPreview) {
+                            two.remove(capturedPreview)
+                            two.update()
+                        }
                     }
                 }
                 requestAnimationFrame(() =>
@@ -1202,10 +1212,17 @@ function addZUI(
                             two.remove(capturedPencilGroup)
                             two.update()
                         }
-                    } else if (retries < 30) {
+                    } else if (retries < 300) {
                         requestAnimationFrame(() =>
                             waitForPencilElement(id, retries + 1)
                         )
+                    } else {
+                        // Element took too long to mount (e.g. slow network).
+                        // Remove the preview unconditionally to prevent a ghost stroke.
+                        if (capturedPencilGroup) {
+                            two.remove(capturedPencilGroup)
+                            two.update()
+                        }
                     }
                 }
                 requestAnimationFrame(() => waitForPencilElement(pencilWaitId))
@@ -1958,13 +1975,14 @@ const Canvas = (props) => {
         let components = [...componentsToRender]
         if (currentComponents && twoJSInstance) {
             currentComponents.forEach((item, index) => {
-                // Check if already rendered AND still exists in the Two.js scene.
-                // A deleted element stays in prevElements but is removed from the scene,
-                // so we need to re-render it if restored by undo.
-                const existsInScene = twoJSInstance.scene.children.some(
-                    (c) => c?.elementData?.id === item.id
-                )
-                if (prevElements.includes(item.id) && existsInScene) {
+                // prevElements is the sole authority on whether a wrapper already exists.
+                // We must NOT check existsInScene here: on slow networks the React lazy
+                // module may still be loading (no Two.js group yet) when a second shape is
+                // drawn, causing existsInScene=false even though a wrapper was already
+                // created — which would produce a second wrapper and a duplicate shape.
+                // Deletion removes the id from prevElements via the 'elementRemoved' event,
+                // so undo-of-delete still gets a fresh wrapper.
+                if (prevElements.includes(item.id)) {
                     // do nothing
                 } else {
                     arr.push(item.id)
@@ -2008,6 +2026,20 @@ const Canvas = (props) => {
             twoJSInstance && setPrevElements(arr)
         }
     }
+
+    // When an element is deleted or its ADD is undone, remove it from prevElements
+    // so handleSetComponentsToRender can create a fresh wrapper if the element is
+    // ever restored (e.g. undo of a delete).
+    useEffect(() => {
+        const handleElementRemoved = (e) => {
+            const { id } = e.detail
+            setPrevElements((prev) => prev.filter((eid) => eid !== id))
+        }
+        window.addEventListener('elementRemoved', handleElementRemoved)
+        return () => {
+            window.removeEventListener('elementRemoved', handleElementRemoved)
+        }
+    }, [])
 
     const onPasteEvent = (evt) => {
         if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
