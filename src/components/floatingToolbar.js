@@ -158,6 +158,7 @@ const Toolbar = (props) => {
         currentFontSize,
         onTextSizeChange,
         refreshKey,
+        isMobile,
     } = props
     console.log('Toolbar props', props)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
@@ -574,9 +575,17 @@ const Toolbar = (props) => {
                         animate="closed"
                         transition={{ duration: 0.01 }}
                         variants={variants}
-                        // toggleToolbar={toggle}
                         id="floating-toolbar"
-                        // tabIndex="1"
+                        style={isMobile ? {
+                            bottom: '72px',
+                            left: '16px',
+                            top: 'auto',
+                            right: 'auto',
+                            height: 'auto',
+                            maxHeight: '60vh',
+                            overflowY: 'auto',
+                            zIndex: 20,
+                        } : {}}
                     >
                         {allowedProperties.map((i, index) =>
                             i.hide === true ? null : (

@@ -21,12 +21,15 @@ const ShapesToolbar = ({ addElement }) => {
         setCurrentElementInBoard('pointer')
     }, [])
 
+    const btnSize = isMobile ? 'w-7 h-7' : 'w-9 h-9'
+    const iconSize = isMobile ? 'w-4 h-4' : 'w-5 h-5'
+
     return (
         <div
-            className={`fixed bg-white rounded-lg shadow-md px-2 py-1 gap-1
-                ${isMobile ? 'flex flex-col' : 'top-2 left-1/2 flex flex-row items-center'}`}
+            className={`fixed bg-white rounded-lg shadow-md flex items-center flex-row
+                ${isMobile ? 'px-1 py-1 gap-0.5' : 'top-2 left-1/2 px-2 py-1 gap-1'}`}
             style={isMobile
-                ? { top: '56px', left: '10px', zIndex: 10 }
+                ? { top: '8px', left: '56px', zIndex: 10 }
                 : { transform: 'translateX(-50%)', zIndex: 10 }
             }
         >
@@ -35,7 +38,7 @@ const ShapesToolbar = ({ addElement }) => {
                     key={element.elementName}
                     title={element.elementDisplayName}
                     className={`
-                        w-9 h-9 flex items-center justify-center rounded cursor-pointer
+                        ${btnSize} flex items-center justify-center rounded cursor-pointer
                         transition-all ease-in-out duration-200
                         ${currentElement === element.elementName ? 'bg-blues-b50' : 'hover:bg-blues-b50'}
                     `}
@@ -45,17 +48,17 @@ const ShapesToolbar = ({ addElement }) => {
                     }}
                 >
                     <img
-                        className="w-5 h-5"
+                        className={iconSize}
                         src={element.elementSVG}
                         alt={element.elementDisplayName}
                     />
                 </div>
             ))}
-            <div className="w-px h-6 bg-gray-200 mx-1" />
+            <div className={`bg-gray-200 ${isMobile ? 'w-px h-4 mx-0.5' : 'w-px h-6 mx-1'}`} />
             <div
                 title="Undo"
                 className={`
-                    w-9 h-9 flex items-center justify-center rounded cursor-pointer
+                    ${btnSize} flex items-center justify-center rounded cursor-pointer
                     transition-all ease-in-out duration-200
                     ${historyLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-blues-b50'}
                 `}
@@ -65,7 +68,7 @@ const ShapesToolbar = ({ addElement }) => {
                     }
                 }}
             >
-                <img className="w-5 h-5" src={undoIcon} alt="Undo" />
+                <img className={iconSize} src={undoIcon} alt="Undo" />
             </div>
         </div>
     )

@@ -97,6 +97,8 @@ const BoardViewPage = (props) => {
     const [isArrowDrawMode, setIsArrowDrawMode] = useState(false)
     const [isTextDrawMode, setIsTextDrawMode] = useState(false)
     const [showToolbar, toggleToolbar] = useState(false)
+    const [showMobileToolbarPanel, setShowMobileToolbarPanel] = useState(false)
+    const [showMobilePencilPanel, setShowMobilePencilPanel] = useState(false)
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
     const [defaultLinewidth, setDefaultLinewidth] = useState(2)
@@ -112,6 +114,16 @@ const BoardViewPage = (props) => {
     const [historyLog, setHistoryLog] = useState([])
     const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
     const historyLogRef = useRef([])
+
+    // Reset mobile toolbar panel whenever the selected component changes
+    useEffect(() => {
+        setShowMobileToolbarPanel(false)
+    }, [selectedComponent])
+
+    // Reset mobile pencil panel when pencil mode is turned off
+    useEffect(() => {
+        if (!isPencilMode) setShowMobilePencilPanel(false)
+    }, [isPencilMode])
 
     const LOCAL_DRAFT_KEY = 'craftbase_local_draft'
     const DRAFT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -819,7 +831,38 @@ const BoardViewPage = (props) => {
             <BoardContext.Provider value={contextValueForSidebar}>
                 <div>
                     <Sidebar />
-                    {selectedComponent && showToolbar && (
+                    {selectedComponent && showToolbar && isMobile && (
+                        <button
+                            title="Element properties"
+                            onClick={() =>
+                                setShowMobileToolbarPanel((prev) => !prev)
+                            }
+                            style={{
+                                position: 'fixed',
+                                bottom: '16px',
+                                left: '16px',
+                                zIndex: 20,
+                            }}
+                            className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-colors duration-150
+                                ${showMobileToolbarPanel ? 'bg-blues-b400' : 'bg-white'}`}
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <line x1="2" y1="4" x2="14" y2="4" stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
+                                <circle cx="5" cy="4" r="1.5" fill={showMobileToolbarPanel ? '#fff' : 'white'} stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
+                                <line x1="2" y1="8" x2="14" y2="8" stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
+                                <circle cx="11" cy="8" r="1.5" fill={showMobileToolbarPanel ? '#fff' : 'white'} stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
+                                <line x1="2" y1="12" x2="14" y2="12" stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
+                                <circle cx="7" cy="12" r="1.5" fill={showMobileToolbarPanel ? '#fff' : 'white'} stroke={showMobileToolbarPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
+                            </svg>
+                        </button>
+                    )}
+                    {selectedComponent && showToolbar && (!isMobile || showMobileToolbarPanel) && (
                         <Toolbar
                             hideColorText={true}
                             hideColorIcon={true}
@@ -828,6 +871,7 @@ const BoardViewPage = (props) => {
                             componentState={selectedComponent}
                             closeToolbar={closeToolbar}
                             refreshKey={toolbarRefreshKey}
+                            isMobile={isMobile}
                             updateComponentBulkProperties={
                                 updateComponentBulkPropertiesInLocalStore
                             }
@@ -836,7 +880,38 @@ const BoardViewPage = (props) => {
                             }}
                         />
                     )}
-                    {isPencilMode && (
+                    {isPencilMode && isMobile && (
+                        <button
+                            title="Pencil properties"
+                            onClick={() =>
+                                setShowMobilePencilPanel((prev) => !prev)
+                            }
+                            style={{
+                                position: 'fixed',
+                                bottom: '16px',
+                                left: '16px',
+                                zIndex: 20,
+                            }}
+                            className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-colors duration-150
+                                ${showMobilePencilPanel ? 'bg-blues-b400' : 'bg-white'}`}
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <line x1="2" y1="4" x2="14" y2="4" stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
+                                <circle cx="5" cy="4" r="1.5" fill={showMobilePencilPanel ? '#fff' : 'white'} stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
+                                <line x1="2" y1="8" x2="14" y2="8" stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
+                                <circle cx="11" cy="8" r="1.5" fill={showMobilePencilPanel ? '#fff' : 'white'} stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
+                                <line x1="2" y1="12" x2="14" y2="12" stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" strokeLinecap="round" />
+                                <circle cx="7" cy="12" r="1.5" fill={showMobilePencilPanel ? '#fff' : 'white'} stroke={showMobilePencilPanel ? '#fff' : '#344563'} strokeWidth="1.5" />
+                            </svg>
+                        </button>
+                    )}
+                    {isPencilMode && (!isMobile || showMobilePencilPanel) && (
                         <PencilToolbar
                             pencilStrokeColor={pencilStrokeColor}
                             defaultLinewidth={pencilDefaultLinewidth}

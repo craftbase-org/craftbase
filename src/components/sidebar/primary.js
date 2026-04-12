@@ -9,6 +9,7 @@ import SpinnerWithSize from 'components/common/spinnerWithSize'
 import Button from 'components/common/button'
 import { generateUUID } from 'utils/misc'
 import { useBoardContext } from 'views/Board/board'
+import { useMediaQueryUtils } from 'constants/exportHooks'
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
@@ -266,6 +267,7 @@ const PrimarySidebar = () => {
                 }
         }
     }
+    const { isMobile } = useMediaQueryUtils()
     let isLiveSession = false
     return (
         <>
@@ -344,7 +346,7 @@ const PrimarySidebar = () => {
                     <></>
                 )}
 
-                <ShareLinkPopup />
+                {!isMobile && <ShareLinkPopup />}
                 {/* {isPersisted && (
                         <Button
                             intent="primary"
