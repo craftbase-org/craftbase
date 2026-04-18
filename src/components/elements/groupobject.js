@@ -2,7 +2,6 @@ import React, { useEffect, useState, Fragment } from 'react'
 
 const factoryModules = import.meta.glob('../../factory/*.js')
 import Two from 'two.js'
-import interact from 'interactjs'
 import { useBoardContext } from 'views/Board/board'
 import { useMutation } from '@apollo/client'
 import {
@@ -405,16 +404,16 @@ function GroupedObjectWrapper(props) {
         )
         two.update()
 
-        interact(`#${group.id}`).on('click', () => {
-            console.log('on click ')
-            selector.update(
-                rectangle.getBoundingClientRect(true).left,
-                rectangle.getBoundingClientRect(true).right,
-                rectangle.getBoundingClientRect(true).top,
-                rectangle.getBoundingClientRect(true).bottom
-            )
-            two.update()
-        })
+        // interact(`#${group.id}`).on('click', () => {
+        //     console.log('on click ')
+        //     selector.update(
+        //         rectangle.getBoundingClientRect(true).left,
+        //         rectangle.getBoundingClientRect(true).right,
+        //         rectangle.getBoundingClientRect(true).top,
+        //         rectangle.getBoundingClientRect(true).bottom
+        //     )
+        //     two.update()
+        // })
 
         // group._renderer.elem.addEventListener('dblclick', () => {
         //     // console.log("group dblclick handler", group.children[1].id);
@@ -442,39 +441,39 @@ function GroupedObjectWrapper(props) {
 
         setGroupId(group.id)
 
-        interact(`#${group.id}`).resizable({
-            edges: { right: true, left: true, top: true, bottom: true },
+        // interact(`#${group.id}`).resizable({
+        //     edges: { right: true, left: true, top: true, bottom: true },
 
-            listeners: {
-                start(event) {
-                    getGroupElementFromDOM.setAttribute('data-resize', 'true')
-                },
-                move(event) {
-                    const target = event.target
-                    const rect = event.rect
+        //     listeners: {
+        //         start(event) {
+        //             getGroupElementFromDOM.setAttribute('data-resize', 'true')
+        //         },
+        //         move(event) {
+        //             const target = event.target
+        //             const rect = event.rect
 
-                    const minRectHeight = parseInt(rect.height / 2)
-                    const minRectWidth = parseInt(rect.width / 2)
+        //             const minRectHeight = parseInt(rect.height / 2)
+        //             const minRectWidth = parseInt(rect.width / 2)
 
-                    if (minRectHeight > 20 && minRectWidth > 20) {
-                        rectangle.width = rect.width
-                        rectangle.height = rect.height
+        //             if (minRectHeight > 20 && minRectWidth > 20) {
+        //                 rectangle.width = rect.width
+        //                 rectangle.height = rect.height
 
-                        selector.update(
-                            rectangle.getBoundingClientRect(true).left,
-                            rectangle.getBoundingClientRect(true).right,
-                            rectangle.getBoundingClientRect(true).top,
-                            rectangle.getBoundingClientRect(true).bottom
-                        )
-                    }
-                    two.update()
-                },
-                end(event) {
-                    console.log('the end')
-                    getGroupElementFromDOM.removeAttribute('data-resize')
-                },
-            },
-        })
+        //                 selector.update(
+        //                     rectangle.getBoundingClientRect(true).left,
+        //                     rectangle.getBoundingClientRect(true).right,
+        //                     rectangle.getBoundingClientRect(true).top,
+        //                     rectangle.getBoundingClientRect(true).bottom
+        //                 )
+        //             }
+        //             two.update()
+        //         },
+        //         end(event) {
+        //             console.log('the end')
+        //             getGroupElementFromDOM.removeAttribute('data-resize')
+        //         },
+        //     },
+        // })
 
         // interact(`#${group.id}`).draggable({
         //     // enable inertial throwing

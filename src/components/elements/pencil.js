@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 
 import { elementOnBlurHandler, strokeTypeToDashes } from 'utils/misc'

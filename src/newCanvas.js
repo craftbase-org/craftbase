@@ -11,6 +11,7 @@ import Spinner from 'components/common/spinner'
 const elementModules = import.meta.glob('./components/elements/*.js')
 
 import Loader from 'components/utils/loader'
+import SelectionController from 'canvas/selectionController'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 import { generateUUID } from 'utils/misc'
 import {
@@ -79,7 +80,9 @@ function addZUI(
     setSelectedComponentInBoard,
     setArrowDrawModeOff,
     setTextDrawModeOff,
-    setPointerElement
+    setPointerElement,
+    updateComponentBulkPropertiesInLocalStore,
+    deleteComponentFromLocalStore
 ) {
     // console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
@@ -128,6 +131,27 @@ function addZUI(
 
     zui.addLimits(0.06, 8)
 
+    const selectionController = new SelectionController({
+        two,
+        zui,
+        domElement,
+        onSelect: (toolbarState) => {
+            setSelectedComponentInBoard(toolbarState)
+        },
+        onDeselect: () => {
+            setSelectedComponentInBoard(null)
+        },
+        commit: (id, patch) => {
+            updateComponentBulkPropertiesInLocalStore(id, patch)
+        },
+        onDelete: (group) => {
+            const id = group?.elementData?.id
+            if (id) deleteComponentFromLocalStore(id)
+            two.remove([group])
+            two.update()
+        },
+    })
+
     domElement.addEventListener('mousedown', mousedown, false)
     domElement.addEventListener('mousewheel', mousewheel, false)
     domElement.addEventListener('wheel', mousewheel, false)
@@ -158,6 +182,18 @@ function addZUI(
         // initialize shape definition
         // console.log('e in ZUI mouse down', e, e.clientX, e.clientY)
         const lastAddedElementId = localStorage.getItem('lastAddedElementId')
+
+        // Controller handle check — runs before the bare-canvas clearSelector
+        // dispatch and the DOM path walk. Corner handles can extend slightly
+        // beyond the element's SVG bounds, so relying on path-walking would
+        // miss clicks that land in the handle's radius but outside the shape.
+        if (selectionController.currentGroup) {
+            const hit = selectionController.hitTest(e.clientX, e.clientY)
+            if (hit) {
+                selectionController.beginInteraction(e, hit)
+                return
+            }
+        }
 
         if (e?.srcElement?.lastChild?.id === 'two-0') {
             let evt = new CustomEvent('clearSelector', {})
@@ -589,6 +625,37 @@ function addZUI(
                     }
                 }
 
+                // Central selection controller: for shapes registered in its
+                // adapter registry, the controller owns selection lifecycle
+                // (toolbar open/close) and replaces per-element interactjs
+                // resize. If the pointer landed on a resize/rotate handle,
+                // the controller claims this gesture and we skip the legacy
+                // drag + toolbar wiring below.
+                let controllerClaimedGesture = false
+                let controllerHandledSelection = false
+                if (
+                    !avoidDragging &&
+                    shape &&
+                    !isGroupSelector &&
+                    selectionController.canHandle(shape)
+                ) {
+                    selectionController.attach(shape, shape.children[0])
+                    controllerHandledSelection = true
+                    const hit = selectionController.hitTest(
+                        e.clientX,
+                        e.clientY
+                    )
+                    if (hit) {
+                        selectionController.beginInteraction(e, hit)
+                        controllerClaimedGesture = true
+                    }
+                }
+
+                if (controllerClaimedGesture) {
+                    two.update()
+                    return
+                }
+
                 // inserting prevX and prevY to diff at updateToGlobalState function
                 // checking if new x,y are not equal to prev x,y
                 // then only perform the mutation
@@ -634,7 +701,10 @@ function addZUI(
 
                 // console.log('shape selected', shape)
 
-                if (!shape.elementData.isGroupSelector) {
+                if (
+                    !shape.elementData.isGroupSelector &&
+                    !controllerHandledSelection
+                ) {
                     // this internal state is required for floating toolbar component since floating
                     // toolbar relies on the exact structure/schema for component's internal state
                     // so that any changes made from toolbar can be applied directly on component's two.js properties
@@ -1707,7 +1777,9 @@ const Canvas = (props) => {
             setSelectedComponentInBoard,
             () => setArrowDrawModeInBoard(false),
             () => setTextDrawModeInBoard(false),
-            setCurrentElementInBoard
+            setCurrentElementInBoard,
+            updateComponentBulkPropertiesInLocalStore,
+            deleteComponentFromLocalStore
         )
 
         // this.props.getElementsData('CONSTRUCT', arr)

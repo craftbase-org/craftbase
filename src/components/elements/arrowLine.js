@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 
 import PropTypes from 'prop-types'
-import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 import Two from 'two.js'
 
@@ -209,16 +208,6 @@ function ArrowLine(props) {
             )
             getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
             getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
-
-            interact(`#${group.id}`).on('click', (e) => {
-                console.log('on click group', e)
-                // pointCircle1.opacity = 0
-                // resizeLine.opacity = 1
-                pointCircle1Group.opacity = 1
-                pointCircle2Group.opacity = 1
-                two.update()
-                // toggleToolbar(true)
-            })
         }
 
         return () => {

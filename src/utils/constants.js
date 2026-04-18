@@ -155,14 +155,14 @@ export const staticPrimaryElementData = [
                 noAction: false,
                 drawerData: [],
             },
-            {
-                elementName: 'divider',
-                elementDisplayName: 'Divider',
-                elementSVG: DividerSVG,
-                hasDrawer: false,
-                noAction: false,
-                drawerData: [],
-            },
+            // {
+            //     elementName: 'divider',
+            //     elementDisplayName: 'Divider',
+            //     elementSVG: DividerSVG,
+            //     hasDrawer: false,
+            //     noAction: false,
+            //     drawerData: [],
+            // },
             {
                 elementName: 'pencil',
                 elementDisplayName: 'Pencil',

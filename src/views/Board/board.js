@@ -21,6 +21,7 @@ import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import PencilToolbar from 'components/pencilToolbar'
+import BottomToolbar from 'components/bottomToolbar'
 import controlsIcon from 'assets/controls.svg'
 import Spinner from 'components/common/spinnerWithSize'
 import Modal from 'components/common/modal'
@@ -30,8 +31,9 @@ import {
     strokeTypeToDashes,
     clearDashesOnTwoJSShape,
 } from 'utils/misc'
+import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
 
-const BoardContext = createContext()
+export const BoardContext = createContext()
 
 const BoardViewPage = (props) => {
     const routeParams = useParams()
@@ -841,10 +843,45 @@ const BoardViewPage = (props) => {
         }
     }
 
+    const clearBoard = () => {
+        twoJSInstanceRef.current?.clear()
+        twoJSInstanceRef.current?.update()
+        setComponentStore({})
+        historyLogRef.current = []
+        setHistoryLog([])
+        if (!isPersisted) {
+            localStorage.removeItem(LOCAL_DRAFT_KEY)
+        }
+    }
+
     const isArrowSelected =
         selectedComponent !== null &&
         (selectedComponent?.shape?.type === 'arrowLine' ||
             selectedComponent?.group?.data?.elementData?.isLineCircle === true)
+
+    const isTextSelected =
+        selectedComponent !== null &&
+        selectedComponent?.shape?.type === 'newText'
+
+    const handleTextSizeChange = (newLabel) => {
+        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
+        const textSize = sizesMap[newLabel]
+        const twoText = selectedComponent?.shape?.data
+        if (!twoText) return
+        twoText.size = textSize
+        twoText.leading = textSize
+        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const existingMetadata =
+            selectedComponent?.group?.data?.elementData?.metadata ?? {}
+        updateComponentBulkPropertiesInLocalStore(componentId, {
+            metadata: {
+                ...existingMetadata,
+                fontSize: textSize,
+                content: twoText.value,
+            },
+        })
+        twoJSInstance?.update()
+    }
 
     const contextValueForSidebar = {
         boardId,
@@ -879,6 +916,7 @@ const BoardViewPage = (props) => {
         historyLog,
         historyLogRef,
         undoLastAction,
+        clearBoard,
     }
 
     return (
@@ -912,9 +950,23 @@ const BoardViewPage = (props) => {
                         showToolbar &&
                         (!isMobile || showMobileToolbarPanel) && (
                             <Toolbar
-                                hideColorText={true}
+                                hideColorText={!isTextSelected}
                                 hideColorIcon={true}
-                                hideColorBackground={isArrowSelected}
+                                hideColorBackground={
+                                    isArrowSelected || isTextSelected
+                                }
+                                hideBorderSection={isTextSelected}
+                                showTextSizeSection={isTextSelected}
+                                currentFontSize={
+                                    isTextSelected
+                                        ? selectedComponent?.shape?.data?.size
+                                        : undefined
+                                }
+                                onTextSizeChange={
+                                    isTextSelected
+                                        ? handleTextSizeChange
+                                        : undefined
+                                }
                                 toggle={showToolbar}
                                 componentState={selectedComponent}
                                 closeToolbar={closeToolbar}
@@ -982,6 +1034,7 @@ const BoardViewPage = (props) => {
                         pencilDefaultStrokeType={pencilDefaultStrokeType}
                         pencilStrokeColor={pencilStrokeColor}
                     />
+                    <BottomToolbar />
                 </div>
             </BoardContext.Provider>
             {/* {isMobile ? (
