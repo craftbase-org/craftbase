@@ -121,6 +121,12 @@ export default class SelectionController {
         endpoints.fill = '#0052CC'
         endpoints.noStroke()
 
+        this.midPoints = [
+            new Two.Vector(0, 0), // n
+            new Two.Vector(0, 0), // e
+            new Two.Vector(0, 0), // s
+            new Two.Vector(0, 0), // w
+        ]
         ui.add(box, endpoints)
         this.two.add(ui)
 
@@ -138,6 +144,8 @@ export default class SelectionController {
 
         this._onKeyDown = (e) => {
             if (!this.currentGroup) return
+            const tag = document.activeElement?.tagName
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return
             if (e.keyCode === 8 || e.keyCode === 46) {
                 this.callbacks.onDelete(this.currentGroup)
                 this.detach()
@@ -233,6 +241,17 @@ export default class SelectionController {
             this.currentGroup.translation.y
         )
         this.ui.rotation = this.currentGroup.rotation || 0
+
+        const isRect =
+            this.currentGroup?.elementData?.componentType === 'rectangle'
+        if (isRect) {
+            const hw = width / 2
+            const hh = height / 2
+            this.midPoints[0].set(0, -hh)
+            this.midPoints[1].set(hw, 0)
+            this.midPoints[2].set(0, hh)
+            this.midPoints[3].set(-hw, 0)
+        }
     }
 
     // ---------- Hit testing ----------
@@ -247,6 +266,13 @@ export default class SelectionController {
         const scale = this.zui.scale || 1
         const rotateLimit = HANDLE_BASE_PX / scale
         const scaleLimit = CORNER_BASE_PX / scale
+
+        const isRect =
+            this.currentGroup?.elementData?.componentType === 'rectangle'
+        if (isRect) {
+            const midEdge = this._atMidEdge(surface, scaleLimit)
+            if (midEdge) return { mode: 'scale', corner: midEdge }
+        }
 
         const corner = this._atCorner(surface, scaleLimit)
         if (!corner) return null
@@ -287,6 +313,21 @@ export default class SelectionController {
         for (const c of corners) {
             const p = this._vertexToSurface(c.point)
             if (distSq(point.x, point.y, p.x, p.y) < sq) return c
+        }
+        return null
+    }
+
+    _atMidEdge(point, limit) {
+        const sq = limit * limit
+        const edges = [
+            { name: 'n-resize', point: this.midPoints[0] },
+            { name: 'e-resize', point: this.midPoints[1] },
+            { name: 's-resize', point: this.midPoints[2] },
+            { name: 'w-resize', point: this.midPoints[3] },
+        ]
+        for (const edge of edges) {
+            const p = this._vertexToSurface(edge.point)
+            if (distSq(point.x, point.y, p.x, p.y) < sq) return edge
         }
         return null
     }
@@ -381,10 +422,15 @@ export default class SelectionController {
                 return
             }
             const name = hit.corner?.name
-            this.domElement.style.cursor =
-                name === 'nw-resize' || name === 'se-resize'
-                    ? 'nwse-resize'
-                    : 'nesw-resize'
+            if (name === 'nw-resize' || name === 'se-resize') {
+                this.domElement.style.cursor = 'nwse-resize'
+            } else if (name === 'ne-resize' || name === 'sw-resize') {
+                this.domElement.style.cursor = 'nesw-resize'
+            } else if (name === 'n-resize' || name === 's-resize') {
+                this.domElement.style.cursor = 'ns-resize'
+            } else if (name === 'e-resize' || name === 'w-resize') {
+                this.domElement.style.cursor = 'ew-resize'
+            }
         }
         this.domElement.addEventListener('mousemove', this._onHover, false)
     }
@@ -443,6 +489,18 @@ export default class SelectionController {
                 newWidth = initialWidth - deltaX
                 newHeight = initialHeight - deltaY
                 break
+            case 'n-resize':
+                newHeight = initialHeight - deltaY
+                break
+            case 's-resize':
+                newHeight = initialHeight + deltaY
+                break
+            case 'e-resize':
+                newWidth = initialWidth + deltaX
+                break
+            case 'w-resize':
+                newWidth = initialWidth - deltaX
+                break
             default:
                 break
         }
@@ -450,7 +508,8 @@ export default class SelectionController {
         let scaleX = newWidth / initialWidth
         let scaleY = newHeight / initialHeight
 
-        if (e.shiftKey) {
+        const isEdgeOnly = ['n-resize', 's-resize', 'e-resize', 'w-resize'].includes(corner.name)
+        if (e.shiftKey && !isEdgeOnly) {
             const ratio = Math.min(Math.abs(scaleX), Math.abs(scaleY))
             scaleX = scaleX >= 0 ? ratio : -ratio
             scaleY = scaleY >= 0 ? ratio : -ratio
@@ -490,6 +549,22 @@ export default class SelectionController {
             case 'se-resize':
                 adjustX = anchorOffsetX
                 adjustY = anchorOffsetY
+                break
+            case 'n-resize':
+                adjustX = 0
+                adjustY = -anchorOffsetY
+                break
+            case 's-resize':
+                adjustX = 0
+                adjustY = anchorOffsetY
+                break
+            case 'e-resize':
+                adjustX = anchorOffsetX
+                adjustY = 0
+                break
+            case 'w-resize':
+                adjustX = -anchorOffsetX
+                adjustY = 0
                 break
             default:
                 break
