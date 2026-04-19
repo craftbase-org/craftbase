@@ -27,6 +27,7 @@ const PrimarySidebar = () => {
         addToLocalComponentStore,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
+        setRubberModeInBoard,
         defaultLinewidth,
         defaultStrokeType,
         onCreateBoard,
@@ -169,12 +170,20 @@ const PrimarySidebar = () => {
     }
 
     const addElement = (label) => {
+        if (label !== 'rubber') {
+            setRubberModeInBoard(false)
+        }
         switch (label) {
             case 'pointer':
                 togglePointer(true)
                 break
             case 'pencil':
                 togglePencilMode(true)
+                break
+            case 'rubber':
+                togglePencilMode(false)
+                togglePointer(false)
+                setRubberModeInBoard(true)
                 break
             case 'arrowLine':
                 handleArrowElement(label)

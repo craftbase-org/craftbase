@@ -5,7 +5,7 @@ import { ZUI } from 'two.js/extras/jsm/zui'
 import { useBoardContext } from 'views/Board/board'
 import { useMediaQueryUtils } from 'constants/exportHooks'
 
-import { GROUP_COMPONENT } from 'constants/misc'
+import { GROUP_COMPONENT, componentTypes, RUBBER_MODE_KEY } from 'constants/misc'
 import Spinner from 'components/common/spinner'
 
 const elementModules = import.meta.glob('./components/elements/*.js')
@@ -118,7 +118,10 @@ function addZUI(
     let SCENARIO_ARROW_DRAW = 'arrowDraw'
     let SCENARIO_DRAW_SHAPE = 'drawShape'
     let SCENARIO_TEXT_DRAW = 'textDraw'
+    let SCENARIO_RUBBER_MODE = 'rubberMode'
     let SCENARIO_DEFAULT = null
+
+    const pendingDeletionSet = new Set()
 
     let arrowDrawElement = null
     let textDrawElement = null
@@ -128,6 +131,73 @@ function addZUI(
     let drawShapeType = null
     let drawShapeProps = null
     let lastPlacedElement = null
+
+    function resolveShapeFromPath(path, two) {
+        let shape = null
+        let avoidDragging = false
+
+        path.forEach((item) => {
+            if (item?.classList?.value?.includes('avoid-dragging')) {
+                avoidDragging = true
+            }
+
+            if (
+                item.tagName === 'g' &&
+                item?.classList?.value?.includes('dragger-picker') &&
+                shape == null
+            ) {
+                if (item?.classList?.value?.includes('is-line-circle')) {
+                    const parentId = document
+                        .getElementById(item.id)
+                        .getAttribute('data-parent-id')
+                    const lineId = document
+                        .getElementById(item.id)
+                        .getAttribute('data-line-id')
+                    const direction = document
+                        .getElementById(item.id)
+                        .getAttribute('data-direction')
+
+                    const getParentTwoData = two.scene.children.find(
+                        (child) => child.id === parentId
+                    )
+                    const getChildTwoData = getParentTwoData.children.find(
+                        (child) => child.id === item.id
+                    )
+                    const getSiblingChild = getParentTwoData.children.find(
+                        (child) =>
+                            child.id !== item.id && child?.children?.length > 0
+                    )
+                    const getLineTwoData = getParentTwoData.children.find(
+                        (child) => child.id === lineId
+                    )
+
+                    shape = getChildTwoData
+                    shape.lineData = getLineTwoData
+                    shape.direction = direction
+                    shape.siblingCircle = getSiblingChild
+                    shape.opacity = 1
+                    shape.siblingCircle.opacity = 1
+                    shape.elementData = {
+                        isGroupSelector: false,
+                        isLineCircle: true,
+                        lineData: getLineTwoData,
+                        parentData: getParentTwoData,
+                    }
+                } else {
+                    shape = two.scene.children.find(
+                        (child) => child.id === item.id
+                    )
+
+                    if (shape?.elementData?.componentType === 'arrowLine') {
+                        if (shape.children[1]) shape.children[1].opacity = 1
+                        if (shape.children[2]) shape.children[2].opacity = 1
+                    }
+                }
+            }
+        })
+
+        return { shape, avoidDragging }
+    }
 
     zui.addLimits(0.06, 8)
 
@@ -153,6 +223,7 @@ function addZUI(
     })
 
     domElement.addEventListener('mousedown', mousedown, false)
+    domElement.addEventListener('dblclick', dblclick, false)
     domElement.addEventListener('mousewheel', mousewheel, false)
     domElement.addEventListener('wheel', mousewheel, false)
 
@@ -163,6 +234,223 @@ function addZUI(
 
     // listen for ctrl + c event
     domElement.addEventListener('keydown', onKeyDown)
+
+    function dblclick(e) {
+        console.log('on double click', e)
+        shape = null
+        mouse.x = e.clientX
+        mouse.y = e.clientY
+        let avoidDragging = false
+        let isGroupSelector = false
+        // Hide all arrow endpoint circles before processing the new selection
+        two.scene.children.forEach((child) => {
+            if (child?.elementData?.componentType === 'arrowLine') {
+                if (child.children[1]) child.children[1].opacity = 0
+                if (child.children[2]) child.children[2].opacity = 0
+            }
+        })
+
+        const path = e.path || (e.composedPath && e.composedPath())
+        ;({ shape, avoidDragging } = resolveShapeFromPath(path, two))
+
+        if (avoidDragging) {
+            shape = {}
+        }
+
+        const showTextInput = (group, twoText, componentId, currentMetadata) => {
+            const groupDomElem = document.getElementById(`${group.id}`)
+            if (!groupDomElem) return
+
+            // Use the native SVG <text> DOM element to derive screen position
+            const textDomElem = twoText._renderer.elem
+            const screenRect = textDomElem.getBoundingClientRect()
+
+            // Hide the Two.js group so the textarea sits on top cleanly
+            groupDomElem.style.display = 'none'
+
+            const fontSize = twoText.size || 36
+            // Use a generous line-height so ascenders/descenders are
+            // never clipped. A 1.6× multiplier covers most font metrics.
+            const lineH = Math.ceil(fontSize * 1.6)
+            // Vertical padding inside the textarea prevents the top of
+            // tall glyphs (H, d, l …) from being cut off by the element
+            // boundary. Half the difference between lineH and fontSize
+            // approximates the ascender headroom the browser needs.
+            const vertPad = Math.ceil((lineH - fontSize) / 2) + 4
+
+            const input = document.createElement('textarea')
+            const randomId = Math.floor(Math.random() * 90 + 10)
+            input.id = `new-text-input-area-${randomId}`
+            input.value = twoText.value || ''
+            input.rows = 1
+            input.style.border = 'none'
+            input.style.background = 'transparent'
+            input.style.padding = `${vertPad}px 8px`
+            input.style.color = twoText.fill || '#000000'
+            input.style.fontSize = `${fontSize}px`
+            input.style.fontFamily = twoText.family || 'Caveat'
+            input.style.fontWeight = twoText.weight || 'normal'
+            input.style.lineHeight = `${lineH}px`
+            input.style.letterSpacing = '0px'
+            input.style.textAlign = 'center'
+            input.style.position = 'absolute'
+            input.style.outline = 'none'
+            input.style.resize = 'none'
+            input.style.overflow = 'visible'
+            input.style.whiteSpace = 'pre'
+            input.style.boxSizing = 'border-box'
+            input.className = 'temp-input-area'
+
+            // Anchor point: the SVG text element's screen-space center
+            const centerX = screenRect.left + screenRect.width / 2
+            const centerY = screenRect.top + screenRect.height / 2
+
+            document.getElementById('main-two-root').append(input)
+
+            // ── Offscreen measurement helper ──
+            // We create a hidden <span> with identical font styles and
+            // read its offsetWidth/offsetHeight. This is more reliable
+            // than textarea.scrollWidth which can be affected by cols,
+            // min intrinsic sizing, and platform differences.
+            const measureSpan = document.createElement('span')
+            measureSpan.style.position = 'absolute'
+            measureSpan.style.visibility = 'hidden'
+            measureSpan.style.whiteSpace = 'pre'
+            measureSpan.style.fontSize = `${fontSize}px`
+            measureSpan.style.fontFamily = twoText.family || 'Caveat'
+            measureSpan.style.fontWeight = twoText.weight || 'normal'
+            measureSpan.style.lineHeight = `${lineH}px`
+            measureSpan.style.letterSpacing = '0px'
+            measureSpan.style.padding = '0'
+            document.body.appendChild(measureSpan)
+
+            const autoSizeAndCenter = () => {
+                // Measure the text content with the hidden span
+                const val = input.value || 'M' // fallback to 'M' so empty input still has width
+                measureSpan.textContent = val
+
+                const measuredW = measureSpan.offsetWidth
+                const measuredH = measureSpan.offsetHeight
+
+                // Total textarea size = measured text + padding + breathing room
+                const contentWidth = Math.max(
+                    measuredW + 40,
+                    screenRect.width + 40,
+                    80
+                )
+                const contentHeight = Math.max(
+                    measuredH + vertPad * 2,
+                    lineH + vertPad * 2
+                )
+
+                input.style.width = `${contentWidth}px`
+                input.style.height = `${contentHeight}px`
+
+                // Centre over the original text midpoint
+                input.style.left = `${centerX - contentWidth / 2}px`
+                input.style.top = `${centerY - contentHeight / 2}px`
+            }
+
+            autoSizeAndCenter()
+
+            // Re-measure on every keystroke so the box grows with the text
+            input.addEventListener('input', autoSizeAndCenter)
+
+            // input.onfocus = function () {
+            //     const bRect = twoText.getBoundingClientRect(true)
+            //     selectorInstance.update(
+            //         bRect.left - 4,
+            //         bRect.right + 4,
+            //         bRect.top - 4,
+            //         bRect.bottom + 4
+            //     )
+            //     selectorInstance.show()
+            //     two.update()
+            // }
+
+            input.focus()
+
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault()
+                }
+            })
+
+            input.addEventListener('blur', () => {
+                // Clean up the input listener and measurement span
+                input.removeEventListener('input', autoSizeAndCenter)
+                if (measureSpan.parentNode) {
+                    measureSpan.parentNode.removeChild(measureSpan)
+                }
+
+                groupDomElem.style.display = 'block'
+
+                const newContent = input.value
+                // setTextValue(newContent)
+                // textValueRef.current = newContent
+
+                // Reflect change in the Two.js text object
+                twoText.value = newContent
+                two.update()
+
+                // Recalculate bounds after value update
+                const bRect = twoText.getBoundingClientRect(true)
+                const newWidth = Math.round(bRect.width || 60)
+                const newHeight = Math.round(bRect.height || twoText.size)
+
+                // selectorInstance.update(
+                //     bRect.left - 4,
+                //     bRect.right + 4,
+                //     bRect.top - 4,
+                //     bRect.bottom + 4
+                // )
+                // selectorInstance.hide()
+                group.center()
+                two.update()
+
+                if (componentId) {
+                    updateComponentBulkPropertiesInLocalStore(componentId, {
+                        metadata: {
+                            ...currentMetadata,
+                            hasText: true,
+                            textContent: newContent,
+                            textFill: twoText.fill || '#000',
+                            textFontSize: twoText.size || 24,
+                            textFamily: twoText.family || 'Caveat',
+                            textBaseLine: twoText.baseline || 'middle',
+                        },
+                    })
+                }
+
+                input.remove()
+            })
+        }
+
+        if (shape !== null) {
+            if (shape.elementData?.componentType === componentTypes.rectangle) {
+                const meta = shape.elementData.metadata || {}
+                let twoText = shape.children.find(
+                    (child) => typeof child.value === 'string'
+                )
+                if (!twoText) {
+                    twoText = two.makeText(meta.textContent || 'Text', 0, 0)
+                    twoText.fill = meta.textFill || '#000'
+                    twoText.size = meta.textFontSize || 24
+                    twoText.alignment = 'center'
+                    twoText.baseline = meta.textBaseLine || 'middle'
+                    twoText.family = meta.textFamily || 'Caveat'
+                    shape.add(twoText)
+                    two.update()
+                }
+                showTextInput(
+                    shape,
+                    twoText,
+                    shape.elementData.id,
+                    meta
+                )
+            }
+        }
+    }
 
     function onKeyDown(evt) {
         // unclosed event listener (temp)
@@ -176,6 +464,36 @@ function addZUI(
 
             // domElement.removeEventListener('keydown', onKeyDown)
         }
+    }
+
+    function eraseElementAtPoint(x, y) {
+        const el = document.elementFromPoint(x, y)
+        if (!el) return
+
+        let target = el
+        let componentId = null
+        while (target && target !== document.body) {
+            componentId = target.getAttribute?.('data-component-id')
+            if (componentId) break
+            target = target.parentElement
+        }
+        if (!componentId || pendingDeletionSet.has(componentId)) return
+
+        const group = two.scene.children.find(
+            (c) => c?.elementData?.id === componentId
+        )
+        if (!group) return
+
+        pendingDeletionSet.add(componentId)
+        group.opacity = 0.3
+        two.update()
+
+        setTimeout(() => {
+            two.remove([group])
+            two.update()
+            deleteComponentFromLocalStore(componentId)
+            pendingDeletionSet.delete(componentId)
+        }, 1000)
     }
 
     function mousedown(e) {
@@ -227,7 +545,10 @@ function addZUI(
         const arrowDrawMode = localStorage.getItem('arrowDrawMode')
         const textDrawMode = localStorage.getItem('textDrawMode')
         const pendingShapeType = localStorage.getItem('pendingShapeType')
-        if (arrowDrawMode === 'true') {
+        const rubberMode = localStorage.getItem(RUBBER_MODE_KEY)
+        if (rubberMode === 'true') {
+            scenario = SCENARIO_RUBBER_MODE
+        } else if (arrowDrawMode === 'true') {
             scenario = SCENARIO_ARROW_DRAW
         } else if (textDrawMode === 'true') {
             scenario = SCENARIO_TEXT_DRAW
@@ -428,6 +749,12 @@ function addZUI(
                 })
                 break
             }
+            case SCENARIO_RUBBER_MODE: {
+                domElement.addEventListener('mousemove', mousemove, false)
+                domElement.addEventListener('mouseup', mouseup, false)
+                eraseElementAtPoint(e.clientX, e.clientY)
+                break
+            }
             default:
                 shape = null
                 mouse.x = e.clientX
@@ -443,133 +770,8 @@ function addZUI(
                     }
                 })
 
-                let path = e.path || (e.composedPath && e.composedPath())
-
-                // checks for path obj in DOM event obj if it contains following element with id attr which matches with similar two.js children group
-                // and assigns that specific two.js child(group) to the shape object
-
-                // wiki: two.js has base level group ('scene' which hosts all the objects in instance), so it's like two.js group
-                // inside two.js base level group
-                path.forEach((item, index) => {
-                    // console.log(
-                    //     'item?.classList?.value',
-                    //     item?.classList?.value,
-                    //     item?.classList?.value &&
-                    //         item?.classList?.value.includes('dragger-picker') &&
-                    //         !item?.classList?.value.includes(
-                    //             'avoid-dragging'
-                    //         ) &&
-                    //         item.tagName === 'g'
-                    // )
-
-                    if (item?.classList?.value.includes('avoid-dragging')) {
-                        avoidDragging = true
-                    }
-
-                    // this does not select path or any inner component
-                    // since you mention in condition that only pick with "g" tag name, i.e. group element
-                    if (
-                        item.tagName === 'g' &&
-                        item?.classList?.value.includes('dragger-picker') &&
-                        shape == null
-                    ) {
-                        // console.log('iterating through path', item.id, shape)
-                        // console.log(
-                        //     'two scene children',
-                        //     two.scene.children,
-                        //     two.scene.children.find(
-                        //         (child) => child.id === item.id
-                        //     )
-                        // )
-
-                        // if its a arrowLine component and check for class
-                        // because we don't want to select top level group id
-                        if (item?.classList?.value.includes('is-line-circle')) {
-                            // console.log('is arrowLine circle ')
-                            // console.log(
-                            //     'get attr of parent id',
-                            //     document
-                            //         .getElementById(item.id)
-                            //         .getAttribute('data-parent-id')
-                            // )
-                            let parentId = document
-                                .getElementById(item.id)
-                                .getAttribute('data-parent-id')
-
-                            let lineId = document
-                                .getElementById(item.id)
-                                .getAttribute('data-line-id')
-
-                            let direction = document
-                                .getElementById(item.id)
-                                .getAttribute('data-direction')
-
-                            let getParentTwoData = two.scene.children.find(
-                                (child) => child.id === parentId
-                            )
-
-                            // console.log(
-                            //     'getParentTwoData and its children',
-                            //     getParentTwoData,
-                            //     getParentTwoData.children
-                            // )
-
-                            let getChildTwoData =
-                                getParentTwoData.children.find(
-                                    (child) => child.id === item.id
-                                )
-                            let getSiblingChild =
-                                getParentTwoData.children.find(
-                                    (child) =>
-                                        child.id !== item.id &&
-                                        child?.children?.length > 0
-                                )
-                            let getLineTwoData = getParentTwoData.children.find(
-                                (child) => child.id === lineId
-                            )
-                            // console.log(
-                            //     'getChildTwoData',
-                            //     getChildTwoData,
-                            //     getChildTwoData.type,
-                            //     ' getSiblingChild',
-                            //     getSiblingChild
-                            // )
-                            shape = getChildTwoData
-
-                            // setting custom properties to existing two properties
-                            shape.lineData = getLineTwoData
-                            shape.direction = direction
-                            shape.siblingCircle = getSiblingChild
-
-                            shape.opacity = 1
-                            shape.siblingCircle.opacity = 1
-
-                            shape.elementData = {
-                                // ...shape.elementData,
-                                isGroupSelector: false,
-                                isLineCircle: true,
-                                lineData: getLineTwoData,
-                                parentData: getParentTwoData,
-                            }
-                            // let getChildTwoData =
-                        } else {
-                            shape = two.scene.children.find(
-                                (child) => child.id === item.id
-                            )
-
-                            // Show point circles when arrow line body is clicked
-                            if (
-                                shape?.elementData?.componentType ===
-                                'arrowLine'
-                            ) {
-                                if (shape.children[1])
-                                    shape.children[1].opacity = 1
-                                if (shape.children[2])
-                                    shape.children[2].opacity = 1
-                            }
-                        }
-                    }
-                })
+                const path = e.path || (e.composedPath && e.composedPath())
+                ;({ shape, avoidDragging } = resolveShapeFromPath(path, two))
 
                 if (avoidDragging) {
                     shape = {}
@@ -720,6 +922,10 @@ function addZUI(
                         ? shape.elementData.lineData
                         : shape.children[0]
 
+                    const textChild = groupForToolbar.children.find(
+                        (child) => typeof child.value === 'string'
+                    )
+
                     let componentInternalState = {
                         element: {
                             [shapeForToolbar.id]: shapeForToolbar,
@@ -735,7 +941,7 @@ function addZUI(
                             data: shapeForToolbar,
                         },
                         text: {
-                            data: {},
+                            data: textChild || {},
                         },
                         icon: {
                             data: {},
@@ -885,9 +1091,12 @@ function addZUI(
                 two.update()
                 break
             }
+            case SCENARIO_RUBBER_MODE:
+                eraseElementAtPoint(e.clientX, e.clientY)
+                break
             default:
                 /**
-                    Currently "resize" event handling is at component level.  
+                    Currently "resize" event handling is at component level.
                     Once I shift that handling to this one main component,
                     I'll remove this first if condition block
                 */
@@ -1178,7 +1387,13 @@ function addZUI(
                         (child) => child?.elementData?.id === id
                     )
                     if (el && el.children?.[0]) {
-                        console.log('[waitForNewElement] found real element for', id, 'at retry', retries, '— removing preview')
+                        console.log(
+                            '[waitForNewElement] found real element for',
+                            id,
+                            'at retry',
+                            retries,
+                            '— removing preview'
+                        )
                         if (capturedPreview) {
                             two.remove(capturedPreview)
                             two.update()
@@ -1191,7 +1406,11 @@ function addZUI(
                         // Element took too long to mount (e.g. slow network).
                         // Remove the preview unconditionally to prevent a ghost
                         // shape lingering on the canvas after the real element loads.
-                        console.log('[waitForNewElement] TIMEOUT (300 retries) for', id, '— force-removing preview')
+                        console.log(
+                            '[waitForNewElement] TIMEOUT (300 retries) for',
+                            id,
+                            '— force-removing preview'
+                        )
                         if (capturedPreview) {
                             two.remove(capturedPreview)
                             two.update()
@@ -1303,6 +1522,10 @@ function addZUI(
                 lastPencilLinewidth = null
                 break
             }
+            case SCENARIO_RUBBER_MODE:
+                domElement.removeEventListener('mousemove', mousemove, false)
+                domElement.removeEventListener('mouseup', mouseup, false)
+                break
             default:
                 // diff to check new x,y and prev x,y
                 let oldShapeData = {}
@@ -2054,7 +2277,10 @@ const Canvas = (props) => {
                 // created — which would produce a second wrapper and a duplicate shape.
                 // Deletion removes the id from prevElements via the 'elementRemoved' event,
                 // so undo-of-delete still gets a fresh wrapper.
-                const moduleLoader = elementModules[`./components/elements/${item.componentType}.js`]
+                const moduleLoader =
+                    elementModules[
+                        `./components/elements/${item.componentType}.js`
+                    ]
                 if (!moduleLoader) {
                     // componentType doesn't map to a known element file — skip to avoid a crash.
                     // This can happen if shapeData was null when stored (e.g. componentTypes
