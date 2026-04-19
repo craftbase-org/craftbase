@@ -38,6 +38,7 @@ const SHAPE_ADAPTERS = {
 const HANDLE_BASE_PX = 10
 const CORNER_BASE_PX = 25
 const MIN_SCALE_DIMENSION = 20
+const SELECTION_PADDING = 5
 
 function buildToolbarState(group, shape) {
     const componentType = group?.elementData?.componentType
@@ -116,23 +117,34 @@ export default class SelectionController {
         box.stroke = '#0052CC'
         box.linewidth = 1.5
 
+        // Corner handles: white fill with blue border
         const endpoints = new Two.Points(box.vertices)
-        endpoints.size = 8
-        endpoints.fill = '#0052CC'
-        endpoints.noStroke()
+        endpoints.size = 10
+        endpoints.fill = '#ffffff'
+        endpoints.stroke = '#0052CC'
+        endpoints.linewidth = 1.5
 
+        // Mid-edge handles (rectangle only)
         this.midPoints = [
             new Two.Vector(0, 0), // n
             new Two.Vector(0, 0), // e
             new Two.Vector(0, 0), // s
             new Two.Vector(0, 0), // w
         ]
-        ui.add(box, endpoints)
+        const midEndpoints = new Two.Points(this.midPoints)
+        midEndpoints.size = 10
+        midEndpoints.fill = '#ffffff'
+        midEndpoints.stroke = '#0052CC'
+        midEndpoints.linewidth = 1.5
+        midEndpoints.visible = false
+
+        ui.add(box, endpoints, midEndpoints)
         this.two.add(ui)
 
         this.ui = ui
         this.box = box
         this.endpoints = endpoints
+        this.midEndpoints = midEndpoints
     }
 
     _bindExternal() {
@@ -233,8 +245,9 @@ export default class SelectionController {
         const { width, height } = this.currentAdapter.getLocalSize(
             this.currentShape
         )
-        this.box.width = width
-        this.box.height = height
+        const pad = SELECTION_PADDING
+        this.box.width = width + pad * 2
+        this.box.height = height + pad * 2
 
         this.ui.position.set(
             this.currentGroup.translation.x,
@@ -244,9 +257,10 @@ export default class SelectionController {
 
         const isRect =
             this.currentGroup?.elementData?.componentType === 'rectangle'
+        this.midEndpoints.visible = isRect
         if (isRect) {
-            const hw = width / 2
-            const hh = height / 2
+            const hw = (width + pad * 2) / 2
+            const hh = (height + pad * 2) / 2
             this.midPoints[0].set(0, -hh)
             this.midPoints[1].set(hw, 0)
             this.midPoints[2].set(0, hh)

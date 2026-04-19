@@ -398,8 +398,13 @@ function addZUI(
                 }
 
                 textDomElem.style.display = ''
-                selectionController.ui.visible = true
-                selectionController.syncToTarget()
+                // mousedown fires before blur, so if the user clicked empty
+                // canvas, detach() already ran and currentGroup is null.
+                // Only restore the selection UI if we still have a target.
+                if (selectionController.currentGroup) {
+                    selectionController.ui.visible = true
+                    selectionController.syncToTarget()
+                }
                 two.update()
 
                 const newContent = input.value
@@ -444,6 +449,10 @@ function addZUI(
                                 latestMeta.textFamily ||
                                 twoText.family ||
                                 'Caveat',
+                            textFontFamily:
+                                latestMeta.textFontFamily ||
+                                twoText.family ||
+                                'Caveat',
                             textBaseLine:
                                 latestMeta.textBaseLine ||
                                 twoText.baseline ||
@@ -465,7 +474,7 @@ function addZUI(
                 if (!twoText) {
                     twoText = two.makeText(meta.textContent || 'Text', 0, 0)
                     twoText.fill = meta.textFill || '#000'
-                    twoText.size = meta.textFontSize || 24
+                    twoText.size = meta.textFontSize || 36
                     twoText.alignment = 'center'
                     twoText.baseline = meta.textBaseLine || 'middle'
                     twoText.family = meta.textFamily || 'Caveat'
@@ -874,6 +883,8 @@ function addZUI(
 
                 // in case if it's a group selector, it falls under below condition
                 if (shape === null) {
+                    // Clicking empty canvas clears any active selection.
+                    selectionController.detach()
                     // When a text input overlay is active (about to blur),
                     // the click is just dismissing the input — skip creating
                     // the group selector so no orphaned dotted rectangle

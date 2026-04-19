@@ -28,6 +28,7 @@ const PrimarySidebar = () => {
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
+        cancelPendingElement,
         defaultLinewidth,
         defaultStrokeType,
         onCreateBoard,
@@ -170,6 +171,7 @@ const PrimarySidebar = () => {
     }
 
     const addElement = (label) => {
+        cancelPendingElement()
         if (label !== 'rubber') {
             setRubberModeInBoard(false)
         }

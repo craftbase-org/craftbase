@@ -321,23 +321,30 @@ const BoardViewPage = (props) => {
 
     const updateLastAddedElement = (obj) => {
         setLastAddedElement(obj)
-        document.getElementById('main-two-root').style.cursor = 'grabbing'
+        document.getElementById('main-two-root').style.cursor = 'crosshair'
     }
 
     const togglePointer = (pointerVal) => {
         setPointerToggle(pointerVal)
         setPencilMode(false)
         if (pointerVal) {
+            cancelPendingElement()
             setSelectedComponent(null)
             toggleToolbar(false)
+            document.getElementById('main-two-root').style.cursor = 'default'
         }
     }
 
     const togglePencilMode = (value) => {
         toggleToolbar(false)
         setPencilMode(value)
-        value === true && localStorage.setItem('pencilMode', 'TRUE')
-        value === false && localStorage.removeItem('pencilMode')
+        if (value) {
+            cancelPendingElement()
+            localStorage.setItem('pencilMode', 'TRUE')
+            document.getElementById('main-two-root').style.cursor = 'crosshair'
+        } else {
+            localStorage.removeItem('pencilMode')
+        }
     }
 
     function closeToolbar() {
@@ -879,6 +886,12 @@ const BoardViewPage = (props) => {
         selectedComponent?.shape?.type === 'rectangle' &&
         typeof selectedComponent?.text?.data?.value === 'string'
 
+    const currentFontFamily = isTextSelected
+        ? selectedComponent?.shape?.data?.family || 'Caveat'
+        : isRectangleWithText
+        ? selectedComponent?.text?.data?.family || 'Caveat'
+        : undefined
+
     const handleTextSizeChange = (newLabel) => {
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
         const textSize = sizesMap[newLabel]
@@ -968,6 +981,55 @@ const BoardViewPage = (props) => {
         })
     }
 
+    const handleTextFontFamilyChange = (fontFamily) => {
+        const twoText = selectedComponent?.shape?.data
+        if (!twoText) return
+        twoText.family = fontFamily
+        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const existingMetadata =
+            selectedComponent?.group?.data?.elementData?.metadata ?? {}
+        updateComponentBulkPropertiesInLocalStore(componentId, {
+            metadata: {
+                ...existingMetadata,
+                textFontFamily: fontFamily,
+                content: twoText.value,
+            },
+        })
+        twoJSInstance?.update()
+    }
+
+    const handleRectangleTextFontFamilyChange = (fontFamily) => {
+        const twoText = selectedComponent?.text?.data
+        if (!twoText) return
+        twoText.family = fontFamily
+        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const existingMetadata =
+            stateRefForComponentStore.current[componentId]?.metadata ?? {}
+        const updatedMetadata = { ...existingMetadata, textFontFamily: fontFamily }
+        if (selectedComponent?.group?.data?.elementData) {
+            selectedComponent.group.data.elementData.metadata = updatedMetadata
+        }
+        updateComponentBulkPropertiesInLocalStore(componentId, {
+            metadata: updatedMetadata,
+        })
+        twoJSInstance?.update()
+    }
+
+    const cancelPendingElement = () => {
+        const pendingId = localStorage.getItem('lastAddedElementId')
+        if (pendingId) {
+            undoLastAction()
+            setLastAddedElement(null)
+        }
+        localStorage.removeItem('lastAddedElementId')
+        localStorage.removeItem('arrowDrawMode')
+        localStorage.removeItem('textDrawMode')
+        localStorage.removeItem('pendingShapeType')
+        localStorage.removeItem('pendingShapeProps')
+        setIsArrowDrawMode(false)
+        setIsTextDrawMode(false)
+    }
+
     const updateBulkPropsForRectangleWithText = (id, obj) => {
         let finalObj = { ...obj }
         if (obj.textColor !== undefined) {
@@ -994,6 +1056,7 @@ const BoardViewPage = (props) => {
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
+        cancelPendingElement,
         togglePencilMode,
         togglePointer,
         updateLastAddedElement,
@@ -1084,6 +1147,17 @@ const BoardViewPage = (props) => {
                                     isRectangleWithText
                                         ? updateBulkPropsForRectangleWithText
                                         : updateComponentBulkPropertiesInLocalStore
+                                }
+                                showFontFamilySection={
+                                    isTextSelected || isRectangleWithText
+                                }
+                                currentFontFamily={currentFontFamily}
+                                onFontFamilyChange={
+                                    isTextSelected
+                                        ? handleTextFontFamilyChange
+                                        : isRectangleWithText
+                                        ? handleRectangleTextFontFamilyChange
+                                        : undefined
                                 }
                                 postToolbarUpdate={() => {
                                     twoJSInstance.update()
