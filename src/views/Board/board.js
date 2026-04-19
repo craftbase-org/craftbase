@@ -33,6 +33,8 @@ import {
 } from 'utils/misc'
 import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
 import { RUBBER_MODE_KEY } from 'constants/misc'
+import Two from 'two.js'
+import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 
 export const BoardContext = createContext()
 
@@ -814,6 +816,27 @@ const BoardViewPage = (props) => {
                 Object.entries(prevProps).forEach(([name, val]) => {
                     applyPropertyToTwoJSGroup(group, name, val)
                 })
+
+                // Restore arrow endpoint vertices (x1/y1/x2/y2)
+                const hasArrowVertices =
+                    prevProps.x1 !== undefined ||
+                    prevProps.y1 !== undefined ||
+                    prevProps.x2 !== undefined ||
+                    prevProps.y2 !== undefined
+                if (hasArrowVertices) {
+                    const line = group.children?.[0]
+                    const pointCircle1Group = group.children?.[1]
+                    const pointCircle2Group = group.children?.[2]
+                    if (line && pointCircle1Group && pointCircle2Group) {
+                        const x1 = prevProps.x1 ?? line.vertices[0].x
+                        const y1 = prevProps.y1 ?? line.vertices[0].y
+                        const x2 = prevProps.x2 ?? line.vertices[1].x
+                        const y2 = prevProps.y2 ?? line.vertices[1].y
+                        updateX1Y1Vertices(Two, line, x1, y1, pointCircle1Group, two)
+                        updateX2Y2Vertices(Two, line, x2, y2, pointCircle2Group, two)
+                    }
+                }
+
                 two?.update()
 
                 if (
