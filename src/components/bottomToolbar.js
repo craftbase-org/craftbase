@@ -17,7 +17,7 @@ const BottomToolbar = () => {
             <button
                 title="Clear board"
                 onClick={clearBoard}
-                className="w-10 h-10 rounded-lg shadow-md bg-white flex items-center justify-center hover:bg-red-50 transition-colors duration-150"
+                className="w-10 h-10 rounded-lg shadow-md bg-red-700 flex items-center justify-center hover:bg-red-500 transition-colors duration-150"
             >
                 <img src={binIcon} className="w-5 h-5" alt="Clear board" />
             </button>

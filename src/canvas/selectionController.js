@@ -41,7 +41,9 @@ const MIN_SCALE_DIMENSION = 20
 
 function buildToolbarState(group, shape) {
     const componentType = group?.elementData?.componentType
-    const isText = false
+    const textChild = group?.children?.find(
+        (child) => typeof child.value === 'string'
+    )
     return {
         element: {
             [shape.id]: shape,
@@ -56,7 +58,7 @@ function buildToolbarState(group, shape) {
             id: shape.id,
             data: shape,
         },
-        text: isText ? { id: shape.id, data: shape } : { data: {} },
+        text: { data: textChild || {} },
         icon: { data: {} },
     }
 }
@@ -95,6 +97,7 @@ export default class SelectionController {
         this.currentGroup = null
         this.currentShape = null
         this.currentAdapter = null
+        this.currentTextChild = null
 
         this.interaction = null
 
@@ -176,6 +179,9 @@ export default class SelectionController {
         this.currentGroup = group
         this.currentShape = shape || group.children[0]
         this.currentAdapter = adapter
+        this.currentTextChild =
+            group.children?.find((child) => typeof child.value === 'string') ||
+            null
         this.targets.add(group)
 
         this.ui.visible = true
@@ -197,6 +203,7 @@ export default class SelectionController {
         this.currentGroup = null
         this.currentShape = null
         this.currentAdapter = null
+        this.currentTextChild = null
         this.ui.visible = false
         this.domElement.style.cursor = 'default'
         this.two.update()
@@ -451,8 +458,15 @@ export default class SelectionController {
             newHeight = initialHeight * scaleY
         }
 
-        const minW = this.currentAdapter.minWidth ?? MIN_SCALE_DIMENSION
-        const minH = this.currentAdapter.minHeight ?? MIN_SCALE_DIMENSION
+        let minW = this.currentAdapter.minWidth ?? MIN_SCALE_DIMENSION
+        let minH = this.currentAdapter.minHeight ?? MIN_SCALE_DIMENSION
+
+        if (this.currentTextChild) {
+            const bbox = this.currentTextChild._renderer?.elem?.getBBox?.()
+            if (bbox && bbox.width > 0) minW = Math.max(minW, bbox.width + 20)
+            if (bbox && bbox.height > 0) minH = Math.max(minH, bbox.height + 20)
+        }
+
         if (Math.abs(newWidth) < minW || Math.abs(newHeight) < minH) return
 
         const anchorOffsetX = (initialWidth * (scaleX - 1)) / 2

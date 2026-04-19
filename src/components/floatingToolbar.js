@@ -199,6 +199,9 @@ const Toolbar = (props) => {
                 componentState?.group?.data?.elementData?.strokeType ?? null
             draft.opacity =
                 componentState?.group?.data?.elementData?.metadata?.opacity ?? 1
+            if (componentState?.text?.data?.fill) {
+                draft.colorText = componentState.text.data.fill
+            }
         })
     }, [componentState, refreshKey])
 

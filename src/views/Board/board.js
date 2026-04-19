@@ -32,6 +32,7 @@ import {
     clearDashesOnTwoJSShape,
 } from 'utils/misc'
 import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
+import { RUBBER_MODE_KEY } from 'constants/misc'
 
 export const BoardContext = createContext()
 
@@ -558,6 +559,16 @@ const BoardViewPage = (props) => {
         setIsTextDrawMode(val)
     }
 
+    const setRubberModeInBoard = (val) => {
+        if (val) {
+            localStorage.setItem(RUBBER_MODE_KEY, 'true')
+            document.getElementById('main-two-root').style.cursor = 'crosshair'
+        } else {
+            localStorage.removeItem(RUBBER_MODE_KEY)
+            document.getElementById('main-two-root').style.cursor = 'default'
+        }
+    }
+
     const setDefaultLinewidthInBoard = (val) => {
         setDefaultLinewidth(val)
         setPencilDefaultLinewidth(val)
@@ -863,6 +874,11 @@ const BoardViewPage = (props) => {
         selectedComponent !== null &&
         selectedComponent?.shape?.type === 'newText'
 
+    const isRectangleWithText =
+        selectedComponent !== null &&
+        selectedComponent?.shape?.type === 'rectangle' &&
+        typeof selectedComponent?.text?.data?.value === 'string'
+
     const handleTextSizeChange = (newLabel) => {
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
         const textSize = sizesMap[newLabel]
@@ -883,6 +899,74 @@ const BoardViewPage = (props) => {
         twoJSInstance?.update()
     }
 
+    const handleRectangleTextSizeChange = (newLabel) => {
+        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
+        const textSize = sizesMap[newLabel]
+        const twoText = selectedComponent?.text?.data
+        if (!twoText) return
+        twoText.size = textSize
+        twoJSInstance?.update()
+
+        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const existingMetadata =
+            selectedComponent?.group?.data?.elementData?.metadata ?? {}
+        const updatedMetadata = { ...existingMetadata, textFontSize: textSize }
+        if (selectedComponent?.group?.data?.elementData) {
+            selectedComponent.group.data.elementData.metadata = updatedMetadata
+        }
+
+        // After Two.js renders the new font size, expand the rectangle if it
+        // is now smaller than the text's bounding box.
+        requestAnimationFrame(() => {
+            twoJSInstance?.update()
+            const rectangleShape = selectedComponent?.shape?.data
+            const bbox = twoText._renderer?.elem?.getBBox?.()
+            if (!rectangleShape || !bbox || bbox.width <= 0) {
+                updateComponentBulkPropertiesInLocalStore(componentId, {
+                    metadata: updatedMetadata,
+                })
+                return
+            }
+
+            const PAD = 20
+            const minW = bbox.width + PAD
+            const minH = bbox.height + PAD
+            const needsExpand =
+                rectangleShape.width < minW || rectangleShape.height < minH
+
+            if (needsExpand) {
+                const newW = Math.max(rectangleShape.width, minW)
+                const newH = Math.max(rectangleShape.height, minH)
+                rectangleShape.width = newW
+                rectangleShape.height = newH
+                twoJSInstance?.update()
+                updateComponentBulkPropertiesInLocalStore(componentId, {
+                    metadata: updatedMetadata,
+                    width: Math.round(newW),
+                    height: Math.round(newH),
+                })
+            } else {
+                updateComponentBulkPropertiesInLocalStore(componentId, {
+                    metadata: updatedMetadata,
+                })
+            }
+        })
+    }
+
+    const updateBulkPropsForRectangleWithText = (id, obj) => {
+        let finalObj = { ...obj }
+        if (obj.textColor !== undefined) {
+            const existingMeta =
+                selectedComponent?.group?.data?.elementData?.metadata ?? {}
+            const updatedMeta = { ...existingMeta, textFill: obj.textColor }
+            finalObj.metadata = updatedMeta
+            if (selectedComponent?.group?.data?.elementData) {
+                selectedComponent.group.data.elementData.metadata = updatedMeta
+            }
+        }
+        updateComponentBulkPropertiesInLocalStore(id, finalObj)
+    }
+
     const contextValueForSidebar = {
         boardId,
         isPersisted,
@@ -894,6 +978,7 @@ const BoardViewPage = (props) => {
         isArrowSelected,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
+        setRubberModeInBoard,
         togglePencilMode,
         togglePointer,
         updateLastAddedElement,
@@ -950,21 +1035,29 @@ const BoardViewPage = (props) => {
                         showToolbar &&
                         (!isMobile || showMobileToolbarPanel) && (
                             <Toolbar
-                                hideColorText={!isTextSelected}
+                                hideColorText={
+                                    !isTextSelected && !isRectangleWithText
+                                }
                                 hideColorIcon={true}
                                 hideColorBackground={
                                     isArrowSelected || isTextSelected
                                 }
                                 hideBorderSection={isTextSelected}
-                                showTextSizeSection={isTextSelected}
+                                showTextSizeSection={
+                                    isTextSelected || isRectangleWithText
+                                }
                                 currentFontSize={
                                     isTextSelected
                                         ? selectedComponent?.shape?.data?.size
+                                        : isRectangleWithText
+                                        ? selectedComponent?.text?.data?.size
                                         : undefined
                                 }
                                 onTextSizeChange={
                                     isTextSelected
                                         ? handleTextSizeChange
+                                        : isRectangleWithText
+                                        ? handleRectangleTextSizeChange
                                         : undefined
                                 }
                                 toggle={showToolbar}
@@ -973,7 +1066,9 @@ const BoardViewPage = (props) => {
                                 refreshKey={toolbarRefreshKey}
                                 isMobile={isMobile}
                                 updateComponentBulkProperties={
-                                    updateComponentBulkPropertiesInLocalStore
+                                    isRectangleWithText
+                                        ? updateBulkPropsForRectangleWithText
+                                        : updateComponentBulkPropertiesInLocalStore
                                 }
                                 postToolbarUpdate={() => {
                                     twoJSInstance.update()

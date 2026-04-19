@@ -31,6 +31,18 @@ function Rectangle(props) {
             groupRef.current = group
             shapeRef.current = rectangle
             group.children.unshift(rectangle)
+
+            const meta = props.metadata || {}
+            if (meta.hasText && meta.textContent) {
+                const twoText = two.makeText(meta.textContent, 0, 0)
+                twoText.fill = meta.textFill || '#000'
+                twoText.size = meta.textFontSize || 24
+                twoText.alignment = 'center'
+                twoText.baseline = meta.textBaseLine || 'middle'
+                twoText.family = meta.textFamily || 'Caveat'
+                group.add(twoText)
+            }
+
             two.update()
 
             document
