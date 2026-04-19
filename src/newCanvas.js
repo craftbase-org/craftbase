@@ -228,6 +228,7 @@ function addZUI(
     })
 
     domElement.addEventListener('mousedown', mousedown, false)
+    domElement.addEventListener('mousemove', hoverDetectMove, false)
     domElement.addEventListener('dblclick', dblclick, false)
     domElement.addEventListener('mousewheel', mousewheel, false)
     domElement.addEventListener('wheel', mousewheel, false)
@@ -435,10 +436,18 @@ function addZUI(
                             ...latestMeta,
                             hasText: true,
                             textContent: newContent,
-                            textFill: latestMeta.textFill || twoText.fill || '#000',
-                            textFontSize: latestMeta.textFontSize || twoText.size || 24,
-                            textFamily: latestMeta.textFamily || twoText.family || 'Caveat',
-                            textBaseLine: latestMeta.textBaseLine || twoText.baseline || 'middle',
+                            textFill:
+                                latestMeta.textFill || twoText.fill || '#000',
+                            textFontSize:
+                                latestMeta.textFontSize || twoText.size || 24,
+                            textFamily:
+                                latestMeta.textFamily ||
+                                twoText.family ||
+                                'Caveat',
+                            textBaseLine:
+                                latestMeta.textBaseLine ||
+                                twoText.baseline ||
+                                'middle',
                         },
                     })
                 }
@@ -510,6 +519,70 @@ function addZUI(
             deleteComponentFromLocalStore(componentId)
             pendingDeletionSet.delete(componentId)
         }, 1000)
+    }
+
+    const HOVER_THRESHOLD = 15
+    let lastHoveredCircleGroup = null
+
+    // Singleton hover indicator — separate from the selection circles
+    const hoverCircle = two.makeCircle(0, 0, 6)
+    hoverCircle.fill = 'rgba(76,154, 255, 0.7)'
+    hoverCircle.noStroke()
+    hoverCircle.opacity = 0
+
+    function hoverDetectMove(e) {
+        const isSelectPanMode =
+            !isPencilModeRef.current &&
+            localStorage.getItem('arrowDrawMode') !== 'true' &&
+            localStorage.getItem('textDrawMode') !== 'true' &&
+            localStorage.getItem('pendingShapeType') === null &&
+            localStorage.getItem(RUBBER_MODE_KEY) !== 'true'
+
+        if (!isSelectPanMode) {
+            if (lastHoveredCircleGroup) {
+                hoverCircle.opacity = 0
+                two.update()
+                lastHoveredCircleGroup = null
+            }
+            return
+        }
+
+        const worldPos = zui.clientToSurface(e.clientX, e.clientY)
+        let found = null
+        let foundWx = 0
+        let foundWy = 0
+
+        for (const child of two.scene.children) {
+            if (child?.elementData?.componentType !== 'arrowLine') continue
+            const gx = child.translation.x
+            const gy = child.translation.y
+            for (const circleGroup of [child.children[1], child.children[2]]) {
+                if (!circleGroup) continue
+                const wx = gx + circleGroup.translation.x
+                const wy = gy + circleGroup.translation.y
+                const dist = Math.sqrt(
+                    (worldPos.x - wx) ** 2 + (worldPos.y - wy) ** 2
+                )
+                if (dist < HOVER_THRESHOLD) {
+                    found = circleGroup
+                    foundWx = wx
+                    foundWy = wy
+                    break
+                }
+            }
+            if (found) break
+        }
+
+        if (found) {
+            hoverCircle.translation.x = foundWx
+            hoverCircle.translation.y = foundWy
+            if (found !== lastHoveredCircleGroup) hoverCircle.opacity = 1
+            two.update()
+        } else if (lastHoveredCircleGroup) {
+            hoverCircle.opacity = 0
+            two.update()
+        }
+        lastHoveredCircleGroup = found ?? null
     }
 
     function mousedown(e) {
@@ -778,7 +851,9 @@ function addZUI(
                 let avoidDragging = false
                 let isGroupSelector = false
 
-                // Hide all arrow endpoint circles before processing the new selection
+                // Hide all arrow endpoint circles and hover indicator before processing the new selection
+                lastHoveredCircleGroup = null
+                hoverCircle.opacity = 0
                 two.scene.children.forEach((child) => {
                     if (child?.elementData?.componentType === 'arrowLine') {
                         if (child.children[1]) child.children[1].opacity = 0

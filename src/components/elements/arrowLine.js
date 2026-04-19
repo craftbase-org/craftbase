@@ -63,6 +63,7 @@ function ArrowLine(props) {
     useEffect(() => {
         // Calculate x and y through dividing width and height by 2 or vice versa
         // if x and y are given then multiply width and height into 2
+        let hitAreaObserver = null
         const offsetHeight = 0
         const prevX = props.x
         const prevY = props.y
@@ -109,10 +110,37 @@ function ArrowLine(props) {
 
             two.update()
 
-            // console.log(
-            //     'point circle dom',
-            //     document.getElementById(pointCircle1.id)
-            // )
+            // Wider transparent hit area — inset from each endpoint so the
+            // tail/head circles remain independently clickable
+            const lineDomElem = document.getElementById(line.id)
+            if (lineDomElem) {
+                const HIT_INSET = 20
+                const hitElem = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+                hitElem.setAttribute('stroke', 'transparent')
+                hitElem.setAttribute('stroke-width', '12')
+                hitElem.setAttribute('pointer-events', 'stroke')
+                hitElem.style.cursor = 'pointer'
+
+                function syncHitLine() {
+                    const v0 = line.vertices[0]
+                    const v1 = line.vertices[1]
+                    const dx = v1.x - v0.x
+                    const dy = v1.y - v0.y
+                    const len = Math.sqrt(dx * dx + dy * dy)
+                    if (len < HIT_INSET * 2 + 5) return
+                    const r = HIT_INSET / len
+                    hitElem.setAttribute('x1', v0.x + dx * r)
+                    hitElem.setAttribute('y1', v0.y + dy * r)
+                    hitElem.setAttribute('x2', v1.x - dx * r)
+                    hitElem.setAttribute('y2', v1.y - dy * r)
+                }
+
+                syncHitLine()
+                lineDomElem.parentNode.insertBefore(hitElem, lineDomElem)
+                hitAreaObserver = new MutationObserver(syncHitLine)
+                hitAreaObserver.observe(lineDomElem, { attributes: true, attributeFilter: ['d'] })
+            }
+
             // some styling
             document.getElementById(line.id).style.cursor = 'pointer'
             document.getElementById(pointCircle1Group.id).style.cursor =
@@ -207,6 +235,7 @@ function ArrowLine(props) {
         }
 
         return () => {
+            hitAreaObserver?.disconnect()
             two.remove(group)
         }
     }, [])
