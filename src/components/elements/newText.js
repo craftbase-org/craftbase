@@ -68,6 +68,20 @@ function NewText(props) {
         toggleToolbar(false)
     }
 
+    const handleFontFamilyChange = (fontFamily) => {
+        const twoText = twoTextRef.current
+        if (!twoText) return
+        twoText.family = fontFamily
+        updateComponentBulkPropertiesInLocalStore(props.id, {
+            metadata: {
+                ...props.metadata,
+                textFontFamily: fontFamily,
+                content: twoText.value,
+            },
+        })
+        two.update()
+    }
+
     const handleTextSizeChange = (newLabel) => {
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
         const textSize = sizesMap[newLabel]
@@ -473,6 +487,9 @@ function NewText(props) {
                 twoText.size = props.metadata.fontSize
                 setTextSize(props.metadata.fontSize)
             }
+            if (props.metadata?.textFontFamily) {
+                twoText.family = props.metadata.textFontFamily
+            }
             if (
                 props.metadata?.content !== undefined &&
                 props.metadata.content !== textValueRef.current
@@ -540,6 +557,9 @@ function NewText(props) {
                     hideColorText={false}
                     hideBorderSection={true}
                     showTextSizeSection={true}
+                    showFontFamilySection={true}
+                    currentFontFamily={twoTextRef.current?.family || 'Caveat'}
+                    onFontFamilyChange={handleFontFamilyChange}
                     toggle={showToolbar}
                     componentState={internalState}
                     closeToolbar={closeToolbar}

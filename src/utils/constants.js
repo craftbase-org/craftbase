@@ -5,6 +5,7 @@ import RectangleIcon from 'wireframeAssets/rectangle.svg'
 import TextIcon from 'wireframeAssets/text.svg'
 import PencilIcon from 'wireframeAssets/pencil.svg'
 import PointerIcon from 'wireframeAssets/cursor.svg'
+import EraserIcon from 'wireframeAssets/eraser.svg'
 
 import RightArrowIcon from 'assets/right_arrow.svg'
 
@@ -155,14 +156,14 @@ export const staticPrimaryElementData = [
                 noAction: false,
                 drawerData: [],
             },
-            {
-                elementName: 'divider',
-                elementDisplayName: 'Divider',
-                elementSVG: DividerSVG,
-                hasDrawer: false,
-                noAction: false,
-                drawerData: [],
-            },
+            // {
+            //     elementName: 'divider',
+            //     elementDisplayName: 'Divider',
+            //     elementSVG: DividerSVG,
+            //     hasDrawer: false,
+            //     noAction: false,
+            //     drawerData: [],
+            // },
             {
                 elementName: 'pencil',
                 elementDisplayName: 'Pencil',
@@ -178,6 +179,14 @@ export const staticPrimaryElementData = [
                 elementSVG: TextIcon,
                 hasDrawer: false,
                 noAction: false,
+                drawerData: [],
+            },
+            {
+                elementName: 'rubber',
+                elementDisplayName: 'Eraser',
+                elementSVG: EraserIcon,
+                hasDrawer: false,
+                noAction: true,
                 drawerData: [],
             },
         ],

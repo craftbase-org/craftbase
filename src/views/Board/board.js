@@ -21,6 +21,7 @@ import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import PencilToolbar from 'components/pencilToolbar'
+import BottomToolbar from 'components/bottomToolbar'
 import controlsIcon from 'assets/controls.svg'
 import Spinner from 'components/common/spinnerWithSize'
 import Modal from 'components/common/modal'
@@ -30,8 +31,12 @@ import {
     strokeTypeToDashes,
     clearDashesOnTwoJSShape,
 } from 'utils/misc'
+import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
+import { RUBBER_MODE_KEY } from 'constants/misc'
+import Two from 'two.js'
+import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 
-const BoardContext = createContext()
+export const BoardContext = createContext()
 
 const BoardViewPage = (props) => {
     const routeParams = useParams()
@@ -318,23 +323,30 @@ const BoardViewPage = (props) => {
 
     const updateLastAddedElement = (obj) => {
         setLastAddedElement(obj)
-        document.getElementById('main-two-root').style.cursor = 'grabbing'
+        document.getElementById('main-two-root').style.cursor = 'crosshair'
     }
 
     const togglePointer = (pointerVal) => {
         setPointerToggle(pointerVal)
         setPencilMode(false)
         if (pointerVal) {
+            cancelPendingElement()
             setSelectedComponent(null)
             toggleToolbar(false)
+            document.getElementById('main-two-root').style.cursor = 'default'
         }
     }
 
     const togglePencilMode = (value) => {
         toggleToolbar(false)
         setPencilMode(value)
-        value === true && localStorage.setItem('pencilMode', 'TRUE')
-        value === false && localStorage.removeItem('pencilMode')
+        if (value) {
+            cancelPendingElement()
+            localStorage.setItem('pencilMode', 'TRUE')
+            document.getElementById('main-two-root').style.cursor = 'crosshair'
+        } else {
+            localStorage.removeItem('pencilMode')
+        }
     }
 
     function closeToolbar() {
@@ -554,6 +566,16 @@ const BoardViewPage = (props) => {
 
     const setTextDrawModeInBoard = (val) => {
         setIsTextDrawMode(val)
+    }
+
+    const setRubberModeInBoard = (val) => {
+        if (val) {
+            localStorage.setItem(RUBBER_MODE_KEY, 'true')
+            document.getElementById('main-two-root').style.cursor = 'crosshair'
+        } else {
+            localStorage.removeItem(RUBBER_MODE_KEY)
+            document.getElementById('main-two-root').style.cursor = 'default'
+        }
     }
 
     const setDefaultLinewidthInBoard = (val) => {
@@ -794,6 +816,27 @@ const BoardViewPage = (props) => {
                 Object.entries(prevProps).forEach(([name, val]) => {
                     applyPropertyToTwoJSGroup(group, name, val)
                 })
+
+                // Restore arrow endpoint vertices (x1/y1/x2/y2)
+                const hasArrowVertices =
+                    prevProps.x1 !== undefined ||
+                    prevProps.y1 !== undefined ||
+                    prevProps.x2 !== undefined ||
+                    prevProps.y2 !== undefined
+                if (hasArrowVertices) {
+                    const line = group.children?.[0]
+                    const pointCircle1Group = group.children?.[1]
+                    const pointCircle2Group = group.children?.[2]
+                    if (line && pointCircle1Group && pointCircle2Group) {
+                        const x1 = prevProps.x1 ?? line.vertices[0].x
+                        const y1 = prevProps.y1 ?? line.vertices[0].y
+                        const x2 = prevProps.x2 ?? line.vertices[1].x
+                        const y2 = prevProps.y2 ?? line.vertices[1].y
+                        updateX1Y1Vertices(Two, line, x1, y1, pointCircle1Group, two)
+                        updateX2Y2Vertices(Two, line, x2, y2, pointCircle2Group, two)
+                    }
+                }
+
                 two?.update()
 
                 if (
@@ -841,10 +884,190 @@ const BoardViewPage = (props) => {
         }
     }
 
+    const clearBoard = () => {
+        twoJSInstanceRef.current?.clear()
+        twoJSInstanceRef.current?.update()
+        setComponentStore({})
+        historyLogRef.current = []
+        setHistoryLog([])
+        if (!isPersisted) {
+            localStorage.removeItem(LOCAL_DRAFT_KEY)
+        }
+    }
+
     const isArrowSelected =
         selectedComponent !== null &&
         (selectedComponent?.shape?.type === 'arrowLine' ||
             selectedComponent?.group?.data?.elementData?.isLineCircle === true)
+
+    const isTextSelected =
+        selectedComponent !== null &&
+        selectedComponent?.shape?.type === 'newText'
+
+    const isRectangleWithText =
+        selectedComponent !== null &&
+        selectedComponent?.shape?.type === 'rectangle' &&
+        typeof selectedComponent?.text?.data?.value === 'string'
+
+    const currentFontFamily = isTextSelected
+        ? selectedComponent?.shape?.data?.family || 'Caveat'
+        : isRectangleWithText
+        ? selectedComponent?.text?.data?.family || 'Caveat'
+        : undefined
+
+    const handleTextSizeChange = (newLabel) => {
+        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
+        const textSize = sizesMap[newLabel]
+        const twoText = selectedComponent?.shape?.data
+        if (!twoText) return
+        twoText.size = textSize
+        twoText.leading = textSize
+        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const existingMetadata =
+            selectedComponent?.group?.data?.elementData?.metadata ?? {}
+        updateComponentBulkPropertiesInLocalStore(componentId, {
+            metadata: {
+                ...existingMetadata,
+                fontSize: textSize,
+                content: twoText.value,
+            },
+        })
+        twoJSInstance?.update()
+    }
+
+    const handleRectangleTextSizeChange = (newLabel) => {
+        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
+        const textSize = sizesMap[newLabel]
+        const twoText = selectedComponent?.text?.data
+        if (!twoText) return
+        twoText.size = textSize
+        twoJSInstance?.update()
+
+        const componentId = selectedComponent?.group?.data?.elementData?.id
+        // stateRefForComponentStore is always current; group.elementData.metadata
+        // is only set at mount and is stale after blur updates the store.
+        const existingMetadata =
+            stateRefForComponentStore.current[componentId]?.metadata ?? {}
+        const updatedMetadata = { ...existingMetadata, textFontSize: textSize }
+        if (selectedComponent?.group?.data?.elementData) {
+            selectedComponent.group.data.elementData.metadata = updatedMetadata
+        }
+
+        // After Two.js renders the new font size, expand the rectangle if it
+        // is now smaller than the text's bounding box.
+        // Capture whether text editing is active NOW so the RAF can detect
+        // if blur fires between the size change and the next frame.
+        const textAreaAtSizeChange = document.querySelector('.temp-input-area')
+        requestAnimationFrame(() => {
+            // If text editing was active when the size changed but the textarea
+            // is now gone, blur already committed the correct metadata
+            // (textContent + textFill). Overwriting with the stale snapshot
+            // captured here would wipe that out.
+            if (
+                textAreaAtSizeChange &&
+                !document.body.contains(textAreaAtSizeChange)
+            )
+                return
+
+            twoJSInstance?.update()
+            const rectangleShape = selectedComponent?.shape?.data
+            const bbox = twoText._renderer?.elem?.getBBox?.()
+            if (!rectangleShape || !bbox || bbox.width <= 0) {
+                updateComponentBulkPropertiesInLocalStore(componentId, {
+                    metadata: updatedMetadata,
+                })
+                return
+            }
+
+            const PAD = 20
+            const minW = bbox.width + PAD
+            const minH = bbox.height + PAD
+            const needsExpand =
+                rectangleShape.width < minW || rectangleShape.height < minH
+
+            if (needsExpand) {
+                const newW = Math.max(rectangleShape.width, minW)
+                const newH = Math.max(rectangleShape.height, minH)
+                rectangleShape.width = newW
+                rectangleShape.height = newH
+                twoJSInstance?.update()
+                updateComponentBulkPropertiesInLocalStore(componentId, {
+                    metadata: updatedMetadata,
+                    width: Math.round(newW),
+                    height: Math.round(newH),
+                })
+            } else {
+                updateComponentBulkPropertiesInLocalStore(componentId, {
+                    metadata: updatedMetadata,
+                })
+            }
+        })
+    }
+
+    const handleTextFontFamilyChange = (fontFamily) => {
+        const twoText = selectedComponent?.shape?.data
+        if (!twoText) return
+        twoText.family = fontFamily
+        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const existingMetadata =
+            selectedComponent?.group?.data?.elementData?.metadata ?? {}
+        updateComponentBulkPropertiesInLocalStore(componentId, {
+            metadata: {
+                ...existingMetadata,
+                textFontFamily: fontFamily,
+                content: twoText.value,
+            },
+        })
+        twoJSInstance?.update()
+    }
+
+    const handleRectangleTextFontFamilyChange = (fontFamily) => {
+        const twoText = selectedComponent?.text?.data
+        if (!twoText) return
+        twoText.family = fontFamily
+        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const existingMetadata =
+            stateRefForComponentStore.current[componentId]?.metadata ?? {}
+        const updatedMetadata = { ...existingMetadata, textFontFamily: fontFamily }
+        if (selectedComponent?.group?.data?.elementData) {
+            selectedComponent.group.data.elementData.metadata = updatedMetadata
+        }
+        updateComponentBulkPropertiesInLocalStore(componentId, {
+            metadata: updatedMetadata,
+        })
+        twoJSInstance?.update()
+    }
+
+    const cancelPendingElement = () => {
+        const pendingId = localStorage.getItem('lastAddedElementId')
+        if (pendingId) {
+            undoLastAction()
+            setLastAddedElement(null)
+        }
+        localStorage.removeItem('lastAddedElementId')
+        localStorage.removeItem('arrowDrawMode')
+        localStorage.removeItem('textDrawMode')
+        localStorage.removeItem('pendingShapeType')
+        localStorage.removeItem('pendingShapeProps')
+        setIsArrowDrawMode(false)
+        setIsTextDrawMode(false)
+        // Detach selectionController so its hover listener stops overriding the cursor
+        window.dispatchEvent(new CustomEvent('clearSelector', {}))
+    }
+
+    const updateBulkPropsForRectangleWithText = (id, obj) => {
+        let finalObj = { ...obj }
+        if (obj.textColor !== undefined) {
+            const existingMeta =
+                stateRefForComponentStore.current[id]?.metadata ?? {}
+            const updatedMeta = { ...existingMeta, textFill: obj.textColor }
+            finalObj.metadata = updatedMeta
+            if (selectedComponent?.group?.data?.elementData) {
+                selectedComponent.group.data.elementData.metadata = updatedMeta
+            }
+        }
+        updateComponentBulkPropertiesInLocalStore(id, finalObj)
+    }
 
     const contextValueForSidebar = {
         boardId,
@@ -857,6 +1080,8 @@ const BoardViewPage = (props) => {
         isArrowSelected,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
+        setRubberModeInBoard,
+        cancelPendingElement,
         togglePencilMode,
         togglePointer,
         updateLastAddedElement,
@@ -879,6 +1104,7 @@ const BoardViewPage = (props) => {
         historyLog,
         historyLogRef,
         undoLastAction,
+        clearBoard,
     }
 
     return (
@@ -912,16 +1138,51 @@ const BoardViewPage = (props) => {
                         showToolbar &&
                         (!isMobile || showMobileToolbarPanel) && (
                             <Toolbar
-                                hideColorText={true}
+                                hideColorText={
+                                    !isTextSelected && !isRectangleWithText
+                                }
                                 hideColorIcon={true}
-                                hideColorBackground={isArrowSelected}
+                                hideColorBackground={
+                                    isArrowSelected || isTextSelected
+                                }
+                                hideBorderSection={isTextSelected}
+                                showTextSizeSection={
+                                    isTextSelected || isRectangleWithText
+                                }
+                                currentFontSize={
+                                    isTextSelected
+                                        ? selectedComponent?.shape?.data?.size
+                                        : isRectangleWithText
+                                        ? selectedComponent?.text?.data?.size
+                                        : undefined
+                                }
+                                onTextSizeChange={
+                                    isTextSelected
+                                        ? handleTextSizeChange
+                                        : isRectangleWithText
+                                        ? handleRectangleTextSizeChange
+                                        : undefined
+                                }
                                 toggle={showToolbar}
                                 componentState={selectedComponent}
                                 closeToolbar={closeToolbar}
                                 refreshKey={toolbarRefreshKey}
                                 isMobile={isMobile}
                                 updateComponentBulkProperties={
-                                    updateComponentBulkPropertiesInLocalStore
+                                    isRectangleWithText
+                                        ? updateBulkPropsForRectangleWithText
+                                        : updateComponentBulkPropertiesInLocalStore
+                                }
+                                showFontFamilySection={
+                                    isTextSelected || isRectangleWithText
+                                }
+                                currentFontFamily={currentFontFamily}
+                                onFontFamilyChange={
+                                    isTextSelected
+                                        ? handleTextFontFamilyChange
+                                        : isRectangleWithText
+                                        ? handleRectangleTextFontFamilyChange
+                                        : undefined
                                 }
                                 postToolbarUpdate={() => {
                                     twoJSInstance.update()
@@ -982,6 +1243,7 @@ const BoardViewPage = (props) => {
                         pencilDefaultStrokeType={pencilDefaultStrokeType}
                         pencilStrokeColor={pencilStrokeColor}
                     />
+                    <BottomToolbar />
                 </div>
             </BoardContext.Provider>
             {/* {isMobile ? (

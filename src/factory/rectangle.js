@@ -7,7 +7,8 @@ export default class RectangleFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill, width, height, stroke, linewidth, strokeType } = this.properties
+        const { fill, width, height, stroke, linewidth, strokeType } =
+            this.properties
 
         // Implement core element
 

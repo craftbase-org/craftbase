@@ -4,6 +4,7 @@
     "private": true,
     "dependencies": {
         "@apollo/client": "^3.10.4",
+        "@sentry/react": "^10.49.0",
         "@tanstack/react-ranger": "^0.0.4",
         "@testing-library/jest-dom": "^6.4.5",
         "@testing-library/react": "^16.0.0",

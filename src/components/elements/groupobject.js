@@ -2,7 +2,6 @@ import React, { useEffect, useState, Fragment } from 'react'
 
 const factoryModules = import.meta.glob('../../factory/*.js')
 import Two from 'two.js'
-import interact from 'interactjs'
 import { useBoardContext } from 'views/Board/board'
 import { useMutation } from '@apollo/client'
 import {
@@ -115,7 +114,7 @@ function GroupedObjectWrapper(props) {
                     element.translation.x = newX
                     element.translation.y = newY
 
-                    let newMetadata = []
+                    let newMetadata = element.elementData.metadata
                     if (element.elementData.componentType === 'pencil') {
                         newMetadata = element.elementData.metadata.map(
                             (vert, index) => {
@@ -351,12 +350,18 @@ function GroupedObjectWrapper(props) {
                     // set component's coordinates
                     coreObject.translation.x = item.x
                     coreObject.translation.y = item.y
-                    // console.log(
-                    //     'component coreObject generation in group wrapper',
-                    //     item.componentType,
-                    //     item.x,
-                    //     item.y
-                    // )
+
+                    const meta = item.metadata || {}
+                    if (meta.hasText && meta.textContent) {
+                        const twoText = two.makeText(meta.textContent, 0, 0)
+                        twoText.fill = meta.textFill || '#000'
+                        twoText.size = meta.textFontSize || 24
+                        twoText.alignment = 'center'
+                        twoText.baseline = meta.textBaseLine || 'middle'
+                        twoText.family = meta.textFamily || 'Caveat'
+                        coreObject.add(twoText)
+                    }
+
                     group.add(coreObject)
                     // group.children.unshift(coreObject)
                     two.update()
@@ -405,16 +410,16 @@ function GroupedObjectWrapper(props) {
         )
         two.update()
 
-        interact(`#${group.id}`).on('click', () => {
-            console.log('on click ')
-            selector.update(
-                rectangle.getBoundingClientRect(true).left,
-                rectangle.getBoundingClientRect(true).right,
-                rectangle.getBoundingClientRect(true).top,
-                rectangle.getBoundingClientRect(true).bottom
-            )
-            two.update()
-        })
+        // interact(`#${group.id}`).on('click', () => {
+        //     console.log('on click ')
+        //     selector.update(
+        //         rectangle.getBoundingClientRect(true).left,
+        //         rectangle.getBoundingClientRect(true).right,
+        //         rectangle.getBoundingClientRect(true).top,
+        //         rectangle.getBoundingClientRect(true).bottom
+        //     )
+        //     two.update()
+        // })
 
         // group._renderer.elem.addEventListener('dblclick', () => {
         //     // console.log("group dblclick handler", group.children[1].id);
@@ -442,39 +447,39 @@ function GroupedObjectWrapper(props) {
 
         setGroupId(group.id)
 
-        interact(`#${group.id}`).resizable({
-            edges: { right: true, left: true, top: true, bottom: true },
+        // interact(`#${group.id}`).resizable({
+        //     edges: { right: true, left: true, top: true, bottom: true },
 
-            listeners: {
-                start(event) {
-                    getGroupElementFromDOM.setAttribute('data-resize', 'true')
-                },
-                move(event) {
-                    const target = event.target
-                    const rect = event.rect
+        //     listeners: {
+        //         start(event) {
+        //             getGroupElementFromDOM.setAttribute('data-resize', 'true')
+        //         },
+        //         move(event) {
+        //             const target = event.target
+        //             const rect = event.rect
 
-                    const minRectHeight = parseInt(rect.height / 2)
-                    const minRectWidth = parseInt(rect.width / 2)
+        //             const minRectHeight = parseInt(rect.height / 2)
+        //             const minRectWidth = parseInt(rect.width / 2)
 
-                    if (minRectHeight > 20 && minRectWidth > 20) {
-                        rectangle.width = rect.width
-                        rectangle.height = rect.height
+        //             if (minRectHeight > 20 && minRectWidth > 20) {
+        //                 rectangle.width = rect.width
+        //                 rectangle.height = rect.height
 
-                        selector.update(
-                            rectangle.getBoundingClientRect(true).left,
-                            rectangle.getBoundingClientRect(true).right,
-                            rectangle.getBoundingClientRect(true).top,
-                            rectangle.getBoundingClientRect(true).bottom
-                        )
-                    }
-                    two.update()
-                },
-                end(event) {
-                    console.log('the end')
-                    getGroupElementFromDOM.removeAttribute('data-resize')
-                },
-            },
-        })
+        //                 selector.update(
+        //                     rectangle.getBoundingClientRect(true).left,
+        //                     rectangle.getBoundingClientRect(true).right,
+        //                     rectangle.getBoundingClientRect(true).top,
+        //                     rectangle.getBoundingClientRect(true).bottom
+        //                 )
+        //             }
+        //             two.update()
+        //         },
+        //         end(event) {
+        //             console.log('the end')
+        //             getGroupElementFromDOM.removeAttribute('data-resize')
+        //         },
+        //     },
+        // })
 
         // interact(`#${group.id}`).draggable({
         //     // enable inertial throwing

@@ -4,6 +4,14 @@
 - Destructure imports when possible (eg. import { foo } from 'bar')
 - Use `tabWidth:4` for generating code for all the files (.js, .yaml, .md, etc...)
 
+# General guidelines
+
+For example:
+
+- Only use absolute positioning when necessary. Opt for responsive and well structured layouts that use flexbox and grid by default
+- Refactor code as you go to keep code clean
+- Keep file sizes small and put helper functions and components in their own files.
+
 # Code structure
 
 Below is the craftbase project codemap with different sections talking about overview, architecture, directory structure, technology stack and key files.
@@ -22,6 +30,21 @@ Craftbase is an minimal virtual whiteboarding tool built with React that uses Tw
 - **Component Factories**: Template generators that produce component definitions
 
 The Board component uses React Context (`BoardContext`) to pass state and methods down to child components. This is the primary state management pattern used throughout the application.
+
+## React + Two.js Stale Closure Pattern
+
+**Critical architectural constraint**: `addZUI` in `src/newCanvas.js` is called **once on mount** via `useEffect([], [])`. All DOM event listeners registered inside it (mouse, dblclick, keydown, etc.) close over the initial `props` and local variables — they never see React state updates.
+
+**Rule**: Any Two.js event handler that needs live React state **must** read from a `useRef`, not from `props` or state directly.
+
+Pattern:
+```js
+const myValueRef = useRef(props.myValue)
+useEffect(() => { myValueRef.current = props.myValue }, [props.myValue])
+// pass myValueRef into addZUI, read myValueRef.current inside handlers
+```
+
+This is because Two.js attaches raw DOM `addEventListener` calls outside React's reconciliation loop — React cannot re-bind them on re-render. The ref object is stable across renders; `.current` always holds the latest value at call time.
 
 ## Directory Structure
 
@@ -181,10 +204,10 @@ Child components access this context via `useContext(BoardContext)`.
 When testing on a real mobile device (laptop and phone on same WiFi):
 
 1. Replace `localhost` with the laptop's LAN IP (e.g. `10.151.106.95`) in `.env`:
-   ```
-   VITE_GRAPHQL_ENDPOINT=http://<LAN_IP>:8080/v1/graphql
-   VITE_WS_GRAPHQL_ENDPOINT=ws://<LAN_IP>:8080/v1/graphql
-   ```
+    ```
+    VITE_GRAPHQL_ENDPOINT=http://<LAN_IP>:8080/v1/graphql
+    VITE_WS_GRAPHQL_ENDPOINT=ws://<LAN_IP>:8080/v1/graphql
+    ```
 2. Ensure `vite.config.mjs` has `host: true` and `allowedHosts: ['<LAN_IP>']` (no `http://` prefix).
 3. Restart the dev server, then open `http://<LAN_IP>:5173` on mobile.
 4. **Revert `.env` before committing** — or use `.env.local` for the override so it stays out of git.

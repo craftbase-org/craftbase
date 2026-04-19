@@ -1,4 +1,5 @@
 import React from 'react'
+import * as Sentry from '@sentry/react'
 
 class ErrorBoundaryBoardView extends React.Component {
     constructor(props) {
@@ -11,7 +12,13 @@ class ErrorBoundaryBoardView extends React.Component {
     }
 
     componentDidCatch(error, errorInfo) {
-        // sentry.post()
+        Sentry.captureException(error, {
+            user: { id: localStorage.getItem('userId') },
+            contexts: {
+                board: { boardId: localStorage.getItem('craftbase_background_board_id') },
+            },
+            extra: errorInfo,
+        })
     }
 
     render() {

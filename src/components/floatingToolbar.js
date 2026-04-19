@@ -157,6 +157,9 @@ const Toolbar = (props) => {
         showTextSizeSection,
         currentFontSize,
         onTextSizeChange,
+        showFontFamilySection,
+        currentFontFamily,
+        onFontFamilyChange,
         refreshKey,
         isMobile,
     } = props
@@ -199,6 +202,9 @@ const Toolbar = (props) => {
                 componentState?.group?.data?.elementData?.strokeType ?? null
             draft.opacity =
                 componentState?.group?.data?.elementData?.metadata?.opacity ?? 1
+            if (componentState?.text?.data?.fill) {
+                draft.colorText = componentState.text.data.fill
+            }
         })
     }, [componentState, refreshKey])
 
@@ -263,6 +269,38 @@ const Toolbar = (props) => {
                                 }`}
                             >
                                 {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            ),
+            renderSvg: () => null,
+        },
+        {
+            key: 'fontFamily',
+            hide: !showFontFamilySection,
+            content: () => (
+                <div className="px-2 py-1 w-full">
+                    <p className="text-xs text-gray-400 mb-2">Font</p>
+                    <div className="flex flex-row gap-2">
+                        {[
+                            { label: 'Caveat', family: 'Caveat' },
+                            { label: 'Geist', family: 'Geist' },
+                        ].map(({ label, family }) => (
+                            <button
+                                key={family}
+                                onClick={() =>
+                                    onFontFamilyChange &&
+                                    onFontFamilyChange(family)
+                                }
+                                style={{ fontFamily: family }}
+                                className={`w-12 h-8 text-sm border rounded transition-colors ${
+                                    currentFontFamily === family
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                                }`}
+                            >
+                                Aa
                             </button>
                         ))}
                     </div>
