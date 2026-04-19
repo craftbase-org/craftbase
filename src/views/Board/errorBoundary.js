@@ -1,4 +1,5 @@
 import React from 'react'
+import * as Sentry from '@sentry/react'
 
 class ErrorBoundaryBoardView extends React.Component {
     constructor(props) {
@@ -11,7 +12,7 @@ class ErrorBoundaryBoardView extends React.Component {
     }
 
     componentDidCatch(error, errorInfo) {
-        // sentry.post()
+        Sentry.captureException(error, { extra: errorInfo })
     }
 
     render() {
