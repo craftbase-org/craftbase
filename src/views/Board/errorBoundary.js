@@ -12,7 +12,13 @@ class ErrorBoundaryBoardView extends React.Component {
     }
 
     componentDidCatch(error, errorInfo) {
-        Sentry.captureException(error, { extra: errorInfo })
+        Sentry.captureException(error, {
+            user: { id: localStorage.getItem('userId') },
+            contexts: {
+                board: { boardId: localStorage.getItem('craftbase_background_board_id') },
+            },
+            extra: errorInfo,
+        })
     }
 
     render() {

@@ -1051,6 +1051,8 @@ const BoardViewPage = (props) => {
         localStorage.removeItem('pendingShapeProps')
         setIsArrowDrawMode(false)
         setIsTextDrawMode(false)
+        // Detach selectionController so its hover listener stops overriding the cursor
+        window.dispatchEvent(new CustomEvent('clearSelector', {}))
     }
 
     const updateBulkPropsForRectangleWithText = (id, obj) => {

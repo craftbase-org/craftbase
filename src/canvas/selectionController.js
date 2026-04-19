@@ -225,7 +225,7 @@ export default class SelectionController {
         this.currentAdapter = null
         this.currentTextChild = null
         this.ui.visible = false
-        this.domElement.style.cursor = 'default'
+        this.domElement.style.cursor = ''
         this.two.update()
         this.callbacks.onDeselect()
     }
@@ -428,7 +428,7 @@ export default class SelectionController {
             if (this.interaction) return
             const hit = this.hitTest(ev.clientX, ev.clientY)
             if (!hit) {
-                this.domElement.style.cursor = 'default'
+                this.domElement.style.cursor = ''
                 return
             }
             if (hit.mode === 'rotate') {
