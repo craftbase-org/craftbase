@@ -1566,7 +1566,7 @@ function addZUI(
                     two.remove(shape)
                     setOnGroupHandler(obj)
                     setSelectedComponentInBoard(null)
-                } else {
+                } else if (shape?.elementData) {
                     // else shape is not a group selector then update shape's properties
                     if (
                         shape.elementData.x == shape.translation.x &&
@@ -2179,7 +2179,7 @@ const Canvas = (props) => {
                     let relativeX = item.x - xMid
                     let relativeY = item.y - yMid
 
-                    let newMetadata = []
+                    let newMetadata = item.metadata
                     if (item.componentType === 'pencil') {
                         newMetadata = item.metadata.map((vert, index) => {
                             const lwProp =

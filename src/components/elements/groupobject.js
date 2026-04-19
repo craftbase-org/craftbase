@@ -114,7 +114,7 @@ function GroupedObjectWrapper(props) {
                     element.translation.x = newX
                     element.translation.y = newY
 
-                    let newMetadata = []
+                    let newMetadata = element.elementData.metadata
                     if (element.elementData.componentType === 'pencil') {
                         newMetadata = element.elementData.metadata.map(
                             (vert, index) => {
@@ -350,12 +350,18 @@ function GroupedObjectWrapper(props) {
                     // set component's coordinates
                     coreObject.translation.x = item.x
                     coreObject.translation.y = item.y
-                    // console.log(
-                    //     'component coreObject generation in group wrapper',
-                    //     item.componentType,
-                    //     item.x,
-                    //     item.y
-                    // )
+
+                    const meta = item.metadata || {}
+                    if (meta.hasText && meta.textContent) {
+                        const twoText = two.makeText(meta.textContent, 0, 0)
+                        twoText.fill = meta.textFill || '#000'
+                        twoText.size = meta.textFontSize || 24
+                        twoText.alignment = 'center'
+                        twoText.baseline = meta.textBaseLine || 'middle'
+                        twoText.family = meta.textFamily || 'Caveat'
+                        coreObject.add(twoText)
+                    }
+
                     group.add(coreObject)
                     // group.children.unshift(coreObject)
                     two.update()

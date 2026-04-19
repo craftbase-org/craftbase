@@ -162,13 +162,9 @@ function ArrowLine(props) {
                 .getElementById(pointCircle2Group.id)
                 .setAttribute('data-direction', 'right')
 
-            // setting database's id in html attribute of element
-            // document
-            //     .getElementById(group.id)
-            //     .setAttribute('data-component-id', props.id)
-            // document
-            //     .getElementById(group.id)
-            //     .setAttribute('data-label', 'line_coord')
+            document
+                .getElementById(group.id)
+                .setAttribute('data-component-id', props.id)
 
             setInternalState((draft) => {
                 draft.element = {
