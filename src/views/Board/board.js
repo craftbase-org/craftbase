@@ -908,8 +908,10 @@ const BoardViewPage = (props) => {
         twoJSInstance?.update()
 
         const componentId = selectedComponent?.group?.data?.elementData?.id
+        // stateRefForComponentStore is always current; group.elementData.metadata
+        // is only set at mount and is stale after blur updates the store.
         const existingMetadata =
-            selectedComponent?.group?.data?.elementData?.metadata ?? {}
+            stateRefForComponentStore.current[componentId]?.metadata ?? {}
         const updatedMetadata = { ...existingMetadata, textFontSize: textSize }
         if (selectedComponent?.group?.data?.elementData) {
             selectedComponent.group.data.elementData.metadata = updatedMetadata
@@ -917,7 +919,20 @@ const BoardViewPage = (props) => {
 
         // After Two.js renders the new font size, expand the rectangle if it
         // is now smaller than the text's bounding box.
+        // Capture whether text editing is active NOW so the RAF can detect
+        // if blur fires between the size change and the next frame.
+        const textAreaAtSizeChange = document.querySelector('.temp-input-area')
         requestAnimationFrame(() => {
+            // If text editing was active when the size changed but the textarea
+            // is now gone, blur already committed the correct metadata
+            // (textContent + textFill). Overwriting with the stale snapshot
+            // captured here would wipe that out.
+            if (
+                textAreaAtSizeChange &&
+                !document.body.contains(textAreaAtSizeChange)
+            )
+                return
+
             twoJSInstance?.update()
             const rectangleShape = selectedComponent?.shape?.data
             const bbox = twoText._renderer?.elem?.getBBox?.()
@@ -957,7 +972,7 @@ const BoardViewPage = (props) => {
         let finalObj = { ...obj }
         if (obj.textColor !== undefined) {
             const existingMeta =
-                selectedComponent?.group?.data?.elementData?.metadata ?? {}
+                stateRefForComponentStore.current[id]?.metadata ?? {}
             const updatedMeta = { ...existingMeta, textFill: obj.textColor }
             finalObj.metadata = updatedMeta
             if (selectedComponent?.group?.data?.elementData) {

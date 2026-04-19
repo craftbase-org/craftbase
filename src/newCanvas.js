@@ -5,7 +5,11 @@ import { ZUI } from 'two.js/extras/jsm/zui'
 import { useBoardContext } from 'views/Board/board'
 import { useMediaQueryUtils } from 'constants/exportHooks'
 
-import { GROUP_COMPONENT, componentTypes, RUBBER_MODE_KEY } from 'constants/misc'
+import {
+    GROUP_COMPONENT,
+    componentTypes,
+    RUBBER_MODE_KEY,
+} from 'constants/misc'
 import Spinner from 'components/common/spinner'
 
 const elementModules = import.meta.glob('./components/elements/*.js')
@@ -82,7 +86,8 @@ function addZUI(
     setTextDrawModeOff,
     setPointerElement,
     updateComponentBulkPropertiesInLocalStore,
-    deleteComponentFromLocalStore
+    deleteComponentFromLocalStore,
+    isPencilModeRef
 ) {
     // console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
@@ -257,7 +262,12 @@ function addZUI(
             shape = {}
         }
 
-        const showTextInput = (group, twoText, componentId, currentMetadata) => {
+        const showTextInput = (
+            group,
+            twoText,
+            componentId,
+            currentMetadata
+        ) => {
             const groupDomElem = document.getElementById(`${group.id}`)
             if (!groupDomElem) return
 
@@ -265,8 +275,11 @@ function addZUI(
             const textDomElem = twoText._renderer.elem
             const screenRect = textDomElem.getBoundingClientRect()
 
-            // Hide the Two.js group so the textarea sits on top cleanly
-            groupDomElem.style.display = 'none'
+            // Hide only the SVG text node so the rectangle shape stays visible
+            // while the textarea overlays it for editing.
+            textDomElem.style.display = 'none'
+            selectionController.ui.visible = false
+            two.update()
 
             const fontSize = twoText.size || 36
             // Use a generous line-height so ascenders/descenders are
@@ -383,7 +396,10 @@ function addZUI(
                     measureSpan.parentNode.removeChild(measureSpan)
                 }
 
-                groupDomElem.style.display = 'block'
+                textDomElem.style.display = ''
+                selectionController.ui.visible = true
+                selectionController.syncToTarget()
+                two.update()
 
                 const newContent = input.value
                 // setTextValue(newContent)
@@ -408,16 +424,21 @@ function addZUI(
                 group.center()
                 two.update()
 
+                // this means "rectangle-with-text" is enabled
                 if (componentId) {
+                    // Use the live elementData.metadata (updated by toolbar ops
+                    // like font-size and text-color) rather than the stale
+                    // currentMetadata snapshot captured at dblclick time.
+                    const latestMeta = group.elementData?.metadata || {}
                     updateComponentBulkPropertiesInLocalStore(componentId, {
                         metadata: {
-                            ...currentMetadata,
+                            ...latestMeta,
                             hasText: true,
                             textContent: newContent,
-                            textFill: twoText.fill || '#000',
-                            textFontSize: twoText.size || 24,
-                            textFamily: twoText.family || 'Caveat',
-                            textBaseLine: twoText.baseline || 'middle',
+                            textFill: latestMeta.textFill || twoText.fill || '#000',
+                            textFontSize: latestMeta.textFontSize || twoText.size || 24,
+                            textFamily: latestMeta.textFamily || twoText.family || 'Caveat',
+                            textBaseLine: latestMeta.textBaseLine || twoText.baseline || 'middle',
                         },
                     })
                 }
@@ -426,7 +447,7 @@ function addZUI(
             })
         }
 
-        if (shape !== null) {
+        if (shape !== null && !isPencilModeRef?.current) {
             if (shape.elementData?.componentType === componentTypes.rectangle) {
                 const meta = shape.elementData.metadata || {}
                 let twoText = shape.children.find(
@@ -442,12 +463,7 @@ function addZUI(
                     shape.add(twoText)
                     two.update()
                 }
-                showTextInput(
-                    shape,
-                    twoText,
-                    shape.elementData.id,
-                    meta
-                )
+                showTextInput(shape, twoText, shape.elementData.id, meta)
             }
         }
     }
@@ -791,6 +807,7 @@ function addZUI(
                         document.querySelector('.temp-input-area')
                     if (activeTextInput) {
                         shape = {}
+                        avoidDragging = true
                     } else {
                         // shape = two.scene
                         const { x1, x2, y1, y2 } = {
@@ -904,6 +921,7 @@ function addZUI(
                 // console.log('shape selected', shape)
 
                 if (
+                    !avoidDragging &&
                     !shape.elementData.isGroupSelector &&
                     !controllerHandledSelection
                 ) {
@@ -1970,6 +1988,7 @@ const Canvas = (props) => {
     const [cloneElement, setCloneElement] = useState(null)
 
     const stateRefForComponentStore = useRef()
+    const isPencilModeRef = useRef(props.isPencilMode)
 
     // useEffect(()=>{},[insertComponentSuccess])
 
@@ -2002,7 +2021,8 @@ const Canvas = (props) => {
             () => setTextDrawModeInBoard(false),
             setCurrentElementInBoard,
             updateComponentBulkPropertiesInLocalStore,
-            deleteComponentFromLocalStore
+            deleteComponentFromLocalStore,
+            isPencilModeRef
         )
 
         // this.props.getElementsData('CONSTRUCT', arr)
@@ -2090,6 +2110,7 @@ const Canvas = (props) => {
     }, [props.lastAddedElement])
 
     useEffect(() => {
+        isPencilModeRef.current = props.isPencilMode
         if (props.isPencilMode === true) {
             isDrawing = true
             document.getElementById('main-two-root').style.cursor = 'crosshair'

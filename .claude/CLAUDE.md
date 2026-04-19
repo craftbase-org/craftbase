@@ -31,6 +31,21 @@ Craftbase is an minimal virtual whiteboarding tool built with React that uses Tw
 
 The Board component uses React Context (`BoardContext`) to pass state and methods down to child components. This is the primary state management pattern used throughout the application.
 
+## React + Two.js Stale Closure Pattern
+
+**Critical architectural constraint**: `addZUI` in `src/newCanvas.js` is called **once on mount** via `useEffect([], [])`. All DOM event listeners registered inside it (mouse, dblclick, keydown, etc.) close over the initial `props` and local variables — they never see React state updates.
+
+**Rule**: Any Two.js event handler that needs live React state **must** read from a `useRef`, not from `props` or state directly.
+
+Pattern:
+```js
+const myValueRef = useRef(props.myValue)
+useEffect(() => { myValueRef.current = props.myValue }, [props.myValue])
+// pass myValueRef into addZUI, read myValueRef.current inside handlers
+```
+
+This is because Two.js attaches raw DOM `addEventListener` calls outside React's reconciliation loop — React cannot re-bind them on re-render. The ref object is stable across renders; `.current` always holds the latest value at call time.
+
 ## Directory Structure
 
 ### `/src/views`

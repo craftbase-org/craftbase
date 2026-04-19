@@ -34,6 +34,7 @@ function Rectangle(props) {
 
             const meta = props.metadata || {}
             if (meta.hasText && meta.textContent) {
+                // this means "rectangle-with-text"
                 const twoText = two.makeText(meta.textContent, 0, 0)
                 twoText.fill = meta.textFill || '#000'
                 twoText.size = meta.textFontSize || 24
