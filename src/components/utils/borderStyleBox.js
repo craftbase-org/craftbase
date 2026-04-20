@@ -101,7 +101,9 @@ const BorderStyleBox = ({
     return (
         <Fragment>
             <BorderStyleBoxContainer className={`text-left p-0 text-xs`}>
-                <label htmlFor="border-widths-row">Stroke Width</label>
+                <label htmlFor="border-widths-row" className="text-gray-500">
+                    Stroke Width
+                </label>
                 <div
                     id="border-widths-row"
                     data-parent="floating-toolbar"
@@ -109,8 +111,10 @@ const BorderStyleBox = ({
                 >
                     {renderBorderWidths()}
                 </div>
-                <hr className="my-2" />
-                <label htmlFor="border-type-row">Stroke Type</label>
+
+                <label htmlFor="border-type-row" className="text-gray-500">
+                    Stroke Type
+                </label>
                 <div
                     id="border-type-row"
                     data-parent="floating-toolbar"
@@ -118,14 +122,16 @@ const BorderStyleBox = ({
                 >
                     {renderBorderType()}
                 </div>
+                <div className="pt-2">
+                    <ColorPicker
+                        title="Stroke Fill"
+                        currentColor={currentColor}
+                        onChangeComplete={(color) => {
+                            onChangeColor(color)
+                        }}
+                    />
+                </div>
                 <hr className="my-2" />
-                <ColorPicker
-                    title="Stroke Fill"
-                    currentColor={currentColor}
-                    onChangeComplete={(color) => {
-                        onChangeColor(color)
-                    }}
-                />
             </BorderStyleBoxContainer>
         </Fragment>
     )

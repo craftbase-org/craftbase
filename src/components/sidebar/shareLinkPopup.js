@@ -65,9 +65,9 @@ const ShareLinkPopup = ({}) => {
 
     return (
         <>
-            <div className="relative " ref={refNode}>
+            <div className="relative " ref={refNode} style={{ right: '-9px' }}>
                 <div
-                    className=" w-12 h-9 flex items-center justify-center rounded-md bg-primary-blue text-white shadow-md cursor-pointer"
+                    className=" w-10 h-10 flex items-center justify-center rounded-md bg-primary-blue text-white shadow-md cursor-pointer"
                     onClick={handleShareClick}
                 >
                     <img src={ShareIcon} className="w-5 h-5" />

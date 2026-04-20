@@ -114,7 +114,11 @@ const OpacitySlider = ({
                 data-parent="floating-toolbar"
                 className={` pr-4 py-1 `}
             >
-                {title && <div className=" text-xs text-left">{title}</div>}
+                {title && (
+                    <div className=" text-xs text-left text-gray-500">
+                        {title}
+                    </div>
+                )}
                 {/* <Track
                     className=" relative"
                     data-parent="floating-toolbar"

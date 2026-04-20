@@ -154,14 +154,21 @@ const PencilToolbar = ({
             }}
             className="shadow-lg px-2 py-2 rounded-md"
         >
-            <ColorPicker
-                title="Stroke Color"
-                currentColor={pencilStrokeColor}
-                onChangeComplete={onColorChange}
-            />
-            <hr className="my-2 w-full" />
-            <div className="w-full text-left text-xs">
-                <label htmlFor="pencil-border-widths-row">Stroke Width</label>
+            <div className="py-2">
+                <ColorPicker
+                    title="Stroke Color"
+                    currentColor={pencilStrokeColor}
+                    onChangeComplete={onColorChange}
+                />
+            </div>
+            {/* <hr className="my-2 w-full" /> */}
+            <div className="w-full text-left text-xs py-2">
+                <label
+                    htmlFor="pencil-border-widths-row"
+                    className="text-gray-500"
+                >
+                    Stroke Width
+                </label>
                 <div
                     id="pencil-border-widths-row"
                     data-parent="floating-toolbar"
@@ -199,9 +206,14 @@ const PencilToolbar = ({
                     })}
                 </div>
             </div>
-            <hr className="my-2 w-full" />
-            <div className="w-full text-left text-xs">
-                <label htmlFor="pencil-stroke-type-row">Stroke Type</label>
+            {/* <hr className="my-2 w-full" /> */}
+            <div className="w-full text-left text-xs py-2">
+                <label
+                    htmlFor="pencil-stroke-type-row"
+                    className="text-gray-500"
+                >
+                    Stroke Type
+                </label>
                 <div
                     id="pencil-stroke-type-row"
                     data-parent="floating-toolbar"

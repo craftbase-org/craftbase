@@ -128,7 +128,7 @@ const Accordion = ({
                                 : {}
                         }
                     >
-                        <div className="py-2">
+                        <div className="">
                             {content(
                                 hideColorText,
                                 hideColorIcon,
@@ -236,41 +236,48 @@ const Toolbar = (props) => {
             key: 'textSize',
             hide: !showTextSizeSection,
             content: () => (
-                <div className="px-2 py-1 w-full">
-                    <p className="text-xs text-gray-400 mb-2">Text Size</p>
+                <div className="w-full">
+                    <p className="text-xs text-gray-500 mb-2 text-left">
+                        Text Size
+                    </p>
                     <div className="flex flex-row gap-2">
-                        {TEXT_SIZES_ARRAY.map(({ label, value, mobileValue }) => (
-                            <button
-                                key={label}
-                                onClick={() => {
-                                    setState((draft) => {
-                                        draft.selectedTextSize = label
-                                    })
-                                    if (
-                                        enableClassNameStyling &&
-                                        classNameLabel
-                                    ) {
-                                        const els =
-                                            document.getElementsByClassName(
-                                                classNameLabel
-                                            )
-                                        if (els.length > 0) {
-                                            const px = isMobile ? mobileValue : value
-                                            els[0].style.fontSize = `${px}px`
+                        {TEXT_SIZES_ARRAY.map(
+                            ({ label, value, mobileValue }) => (
+                                <button
+                                    key={label}
+                                    onClick={() => {
+                                        setState((draft) => {
+                                            draft.selectedTextSize = label
+                                        })
+                                        if (
+                                            enableClassNameStyling &&
+                                            classNameLabel
+                                        ) {
+                                            const els =
+                                                document.getElementsByClassName(
+                                                    classNameLabel
+                                                )
+                                            if (els.length > 0) {
+                                                const px = isMobile
+                                                    ? mobileValue
+                                                    : value
+                                                els[0].style.fontSize = `${px}px`
+                                            }
                                         }
-                                    }
-                                    // updateComponent('fontSize', value)
-                                    onTextSizeChange && onTextSizeChange(label)
-                                }}
-                                className={`w-9 h-8 text-xs font-semibold border rounded transition-colors ${
-                                    state.selectedTextSize === label
-                                        ? 'bg-blue-600 text-white border-blue-600'
-                                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600'
-                                }`}
-                            >
-                                {label}
-                            </button>
-                        ))}
+                                        // updateComponent('fontSize', value)
+                                        onTextSizeChange &&
+                                            onTextSizeChange(label)
+                                    }}
+                                    className={`w-9 h-8 text-xs font-semibold border rounded transition-colors ${
+                                        state.selectedTextSize === label
+                                            ? 'bg-blues-b50 text-blues-b500 border-blues-b500 border-2'
+                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-blues-b50'
+                                    }`}
+                                >
+                                    {label}
+                                </button>
+                            )
+                        )}
                     </div>
                 </div>
             ),
@@ -280,31 +287,36 @@ const Toolbar = (props) => {
             key: 'fontFamily',
             hide: !showFontFamilySection,
             content: () => (
-                <div className="px-2 py-1 w-full">
-                    <p className="text-xs text-gray-400 mb-2">Font</p>
-                    <div className="flex flex-row gap-2">
-                        {[
-                            { label: 'Caveat', family: 'Caveat' },
-                            { label: 'Geist', family: 'Geist' },
-                        ].map(({ label, family }) => (
-                            <button
-                                key={family}
-                                onClick={() =>
-                                    onFontFamilyChange &&
-                                    onFontFamilyChange(family)
-                                }
-                                style={{ fontFamily: family }}
-                                className={`w-12 h-8 text-sm border rounded transition-colors ${
-                                    currentFontFamily === family
-                                        ? 'bg-blue-600 text-white border-blue-600'
-                                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                                }`}
-                            >
-                                Aa
-                            </button>
-                        ))}
+                <Fragment>
+                    <div className="py-1 w-full">
+                        <p className="text-xs text-gray-500 mb-2 text-left">
+                            Font
+                        </p>
+                        <div className="flex flex-row gap-2">
+                            {[
+                                { label: 'Caveat', family: 'Caveat' },
+                                { label: 'Geist', family: 'Geist' },
+                            ].map(({ label, family }) => (
+                                <button
+                                    key={family}
+                                    onClick={() =>
+                                        onFontFamilyChange &&
+                                        onFontFamilyChange(family)
+                                    }
+                                    style={{ fontFamily: family }}
+                                    className={`w-12 h-8 text-sm border rounded transition-colors ${
+                                        currentFontFamily === family
+                                            ? 'bg-blues-b50 text-blues-b500 border-blues-b500 border-2'
+                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-blues-b50'
+                                    }`}
+                                >
+                                    Aa
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                    <hr className="my-2" />
+                </Fragment>
             ),
             renderSvg: () => null,
         },
@@ -352,7 +364,6 @@ const Toolbar = (props) => {
                     {/** Icon color picker */}
                     {hideColorIcon ? null : (
                         <>
-                            <hr className="my-2" />
                             <ColorPicker
                                 title="Icon"
                                 currentColor={state.colorIcon}
@@ -373,7 +384,6 @@ const Toolbar = (props) => {
 
                     {hideColorText ? null : (
                         <>
-                            <hr className="my-2" />
                             <ColorPicker
                                 title="Text"
                                 currentColor={state.colorText}
@@ -403,6 +413,7 @@ const Toolbar = (props) => {
                             />
                         </>
                     )}
+                    <hr className="my-2" />
                 </Fragment>
             ),
             renderSvg: () => <Icon icon="ICON_CARET" width={20} height={20} />,
@@ -613,7 +624,7 @@ const Toolbar = (props) => {
                 <AnimatePresence>
                     <ToolbarContainer
                         key="flo-toolbar"
-                        className=" shadow-lg px-2 rounded-md"
+                        className=" shadow-lg px-2 rounded-md py-2"
                         data-parent="floating-toolbar"
                         initial="open"
                         animate="closed"
