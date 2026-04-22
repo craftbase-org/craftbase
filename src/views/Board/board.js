@@ -123,7 +123,7 @@ const BoardViewPage = (props) => {
     const [defaultStrokeType, setDefaultStrokeType] = useState(null)
     const [pencilDefaultLinewidth, setPencilDefaultLinewidth] = useState(2)
     const [pencilDefaultStrokeType, setPencilDefaultStrokeType] = useState(null)
-    const [pencilStrokeColor, setPencilStrokeColor] = useState('#000')
+    const [pencilStrokeColor, setPencilStrokeColor] = useState('#3A342C')
     const [currentElement, setCurrentElement] = useState(null)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
@@ -150,8 +150,11 @@ const BoardViewPage = (props) => {
         const canvasEl = document.getElementById('main-two-root')
         if (!canvasEl) return
         const handleCanvasTouch = () => setShowMobilePencilPanel(false)
-        canvasEl.addEventListener('touchstart', handleCanvasTouch, { passive: true })
-        return () => canvasEl.removeEventListener('touchstart', handleCanvasTouch)
+        canvasEl.addEventListener('touchstart', handleCanvasTouch, {
+            passive: true,
+        })
+        return () =>
+            canvasEl.removeEventListener('touchstart', handleCanvasTouch)
     }, [isPencilMode, isMobile])
 
     const LOCAL_DRAFT_KEY = 'craftbase_local_draft'
@@ -550,7 +553,9 @@ const BoardViewPage = (props) => {
         setComponentStore(updatedComponentStore)
 
         // Tell Canvas to untrack this id so a future restore (undo) gets a fresh wrapper
-        window.dispatchEvent(new CustomEvent('elementRemoved', { detail: { id } }))
+        window.dispatchEvent(
+            new CustomEvent('elementRemoved', { detail: { id } })
+        )
 
         if (isPersistedRef.current) {
             deleteComponent({
@@ -632,7 +637,9 @@ const BoardViewPage = (props) => {
         })
 
         if (componentsForDB.length > 0) {
-            await insertBulkComponents({ variables: { objects: componentsForDB } })
+            await insertBulkComponents({
+                variables: { objects: componentsForDB },
+            })
         }
 
         // Mint a new local board ID so the '/' session continues independently
@@ -739,7 +746,9 @@ const BoardViewPage = (props) => {
             setComponentStore(updatedStore)
 
             // Tell Canvas to untrack this id so undo-of-undo (redo) can create a fresh wrapper
-            window.dispatchEvent(new CustomEvent('elementRemoved', { detail: { id } }))
+            window.dispatchEvent(
+                new CustomEvent('elementRemoved', { detail: { id } })
+            )
 
             if (isPersistedRef.current) {
                 deleteComponent({
@@ -832,8 +841,22 @@ const BoardViewPage = (props) => {
                         const y1 = prevProps.y1 ?? line.vertices[0].y
                         const x2 = prevProps.x2 ?? line.vertices[1].x
                         const y2 = prevProps.y2 ?? line.vertices[1].y
-                        updateX1Y1Vertices(Two, line, x1, y1, pointCircle1Group, two)
-                        updateX2Y2Vertices(Two, line, x2, y2, pointCircle2Group, two)
+                        updateX1Y1Vertices(
+                            Two,
+                            line,
+                            x1,
+                            y1,
+                            pointCircle1Group,
+                            two
+                        )
+                        updateX2Y2Vertices(
+                            Two,
+                            line,
+                            x2,
+                            y2,
+                            pointCircle2Group,
+                            two
+                        )
                     }
                 }
 
@@ -912,8 +935,8 @@ const BoardViewPage = (props) => {
     const currentFontFamily = isTextSelected
         ? selectedComponent?.shape?.data?.family || 'Caveat'
         : isRectangleWithText
-        ? selectedComponent?.text?.data?.family || 'Caveat'
-        : undefined
+          ? selectedComponent?.text?.data?.family || 'Caveat'
+          : undefined
 
     const handleTextSizeChange = (newLabel) => {
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
@@ -1028,7 +1051,10 @@ const BoardViewPage = (props) => {
         const componentId = selectedComponent?.group?.data?.elementData?.id
         const existingMetadata =
             stateRefForComponentStore.current[componentId]?.metadata ?? {}
-        const updatedMetadata = { ...existingMetadata, textFontFamily: fontFamily }
+        const updatedMetadata = {
+            ...existingMetadata,
+            textFontFamily: fontFamily,
+        }
         if (selectedComponent?.group?.data?.elementData) {
             selectedComponent.group.data.elementData.metadata = updatedMetadata
         }
@@ -1125,7 +1151,7 @@ const BoardViewPage = (props) => {
                                 zIndex: 20,
                             }}
                             className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                                ${showMobileToolbarPanel ? 'bg-blues-b50' : 'bg-white'}`}
+                                ${showMobileToolbarPanel ? 'bg-accent' : 'bg-card'}`}
                         >
                             <img
                                 src={controlsIcon}
@@ -1153,15 +1179,15 @@ const BoardViewPage = (props) => {
                                     isTextSelected
                                         ? selectedComponent?.shape?.data?.size
                                         : isRectangleWithText
-                                        ? selectedComponent?.text?.data?.size
-                                        : undefined
+                                          ? selectedComponent?.text?.data?.size
+                                          : undefined
                                 }
                                 onTextSizeChange={
                                     isTextSelected
                                         ? handleTextSizeChange
                                         : isRectangleWithText
-                                        ? handleRectangleTextSizeChange
-                                        : undefined
+                                          ? handleRectangleTextSizeChange
+                                          : undefined
                                 }
                                 toggle={showToolbar}
                                 componentState={selectedComponent}
@@ -1181,8 +1207,8 @@ const BoardViewPage = (props) => {
                                     isTextSelected
                                         ? handleTextFontFamilyChange
                                         : isRectangleWithText
-                                        ? handleRectangleTextFontFamilyChange
-                                        : undefined
+                                          ? handleRectangleTextFontFamilyChange
+                                          : undefined
                                 }
                                 postToolbarUpdate={() => {
                                     twoJSInstance.update()
@@ -1202,7 +1228,7 @@ const BoardViewPage = (props) => {
                                 zIndex: 20,
                             }}
                             className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                                ${showMobilePencilPanel ? 'bg-blues-b50' : 'bg-white'}`}
+                                ${showMobilePencilPanel ? 'bg-accent' : 'bg-card'}`}
                         >
                             <img
                                 src={controlsIcon}
@@ -1303,7 +1329,7 @@ const BoardViewPage = (props) => {
                             Saved board URL:{' '}
                             <a
                                 href={storageLimitBoardUrl}
-                                className="text-primary-blue underline"
+                                className="text-accent-dark underline"
                             >
                                 {storageLimitBoardUrl}
                             </a>

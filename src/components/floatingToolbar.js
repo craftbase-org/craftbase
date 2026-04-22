@@ -21,7 +21,8 @@ const ToolbarContainer = styled(motion.div)`
     right: 16px;
     outline: none;
     top: 65px;
-    background: rgba(255, 255, 255, 1);
+    background: #EDE8DC;
+    border: 1px solid #D4C9B4;
 
     display: flex;
     flex-direction: column;
@@ -32,19 +33,19 @@ const FontWeightBtn = styled.button`
     font-size: 18px;
     width: 30px;
     height: 30px;
-    border: 1px solid #0052cc;
+    border: 1px solid #C4901A;
 
     ${(props) =>
         props.fontWeight === 600
             ? css`
                   font-weight: ${props.fontWeight};
-                  background: #0052cc;
-                  color: #fff;
+                  background: #E8C87A;
+                  color: #1A1612;
               `
             : css`
                   font-weight: ${props.fontWeight};
                   background: transparent;
-                  color: #0052cc;
+                  color: #8C7E6A;
               `};
 `
 
@@ -53,17 +54,17 @@ const TextUnderlineBtn = styled.button`
     width: 30px;
     height: 30px;
     text-decoration: underline;
-    border: 1px solid #0052cc;
+    border: 1px solid #C4901A;
 
     ${(props) =>
         props.hasUnderline === true
             ? css`
-                  background: #0052cc;
-                  color: #fff;
+                  background: #E8C87A;
+                  color: #1A1612;
               `
             : css`
                   background: transparent;
-                  color: #0052cc;
+                  color: #8C7E6A;
               `};
 `
 
@@ -237,7 +238,7 @@ const Toolbar = (props) => {
             hide: !showTextSizeSection,
             content: () => (
                 <div className="w-full">
-                    <p className="text-xs text-gray-500 mb-2 text-left">
+                    <p className="text-xs text-ink-muted mb-2 text-left">
                         Text Size
                     </p>
                     <div className="flex flex-row gap-2">
@@ -270,8 +271,8 @@ const Toolbar = (props) => {
                                     }}
                                     className={`w-9 h-8 text-xs font-semibold border rounded transition-colors ${
                                         state.selectedTextSize === label
-                                            ? 'bg-blues-b50 text-blues-b500 border-blues-b500 border-2'
-                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-blues-b50'
+                                            ? 'bg-accent/20 text-accent-dark border-accent-dark border-2'
+                                            : 'bg-card text-ink-mid border-border-card hover:bg-accent/20'
                                     }`}
                                 >
                                     {label}
@@ -289,7 +290,7 @@ const Toolbar = (props) => {
             content: () => (
                 <Fragment>
                     <div className="py-1 w-full">
-                        <p className="text-xs text-gray-500 mb-2 text-left">
+                        <p className="text-xs text-ink-muted mb-2 text-left">
                             Font
                         </p>
                         <div className="flex flex-row gap-2">
@@ -306,8 +307,8 @@ const Toolbar = (props) => {
                                     style={{ fontFamily: family }}
                                     className={`w-12 h-8 text-sm border rounded transition-colors ${
                                         currentFontFamily === family
-                                            ? 'bg-blues-b50 text-blues-b500 border-blues-b500 border-2'
-                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-blues-b50'
+                                            ? 'bg-accent/20 text-accent-dark border-accent-dark border-2'
+                                            : 'bg-card text-ink-mid border-border-card hover:bg-accent/20'
                                     }`}
                                 >
                                     Aa

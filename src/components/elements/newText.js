@@ -274,7 +274,7 @@ function NewText(props) {
             input.style.border = 'none'
             input.style.background = 'transparent'
             input.style.padding = `${vertPad}px 8px`
-            input.style.color = twoText.fill || '#000000'
+            input.style.color = twoText.fill || '#3A342C'
             input.style.fontSize = `${fontSize}px`
             input.style.fontFamily = twoText.family || 'Caveat'
             input.style.fontWeight = twoText.weight || 'normal'
@@ -543,9 +543,13 @@ function NewText(props) {
                         zIndex: 20,
                     }}
                     className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                        ${showMobilePanel ? 'bg-blues-b50' : 'bg-white'}`}
+                        ${showMobilePanel ? 'bg-accent' : 'bg-card'}`}
                 >
-                    <img src={controlsIcon} className="w-5 h-5" alt="Text properties" />
+                    <img
+                        src={controlsIcon}
+                        className="w-5 h-5"
+                        alt="Text properties"
+                    />
                 </button>
             )}
             {showToolbar && (!isMobile || showMobilePanel) ? (

@@ -67,7 +67,7 @@ const ShareLinkPopup = ({}) => {
         <>
             <div className="relative " ref={refNode} style={{ right: '-9px' }}>
                 <div
-                    className=" w-10 h-10 flex items-center justify-center rounded-md bg-primary-blue text-white shadow-md cursor-pointer"
+                    className="w-10 h-10 flex items-center justify-center rounded-md bg-accent text-ink font-semibold shadow-card cursor-pointer"
                     onClick={handleShareClick}
                 >
                     <img src={ShareIcon} className="w-5 h-5" />
@@ -82,8 +82,8 @@ const ShareLinkPopup = ({}) => {
                 >
                     <div
                         className="
-                        bg-white text-neutrals-n700 border border-neutrals-n40
-                        rounded-md px-2 py-4 shadow-md
+                        bg-card text-ink-mid border border-border-panel
+                        rounded-md px-2 py-4 shadow-card
                         "
                         style={{ width: '560px' }}
                     >
@@ -91,13 +91,13 @@ const ShareLinkPopup = ({}) => {
                             Board Link (Public)
                         </div>
                         <div className="mt-2 flex items-center justify-between">
-                            <div className="text-sm rounded-md bg-neutrals-n40  text-black px-2 py-2 ">
+                            <div className="text-sm rounded-md bg-sidebar border border-border-card text-ink px-2 py-2">
                                 {shareUrl}
                             </div>
                             <div
                                 className="ml-2 rounded-md
-                                px-2 py-2  cursor-pointer bg-neutrals-n40
-                                hover:shadow-md
+                                px-2 py-2 cursor-pointer bg-sidebar border border-border-card
+                                hover:bg-border-panel
                                 "
                                 onClick={(e) => {
                                     e.stopPropagation()
@@ -123,18 +123,18 @@ const ShareLinkPopup = ({}) => {
                             <h2 className="text-lg font-semibold mb-3 font-display">
                                 Share this board
                             </h2>
-                            <p className="text-sm text-neutrals-n700 mb-2">
+                            <p className="text-sm text-ink-mid mb-2">
                                 We'll generate a unique board link so you can
                                 share your work with others.
                             </p>
-                            <p className="text-sm text-neutrals-n700 mb-4">
+                            <p className="text-sm text-ink-mid mb-4">
                                 This board will be visible to anyone you share
                                 the link with. Your shareable URL will be:
                             </p>
-                            <div className="text-sm rounded-md bg-neutrals-n40 text-black px-3 py-2 mb-4 break-all">
+                            <div className="text-sm rounded-md bg-sidebar border border-border-card text-ink px-3 py-2 mb-4 break-all">
                                 {previewUrl}
                             </div>
-                            <p className="text-sm text-neutrals-n700 mb-4">
+                            <p className="text-sm text-ink-mid mb-4">
                                 Would you like to proceed?
                             </p>
                             <div className="flex gap-2 justify-end">
@@ -160,7 +160,7 @@ const ShareLinkPopup = ({}) => {
                             <h2 className="text-lg font-semibold mb-3 font-display">
                                 Nothing to share yet
                             </h2>
-                            <p className="text-sm text-neutrals-n700 mb-4">
+                            <p className="text-sm text-ink-mid mb-4">
                                 Before you share, please create something on the
                                 board to make it shareable.
                             </p>

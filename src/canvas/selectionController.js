@@ -114,14 +114,14 @@ export default class SelectionController {
 
         const box = new Two.Rectangle(0, 0, 0, 0)
         box.noFill()
-        box.stroke = '#0052CC'
+        box.stroke = '#C4901A'
         box.linewidth = 1.5
 
         // Corner handles: white fill with blue border
         const endpoints = new Two.Points(box.vertices)
         endpoints.size = 10
-        endpoints.fill = '#ffffff'
-        endpoints.stroke = '#0052CC'
+        endpoints.fill = '#FFFCF5'
+        endpoints.stroke = '#C4901A'
         endpoints.linewidth = 1.5
 
         // Mid-edge handles (rectangle only)
@@ -133,8 +133,8 @@ export default class SelectionController {
         ]
         const midEndpoints = new Two.Points(this.midPoints)
         midEndpoints.size = 10
-        midEndpoints.fill = '#ffffff'
-        midEndpoints.stroke = '#0052CC'
+        midEndpoints.fill = '#FFFCF5'
+        midEndpoints.stroke = '#C4901A'
         midEndpoints.linewidth = 1.5
         midEndpoints.visible = false
 

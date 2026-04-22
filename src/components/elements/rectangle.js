@@ -36,11 +36,12 @@ function Rectangle(props) {
             if (meta.hasText && meta.textContent) {
                 // this means "rectangle-with-text"
                 const twoText = two.makeText(meta.textContent, 0, 0)
-                twoText.fill = meta.textFill || '#000'
+                twoText.fill = meta.textFill || '#3A342C'
                 twoText.size = meta.textFontSize || 24
                 twoText.alignment = 'center'
                 twoText.baseline = meta.textBaseLine || 'middle'
-                twoText.family = meta.textFontFamily || meta.textFamily || 'Caveat'
+                twoText.family =
+                    meta.textFontFamily || meta.textFamily || 'Caveat'
                 group.add(twoText)
             }
 

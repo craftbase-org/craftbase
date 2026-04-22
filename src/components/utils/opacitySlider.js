@@ -22,7 +22,7 @@ const Tick = styled('div')`
         content: '';
         position: absolute;
         left: 0px;
-        background: #0052cc;
+        background: #c4901a;
         height: 6px;
         width: 5px;
         border-radius: 50%;
@@ -42,9 +42,9 @@ const TickLabel = styled('div')`
 const Segment = styled('div')`
     background: ${(props) =>
         props.index === 0
-            ? '#0052CC'
+            ? '#C4901A'
             : props.index === 1
-              ? '#0052CC'
+              ? '#C4901A'
               : props.index === 2
                 ? '#f5c200'
                 : '#ff6050'};
@@ -54,7 +54,7 @@ const Segment = styled('div')`
 const Handle = styled('div')`
     position: absolute;
     top: -7px;
-    background: #0052cc;
+    background: #c4901a;
     width: 0.8rem;
     height: 0.8rem;
     border-radius: 100%;
@@ -160,7 +160,7 @@ const OpacitySlider = ({
                             position: 'relative',
                             userSelect: 'none',
                             height: '4px',
-                            background: `linear-gradient(to right, #0052CC ${rangerInstance.getPercentageForValue(values[0])}%, #ddd ${rangerInstance.getPercentageForValue(values[0])}%)`,
+                            background: `linear-gradient(to right, #C4901A ${rangerInstance.getPercentageForValue(values[0])}%, #ddd ${rangerInstance.getPercentageForValue(values[0])}%)`,
                             borderRadius: '2px',
                         }}
                     >
@@ -201,7 +201,7 @@ const OpacitySlider = ({
                                             height: '14px',
                                             outline: 'none',
                                             borderRadius: '100%',
-                                            background: '#000',
+                                            background: '#3A342C',
                                         }}
                                     >
                                         <span

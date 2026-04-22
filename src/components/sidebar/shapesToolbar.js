@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { staticPrimaryElementData } from 'utils/constants'
 import { useBoardContext } from 'views/Board/board'
-import undoIcon from 'assets/undo_amber.svg'
+import UndoIcon from 'assets/undo_amber.svg?react'
 import { useMediaQueryUtils } from 'constants/exportHooks'
 
 const allElements = staticPrimaryElementData.flatMap(
@@ -26,7 +26,7 @@ const ShapesToolbar = ({ addElement }) => {
 
     return (
         <div
-            className={`fixed bg-white rounded-lg shadow-md flex items-center flex-row
+            className={`fixed bg-sidebar border border-border-panel shadow-card rounded-card flex items-center flex-row
                 ${isMobile ? 'px-1 py-1 gap-0.5' : 'top-2 left-1/2 px-2 py-1 gap-1'}`}
             style={
                 isMobile
@@ -34,36 +34,44 @@ const ShapesToolbar = ({ addElement }) => {
                     : { transform: 'translateX(-50%)', zIndex: 10 }
             }
         >
-            {allElements.map((element) => (
-                <div
-                    key={element.elementName}
-                    title={element.elementDisplayName}
-                    className={`
-                        ${btnSize} flex items-center justify-center rounded cursor-pointer
-                        transition-all ease-in-out duration-200
-                        ${currentElement === element.elementName ? 'bg-blues-b50' : 'hover:bg-blues-b50'}
-                    `}
-                    onClick={() => {
-                        addElement(element.elementName)
-                        setCurrentElementInBoard(element.elementName)
-                    }}
-                >
-                    <img
-                        className={iconSize}
-                        src={element.elementSVG}
-                        alt={element.elementDisplayName}
-                    />
-                </div>
-            ))}
+            {allElements.map((element) => {
+                const Icon = element.elementIcon
+                const isActive = currentElement === element.elementName
+                return (
+                    <div
+                        key={element.elementName}
+                        title={element.elementDisplayName}
+                        className={`
+                            
+                            ${btnSize} flex items-center justify-center rounded cursor-pointer
+                            transition-all ease-in-out duration-200
+                            ${
+                                isActive
+                                    ? 'bg-accent text-ink'
+                                    : 'text-ink-muted hover:bg-accent/30 hover:text-ink'
+                            }
+                        `}
+                        onClick={() => {
+                            addElement(element.elementName)
+                            setCurrentElementInBoard(element.elementName)
+                        }}
+                    >
+                        <Icon
+                            className={iconSize}
+                            aria-label={element.elementDisplayName}
+                        />
+                    </div>
+                )
+            })}
             <div
-                className={`bg-gray-200 ${isMobile ? 'w-px h-4 mx-0.5' : 'w-px h-6 mx-1'}`}
+                className={`bg-border-panel ${isMobile ? 'w-px h-4 mx-0.5' : 'w-px h-6 mx-1'}`}
             />
             <div
                 title="Undo"
                 className={`
                     ${btnSize} flex items-center justify-center rounded cursor-pointer
-                    transition-all ease-in-out duration-200
-                    ${historyLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-blues-b50'}
+                    transition-all ease-in-out duration-200 text-ink-muted
+                    ${historyLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/30 hover:text-ink'}
                 `}
                 onClick={() => {
                     if (historyLog.length > 0) {
@@ -71,7 +79,7 @@ const ShapesToolbar = ({ addElement }) => {
                     }
                 }}
             >
-                <img className={iconSize} src={undoIcon} alt="Undo" />
+                <UndoIcon className={iconSize} aria-label="Undo" />
             </div>
         </div>
     )

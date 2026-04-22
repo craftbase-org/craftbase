@@ -6,12 +6,15 @@ export default class NewTextFactory extends Main {
         const prevX = this.x
         const prevY = this.y
         const { textColor } = this.properties || {}
-        const { content = 'Text', fontSize = 36, textFontFamily = 'Caveat' } =
-            this.properties?.metadata || {}
+        const {
+            content = 'Text',
+            fontSize = 36,
+            textFontFamily = 'Caveat',
+        } = this.properties?.metadata || {}
 
         // Use native Two.js text instead of a foreignObject wrapper
         const twoText = two.makeText(content || 'Text', 0, 0)
-        twoText.fill = textColor || '#000000'
+        twoText.fill = textColor || '#3A342C'
         twoText.size = fontSize
         twoText.alignment = 'left'
         twoText.baseline = 'middle'

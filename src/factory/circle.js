@@ -16,7 +16,7 @@ export default class CircleFactory extends Main {
         circle.height = height || 100
         circle.fill = fill ? fill : '#fff'
 
-        circle.stroke = stroke ? stroke : '#000'
+        circle.stroke = stroke ? stroke : '#3A342C'
         circle.linewidth = linewidth ? linewidth : 1
         circle.dashes = strokeTypeToDashes(strokeType)
 

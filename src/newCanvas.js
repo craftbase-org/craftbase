@@ -71,7 +71,7 @@ function getComponentSchema(obj, boardId) {
 var isDrawing
 var defaultLinewidthValue = 1
 var defaultStrokeTypeValue = null
-var pencilStrokeColorValue = '#000'
+var pencilStrokeColorValue = '#3A342C'
 
 function addZUI(
     props,
@@ -300,7 +300,7 @@ function addZUI(
             input.style.border = 'none'
             input.style.background = 'transparent'
             input.style.padding = `${vertPad}px 8px`
-            input.style.color = twoText.fill || '#000000'
+            input.style.color = twoText.fill || '#3A342C'
             input.style.fontSize = `${fontSize}px`
             input.style.fontFamily = twoText.family || 'Caveat'
             input.style.fontWeight = twoText.weight || 'normal'
@@ -442,7 +442,9 @@ function addZUI(
                             hasText: true,
                             textContent: newContent,
                             textFill:
-                                latestMeta.textFill || twoText.fill || '#000',
+                                latestMeta.textFill ||
+                                twoText.fill ||
+                                '#3A342C',
                             textFontSize:
                                 latestMeta.textFontSize || twoText.size || 24,
                             textFamily:
@@ -472,8 +474,8 @@ function addZUI(
                     (child) => typeof child.value === 'string'
                 )
                 if (!twoText) {
-                    twoText = two.makeText(meta.textContent || 'Text', 0, 0)
-                    twoText.fill = meta.textFill || '#000'
+                    twoText = two.makeText(meta.textContent || '', 0, 0)
+                    twoText.fill = meta.textFill || '#3A342C'
                     twoText.size = meta.textFontSize || 36
                     twoText.alignment = 'center'
                     twoText.baseline = meta.textBaseLine || 'middle'
@@ -535,7 +537,7 @@ function addZUI(
 
     // Singleton hover indicator — separate from the selection circles
     const hoverCircle = two.makeCircle(0, 0, 6)
-    hoverCircle.fill = 'rgba(76,154, 255, 0.7)'
+    hoverCircle.fill = 'rgba(196, 144, 26, 0.7)'
     hoverCircle.noStroke()
     hoverCircle.opacity = 0
 
@@ -771,13 +773,13 @@ function addZUI(
                         surfaceCoords.y,
                         0,
                         0,
-                        5
+                        2
                     )
                 }
 
                 if (previewShape) {
                     previewShape.fill = drawShapeProps?.fill || '#fff'
-                    previewShape.stroke = drawShapeProps?.stroke || '#000'
+                    previewShape.stroke = drawShapeProps?.stroke || '#3A342C'
                     previewShape.linewidth = drawShapeProps?.linewidth || 1
                     previewShape.opacity = 0.6
                     two.update()
@@ -2215,7 +2217,7 @@ const Canvas = (props) => {
     }, [props.pencilDefaultStrokeType])
 
     useEffect(() => {
-        pencilStrokeColorValue = props.pencilStrokeColor || '#000'
+        pencilStrokeColorValue = props.pencilStrokeColor || '#3A342C'
     }, [props.pencilStrokeColor])
 
     // on group select use effect hook
