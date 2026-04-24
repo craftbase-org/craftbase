@@ -79,7 +79,7 @@ function GroupedObjectWrapper(props) {
                     element.translation.y = newY
 
                     let newMetadata = element.elementData.metadata
-                    if (element.elementData.componentType === 'pencil') {
+                    if (element.elementData.componentType === 'pencil' && Array.isArray(element.elementData.metadata)) {
                         newMetadata = element.elementData.metadata.map(
                             (vert, index) => {
                                 const lwProp =

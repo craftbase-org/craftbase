@@ -2282,7 +2282,7 @@ const Canvas = (props) => {
                     let relativeY = item.y - yMid
 
                     let newMetadata = item.metadata
-                    if (item.componentType === 'pencil') {
+                    if (item.componentType === 'pencil' && Array.isArray(item.metadata)) {
                         newMetadata = item.metadata.map((vert, index) => {
                             const lwProp =
                                 vert.lw !== undefined ? { lw: vert.lw } : {}
