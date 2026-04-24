@@ -24,27 +24,36 @@ import {
     simplifyWithLinewidth,
 } from 'utils/pencilHelper'
 
-function getComponentSchema(obj, boardId) {
-    let generateId = generateUUID()
-    return {
-        boardId: boardId,
-        id: generateId,
-        componentType: obj.componentType,
-        fill: obj.fill,
-        children: obj?.children ? obj.children : {},
-        metadata: obj?.metadata ? obj.metadata : {},
-        x: obj.x + 10,
-        x1: obj.x1,
-        x2: obj.x2,
-        y: obj.y + 10,
-        y1: obj.y1,
-        y2: obj.y2,
-        width: obj.width,
-        height: obj.height,
-        linewidth: obj.linewidth,
-        stroke: obj.stroke,
-        strokeType: obj.strokeType,
+function cloneElementData(src, boardId, newX, newY) {
+    const cloned = {
+        id: generateUUID(),
+        boardId,
+        componentType: src.componentType,
+        x: newX,
+        y: newY,
+        x1: src.x1,
+        y1: src.y1,
+        x2: src.x2,
+        y2: src.y2,
+        width: src.width,
+        height: src.height,
+        fill: src.fill,
+        stroke: src.stroke,
+        strokeType: src.strokeType,
+        linewidth: src.linewidth,
+        radius: src.radius,
+        iconStroke: src.iconStroke,
+        textColor: src.textColor,
+        metadata: src.metadata ? { ...src.metadata } : {},
+        children: src.children
+            ? typeof structuredClone === 'function'
+                ? structuredClone(src.children)
+                : JSON.parse(JSON.stringify(src.children))
+            : null,
     }
+    if (src.relativeX !== undefined) cloned.relativeX = src.relativeX
+    if (src.relativeY !== undefined) cloned.relativeY = src.relativeY
+    return cloned
 }
 
 /**
@@ -78,7 +87,6 @@ function addZUI(
     two,
     updateToGlobalState,
     updateComponentVertices,
-    customEventListener,
     setOnGroupHandler,
     addToLocalComponentStore,
     setSelectedComponentInBoard,
@@ -91,6 +99,10 @@ function addZUI(
 ) {
     // console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
+    let lastSelectedShape = null
+    // Tracks the GroupedObjectWrapper's Two.js group while it has DOM focus.
+    // Set/cleared by groupFocused/groupBlurred custom events.
+    const activeGroupRef = { current: null }
     let domElement = two.renderer.domElement
     let zui = new ZUI(two.scene, domElement)
     let mouse = new Two.Vector()
@@ -238,8 +250,12 @@ function addZUI(
     domElement.addEventListener('touchend', touchend, false)
     domElement.addEventListener('touchcancel', touchend, false)
 
-    // listen for ctrl + c event
-    domElement.addEventListener('keydown', onKeyDown)
+    window.addEventListener('groupFocused', (e) => {
+        activeGroupRef.current = e.detail?.group ?? null
+    })
+    window.addEventListener('groupBlurred', () => {
+        activeGroupRef.current = null
+    })
 
     function dblclick(e) {
         console.log('on double click', e)
@@ -485,20 +501,6 @@ function addZUI(
                 }
                 showTextInput(shape, twoText, shape.elementData.id, meta)
             }
-        }
-    }
-
-    function onKeyDown(evt) {
-        // unclosed event listener (temp)
-        if (evt.key === 'c' && (evt.ctrlKey || evt.metaKey)) {
-            // console.log('shape.elementData', shape.elementData)
-            if (shape.elementData?.id !== undefined) {
-                // alert('Ctrl + c pressed')
-                // console.log('ctrl + c', shape)
-                customEventListener('COPY', shape.elementData)
-            }
-
-            // domElement.removeEventListener('keydown', onKeyDown)
         }
     }
 
@@ -773,7 +775,7 @@ function addZUI(
                         surfaceCoords.y,
                         0,
                         0,
-                        2
+                        3
                     )
                 }
 
@@ -886,6 +888,7 @@ function addZUI(
                 // in case if it's a group selector, it falls under below condition
                 if (shape === null) {
                     // Clicking empty canvas clears any active selection.
+                    lastSelectedShape = null
                     selectionController.detach()
                     // When a text input overlay is active (about to blur),
                     // the click is just dismissing the input — skip creating
@@ -930,6 +933,11 @@ function addZUI(
                         shape = newSelectorGroup
                         isGroupSelector = true
                     }
+                }
+
+                // Track the last clicked element for copy operations.
+                if (!isGroupSelector && shape?.elementData?.id) {
+                    lastSelectedShape = shape
                 }
 
                 // Central selection controller: for shapes registered in its
@@ -1987,6 +1995,11 @@ function addZUI(
             dragging = false
             shape = {}
         },
+        getCurrentShape: () => shape,
+        getSelectedGroup: () =>
+            selectionController.currentGroup ||
+            activeGroupRef.current ||
+            lastSelectedShape,
     }
 }
 
@@ -2073,10 +2086,12 @@ const Canvas = (props) => {
     const [prevElements, setPrevElements] = useState([])
     const [onGroup, setOnGroup] = useState(null)
     const [componentsToRender, setComponentsToRender] = useState([])
-    const [cloneElement, setCloneElement] = useState(null)
 
     const stateRefForComponentStore = useRef()
     const isPencilModeRef = useRef(props.isPencilMode)
+    const clipboardRef = useRef(null)
+    const lastMouseRef = useRef({ clientX: 0, clientY: 0, hasMoved: false })
+    const zuiInstanceRef = useRef(null)
 
     // useEffect(()=>{},[insertComponentSuccess])
 
@@ -2101,7 +2116,6 @@ const Canvas = (props) => {
             two,
             updateToGlobalState,
             updateComponentVertices,
-            customEventListener,
             setOnGroupHandler,
             addToLocalComponentStore,
             setSelectedComponentInBoard,
@@ -2352,12 +2366,186 @@ const Canvas = (props) => {
         }
     }, [onGroup])
 
+    // Track the last cursor position in client coords so paste can land at
+    // the mouse location. Window-level so it stays current even when the
+    // cursor is over an overlay.
     useEffect(() => {
-        window.addEventListener('keydown', onPasteEvent)
-        return () => {
-            window.removeEventListener('keydown', onPasteEvent)
+        const onMove = (e) => {
+            lastMouseRef.current = {
+                clientX: e.clientX,
+                clientY: e.clientY,
+                hasMoved: true,
+            }
         }
-    }, [cloneElement])
+        window.addEventListener('mousemove', onMove)
+        return () => window.removeEventListener('mousemove', onMove)
+    }, [])
+
+    useEffect(() => {
+        zuiInstanceRef.current = zuiInstance
+    }, [zuiInstance])
+
+    useEffect(() => {
+        const onCopyEvent = (evt) => {
+            if (evt.key !== 'c' || !(evt.ctrlKey || evt.metaKey)) return
+            console.log('on copy')
+            const tag = document.activeElement?.tagName
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return
+
+            const zuiInst = zuiInstanceRef.current
+            const liveGroup = zuiInst?.getSelectedGroup?.()
+            if (!liveGroup?.elementData?.id) return
+            if (!twoJSInstance) return
+            evt.preventDefault()
+
+            const originX = liveGroup.translation.x
+            const originY = liveGroup.translation.y
+            const elementData = liveGroup.elementData
+
+            let payload
+            if (elementData.componentType === GROUP_COMPONENT) {
+                const children = Array.isArray(elementData.children)
+                    ? elementData.children
+                    : []
+                payload = {
+                    kind: 'group',
+                    origin: { x: originX, y: originY },
+                    width: elementData.width,
+                    height: elementData.height,
+                    items: children.map((child) => ({ ...child })),
+                }
+            } else {
+                const item = {
+                    ...elementData,
+                    relativeX: 0,
+                    relativeY: 0,
+                }
+                // For arrowLine, read live vertex coords (elementData can be stale).
+                if (elementData.componentType === 'arrowLine') {
+                    const line = liveGroup.children?.[0]
+                    if (line?.vertices?.length >= 2) {
+                        item.x1 = parseInt(line.vertices[0].x)
+                        item.y1 = parseInt(line.vertices[0].y)
+                        item.x2 = parseInt(line.vertices[1].x)
+                        item.y2 = parseInt(line.vertices[1].y)
+                    }
+                }
+                // For newText, elementData is set once at mount; read live Two.js
+                // text object values so edits made after mounting are captured.
+                if (elementData.componentType === 'newText') {
+                    const twoText = liveGroup.children?.[0]
+                    if (twoText && typeof twoText.value === 'string') {
+                        item.textColor = twoText.fill || item.textColor
+                        item.metadata = {
+                            ...item.metadata,
+                            content: twoText.value,
+                            fontSize: twoText.size || item.metadata?.fontSize,
+                            textFontFamily:
+                                twoText.family || item.metadata?.textFontFamily,
+                        }
+                    }
+                }
+                payload = {
+                    kind: 'single',
+                    origin: { x: originX, y: originY },
+                    items: [item],
+                }
+            }
+            clipboardRef.current = payload
+        }
+        window.addEventListener('keydown', onCopyEvent)
+        return () => window.removeEventListener('keydown', onCopyEvent)
+    }, [twoJSInstance])
+
+    useEffect(() => {
+        const onPasteEvent = (evt) => {
+            if (evt.key !== 'v' || !(evt.ctrlKey || evt.metaKey)) return
+            const tag = document.activeElement?.tagName
+            console.log('on paste', tag, clipboardRef.current)
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return
+
+            const clipboard = clipboardRef.current
+            if (!clipboard || !clipboard.items?.length) return
+
+            const zuiInst = zuiInstanceRef.current
+            if (!zuiInst?.zui) return
+            evt.preventDefault()
+
+            // Resolve paste origin in canvas coords. If the cursor hasn't
+            // moved since load, fall back to viewport center.
+            let clientX = lastMouseRef.current.clientX
+            let clientY = lastMouseRef.current.clientY
+            if (!lastMouseRef.current.hasMoved) {
+                const rect = document
+                    .getElementById('main-two-root')
+                    ?.getBoundingClientRect()
+                if (rect) {
+                    clientX = rect.left + rect.width / 2
+                    clientY = rect.top + rect.height / 2
+                }
+            }
+            const surface = zuiInst.zui.clientToSurface(clientX, clientY)
+            const px = surface.x
+            const py = surface.y
+
+            if (clipboard.kind === 'single') {
+                const src = clipboard.items[0]
+                const newItem = cloneElementData(src, props.boardId, px, py)
+                // Normalize arrow so its tail (vertex 0) lands exactly at the
+                // cursor. The arrowLine factory treats x1/y1 as local offsets
+                // from the group origin; keeping them at 0 avoids any drift.
+                if (src.componentType === 'arrowLine') {
+                    const dx = (src.x2 ?? 0) - (src.x1 ?? 0)
+                    const dy = (src.y2 ?? 0) - (src.y1 ?? 0)
+                    newItem.x1 = 0
+                    newItem.y1 = 0
+                    newItem.x2 = dx
+                    newItem.y2 = dy
+                }
+                addToLocalComponentStore(
+                    newItem.id,
+                    newItem.componentType,
+                    newItem
+                )
+                return
+            }
+
+            if (clipboard.kind === 'group') {
+                const newChildren = clipboard.items.map((child) => {
+                    const rX = child.relativeX ?? 0
+                    const rY = child.relativeY ?? 0
+                    // Children use LOCAL coords relative to the group origin.
+                    // GroupedObjectWrapper sets coreObject.translation = item.x/y
+                    // inside a group already at (px, py), so passing rX/rY keeps
+                    // scene position at (px + rX, py + rY).
+                    const cloned = cloneElementData(
+                        child,
+                        props.boardId,
+                        rX,
+                        rY
+                    )
+                    cloned.relativeX = rX
+                    cloned.relativeY = rY
+                    return cloned
+                })
+                const newGroup = {
+                    id: generateUUID(),
+                    boardId: props.boardId,
+                    componentType: GROUP_COMPONENT,
+                    x: px,
+                    y: py,
+                    width: clipboard.width,
+                    height: clipboard.height,
+                    fill: null,
+                    stroke: null,
+                    children: newChildren,
+                }
+                addToLocalComponentStore(newGroup.id, GROUP_COMPONENT, newGroup)
+            }
+        }
+        window.addEventListener('keydown', onPasteEvent)
+        return () => window.removeEventListener('keydown', onPasteEvent)
+    }, [props.boardId, addToLocalComponentStore])
 
     useEffect(() => {
         const onUndoKeyDown = (evt) => {
@@ -2451,35 +2639,6 @@ const Canvas = (props) => {
             window.removeEventListener('elementRemoved', handleElementRemoved)
         }
     }, [])
-
-    const onPasteEvent = (evt) => {
-        if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
-            if (
-                cloneElement?.id !== undefined &&
-                cloneElement.componentType !== 'groupobject'
-            ) {
-                // console.log('ctrl + v', cloneElement)
-                let newComponent = getComponentSchema(
-                    cloneElement,
-                    props.boardId
-                )
-                addToLocalComponentStore(
-                    newComponent.id,
-                    newComponent.componentType,
-                    newComponent
-                )
-                // insertComponent({ variables: { object: newComponent } })
-                setCloneElement(null)
-                // alert(`Ctrl+V was pressed ${cloneElement.prevX}`)
-            }
-        }
-    }
-
-    const customEventListener = (action, shapeData) => {
-        if (action === 'COPY') {
-            setCloneElement(shapeData)
-        }
-    }
 
     const updateToGlobalState = (newShapeData, oldShapeData) => {
         const userId = localStorage.getItem('userId')

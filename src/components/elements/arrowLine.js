@@ -71,10 +71,10 @@ function ArrowLine(props) {
         // console.log('arrowLine props', props)
         // Instantiate factory
         const elementFactory = new ElementCreator(two, prevX, prevY, {
-            x1: props.x1 || 20,
-            x2: props.x2 || 100,
-            y1: props.y1 || 10,
-            y2: props.y2 || 10,
+            x1: props.x1 ?? 20,
+            x2: props.x2 ?? 100,
+            y1: props.y1 ?? 10,
+            y2: props.y2 ?? 10,
             strokeType: props.strokeType,
             linewidth: props.linewidth,
         })

@@ -17,7 +17,7 @@ export default class RectangleFactory extends Main {
             0,
             width || 210,
             height || 110,
-            2
+            3
         )
 
         rectangle.fill = fill ? fill : '#fff'
