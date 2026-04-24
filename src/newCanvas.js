@@ -44,7 +44,11 @@ function cloneElementData(src, boardId, newX, newY) {
         radius: src.radius,
         iconStroke: src.iconStroke,
         textColor: src.textColor,
-        metadata: src.metadata ? { ...src.metadata } : {},
+        metadata: Array.isArray(src.metadata)
+            ? src.metadata.map((p) => ({ ...p }))
+            : src.metadata
+            ? { ...src.metadata }
+            : {},
         children: src.children
             ? typeof structuredClone === 'function'
                 ? structuredClone(src.children)
@@ -156,6 +160,12 @@ function addZUI(
         path.forEach((item) => {
             if (item?.classList?.value?.includes('avoid-dragging')) {
                 avoidDragging = true
+                // Still resolve the Two.js group so it can be tracked for copy.
+                if (item.tagName === 'g' && shape == null) {
+                    shape = two.scene.children.find(
+                        (child) => child.id === item.id
+                    ) ?? null
+                }
             }
 
             if (
@@ -877,6 +887,12 @@ function addZUI(
                 const path = e.path || (e.composedPath && e.composedPath())
                 ;({ shape, avoidDragging } = resolveShapeFromPath(path, two))
 
+                // Track for copy BEFORE drag-prevention clears shape (pencil uses
+                // avoid-dragging so shape would become {} immediately after).
+                if (shape?.elementData?.id) {
+                    lastSelectedShape = shape
+                }
+
                 if (avoidDragging) {
                     shape = {}
                 }
@@ -933,11 +949,6 @@ function addZUI(
                         shape = newSelectorGroup
                         isGroupSelector = true
                     }
-                }
-
-                // Track the last clicked element for copy operations.
-                if (!isGroupSelector && shape?.elementData?.id) {
-                    lastSelectedShape = shape
                 }
 
                 // Central selection controller: for shapes registered in its
@@ -2417,6 +2428,9 @@ const Canvas = (props) => {
             } else {
                 const item = {
                     ...elementData,
+                    // Use live translation so stale elementData.x/y doesn't mislead paste.
+                    x: originX,
+                    y: originY,
                     relativeX: 0,
                     relativeY: 0,
                 }
@@ -2501,6 +2515,16 @@ const Canvas = (props) => {
                     newItem.y1 = 0
                     newItem.x2 = dx
                     newItem.y2 = dy
+                }
+                // Pencil metadata holds absolute vertex coords. Shift them so the
+                // stroke lands at the paste cursor instead of the original position.
+                if (src.componentType === 'pencil' && Array.isArray(src.metadata)) {
+                    const dx = px - src.x
+                    const dy = py - src.y
+                    newItem.metadata = src.metadata.map((pt) => {
+                        const lwProp = pt.lw !== undefined ? { lw: pt.lw } : {}
+                        return { x: pt.x + dx, y: pt.y + dy, ...lwProp }
+                    })
                 }
                 addToLocalComponentStore(
                     newItem.id,

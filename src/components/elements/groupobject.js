@@ -252,8 +252,9 @@ function GroupedObjectWrapper(props) {
 
         for (let index = 0; index < props.children.length; index++) {
             const item = props.children[index]
-            // console.log('item in children', item)
-            factoryModules[`../../factory/${item.componentType}.js`]().then(
+            const factoryKey = `../../factory/${item.componentType}.js`
+            if (typeof factoryModules[factoryKey] !== 'function') continue
+            factoryModules[factoryKey]().then(
                 (component) => {
                     const componentFactory = new component.default(
                         two,
