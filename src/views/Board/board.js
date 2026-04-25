@@ -448,24 +448,27 @@ const BoardViewPage = (props) => {
             return
         }
 
+        // Strip transient grouping coords — not part of DB schema
+        const { relativeX: _rX, relativeY: _rY, ...safeInfo } = componentInfo ?? {}
+
         // Trigger background board creation on first interaction
         ensureBackgroundBoard()
 
         recordToHistoryLog({
             action: 'ADD',
             id,
-            componentInfo,
+            componentInfo: safeInfo,
         })
 
         const updatedComponentStore = {
             ...stateRefForComponentStore.current,
-            [id]: componentInfo,
+            [id]: safeInfo,
         }
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
-        if (isPersistedRef.current && componentInfo) {
-            insertComponent({ variables: { object: componentInfo } }).catch(
+        if (isPersistedRef.current && safeInfo) {
+            insertComponent({ variables: { object: safeInfo } }).catch(
                 (error) => {
                     const isPermissionError = error.graphQLErrors?.some(
                         (e) => e.extensions?.code === 'permission-error'
@@ -508,11 +511,14 @@ const BoardViewPage = (props) => {
         }
 
         const updatedComponentStore = { ...stateRefForComponentStore.current }
-        updatedComponentStore[id] = {
+        const merged = {
             ...updatedComponentStore[id],
             ...bulkObj,
             updatedBy: userId,
         }
+        delete merged.relativeX
+        delete merged.relativeY
+        updatedComponentStore[id] = merged
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
@@ -642,16 +648,13 @@ const BoardViewPage = (props) => {
     }
 
     const persistBoard = async () => {
-        let serverBoardId = backgroundBoardIdRef.current
-
-        // If background board wasn't created yet (e.g. user shares before first draw),
-        // create it now
-        if (!serverBoardId) {
-            const { data: boardData } = await createBoard({
-                variables: { object: {} },
-            })
-            serverBoardId = boardData.board.id
-        }
+        // Always create a fresh board at share time. The background board
+        // pre-created by ensureBackgroundBoard may be stale (e.g. DB was reset
+        // between sessions) — using its ID would cause a FK violation on insert.
+        const { data: boardData } = await createBoard({
+            variables: { object: {} },
+        })
+        const serverBoardId = boardData.board.id
 
         // Insert all components to DB under the server board ID.
         // Generate a fresh UUID for each component's id so re-sharing from '/'
@@ -659,7 +662,7 @@ const BoardViewPage = (props) => {
         const componentsForDB = Object.values(
             stateRefForComponentStore.current
         ).map((comp) => {
-            const cleaned = stripTypename(comp)
+            const { relativeX: _rX, relativeY: _rY, ...cleaned } = stripTypename(comp)
             return { ...cleaned, id: generateUUID(), boardId: serverBoardId }
         })
 

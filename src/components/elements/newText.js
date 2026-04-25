@@ -175,15 +175,19 @@ function NewText(props) {
             const newWidth = Math.round(bRect.width || 60)
             const newHeight = Math.round(bRect.height || twoText.size)
 
+            const resizeMetadata = {
+                ...props.metadata,
+                fontSize: finalSize,
+                content: twoText.value,
+            }
             updateComponentBulkPropertiesInLocalStore(props.id, {
                 width: newWidth,
                 height: newHeight,
-                metadata: {
-                    ...props.metadata,
-                    fontSize: finalSize,
-                    content: twoText.value,
-                },
+                metadata: resizeMetadata,
             })
+            if (group.elementData) {
+                group.elementData.metadata = resizeMetadata
+            }
         }
 
         cornerCircles.forEach((circle, index) => {
@@ -399,14 +403,21 @@ function NewText(props) {
                 selectorInstance.hide()
                 two.update()
 
+                const updatedMetadata = {
+                    ...props.metadata,
+                    content: textValueRef.current,
+                }
                 updateComponentBulkPropertiesInLocalStore(props.id, {
                     width: newWidth,
                     height: newHeight,
-                    metadata: {
-                        ...props.metadata,
-                        content: textValueRef.current,
-                    },
+                    metadata: updatedMetadata,
                 })
+
+                // Keep elementData in sync so ungrouping reads the live value,
+                // not the stale initial props captured at mount.
+                if (group.elementData) {
+                    group.elementData.metadata = updatedMetadata
+                }
 
                 input.remove()
             })
