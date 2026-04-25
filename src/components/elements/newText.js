@@ -362,6 +362,10 @@ function NewText(props) {
                 if (event.key === 'Enter') {
                     event.preventDefault()
                 }
+                if (event.key === 'Escape') {
+                    event.preventDefault()
+                    input.blur()
+                }
             })
 
             input.addEventListener('blur', () => {
@@ -569,6 +573,9 @@ function NewText(props) {
                     closeToolbar={closeToolbar}
                     componentId={props.id}
                     isMobile={isMobile}
+                    updateComponentBulkProperties={
+                        updateComponentBulkPropertiesInLocalStore
+                    }
                     postToolbarUpdate={() => {
                         two.update()
                     }}

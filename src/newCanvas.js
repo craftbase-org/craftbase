@@ -415,6 +415,10 @@ function addZUI(
                 if (event.key === 'Enter') {
                     event.preventDefault()
                 }
+                if (event.key === 'Escape') {
+                    event.preventDefault()
+                    input.blur()
+                }
             })
 
             input.addEventListener('blur', () => {
