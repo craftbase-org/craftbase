@@ -1,5 +1,3 @@
-import DividerSVG from 'wireframeAssets/divider.svg?react'
-
 import CircleIcon from 'wireframeAssets/circle.svg?react'
 import RectangleIcon from 'wireframeAssets/rectangle.svg?react'
 import TextIcon from 'wireframeAssets/text.svg?react'
@@ -14,8 +12,6 @@ export const color_teal = '#008DA6'
 export const color_green = '#006644'
 export const color_red = '#BF2600'
 export const color_slate = '#091E42'
-
-export const defaultScaleConstant = 73
 
 export const properties = {
     colorBg: 'color_bg',
@@ -99,27 +95,6 @@ export const essentialShades = [
     '#6554C0',
 ]
 
-export const staticDrawerData = {
-    shapes: [
-        {
-            elementName: 'circle',
-            elementDisplayName: 'Circle',
-            elementIcon: CircleIcon,
-            hasDrawer: false,
-            noAction: false,
-            drawerData: [],
-        },
-        {
-            elementName: 'rectangle',
-            elementDisplayName: 'Rectangle / Square',
-            elementIcon: RectangleIcon,
-            hasDrawer: false,
-            noAction: false,
-            drawerData: [],
-        },
-    ],
-}
-
 export const staticPrimaryElementData = [
     {
         sectionName: 'Basic',
@@ -156,14 +131,6 @@ export const staticPrimaryElementData = [
                 noAction: false,
                 drawerData: [],
             },
-            // {
-            //     elementName: 'divider',
-            //     elementDisplayName: 'Divider',
-            //     elementIcon: DividerSVG,
-            //     hasDrawer: false,
-            //     noAction: false,
-            //     drawerData: [],
-            // },
             {
                 elementName: 'pencil',
                 elementDisplayName: 'Pencil',

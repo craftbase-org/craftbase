@@ -38,9 +38,12 @@ The Board component uses React Context (`BoardContext`) to pass state and method
 **Rule**: Any Two.js event handler that needs live React state **must** read from a `useRef`, not from `props` or state directly.
 
 Pattern:
+
 ```js
 const myValueRef = useRef(props.myValue)
-useEffect(() => { myValueRef.current = props.myValue }, [props.myValue])
+useEffect(() => {
+    myValueRef.current = props.myValue
+}, [props.myValue])
 // pass myValueRef into addZUI, read myValueRef.current inside handlers
 ```
 
@@ -86,8 +89,6 @@ Reusable React UI components.
 
 - **`floatingToolbar.js`**: Floating toolbar for quick actions (every time when a user clicks component, this floating toolbar gets visible and invisible when the focus is moved away from component)
 
-- **`ProgressiveImageLoader/`**: Progressive image loading component
-
 ### `/src/factory/`
 
 Component factory classes (.js file under /src/factory) that generate template definitions for each element type. Each factory corresponds to a component element.
@@ -117,7 +118,6 @@ GraphQL schema definitions for backend communication (Hasura).
 Application constants and configuration.
 
 - `elementSchema.js` - Element schema definitions
-- `properties.js` - Property configurations
 - `misc.js` - Miscellaneous constants
 - `exportHooks.js` - Custom hook exports
 
@@ -128,12 +128,6 @@ Utility functions and helpers.
 - `constants.js` - Shared constants
 - `misc.js` - Miscellaneous utilities
 - `updateVertices.js` - Vertex update utilities
-
-### `/src/hooks`
-
-Custom React hooks.
-
-- `intersectionObserver.js` - Intersection Observer hook
 
 ### `/src/icons`
 
