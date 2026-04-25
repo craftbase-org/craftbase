@@ -98,7 +98,7 @@ function Pencil(props) {
             const initialSceneCoords = document
                 .getElementById(two.scene.id)
                 .getBoundingClientRect()
-            console.log('initialSceneCoords', initialSceneCoords)
+            // console.log('initialSceneCoords', initialSceneCoords)
 
             setInternalState((draft) => {
                 draft.element = {

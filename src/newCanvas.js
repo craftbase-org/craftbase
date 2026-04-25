@@ -47,8 +47,8 @@ function cloneElementData(src, boardId, newX, newY) {
         metadata: Array.isArray(src.metadata)
             ? src.metadata.map((p) => ({ ...p }))
             : src.metadata
-            ? { ...src.metadata }
-            : {},
+              ? { ...src.metadata }
+              : {},
         children: src.children
             ? typeof structuredClone === 'function'
                 ? structuredClone(src.children)
@@ -162,9 +162,10 @@ function addZUI(
                 avoidDragging = true
                 // Still resolve the Two.js group so it can be tracked for copy.
                 if (item.tagName === 'g' && shape == null) {
-                    shape = two.scene.children.find(
-                        (child) => child.id === item.id
-                    ) ?? null
+                    shape =
+                        two.scene.children.find(
+                            (child) => child.id === item.id
+                        ) ?? null
                 }
             }
 
@@ -912,6 +913,7 @@ function addZUI(
                     // is left on the canvas.
                     const activeTextInput =
                         document.querySelector('.temp-input-area')
+
                     if (activeTextInput) {
                         shape = {}
                         avoidDragging = true
@@ -1512,13 +1514,6 @@ function addZUI(
                         (child) => child?.elementData?.id === id
                     )
                     if (el && el.children?.[0]) {
-                        console.log(
-                            '[waitForNewElement] found real element for',
-                            id,
-                            'at retry',
-                            retries,
-                            '— removing preview'
-                        )
                         if (capturedPreview) {
                             two.remove(capturedPreview)
                             two.update()
@@ -1531,11 +1526,6 @@ function addZUI(
                         // Element took too long to mount (e.g. slow network).
                         // Remove the preview unconditionally to prevent a ghost
                         // shape lingering on the canvas after the real element loads.
-                        console.log(
-                            '[waitForNewElement] TIMEOUT (300 retries) for',
-                            id,
-                            '— force-removing preview'
-                        )
                         if (capturedPreview) {
                             two.remove(capturedPreview)
                             two.update()
@@ -1742,7 +1732,6 @@ function addZUI(
                         }
                     }
                 }
-            // console.log('shape.elementData.writable', newShapeData)
         }
 
         // let item = {
@@ -2103,6 +2092,7 @@ const Canvas = (props) => {
     const clipboardRef = useRef(null)
     const lastMouseRef = useRef({ clientX: 0, clientY: 0, hasMoved: false })
     const zuiInstanceRef = useRef(null)
+    const renderGroupRef = useRef(null)
 
     // useEffect(()=>{},[insertComponentSuccess])
 
@@ -2293,7 +2283,10 @@ const Canvas = (props) => {
                     let relativeY = item.y - yMid
 
                     let newMetadata = item.metadata
-                    if (item.componentType === 'pencil' && Array.isArray(item.metadata)) {
+                    if (
+                        item.componentType === 'pencil' &&
+                        Array.isArray(item.metadata)
+                    ) {
                         newMetadata = item.metadata.map((vert, index) => {
                             const lwProp =
                                 vert.lw !== undefined ? { lw: vert.lw } : {}
@@ -2518,7 +2511,10 @@ const Canvas = (props) => {
                 }
                 // Pencil metadata holds absolute vertex coords. Shift them so the
                 // stroke lands at the paste cursor instead of the original position.
-                if (src.componentType === 'pencil' && Array.isArray(src.metadata)) {
+                if (
+                    src.componentType === 'pencil' &&
+                    Array.isArray(src.metadata)
+                ) {
                     const dx = px - src.x
                     const dy = py - src.y
                     newItem.metadata = src.metadata.map((pt) => {
@@ -2564,7 +2560,9 @@ const Canvas = (props) => {
                     stroke: null,
                     children: newChildren,
                 }
-                addToLocalComponentStore(newGroup.id, GROUP_COMPONENT, newGroup)
+                // Render the pasted group transiently (same as a selection group) —
+                // groupobject must never enter componentStore or localStorage.
+                renderGroupRef.current?.([newGroup])
             }
         }
         window.addEventListener('keydown', onPasteEvent)
@@ -2649,6 +2647,7 @@ const Canvas = (props) => {
             twoJSInstance && setPrevElements(arr)
         }
     }
+    renderGroupRef.current = handleSetComponentsToRender
 
     // When an element is deleted or its ADD is undone, remove it from prevElements
     // so handleSetComponentsToRender can create a fresh wrapper if the element is

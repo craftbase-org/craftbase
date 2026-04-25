@@ -4,10 +4,7 @@ const factoryModules = import.meta.glob('../../factory/*.js')
 import Two from 'two.js'
 import { useBoardContext } from 'views/Board/board'
 import { useMutation } from '@apollo/client'
-import {
-    UPDATE_COMPONENT_INFO,
-    DELETE_BULK_COMPONENTS,
-} from 'schema/mutations'
+import { UPDATE_COMPONENT_INFO, DELETE_BULK_COMPONENTS } from 'schema/mutations'
 import ObjectSelector from 'components/utils/objectSelector'
 import getEditComponents from 'components/utils/editWrapper'
 import { elementOnBlurHandler } from 'utils/misc'
@@ -79,7 +76,10 @@ function GroupedObjectWrapper(props) {
                     element.translation.y = newY
 
                     let newMetadata = element.elementData.metadata
-                    if (element.elementData.componentType === 'pencil' && Array.isArray(element.elementData.metadata)) {
+                    if (
+                        element.elementData.componentType === 'pencil' &&
+                        Array.isArray(element.elementData.metadata)
+                    ) {
                         newMetadata = element.elementData.metadata.map(
                             (vert, index) => {
                                 const lwProp =
@@ -149,9 +149,13 @@ function GroupedObjectWrapper(props) {
                     const absY = gy + localY
 
                     let childMetadata = child.metadata
-                    if (child.componentType === 'pencil' && Array.isArray(child.metadata)) {
+                    if (
+                        child.componentType === 'pencil' &&
+                        Array.isArray(child.metadata)
+                    ) {
                         childMetadata = child.metadata.map((vert, index) => {
-                            const lwProp = vert.lw !== undefined ? { lw: vert.lw } : {}
+                            const lwProp =
+                                vert.lw !== undefined ? { lw: vert.lw } : {}
                             if (index === 0) {
                                 return { x: absX, y: absY, ...lwProp }
                             }
@@ -178,7 +182,11 @@ function GroupedObjectWrapper(props) {
 
     function onFocusHandler(e) {
         document.getElementById(`${groupInstance.id}`).style.outline = 0
-        window.dispatchEvent(new CustomEvent('groupFocused', { detail: { group: groupInstance } }))
+        window.dispatchEvent(
+            new CustomEvent('groupFocused', {
+                detail: { group: groupInstance },
+            })
+        )
     }
 
     function onKeyDown(evt) {
@@ -254,37 +262,35 @@ function GroupedObjectWrapper(props) {
             const item = props.children[index]
             const factoryKey = `../../factory/${item.componentType}.js`
             if (typeof factoryModules[factoryKey] !== 'function') continue
-            factoryModules[factoryKey]().then(
-                (component) => {
-                    const componentFactory = new component.default(
-                        two,
-                        item.x,
-                        item.y,
-                        { ...item }
-                    )
-                    const factoryObject = componentFactory.createElement()
-                    const coreObject = factoryObject.group
-                    // console.log('factoryObject', factoryObject)
-                    // set component's coordinates
-                    coreObject.translation.x = item.x
-                    coreObject.translation.y = item.y
+            factoryModules[factoryKey]().then((component) => {
+                const componentFactory = new component.default(
+                    two,
+                    item.x,
+                    item.y,
+                    { ...item }
+                )
+                const factoryObject = componentFactory.createElement()
+                const coreObject = factoryObject.group
+                // console.log('factoryObject', factoryObject)
+                // set component's coordinates
+                coreObject.translation.x = item.x
+                coreObject.translation.y = item.y
 
-                    const meta = item.metadata || {}
-                    if (meta.hasText && meta.textContent) {
-                        const twoText = two.makeText(meta.textContent, 0, 0)
-                        twoText.fill = meta.textFill || '#000'
-                        twoText.size = meta.textFontSize || 24
-                        twoText.alignment = 'center'
-                        twoText.baseline = meta.textBaseLine || 'middle'
-                        twoText.family = meta.textFamily || 'Caveat'
-                        coreObject.add(twoText)
-                    }
-
-                    group.add(coreObject)
-                    // group.children.unshift(coreObject)
-                    two.update()
+                const meta = item.metadata || {}
+                if (meta.hasText && meta.textContent) {
+                    const twoText = two.makeText(meta.textContent, 0, 0)
+                    twoText.fill = meta.textFill || '#000'
+                    twoText.size = meta.textFontSize || 24
+                    twoText.alignment = 'center'
+                    twoText.baseline = meta.textBaseLine || 'middle'
+                    twoText.family = meta.textFamily || 'Caveat'
+                    coreObject.add(twoText)
                 }
-            )
+
+                group.add(coreObject)
+                // group.children.unshift(coreObject)
+                two.update()
+            })
         }
 
         // console.log('after group children has been added', group.children)

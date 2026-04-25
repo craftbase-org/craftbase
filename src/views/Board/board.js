@@ -32,7 +32,7 @@ import {
     clearDashesOnTwoJSShape,
 } from 'utils/misc'
 import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
-import { RUBBER_MODE_KEY } from 'constants/misc'
+import { RUBBER_MODE_KEY, GROUP_COMPONENT } from 'constants/misc'
 import Two from 'two.js'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 
@@ -165,6 +165,17 @@ const BoardViewPage = (props) => {
     const [storageLimitBoardUrl, setStorageLimitBoardUrl] = useState(null)
     const draftSaveTimerRef = useRef(null)
 
+    // Clear stale interaction flags from localStorage on mount so a page refresh
+    // never triggers SCENARIO_DRAW_SHAPE / SCENARIO_ARROW_DRAW / etc. on the
+    // first mousedown. These keys are only meaningful within a single page session.
+    useEffect(() => {
+        localStorage.removeItem('pendingShapeType')
+        localStorage.removeItem('pendingShapeProps')
+        localStorage.removeItem('arrowDrawMode')
+        localStorage.removeItem('textDrawMode')
+        localStorage.removeItem('lastAddedElementId')
+    }, [])
+
     // Restore draft and background board ID from localStorage on mount (local mode only)
     useEffect(() => {
         if (isPersisted) return
@@ -183,7 +194,12 @@ const BoardViewPage = (props) => {
                 const parsed = JSON.parse(draft)
                 const age = Date.now() - (parsed.timestamp || 0)
                 if (age < DRAFT_EXPIRY_MS && parsed.components) {
-                    setComponentStore(parsed.components)
+                    const safeComponents = Object.fromEntries(
+                        Object.entries(parsed.components).filter(
+                            ([, v]) => v?.componentType !== GROUP_COMPONENT
+                        )
+                    )
+                    setComponentStore(safeComponents)
                 } else {
                     localStorage.removeItem(LOCAL_DRAFT_KEY)
                     localStorage.removeItem('craftbase_background_board_id')
@@ -205,11 +221,16 @@ const BoardViewPage = (props) => {
         }
         draftSaveTimerRef.current = setTimeout(() => {
             try {
+                const componentsToSave = Object.fromEntries(
+                    Object.entries(componentStore).filter(
+                        ([, v]) => v?.componentType !== GROUP_COMPONENT
+                    )
+                )
                 localStorage.setItem(
                     LOCAL_DRAFT_KEY,
                     JSON.stringify({
                         boardId: localBoardId,
-                        components: componentStore,
+                        components: componentsToSave,
                         timestamp: Date.now(),
                     })
                 )
@@ -421,6 +442,11 @@ const BoardViewPage = (props) => {
 
     // Records ADD action, updates store and syncs to DB
     const addToLocalComponentStore = (id, type, componentInfo) => {
+        // groupobject is a transient visual construct and must never be persisted
+        if (type === GROUP_COMPONENT || componentInfo?.componentType === GROUP_COMPONENT) {
+            return
+        }
+
         // Trigger background board creation on first interaction
         ensureBackgroundBoard()
 
