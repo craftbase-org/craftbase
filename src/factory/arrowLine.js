@@ -8,6 +8,7 @@ export default class ArrowLineFactory extends Main {
         const prevY = this.y
         const {
             fill,
+            stroke,
             x1 = 20,
             x2 = 100,
             y1 = 10,
@@ -21,6 +22,7 @@ export default class ArrowLineFactory extends Main {
         line.linewidth = linewidth ? linewidth : 1
         line.dashes = strokeTypeToDashes(strokeType)
         line.fill = 'none'
+        if (stroke) line.stroke = stroke
         // line.vertices[1].y = 200
         // const centerPointCircle = two.makeEllipse(0, 0, 5, 5)
         // centerPointCircle.fill = '#FFF'
