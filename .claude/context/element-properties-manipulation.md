@@ -10,8 +10,8 @@
 2. Live editing — floatingToolbar.js:287-303
    onChangeComplete directly mutates componentState.shape.data.fill = color, then calls updateComponent('fill', color) to persist to DB. Same pattern as linewidth.
 
-3. Undo — board.js:453
-   applyPropertyToTwoJSGroup handles 'fill' with shape[name] = value. Same as linewidth.
+3. Undo — `src/hooks/useComponentHistory.js`
+   `applyPropertyToTwoJSGroup` (module-level helper in that file) handles 'fill' with `shape[name] = value`. Same as linewidth.
 
 4. Prop-change useEffect in element files — this is what's different from linewidth
 
@@ -36,9 +36,9 @@ When user selects "stroke width" from defaults sidebar or floating toolbar, it i
 
 **2. Default stroke width — defaults sidebar**
 
-`defaultLinewidth` is board-level state in `board.js` (`useState(2)`). The defaults sidebar renders a stroke-width selector; selecting a value calls `setDefaultLinewidthInBoard(value)`.
+`defaultLinewidth` is state managed by the `usePencilDefaults` hook (`src/hooks/usePencilDefaults.js`), called from `board.js`. The defaults sidebar renders a stroke-width selector; selecting a value calls `setDefaultLinewidthInBoard(value)`.
 
-`setDefaultLinewidthInBoard` (board.js) does the following:
+`setDefaultLinewidthInBoard` (`usePencilDefaults.js`) does the following:
 
 - Updates the default for future elements (`setDefaultLinewidth(val)`).
 - Calls `toggleToolbar(false)` to dismiss the floating toolbar.
@@ -50,7 +50,9 @@ When user selects "stroke width" from defaults sidebar or floating toolbar, it i
 
 `onChangeBorderWidth` updates `state.linewidth` and directly mutates `componentState.shape.data.linewidth` (guarded by `shape?.data?.stroke`), then calls `updateComponent('linewidth', width)` to persist to DB via `updateComponentBulkPropertiesInLocalStore`.
 
-**4. Undo — board.js UPDATE_BULK path**
+**4. Undo — UPDATE_BULK path**
+
+Lives in `src/hooks/useComponentHistory.js` (`undoLastAction` function). `applyPropertyToTwoJSGroup` is a module-level helper in that file.
 
 *Visual (Two.js)*: `applyPropertyToTwoJSGroup` handles `'linewidth'` via `shape[name] = value`.
 
@@ -78,9 +80,9 @@ All factories (`src/factory/rectangle.js:25`, `circle.js:21`, `arrowLine.js:22`,
 
 **2. Default stroke type — defaults sidebar + newCanvas**
 
-`defaultStrokeType` is a board-level state in `board.js:95` (`useState(null)`). The defaults sidebar (`src/components/sidebar/defaults.js:76-108`) renders a stroke-type selector; selecting a type calls `setDefaultStrokeTypeInBoard(value === 'solid' ? null : value)`.
+`defaultStrokeType` is state managed by the `usePencilDefaults` hook (`src/hooks/usePencilDefaults.js`), called from `board.js`. The defaults sidebar renders a stroke-type selector; selecting a type calls `setDefaultStrokeTypeInBoard(value === 'solid' ? null : value)`.
 
-`setDefaultStrokeTypeInBoard` (board.js) does the following:
+`setDefaultStrokeTypeInBoard` (`usePencilDefaults.js`) does the following:
 
 - Updates the default for future elements (`setDefaultStrokeType(val)`).
 - Calls `toggleToolbar(false)` to dismiss the floating toolbar.
@@ -89,7 +91,7 @@ All factories (`src/factory/rectangle.js:25`, `circle.js:21`, `arrowLine.js:22`,
 This default is threaded through `BoardContext` and consumed by:
 
 - `src/components/sidebar/primary.js:83,139,217` — injects `strokeType: defaultStrokeType` into shape data when placing any new shape/arrow/frame.
-- `src/newCanvas.js:1169` — injects `strokeType: defaultStrokeTypeValue` into pencil component data on draw complete. The module-level var `defaultStrokeTypeValue` is kept in sync via a `useEffect` at `newCanvas.js:1603-1604` watching `props.defaultStrokeType`.
+- `src/newCanvas.js` — injects `strokeType: defaultStrokeTypeValue` into pencil component data on draw complete. The module-level var `defaultStrokeTypeValue` is kept in sync via a `useEffect` watching `props.defaultStrokeType`.
 - `src/components/pencilToolbar.js:25` — reads `defaultStrokeType ?? 'solid'` to display the current type in the pencil toolbar UI.
 
 **3. Live editing — floatingToolbar.js:436-455**
@@ -105,7 +107,9 @@ Note the asymmetry: DB/elementData stores `'solid'` for solid, but local toolbar
 
 `updateComponent` in the floating toolbar routes through `updateComponentBulkProperties` (which is `updateComponentBulkPropertiesInLocalStore` from board.js). That function, after updating the local store, also calls `setDefaultStrokeType` when `strokeType` is present in `bulkObj` — so the defaults sidebar stays in sync with any strokeType change regardless of which UI triggered it.
 
-**4. Undo — board.js UPDATE_BULK path**
+**4. Undo — UPDATE_BULK path**
+
+Lives in `src/hooks/useComponentHistory.js` (`undoLastAction` function). `applyPropertyToTwoJSGroup` is a module-level helper in that file.
 
 *Visual (Two.js)*: `applyPropertyToTwoJSGroup` handles `'strokeType'` by calling `shape.dashes = strokeTypeToDashes(value)` and `clearDashesOnTwoJSShape(shape)` when value is falsy or `'solid'`.
 

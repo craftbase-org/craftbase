@@ -86,6 +86,11 @@ Reusable React UI components.
     - `spinner.js`, `spinnerWithSize.js` - Loading indicators
 
 - **`utils/`**: Component-specific utility functions
+    - `elementRenderWrappers.js` - `ElementRenderWrapper` and `GroupRenderWrapper` factory functions used by Canvas to lazily mount element components
+
+- **`modals/`**: Standalone modal components
+    - `PermissionErrorModal.js` - Permission error modal (extracted from board.js)
+    - `StorageLimitModal.js` - Storage quota exceeded modal (extracted from board.js)
 
 - **`floatingToolbar.js`**: Floating toolbar for quick actions (every time when a user clicks component, this floating toolbar gets visible and invisible when the focus is moved away from component)
 
@@ -121,6 +126,17 @@ Application constants and configuration.
 - `misc.js` - Miscellaneous constants
 - `exportHooks.js` - Custom hook exports
 
+### `/src/hooks`
+
+Custom React hooks extracted from board.js and newCanvas.js.
+
+- `useDrawingModes.js` - Draw mode state (`isPencilMode`, `isArrowDrawMode`, `isTextDrawMode`, pointer toggle)
+- `usePencilDefaults.js` - Pencil/stroke defaults (`defaultLinewidth`, `defaultStrokeType`, `pencilStrokeColor`) and their setters
+- `useMobileToolbarPanels.js` - Mobile panel visibility state with useEffect-based auto-close logic
+- `useLocalDraftPersistence.js` - localStorage draft save/restore + storage-quota modal state
+- `useComponentHistory.js` - Undo/history stack (`historyLog`, `recordToHistoryLog`, `undoLastAction`, `clearHistory`)
+- `useCanvasClipboard.js` - Copy (Ctrl+C) and paste (Ctrl+V) logic for canvas elements
+
 ### `/src/utils`
 
 Utility functions and helpers.
@@ -128,6 +144,8 @@ Utility functions and helpers.
 - `constants.js` - Shared constants
 - `misc.js` - Miscellaneous utilities
 - `updateVertices.js` - Vertex update utilities
+- `canvasUtils.js` - Pure Two.js canvas helpers: `setArrowEndpointsVisible`, `applyShapeStyle`, `cloneElementData`, `resolveShapeFromPath`, `pollUntilElement`
+- `drawModeUtils.js` - localStorage draw mode helpers: `getArrowDrawMode`, `isSelectPanMode`, `clearAllDrawModes`
 
 ### `/src/icons`
 
@@ -169,13 +187,25 @@ The **BoardContext** (created in `src/views/Board/board.js`) provides:
 - Component store state
 - Selected component state
 - Two.js instance
-- Pencil mode state
-- Toolbar visibility
+- Pencil mode state (from `useDrawingModes` hook)
+- Toolbar visibility (from `useMobileToolbarPanels` hook)
+- Pencil/stroke defaults (from `usePencilDefaults` hook)
+- Undo/history functions — `recordToHistoryLog`, `undoLastAction` (from `useComponentHistory` hook)
 - GraphQL mutation functions
 - `boardId`, `isPersisted`, `persistBoard`, `backgroundBoardId` (canvas-first UX)
 - Other board-level state and handlers
 
 Child components access this context via `useContext(BoardContext)`.
+
+### Hook composition in board.js
+
+`board.js` composes several custom hooks in this order (order matters — each may depend on the previous):
+
+1. `useDrawingModes()` — draw mode state and setters
+2. `useMobileToolbarPanels({ isPencilMode, isMobile, selectedComponent })` — panel visibility
+3. `usePencilDefaults({ toggleToolbar, setSelectedComponent })` — defaults and their setters
+4. `useLocalDraftPersistence({ ..., onStorageLimitRef })` — draft persistence + quota modal
+5. `useComponentHistory({ ... })` — undo stack
 
 ## Technology Stack
 

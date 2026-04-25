@@ -4,7 +4,9 @@
 
 Board mutations are tracked in a stack (`historyLog`) that powers Ctrl+Z undo. Every function that modifies component state **must** call `recordToHistoryLog` before touching the store or DB.
 
-All history state lives in `src/views/Board/board.js`.
+All history state lives in `src/hooks/useComponentHistory.js`. The hook is called in `src/views/Board/board.js` and its returned values (`recordToHistoryLog`, `undoLastAction`, `clearHistory`) are spread into `BoardContext`.
+
+`applyPropertyToTwoJSGroup` is a module-level helper function in `useComponentHistory.js` (not exported — used internally by `undoLastAction` to mutate Two.js shape properties when reversing an `UPDATE_BULK` action).
 
 ## State
 

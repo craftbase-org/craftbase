@@ -10,6 +10,21 @@ import {
     componentTypes,
     RUBBER_MODE_KEY,
     VIEWPORT_KEY_PREFIX,
+    ARROW_DRAW_MODE_KEY,
+    TEXT_DRAW_MODE_KEY,
+    PENDING_SHAPE_TYPE_KEY,
+    PENDING_SHAPE_PROPS_KEY,
+    LAST_ADDED_ELEMENT_ID_KEY,
+    PENCIL_MODE_KEY,
+    PENCIL_DEFAULT_COLOR,
+    SHAPE_DEFAULT_STROKE,
+    HOVER_THRESHOLD,
+    HOVER_COLOR,
+    SELECTION_PREVIEW_STROKE,
+    DEFAULT_PREVIEW_OPACITY,
+    LINE_HEIGHT_MULTIPLIER,
+    PENCIL_DISTANCE_THROTTLE,
+    DEFAULT_TEXT_SIZE,
 } from 'constants/misc'
 import Spinner from 'components/common/spinner'
 
@@ -24,42 +39,11 @@ import {
     smoothLinewidth,
     simplifyWithLinewidth,
 } from 'utils/pencilHelper'
+import { setArrowEndpointsVisible, pollUntilElement, cloneElementData, resolveShapeFromPath } from 'utils/canvasUtils'
+import { isSelectPanMode } from 'utils/drawModeUtils'
+import { useCanvasClipboard } from 'hooks/useCanvasClipboard'
+import { ElementRenderWrapper, GroupRenderWrapper } from 'components/utils/elementRenderWrappers'
 
-function cloneElementData(src, boardId, newX, newY) {
-    const cloned = {
-        id: generateUUID(),
-        boardId,
-        componentType: src.componentType,
-        x: newX,
-        y: newY,
-        x1: src.x1,
-        y1: src.y1,
-        x2: src.x2,
-        y2: src.y2,
-        width: src.width,
-        height: src.height,
-        fill: src.fill,
-        stroke: src.stroke,
-        strokeType: src.strokeType,
-        linewidth: src.linewidth,
-        radius: src.radius,
-        iconStroke: src.iconStroke,
-        textColor: src.textColor,
-        metadata: Array.isArray(src.metadata)
-            ? src.metadata.map((p) => ({ ...p }))
-            : src.metadata
-              ? { ...src.metadata }
-              : {},
-        children: src.children
-            ? typeof structuredClone === 'function'
-                ? structuredClone(src.children)
-                : JSON.parse(JSON.stringify(src.children))
-            : null,
-    }
-    if (src.relativeX !== undefined) cloned.relativeX = src.relativeX
-    if (src.relativeY !== undefined) cloned.relativeY = src.relativeY
-    return cloned
-}
 
 /**
  * @typedef {Object} elementData
@@ -85,7 +69,7 @@ function cloneElementData(src, boardId, newX, newY) {
 var isDrawing
 var defaultLinewidthValue = 1
 var defaultStrokeTypeValue = null
-var pencilStrokeColorValue = '#3A342C'
+var pencilStrokeColorValue = PENCIL_DEFAULT_COLOR
 
 function addZUI(
     props,
@@ -102,7 +86,6 @@ function addZUI(
     deleteComponentFromLocalStore,
     isPencilModeRef
 ) {
-    // console.log('two.renderer.domElement', two.renderer.domElement)
     let shape = null
     let lastSelectedShape = null
     // Tracks the GroupedObjectWrapper's Two.js group while it has DOM focus.
@@ -155,80 +138,7 @@ function addZUI(
     let drawShapeProps = null
     let lastPlacedElement = null
 
-    function resolveShapeFromPath(path, two) {
-        let shape = null
-        let avoidDragging = false
-
-        path.forEach((item) => {
-            if (item?.classList?.value?.includes('avoid-dragging')) {
-                avoidDragging = true
-                // Still resolve the Two.js group so it can be tracked for copy.
-                if (item.tagName === 'g' && shape == null) {
-                    shape =
-                        two.scene.children.find(
-                            (child) => child.id === item.id
-                        ) ?? null
-                }
-            }
-
-            if (
-                item.tagName === 'g' &&
-                item?.classList?.value?.includes('dragger-picker') &&
-                shape == null
-            ) {
-                if (item?.classList?.value?.includes('is-line-circle')) {
-                    const parentId = document
-                        .getElementById(item.id)
-                        .getAttribute('data-parent-id')
-                    const lineId = document
-                        .getElementById(item.id)
-                        .getAttribute('data-line-id')
-                    const direction = document
-                        .getElementById(item.id)
-                        .getAttribute('data-direction')
-
-                    const getParentTwoData = two.scene.children.find(
-                        (child) => child.id === parentId
-                    )
-                    const getChildTwoData = getParentTwoData.children.find(
-                        (child) => child.id === item.id
-                    )
-                    const getSiblingChild = getParentTwoData.children.find(
-                        (child) =>
-                            child.id !== item.id && child?.children?.length > 0
-                    )
-                    const getLineTwoData = getParentTwoData.children.find(
-                        (child) => child.id === lineId
-                    )
-
-                    shape = getChildTwoData
-                    shape.lineData = getLineTwoData
-                    shape.direction = direction
-                    shape.siblingCircle = getSiblingChild
-                    shape.opacity = 1
-                    shape.siblingCircle.opacity = 1
-                    shape.elementData = {
-                        isGroupSelector: false,
-                        isLineCircle: true,
-                        lineData: getLineTwoData,
-                        parentData: getParentTwoData,
-                    }
-                } else {
-                    shape = two.scene.children.find(
-                        (child) => child.id === item.id
-                    )
-
-                    if (shape?.elementData?.componentType === 'arrowLine') {
-                        if (shape.children[1]) shape.children[1].opacity = 1
-                        if (shape.children[2]) shape.children[2].opacity = 1
-                    }
-                }
-            }
-        })
-
-        return { shape, avoidDragging }
-    }
-
+    const toSurface = (e) => zui.clientToSurface(e.clientX, e.clientY)
     zui.addLimits(0.06, 8)
 
     const selectionController = new SelectionController({
@@ -271,17 +181,14 @@ function addZUI(
     })
 
     function dblclick(e) {
-        console.log('on double click', e)
         shape = null
         mouse.x = e.clientX
         mouse.y = e.clientY
         let avoidDragging = false
-        let isGroupSelector = false
         // Hide all arrow endpoint circles before processing the new selection
         two.scene.children.forEach((child) => {
             if (child?.elementData?.componentType === 'arrowLine') {
-                if (child.children[1]) child.children[1].opacity = 0
-                if (child.children[2]) child.children[2].opacity = 0
+                setArrowEndpointsVisible(child, false)
             }
         })
 
@@ -311,10 +218,10 @@ function addZUI(
             selectionController.ui.visible = false
             two.update()
 
-            const fontSize = twoText.size || 36
+            const fontSize = twoText.size || DEFAULT_TEXT_SIZE
             // Use a generous line-height so ascenders/descenders are
-            // never clipped. A 1.6× multiplier covers most font metrics.
-            const lineH = Math.ceil(fontSize * 1.6)
+            // never clipped. A LINE_HEIGHT_MULTIPLIER× covers most font metrics.
+            const lineH = Math.ceil(fontSize * LINE_HEIGHT_MULTIPLIER)
             // Vertical padding inside the textarea prevents the top of
             // tall glyphs (H, d, l …) from being cut off by the element
             // boundary. Half the difference between lineH and fontSize
@@ -399,18 +306,6 @@ function addZUI(
             // Re-measure on every keystroke so the box grows with the text
             input.addEventListener('input', autoSizeAndCenter)
 
-            // input.onfocus = function () {
-            //     const bRect = twoText.getBoundingClientRect(true)
-            //     selectorInstance.update(
-            //         bRect.left - 4,
-            //         bRect.right + 4,
-            //         bRect.top - 4,
-            //         bRect.bottom + 4
-            //     )
-            //     selectorInstance.show()
-            //     two.update()
-            // }
-
             input.focus()
 
             input.addEventListener('keydown', (event) => {
@@ -441,25 +336,11 @@ function addZUI(
                 two.update()
 
                 const newContent = input.value
-                // setTextValue(newContent)
-                // textValueRef.current = newContent
 
                 // Reflect change in the Two.js text object
                 twoText.value = newContent
                 two.update()
 
-                // Recalculate bounds after value update
-                const bRect = twoText.getBoundingClientRect(true)
-                const newWidth = Math.round(bRect.width || 60)
-                const newHeight = Math.round(bRect.height || twoText.size)
-
-                // selectorInstance.update(
-                //     bRect.left - 4,
-                //     bRect.right + 4,
-                //     bRect.top - 4,
-                //     bRect.bottom + 4
-                // )
-                // selectorInstance.hide()
                 group.center()
                 two.update()
 
@@ -508,8 +389,8 @@ function addZUI(
                 )
                 if (!twoText) {
                     twoText = two.makeText(meta.textContent || '', 0, 0)
-                    twoText.fill = meta.textFill || '#3A342C'
-                    twoText.size = meta.textFontSize || 36
+                    twoText.fill = meta.textFill || SHAPE_DEFAULT_STROKE
+                    twoText.size = meta.textFontSize || DEFAULT_TEXT_SIZE
                     twoText.alignment = 'center'
                     twoText.baseline = meta.textBaseLine || 'middle'
                     twoText.family = meta.textFamily || 'Caveat'
@@ -551,24 +432,16 @@ function addZUI(
         }, 1000)
     }
 
-    const HOVER_THRESHOLD = 15
     let lastHoveredCircleGroup = null
 
     // Singleton hover indicator — separate from the selection circles
     const hoverCircle = two.makeCircle(0, 0, 6)
-    hoverCircle.fill = 'rgba(196, 144, 26, 0.7)'
+    hoverCircle.fill = HOVER_COLOR
     hoverCircle.noStroke()
     hoverCircle.opacity = 0
 
     function hoverDetectMove(e) {
-        const isSelectPanMode =
-            !isPencilModeRef.current &&
-            localStorage.getItem('arrowDrawMode') !== 'true' &&
-            localStorage.getItem('textDrawMode') !== 'true' &&
-            localStorage.getItem('pendingShapeType') === null &&
-            localStorage.getItem(RUBBER_MODE_KEY) !== 'true'
-
-        if (!isSelectPanMode) {
+        if (!isSelectPanMode(isPencilModeRef.current)) {
             if (lastHoveredCircleGroup) {
                 hoverCircle.opacity = 0
                 two.update()
@@ -577,7 +450,7 @@ function addZUI(
             return
         }
 
-        const worldPos = zui.clientToSurface(e.clientX, e.clientY)
+        const worldPos = toSurface(e)
         let found = null
         let foundWx = 0
         let foundWy = 0
@@ -617,8 +490,7 @@ function addZUI(
 
     function mousedown(e) {
         // initialize shape definition
-        // console.log('e in ZUI mouse down', e, e.clientX, e.clientY)
-        const lastAddedElementId = localStorage.getItem('lastAddedElementId')
+        const lastAddedElementId = localStorage.getItem(LAST_ADDED_ELEMENT_ID_KEY)
 
         // Controller handle check — runs before the bare-canvas clearSelector
         // dispatch and the DOM path walk. Corner handles can extend slightly
@@ -661,9 +533,9 @@ function addZUI(
             scenario = SCENARIO_PENCIL_MODE
         }
 
-        const arrowDrawMode = localStorage.getItem('arrowDrawMode')
-        const textDrawMode = localStorage.getItem('textDrawMode')
-        const pendingShapeType = localStorage.getItem('pendingShapeType')
+        const arrowDrawMode = localStorage.getItem(ARROW_DRAW_MODE_KEY)
+        const textDrawMode = localStorage.getItem(TEXT_DRAW_MODE_KEY)
+        const pendingShapeType = localStorage.getItem(PENDING_SHAPE_TYPE_KEY)
         const rubberMode = localStorage.getItem(RUBBER_MODE_KEY)
         if (rubberMode === 'true') {
             scenario = SCENARIO_RUBBER_MODE
@@ -679,11 +551,11 @@ function addZUI(
 
         switch (scenario) {
             case SCENARIO_ARROW_DRAW: {
-                const surfaceCoords = zui.clientToSurface(e.clientX, e.clientY)
-                const arrowId = localStorage.getItem('lastAddedElementId')
+                const surfaceCoords = toSurface(e)
+                const arrowId = localStorage.getItem(LAST_ADDED_ELEMENT_ID_KEY)
 
-                localStorage.removeItem('lastAddedElementId')
-                localStorage.removeItem('arrowDrawMode')
+                localStorage.removeItem(LAST_ADDED_ELEMENT_ID_KEY)
+                localStorage.removeItem(ARROW_DRAW_MODE_KEY)
 
                 domElement.addEventListener('mousemove', mousemove, false)
                 domElement.addEventListener('mouseup', mouseup, false)
@@ -695,52 +567,25 @@ function addZUI(
                 // React element appears in the scene before positioning it.
                 // mousemove/mouseup already guard on arrowDrawElement being non-null,
                 // so they are safe no-ops until this resolves.
-                const initArrowElement = (id, capturedCoords, retries = 0) => {
-                    const el = two.scene.children.find(
-                        (child) => child?.elementData?.id === id
-                    )
-                    if (el) {
-                        arrowDrawElement = el
-                        arrowDrawElement.position.x = capturedCoords.x
-                        arrowDrawElement.position.y = capturedCoords.y
+                pollUntilElement(two, arrowId, (el) => {
+                    arrowDrawElement = el
+                    arrowDrawElement.position.x = surfaceCoords.x
+                    arrowDrawElement.position.y = surfaceCoords.y
 
-                        const line = arrowDrawElement.children[0]
-                        const pointCircle1Group = arrowDrawElement.children[1]
-                        const pointCircle2Group = arrowDrawElement.children[2]
+                    const line = arrowDrawElement.children[0]
+                    const pointCircle1Group = arrowDrawElement.children[1]
+                    const pointCircle2Group = arrowDrawElement.children[2]
 
-                        updateX1Y1Vertices(
-                            Two,
-                            line,
-                            0,
-                            0,
-                            pointCircle1Group,
-                            two
-                        )
-                        updateX2Y2Vertices(
-                            Two,
-                            line,
-                            0,
-                            0,
-                            pointCircle2Group,
-                            two
-                        )
-
-                        two.update()
-                    } else if (retries < 30) {
-                        requestAnimationFrame(() =>
-                            initArrowElement(id, capturedCoords, retries + 1)
-                        )
-                    }
-                }
-                requestAnimationFrame(() =>
-                    initArrowElement(arrowId, surfaceCoords)
-                )
+                    updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
+                    updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
+                    two.update()
+                }, { maxRetries: 30 })
 
                 break
             }
             case SCENARIO_TEXT_DRAW: {
-                const surfaceCoords = zui.clientToSurface(e.clientX, e.clientY)
-                const textId = localStorage.getItem('lastAddedElementId')
+                const surfaceCoords = toSurface(e)
+                const textId = localStorage.getItem(LAST_ADDED_ELEMENT_ID_KEY)
 
                 textDrawElement = two.scene.children.find(
                     (child) => child?.elementData?.id === textId
@@ -760,24 +605,24 @@ function addZUI(
                     )
                 }
 
-                localStorage.removeItem('lastAddedElementId')
-                localStorage.removeItem('textDrawMode')
+                localStorage.removeItem(LAST_ADDED_ELEMENT_ID_KEY)
+                localStorage.removeItem(TEXT_DRAW_MODE_KEY)
 
                 domElement.addEventListener('mouseup', mouseup, false)
                 document.getElementById('main-two-root').style.cursor = 'auto'
                 break
             }
             case SCENARIO_DRAW_SHAPE: {
-                const surfaceCoords = zui.clientToSurface(e.clientX, e.clientY)
+                const surfaceCoords = toSurface(e)
                 drawOrigin = { x: surfaceCoords.x, y: surfaceCoords.y }
                 drawCurrentCoords = { x: surfaceCoords.x, y: surfaceCoords.y }
-                drawShapeType = localStorage.getItem('pendingShapeType')
+                drawShapeType = localStorage.getItem(PENDING_SHAPE_TYPE_KEY)
                 drawShapeProps = JSON.parse(
-                    localStorage.getItem('pendingShapeProps')
+                    localStorage.getItem(PENDING_SHAPE_PROPS_KEY)
                 )
 
-                localStorage.removeItem('pendingShapeType')
-                localStorage.removeItem('pendingShapeProps')
+                localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)
+                localStorage.removeItem(PENDING_SHAPE_PROPS_KEY)
 
                 if (drawShapeType === 'circle') {
                     previewShape = two.makeEllipse(
@@ -798,9 +643,9 @@ function addZUI(
 
                 if (previewShape) {
                     previewShape.fill = drawShapeProps?.fill || '#fff'
-                    previewShape.stroke = drawShapeProps?.stroke || '#3A342C'
+                    previewShape.stroke = drawShapeProps?.stroke || SHAPE_DEFAULT_STROKE
                     previewShape.linewidth = drawShapeProps?.linewidth || 1
-                    previewShape.opacity = 0.6
+                    previewShape.opacity = DEFAULT_PREVIEW_OPACITY
                     two.update()
                 }
 
@@ -815,31 +660,28 @@ function addZUI(
 
                 // This block falls for the case when there is newly added element and we let user click
                 // anywhere to set last added element's position
-                const clientToSurface = zui.clientToSurface(
-                    e.clientX,
-                    e.clientY
-                )
+                const surfaceCoords = toSurface(e)
 
                 let twoJSElement = two.scene.children.find(
                     (child) => child?.elementData?.id === lastAddedElementId
                 )
 
                 if (twoJSElement?.position) {
-                    twoJSElement.position.x = clientToSurface.x
-                    twoJSElement.position.y = clientToSurface.y
+                    twoJSElement.position.x = surfaceCoords.x
+                    twoJSElement.position.y = surfaceCoords.y
 
                     two.update()
 
                     updateComponentVertices(
                         lastAddedElementId,
-                        clientToSurface.x,
-                        clientToSurface.y
+                        surfaceCoords.x,
+                        surfaceCoords.y
                     )
 
                     lastPlacedElement = twoJSElement
                 }
 
-                localStorage.removeItem('lastAddedElementId')
+                localStorage.removeItem(LAST_ADDED_ELEMENT_ID_KEY)
 
                 // remove event listeners for mousemove
                 // domElement.removeEventListener('mousemove', mousemove, false)
@@ -858,7 +700,7 @@ function addZUI(
                 pencilRawPoints = []
                 lastPencilLinewidth = defaultLinewidthValue
 
-                const startCoords = zui.clientToSurface(e.clientX, e.clientY)
+                const startCoords = toSurface(e)
                 lastPencilPoint = { x: startCoords.x, y: startCoords.y }
                 lastPencilTime = performance.now()
                 pencilRawPoints.push({
@@ -889,8 +731,7 @@ function addZUI(
                 hoverCircle.opacity = 0
                 two.scene.children.forEach((child) => {
                     if (child?.elementData?.componentType === 'arrowLine') {
-                        if (child.children[1]) child.children[1].opacity = 0
-                        if (child.children[2]) child.children[2].opacity = 0
+                        setArrowEndpointsVisible(child, false)
                     }
                 })
 
@@ -908,10 +749,7 @@ function addZUI(
                                 child.children[2] === hoveredEndpointGroup)
                     )
                     if (parentArrow) {
-                        if (parentArrow.children[1])
-                            parentArrow.children[1].opacity = 1
-                        if (parentArrow.children[2])
-                            parentArrow.children[2].opacity = 1
+                        setArrowEndpointsVisible(parentArrow, true)
                         shape = parentArrow
                     }
                 }
@@ -926,11 +764,6 @@ function addZUI(
                     shape = {}
                 }
 
-                // if shape is null, we initialize it with root element
-
-                // console.log('props.selectPanMode', props.selectPanMode)
-
-                // in case if it's a group selector, it falls under below condition
                 if (shape === null) {
                     // Clicking empty canvas clears any active selection.
                     lastSelectedShape = null
@@ -946,7 +779,6 @@ function addZUI(
                         shape = {}
                         avoidDragging = true
                     } else {
-                        // shape = two.scene
                         const { x1, x2, y1, y2 } = {
                             x1: 0,
                             x2: 10,
@@ -967,11 +799,11 @@ function addZUI(
                         area.opacity = 1
                         area.linewidth = 1
                         area.dashes[0] = 4
-                        area.stroke = '#505F79'
+                        area.stroke = SELECTION_PREVIEW_STROKE
 
                         let newSelectorGroup = two.makeGroup(area)
 
-                        const m = zui.clientToSurface(e.clientX, e.clientY)
+                        const m = toSurface(e)
                         mouse.copy(m)
                         newSelectorGroup.position.copy(mouse)
 
@@ -1023,7 +855,6 @@ function addZUI(
                         prevY: parseInt(shape.translation.y),
                     }
 
-                    // console.log('on mouse down')
                     let rect = document
                         .getElementById(shape.id)
                         .getBoundingClientRect()
@@ -1055,7 +886,6 @@ function addZUI(
                         })
                 }
 
-                // console.log('shape selected', shape)
 
                 if (
                     !avoidDragging &&
@@ -1111,20 +941,12 @@ function addZUI(
     }
 
     function mousemove(e) {
-        // console.log(
-        //     'mouse move event',
-        //     shape?.elementData,
-        //     ' shape lineData',
-        //     shape?.lineData,
-        //     scenario
-        // )
-        // console.log('shape in mousemove', e, shape, props.selectPanMode)
-        const lastAddedElementId = localStorage.getItem('lastAddedElementId')
+        const lastAddedElementId = localStorage.getItem(LAST_ADDED_ELEMENT_ID_KEY)
 
         if (
             lastAddedElementId !== null &&
-            localStorage.getItem('arrowDrawMode') !== 'true' &&
-            localStorage.getItem('textDrawMode') !== 'true'
+            localStorage.getItem(ARROW_DRAW_MODE_KEY) !== 'true' &&
+            localStorage.getItem(TEXT_DRAW_MODE_KEY) !== 'true'
         ) {
             scenario = SCENARIO_JUST_ADDED_ELEMENT
         }
@@ -1132,10 +954,7 @@ function addZUI(
         switch (scenario) {
             case SCENARIO_ARROW_DRAW:
                 if (arrowDrawElement) {
-                    const surfaceCoords = zui.clientToSurface(
-                        e.clientX,
-                        e.clientY
-                    )
+                    const surfaceCoords = toSurface(e)
                     let relX = surfaceCoords.x - arrowDrawElement.position.x
                     let relY = surfaceCoords.y - arrowDrawElement.position.y
 
@@ -1161,10 +980,7 @@ function addZUI(
                 }
                 break
             case SCENARIO_DRAW_SHAPE: {
-                const surfaceCoordsMove = zui.clientToSurface(
-                    e.clientX,
-                    e.clientY
-                )
+                const surfaceCoordsMove = toSurface(e)
                 drawCurrentCoords = {
                     x: surfaceCoordsMove.x,
                     y: surfaceCoordsMove.y,
@@ -1184,33 +1000,31 @@ function addZUI(
                 }
                 break
             }
-            case SCENARIO_JUST_ADDED_ELEMENT:
+            case SCENARIO_JUST_ADDED_ELEMENT: {
                 // This block falls for the case when there is newly added element and we let user click
                 // anywhere to set last added element's position
-                const clientToSurface = zui.clientToSurface(
-                    e.clientX,
-                    e.clientY
-                )
+                const sc = toSurface(e)
 
                 let twoJSElement = two.scene.children.find(
                     (child) => child?.elementData?.id === lastAddedElementId
                 )
 
                 if (twoJSElement?.position) {
-                    twoJSElement.position.x = clientToSurface.x
-                    twoJSElement.position.y = clientToSurface.y
+                    twoJSElement.position.x = sc.x
+                    twoJSElement.position.y = sc.y
 
                     two.update()
                 }
                 break
+            }
             case SCENARIO_PENCIL_MODE: {
-                const pencilCoords = zui.clientToSurface(e.clientX, e.clientY)
+                const pencilCoords = toSurface(e)
 
                 // Distance throttle: skip if too close to last point
                 const pdx = pencilCoords.x - lastPencilPoint.x
                 const pdy = pencilCoords.y - lastPencilPoint.y
                 const pDist = Math.sqrt(pdx * pdx + pdy * pdy)
-                if (pDist < 3) break
+                if (pDist < PENCIL_DISTANCE_THROTTLE) break
 
                 // Compute velocity and map to linewidth
                 const now = performance.now()
@@ -1280,7 +1094,6 @@ function addZUI(
                         .hasAttribute('data-resize')
                 ) {
                     // element resize is being performed
-                    // console.log('element resize is being performed')
                     isResizeEvent = true
                     domElement.removeEventListener(
                         'mousemove',
@@ -1289,7 +1102,6 @@ function addZUI(
                     )
                     domElement.removeEventListener('mouseup', mouseup, false)
                 } else if (shape?.id || shape?.elementData) {
-                    // console.log('element move operation is being performed')
                     let dx = e.clientX - mouse.x
                     let dy = e.clientY - mouse.y
 
@@ -1394,12 +1206,8 @@ function addZUI(
                     } else if (shape.elementData.isGroupSelector) {
                         // this blocks falls for the case when user has clicked and
                         // is dragging to create a group selector
-                        // console.log('shape.position', shape)
                         let area = shape.children[0]
-                        let x = e.clientX
-                        let y = e.clientY
-
-                        const m = zui.clientToSurface(x, y)
+                        const m = toSurface(e)
                         mouse.copy(m)
 
                         const width = mouse.x - shape.position.x
@@ -1411,12 +1219,6 @@ function addZUI(
                         area.vertices[3].y = height
 
                         two.update()
-                    } else {
-                        if (!props.selectPanMode) {
-                            // nothing
-                        } else {
-                            // zui.translateSurface(dx, dy)
-                        }
                     }
                     mouse.set(e.clientX, e.clientY)
                     two.update()
@@ -1425,9 +1227,6 @@ function addZUI(
     }
 
     function mouseup(e) {
-        // console.log('e in ZUI mouse up', scenario)
-        // old school logic here
-
         switch (scenario) {
             case SCENARIO_ARROW_DRAW: {
                 if (arrowDrawElement) {
@@ -1464,7 +1263,6 @@ function addZUI(
                     updateToGlobalState(newShapeData, {})
                 }
 
-                // TODO: select element here if tool lock is active
                 setSelectedComponentInBoard(null)
 
                 arrowDrawElement = null
@@ -1544,34 +1342,16 @@ function addZUI(
 
                 // React renders the element asynchronously; poll until it appears in two.scene.children,
                 // then remove the preview so there is no blank gap between preview removal and final render
-                // TODO: select element here if tool lock is active
-                const pendingSelectionId = finalId
-                const waitForNewElement = (id, retries = 0) => {
-                    const el = two.scene.children.find(
-                        (child) => child?.elementData?.id === id
-                    )
-                    if (el && el.children?.[0]) {
-                        if (capturedPreview) {
-                            two.remove(capturedPreview)
-                            two.update()
-                        }
-                    } else if (retries < 300) {
-                        requestAnimationFrame(() =>
-                            waitForNewElement(id, retries + 1)
-                        )
-                    } else {
-                        // Element took too long to mount (e.g. slow network).
-                        // Remove the preview unconditionally to prevent a ghost
-                        // shape lingering on the canvas after the real element loads.
-                        if (capturedPreview) {
-                            two.remove(capturedPreview)
-                            two.update()
-                        }
+                const removePreview = () => {
+                    if (capturedPreview) {
+                        two.remove(capturedPreview)
+                        two.update()
                     }
                 }
-                requestAnimationFrame(() =>
-                    waitForNewElement(pendingSelectionId)
-                )
+                pollUntilElement(two, finalId, removePreview, {
+                    condition: (el) => !!el.children?.[0],
+                    onTimeout: removePreview,
+                })
                 setSelectedComponentInBoard(null)
 
                 drawOrigin = null
@@ -1589,7 +1369,6 @@ function addZUI(
                 break
             }
             case SCENARIO_JUST_ADDED_ELEMENT:
-                // TODO: select element here if tool lock is active
                 setSelectedComponentInBoard(null)
                 lastPlacedElement = null
                 setPointerElement('pointer')
@@ -1643,30 +1422,15 @@ function addZUI(
 
                 // React renders the element asynchronously; keep preview visible until
                 // the final element appears in two.scene.children to avoid a blank gap
-                const pencilWaitId = pencilId
-                const waitForPencilElement = (id, retries = 0) => {
-                    const el = two.scene.children.find(
-                        (child) => child?.elementData?.id === id
-                    )
-                    if (el) {
-                        if (capturedPencilGroup) {
-                            two.remove(capturedPencilGroup)
-                            two.update()
-                        }
-                    } else if (retries < 300) {
-                        requestAnimationFrame(() =>
-                            waitForPencilElement(id, retries + 1)
-                        )
-                    } else {
-                        // Element took too long to mount (e.g. slow network).
-                        // Remove the preview unconditionally to prevent a ghost stroke.
-                        if (capturedPencilGroup) {
-                            two.remove(capturedPencilGroup)
-                            two.update()
-                        }
+                const removePencilPreview = () => {
+                    if (capturedPencilGroup) {
+                        two.remove(capturedPencilGroup)
+                        two.update()
                     }
                 }
-                requestAnimationFrame(() => waitForPencilElement(pencilWaitId))
+                pollUntilElement(two, pencilId, removePencilPreview, {
+                    onTimeout: removePencilPreview,
+                })
 
                 // Reset pencil state
                 pencilRawPoints = []
@@ -1696,23 +1460,15 @@ function addZUI(
                         width: area.vertices[2].x - area.vertices[0].x,
                         height: area.vertices[3].y - area.vertices[0].y,
                     }
-                    // console.log('shape group obj', obj)
                     two.remove(shape)
                     setOnGroupHandler(obj)
                     setSelectedComponentInBoard(null)
                 } else if (shape?.elementData) {
-                    // else shape is not a group selector then update shape's properties
                     if (
-                        shape.elementData.x == shape.translation.x &&
-                        shape.elementData.y == shape.translation.y
+                        shape.elementData.x !== shape.translation.x ||
+                        shape.elementData.y !== shape.translation.y
                     ) {
-                        // console.log('no need to update')
-                    } else {
                         if (shape?.elementData?.isLineCircle === true) {
-                            // console.log('Element is a Line Circle')
-                            // updating already created two.js scene groups to new x,y set
-                            // shape.elementData.x = shape.translation.x
-                            // shape.elementData.y = shape.translation.y
                             shape.opacity = 0
                             shape.siblingCircle.opacity = 0
 
@@ -1723,8 +1479,6 @@ function addZUI(
                                 shape.elementData,
                                 {
                                     data: {
-                                        // x: parseInt(shape.lineData.translation.x),
-                                        // y: parseInt(shape.lineData.translation.y),
                                         x1: parseInt(
                                             shape.lineData.vertices[0].x
                                         ),
@@ -1743,7 +1497,6 @@ function addZUI(
 
                             updateToGlobalState(newShapeData, oldShapeData)
                         } else {
-                            // updating already created two.js scene groups to new x,y set
                             shape.elementData.x = shape.translation.x
                             shape.elementData.y = shape.translation.y
 
@@ -1771,10 +1524,6 @@ function addZUI(
                 }
         }
 
-        // let item = {
-        //     elementId: shape.elementData.elementId,
-        //     data: { x: shape.translation.x, y: shape.translation.y },
-        // }
         // Restore pointer events on all components (may have been disabled during arrow drag)
         document.querySelectorAll('.dragger-picker').forEach((el) => {
             el.style.pointerEvents = ''
@@ -1787,8 +1536,6 @@ function addZUI(
 
         domElement.removeEventListener('mousemove', mousemove, false)
         domElement.removeEventListener('mouseup', mouseup, false)
-
-        // reset shape to object or null after mouseup event
     }
 
     function mousewheel(e) {
@@ -2054,67 +1801,7 @@ function addZUI(
     }
 }
 
-const ElementRenderWrapper = (
-    ElementToRender,
-    data,
-    deleteComponentFromLocalStore,
-    componentStore
-) => {
-    const RenderElement = () => {
-        const [twoJSShape, setTwoJSShape] = useState(null)
-        const [componentData, setComponentData] = useState(null)
-
-        // console.log('in render Element', data, getComponentInfoData?.component)
-
-        useEffect(() => {
-            // console.log(
-            //     'componentStore change in element render wrapper',
-            //     componentStore
-            // )
-            let allComponents = Object.values(componentStore)
-            if (allComponents.length > 0) {
-                let componentData = allComponents.find(
-                    (item) => data.id === item.id
-                )
-                // console.log('find component from componentStore', componentData)
-                componentData && setComponentData(componentData)
-            }
-        }, [componentStore])
-
-        if (componentData === null) {
-            return <></>
-        }
-
-        const handleDeleteComponent = (twoJSShape) => {
-            deleteComponentFromLocalStore(data.id)
-        }
-
-        return data.twoJSInstance ? (
-            componentData !== null ? (
-                <ElementToRender
-                    handleDeleteComponent={handleDeleteComponent}
-                    {...data}
-                    {...componentData}
-                />
-            ) : null
-        ) : (
-            <Spinner />
-        )
-    }
-    return RenderElement
-}
-
-const GroupRenderWrapper = (ElementToRender, data) => {
-    const RenderGroup = () => {
-        // console.log('in render group wrapper', data)
-
-        return data.twoJSInstance ? <ElementToRender {...data} /> : <Spinner />
-    }
-    return RenderGroup
-}
-
 const Canvas = (props) => {
-    // console.log('getComponentsForBoardData', getComponentsForBoardData)
 
     const { isMobile } = useMediaQueryUtils()
 
@@ -2132,7 +1819,6 @@ const Canvas = (props) => {
     } = useBoardContext()
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
-    const [lastAddedPathId, setLastAddedPathId] = useState(null)
     const [zuiInstance, setZuiInstance] = useState(null)
     const [prevElements, setPrevElements] = useState([])
     const [onGroup, setOnGroup] = useState(null)
@@ -2140,29 +1826,23 @@ const Canvas = (props) => {
 
     const stateRefForComponentStore = useRef()
     const isPencilModeRef = useRef(props.isPencilMode)
-    const clipboardRef = useRef(null)
-    const lastMouseRef = useRef({ clientX: 0, clientY: 0, hasMoved: false })
     const zuiInstanceRef = useRef(null)
     const renderGroupRef = useRef(null)
 
-    // useEffect(()=>{},[insertComponentSuccess])
+    const { clipboardRef, lastMouseRef } = useCanvasClipboard({
+        twoJSInstance,
+        zuiInstanceRef,
+        boardId: props.boardId,
+        addToLocalComponentStore,
+        renderGroupRef,
+    })
 
     useEffect(() => {
-        // setting pan displacement values to initial
-
-        // console.log('CANVAS CDM', props.selectPanMode)
         const elem = document.getElementById('main-two-root')
 
-        const two = new Two({
-            fullscreen: true,
-            // width: "auto",
-        }).appendTo(elem)
-
+        const two = new Two({ fullscreen: true }).appendTo(elem)
         two.update()
 
-        // console.log('two', two.scene)
-
-        // two.scene.translation.x = -50
         let zui_instance = addZUI(
             props,
             two,
@@ -2179,7 +1859,6 @@ const Canvas = (props) => {
             isPencilModeRef
         )
 
-        // this.props.getElementsData('CONSTRUCT', arr)
         setZuiInstance(zui_instance)
         setTwoJSInstance(two)
         setTwoJSInstanceInBoard(two)
@@ -2219,7 +1898,6 @@ const Canvas = (props) => {
 
         const boardId = props.boardId
         const tabsOpen = localStorage.getItem(`tabs_open_${boardId}`)
-        // console.log(`tabs_open_${boardId}`, tabsOpen)
         if (tabsOpen == null) {
             localStorage.setItem(`tabs_open_${boardId}`, 1)
         } else {
@@ -2240,20 +1918,11 @@ const Canvas = (props) => {
     useEffect(() => {
         stateRefForComponentStore.current = props.componentStore
         if (twoJSInstance !== null && zuiInstance !== null) {
-            // listening to the change in components in DB
-            // this is especially for capturing INSERT operation
-            // where I can assign mousemove event listener to the new component
             let domElement = twoJSInstance?.renderer?.domElement
-
             // Reset stale drag state so a resize followed by a store update
             // (e.g. undo) doesn't leave the element dragging on next mousemove
             zuiInstance.resetDragState()
-
-            domElement.addEventListener(
-                'mousemove',
-                zuiInstance.mousemove,
-                false
-            )
+            domElement.addEventListener('mousemove', zuiInstance.mousemove, false)
         }
 
         if (Object.values(props.componentStore).length > 0 && twoJSInstance) {
@@ -2262,16 +1931,8 @@ const Canvas = (props) => {
     }, [props.componentStore])
 
     useEffect(() => {
-        // console.log('on change props.lastAddedElement')
-
         if (props.lastAddedElement !== null) {
-            let newArr = [
-                {
-                    ...props.lastAddedElement,
-                    isDummy: true,
-                },
-            ]
-            handleSetComponentsToRender(newArr)
+            handleSetComponentsToRender([{ ...props.lastAddedElement, isDummy: true }])
         }
     }, [props.lastAddedElement])
 
@@ -2295,14 +1956,12 @@ const Canvas = (props) => {
     }, [props.pencilDefaultStrokeType])
 
     useEffect(() => {
-        pencilStrokeColorValue = props.pencilStrokeColor || '#3A342C'
+        pencilStrokeColorValue = props.pencilStrokeColor || PENCIL_DEFAULT_COLOR
     }, [props.pencilStrokeColor])
 
     // on group select use effect hook
     useEffect(() => {
-        // let componentsArr = [...currentComponents]
         if (onGroup) {
-            // console.log('on group useeffect', onGroup)
             let e = onGroup
             let x1Coord = e.left
             let x2Coord = e.right
@@ -2315,31 +1974,16 @@ const Canvas = (props) => {
             const newGroup = {}
             const newChildren = []
             const selectedComponentArr = []
-            let twoShapesToDelete = []
 
-            // console.log(
-            //     'onGroup get componentStore',
-            //     stateRefForComponentStore.current
-            // )
-            // console.log('x1Coord,x2Coord', x1Coord, x2Coord)
-            // console.log('y1Coord,y2Coord', y1Coord, y2Coord)
             const allComponentCoords =
                 Object.values(stateRefForComponentStore.current) || []
-            // console.log(
-            //     'area_selection allComponentCoords',
-            //     xMid,
-            //     yMid,
-            //     state.getCoordGraph
-            // )
-            // console.log('allComponentCoords', allComponentCoords)
-            allComponentCoords.forEach((item, index) => {
+            allComponentCoords.forEach((item) => {
                 if (
                     item.x > x1Coord &&
                     item.x < x2Coord &&
                     item.y > y1Coord &&
                     item.y < y2Coord
                 ) {
-                    // console.log('inside component coords condition')
                     selectedComponentArr.push(item.id)
 
                     let relativeX = item.x - xMid
@@ -2372,7 +2016,6 @@ const Canvas = (props) => {
                             }
                         })
                     }
-                    // console.log('newMetadata', newMetadata)
                     let obj = {
                         ...item,
                         metadata: newMetadata,
@@ -2408,19 +2051,10 @@ const Canvas = (props) => {
             newGroup.componentType = 'groupobject'
             newGroup.width = e.width
             newGroup.height = e.height
-
-            // Adding half width/height to x,y coords
-            // due to selector rectangle being in inside
-            // of selected area portion
             newGroup.x = e.x + e.width / 2
             newGroup.y = e.y + e.height / 2
 
             newGroup.children = newChildren
-
-            // console.log('newGroup.children', newGroup.children)
-            // filter out those selected children (which are now grouped into one) from main current components array
-            // that means we dont render those components as seperate rather they
-            // are now children of this new group
 
             twoJSInstance.scene.children.forEach((child) => {
                 if (selectedComponentArr.includes(child?.elementData?.id)) {
@@ -2433,204 +2067,9 @@ const Canvas = (props) => {
         }
     }, [onGroup])
 
-    // Track the last cursor position in client coords so paste can land at
-    // the mouse location. Window-level so it stays current even when the
-    // cursor is over an overlay.
-    useEffect(() => {
-        const onMove = (e) => {
-            lastMouseRef.current = {
-                clientX: e.clientX,
-                clientY: e.clientY,
-                hasMoved: true,
-            }
-        }
-        window.addEventListener('mousemove', onMove)
-        return () => window.removeEventListener('mousemove', onMove)
-    }, [])
-
     useEffect(() => {
         zuiInstanceRef.current = zuiInstance
     }, [zuiInstance])
-
-    useEffect(() => {
-        const onCopyEvent = (evt) => {
-            if (evt.key !== 'c' || !(evt.ctrlKey || evt.metaKey)) return
-            console.log('on copy')
-            const tag = document.activeElement?.tagName
-            if (tag === 'INPUT' || tag === 'TEXTAREA') return
-
-            const zuiInst = zuiInstanceRef.current
-            const liveGroup = zuiInst?.getSelectedGroup?.()
-            if (!liveGroup?.elementData?.id) return
-            if (!twoJSInstance) return
-            evt.preventDefault()
-
-            const originX = liveGroup.translation.x
-            const originY = liveGroup.translation.y
-            const elementData = liveGroup.elementData
-
-            let payload
-            if (elementData.componentType === GROUP_COMPONENT) {
-                const children = Array.isArray(elementData.children)
-                    ? elementData.children
-                    : []
-                payload = {
-                    kind: 'group',
-                    origin: { x: originX, y: originY },
-                    width: elementData.width,
-                    height: elementData.height,
-                    items: children.map((child) => ({ ...child })),
-                }
-            } else {
-                const item = {
-                    ...elementData,
-                    // Use live translation so stale elementData.x/y doesn't mislead paste.
-                    x: originX,
-                    y: originY,
-                    relativeX: 0,
-                    relativeY: 0,
-                }
-                // For arrowLine, read live vertex coords (elementData can be stale).
-                if (elementData.componentType === 'arrowLine') {
-                    const line = liveGroup.children?.[0]
-                    if (line?.vertices?.length >= 2) {
-                        item.x1 = parseInt(line.vertices[0].x)
-                        item.y1 = parseInt(line.vertices[0].y)
-                        item.x2 = parseInt(line.vertices[1].x)
-                        item.y2 = parseInt(line.vertices[1].y)
-                    }
-                }
-                // For newText, elementData is set once at mount; read live Two.js
-                // text object values so edits made after mounting are captured.
-                if (elementData.componentType === 'newText') {
-                    const twoText = liveGroup.children?.[0]
-                    if (twoText && typeof twoText.value === 'string') {
-                        item.textColor = twoText.fill || item.textColor
-                        item.metadata = {
-                            ...item.metadata,
-                            content: twoText.value,
-                            fontSize: twoText.size || item.metadata?.fontSize,
-                            textFontFamily:
-                                twoText.family || item.metadata?.textFontFamily,
-                        }
-                    }
-                }
-                payload = {
-                    kind: 'single',
-                    origin: { x: originX, y: originY },
-                    items: [item],
-                }
-            }
-            clipboardRef.current = payload
-        }
-        window.addEventListener('keydown', onCopyEvent)
-        return () => window.removeEventListener('keydown', onCopyEvent)
-    }, [twoJSInstance])
-
-    useEffect(() => {
-        const onPasteEvent = (evt) => {
-            if (evt.key !== 'v' || !(evt.ctrlKey || evt.metaKey)) return
-            const tag = document.activeElement?.tagName
-            console.log('on paste', tag, clipboardRef.current)
-            if (tag === 'INPUT' || tag === 'TEXTAREA') return
-
-            const clipboard = clipboardRef.current
-            if (!clipboard || !clipboard.items?.length) return
-
-            const zuiInst = zuiInstanceRef.current
-            if (!zuiInst?.zui) return
-            evt.preventDefault()
-
-            // Resolve paste origin in canvas coords. If the cursor hasn't
-            // moved since load, fall back to viewport center.
-            let clientX = lastMouseRef.current.clientX
-            let clientY = lastMouseRef.current.clientY
-            if (!lastMouseRef.current.hasMoved) {
-                const rect = document
-                    .getElementById('main-two-root')
-                    ?.getBoundingClientRect()
-                if (rect) {
-                    clientX = rect.left + rect.width / 2
-                    clientY = rect.top + rect.height / 2
-                }
-            }
-            const surface = zuiInst.zui.clientToSurface(clientX, clientY)
-            const px = surface.x
-            const py = surface.y
-
-            if (clipboard.kind === 'single') {
-                const src = clipboard.items[0]
-                const newItem = cloneElementData(src, props.boardId, px, py)
-                // Normalize arrow so its tail (vertex 0) lands exactly at the
-                // cursor. The arrowLine factory treats x1/y1 as local offsets
-                // from the group origin; keeping them at 0 avoids any drift.
-                if (src.componentType === 'arrowLine') {
-                    const dx = (src.x2 ?? 0) - (src.x1 ?? 0)
-                    const dy = (src.y2 ?? 0) - (src.y1 ?? 0)
-                    newItem.x1 = 0
-                    newItem.y1 = 0
-                    newItem.x2 = dx
-                    newItem.y2 = dy
-                }
-                // Pencil metadata holds absolute vertex coords. Shift them so the
-                // stroke lands at the paste cursor instead of the original position.
-                if (
-                    src.componentType === 'pencil' &&
-                    Array.isArray(src.metadata)
-                ) {
-                    const dx = px - src.x
-                    const dy = py - src.y
-                    newItem.metadata = src.metadata.map((pt) => {
-                        const lwProp = pt.lw !== undefined ? { lw: pt.lw } : {}
-                        return { x: pt.x + dx, y: pt.y + dy, ...lwProp }
-                    })
-                }
-                addToLocalComponentStore(
-                    newItem.id,
-                    newItem.componentType,
-                    newItem
-                )
-                return
-            }
-
-            if (clipboard.kind === 'group') {
-                const newChildren = clipboard.items.map((child) => {
-                    const rX = child.relativeX ?? 0
-                    const rY = child.relativeY ?? 0
-                    // Children use LOCAL coords relative to the group origin.
-                    // GroupedObjectWrapper sets coreObject.translation = item.x/y
-                    // inside a group already at (px, py), so passing rX/rY keeps
-                    // scene position at (px + rX, py + rY).
-                    const cloned = cloneElementData(
-                        child,
-                        props.boardId,
-                        rX,
-                        rY
-                    )
-                    cloned.relativeX = rX
-                    cloned.relativeY = rY
-                    return cloned
-                })
-                const newGroup = {
-                    id: generateUUID(),
-                    boardId: props.boardId,
-                    componentType: GROUP_COMPONENT,
-                    x: px,
-                    y: py,
-                    width: clipboard.width,
-                    height: clipboard.height,
-                    fill: null,
-                    stroke: null,
-                    children: newChildren,
-                }
-                // Render the pasted group transiently (same as a selection group) —
-                // groupobject must never enter componentStore or localStorage.
-                renderGroupRef.current?.([newGroup])
-            }
-        }
-        window.addEventListener('keydown', onPasteEvent)
-        return () => window.removeEventListener('keydown', onPasteEvent)
-    }, [props.boardId, addToLocalComponentStore])
 
     useEffect(() => {
         const onUndoKeyDown = (evt) => {
@@ -2651,7 +2090,7 @@ const Canvas = (props) => {
         let arr = [...prevElements]
         let components = [...componentsToRender]
         if (currentComponents && twoJSInstance) {
-            currentComponents.forEach((item, index) => {
+            currentComponents.forEach((item) => {
                 // prevElements is the sole authority on whether a wrapper already exists.
                 // We must NOT check existsInScene here: on slow networks the React lazy
                 // module may still be loading (no Two.js group yet) when a second shape is
@@ -2679,17 +2118,10 @@ const Canvas = (props) => {
                         twoJSInstance: twoJSInstance,
                         id: item.id,
                         boardId: props.boardId,
-                        // childrenArr: item.children,
                         itemData: item,
                     }
 
-                    // Different render wrapper for components and group
                     let component = null
-                    // console.log(
-                    //     'in current components to render logic',
-                    //     currentComponents,
-                    //     props.componentStore
-                    // )
                     if (item.componentType === GROUP_COMPONENT) {
                         component = GroupRenderWrapper(ElementToRender, {
                             ...item,
@@ -2728,13 +2160,9 @@ const Canvas = (props) => {
 
     const updateToGlobalState = (newShapeData, oldShapeData) => {
         const userId = localStorage.getItem('userId')
-        // Initial arrow placement: prevX is -9999 (off-screen staging value).
-        // The ADD history entry already covers this insertion, so the position
-        // updates that follow should not create extra undo steps.
+        // prevX === -9999 means initial arrow placement — skip extra undo steps
         const isInitialArrowPlacement = newShapeData.prevX === -9999
 
-        // also check that new x,y is updated or not by comparing to prev x,y
-        // then only perform mutation
         if (
             newShapeData.id &&
             (newShapeData.data.x != newShapeData.prevX ||
@@ -2773,28 +2201,16 @@ const Canvas = (props) => {
         document.getElementById('show-click-anywhere-btn').style.opacity = 0
     }
 
-    // if (componentsToRender.length === 0) {
-    //     return <></>
-    // }
-
-    // console.log('componentsToRender', componentsToRender)
     return (
         <>
-            {/* <div id="rsz-rect"></div> */}
-
             <div id="selector-rect"></div>
             <div id="pan-dragger"></div>
-
             <div id="main-two-root"></div>
-            {/* {twoJSInstance && (
-                <React.Fragment>{renderElements()}</React.Fragment>
-            )} */}
             {componentsToRender.map((Component, index) => (
                 <Suspense key={index} fallback={<Loader />}>
                     <Component />
                 </Suspense>
             ))}
-            {/* <Zoomer sceneInstance={twoJSInstance} /> */}
         </>
     )
 }
