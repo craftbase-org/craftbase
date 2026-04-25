@@ -17,11 +17,11 @@ export default class RectangleFactory extends Main {
             0,
             width || 210,
             height || 110,
-            5
+            3
         )
 
         rectangle.fill = fill ? fill : '#fff'
-        rectangle.stroke = stroke ? stroke : '#000'
+        rectangle.stroke = stroke ? stroke : '#3A342C'
         rectangle.linewidth = linewidth ? linewidth : 1
         rectangle.dashes = strokeTypeToDashes(strokeType)
 

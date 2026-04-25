@@ -175,15 +175,19 @@ function NewText(props) {
             const newWidth = Math.round(bRect.width || 60)
             const newHeight = Math.round(bRect.height || twoText.size)
 
+            const resizeMetadata = {
+                ...props.metadata,
+                fontSize: finalSize,
+                content: twoText.value,
+            }
             updateComponentBulkPropertiesInLocalStore(props.id, {
                 width: newWidth,
                 height: newHeight,
-                metadata: {
-                    ...props.metadata,
-                    fontSize: finalSize,
-                    content: twoText.value,
-                },
+                metadata: resizeMetadata,
             })
+            if (group.elementData) {
+                group.elementData.metadata = resizeMetadata
+            }
         }
 
         cornerCircles.forEach((circle, index) => {
@@ -274,7 +278,7 @@ function NewText(props) {
             input.style.border = 'none'
             input.style.background = 'transparent'
             input.style.padding = `${vertPad}px 8px`
-            input.style.color = twoText.fill || '#000000'
+            input.style.color = twoText.fill || '#3A342C'
             input.style.fontSize = `${fontSize}px`
             input.style.fontFamily = twoText.family || 'Caveat'
             input.style.fontWeight = twoText.weight || 'normal'
@@ -362,6 +366,10 @@ function NewText(props) {
                 if (event.key === 'Enter') {
                     event.preventDefault()
                 }
+                if (event.key === 'Escape') {
+                    event.preventDefault()
+                    input.blur()
+                }
             })
 
             input.addEventListener('blur', () => {
@@ -395,14 +403,21 @@ function NewText(props) {
                 selectorInstance.hide()
                 two.update()
 
+                const updatedMetadata = {
+                    ...props.metadata,
+                    content: textValueRef.current,
+                }
                 updateComponentBulkPropertiesInLocalStore(props.id, {
                     width: newWidth,
                     height: newHeight,
-                    metadata: {
-                        ...props.metadata,
-                        content: textValueRef.current,
-                    },
+                    metadata: updatedMetadata,
                 })
+
+                // Keep elementData in sync so ungrouping reads the live value,
+                // not the stale initial props captured at mount.
+                if (group.elementData) {
+                    group.elementData.metadata = updatedMetadata
+                }
 
                 input.remove()
             })
@@ -543,9 +558,13 @@ function NewText(props) {
                         zIndex: 20,
                     }}
                     className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                        ${showMobilePanel ? 'bg-blues-b50' : 'bg-white'}`}
+                        ${showMobilePanel ? 'bg-accent' : 'bg-card'}`}
                 >
-                    <img src={controlsIcon} className="w-5 h-5" alt="Text properties" />
+                    <img
+                        src={controlsIcon}
+                        className="w-5 h-5"
+                        alt="Text properties"
+                    />
                 </button>
             )}
             {showToolbar && (!isMobile || showMobilePanel) ? (
@@ -565,6 +584,9 @@ function NewText(props) {
                     closeToolbar={closeToolbar}
                     componentId={props.id}
                     isMobile={isMobile}
+                    updateComponentBulkProperties={
+                        updateComponentBulkPropertiesInLocalStore
+                    }
                     postToolbarUpdate={() => {
                         two.update()
                     }}

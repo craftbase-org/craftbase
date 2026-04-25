@@ -32,7 +32,7 @@ import {
     clearDashesOnTwoJSShape,
 } from 'utils/misc'
 import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
-import { RUBBER_MODE_KEY } from 'constants/misc'
+import { RUBBER_MODE_KEY, GROUP_COMPONENT } from 'constants/misc'
 import Two from 'two.js'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 
@@ -123,7 +123,7 @@ const BoardViewPage = (props) => {
     const [defaultStrokeType, setDefaultStrokeType] = useState(null)
     const [pencilDefaultLinewidth, setPencilDefaultLinewidth] = useState(2)
     const [pencilDefaultStrokeType, setPencilDefaultStrokeType] = useState(null)
-    const [pencilStrokeColor, setPencilStrokeColor] = useState('#000')
+    const [pencilStrokeColor, setPencilStrokeColor] = useState('#3A342C')
     const [currentElement, setCurrentElement] = useState(null)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
@@ -150,8 +150,11 @@ const BoardViewPage = (props) => {
         const canvasEl = document.getElementById('main-two-root')
         if (!canvasEl) return
         const handleCanvasTouch = () => setShowMobilePencilPanel(false)
-        canvasEl.addEventListener('touchstart', handleCanvasTouch, { passive: true })
-        return () => canvasEl.removeEventListener('touchstart', handleCanvasTouch)
+        canvasEl.addEventListener('touchstart', handleCanvasTouch, {
+            passive: true,
+        })
+        return () =>
+            canvasEl.removeEventListener('touchstart', handleCanvasTouch)
     }, [isPencilMode, isMobile])
 
     const LOCAL_DRAFT_KEY = 'craftbase_local_draft'
@@ -161,6 +164,18 @@ const BoardViewPage = (props) => {
         useState(false)
     const [storageLimitBoardUrl, setStorageLimitBoardUrl] = useState(null)
     const draftSaveTimerRef = useRef(null)
+
+    // Clear stale interaction flags from localStorage on mount so a page refresh
+    // never triggers SCENARIO_DRAW_SHAPE / SCENARIO_ARROW_DRAW / etc. on the
+    // first mousedown. These keys are only meaningful within a single page session.
+    useEffect(() => {
+        localStorage.removeItem('pendingShapeType')
+        localStorage.removeItem('pendingShapeProps')
+        localStorage.removeItem('arrowDrawMode')
+        localStorage.removeItem('textDrawMode')
+        localStorage.removeItem('lastAddedElementId')
+        localStorage.removeItem(RUBBER_MODE_KEY)
+    }, [])
 
     // Restore draft and background board ID from localStorage on mount (local mode only)
     useEffect(() => {
@@ -180,7 +195,12 @@ const BoardViewPage = (props) => {
                 const parsed = JSON.parse(draft)
                 const age = Date.now() - (parsed.timestamp || 0)
                 if (age < DRAFT_EXPIRY_MS && parsed.components) {
-                    setComponentStore(parsed.components)
+                    const safeComponents = Object.fromEntries(
+                        Object.entries(parsed.components).filter(
+                            ([, v]) => v?.componentType !== GROUP_COMPONENT
+                        )
+                    )
+                    setComponentStore(safeComponents)
                 } else {
                     localStorage.removeItem(LOCAL_DRAFT_KEY)
                     localStorage.removeItem('craftbase_background_board_id')
@@ -202,11 +222,16 @@ const BoardViewPage = (props) => {
         }
         draftSaveTimerRef.current = setTimeout(() => {
             try {
+                const componentsToSave = Object.fromEntries(
+                    Object.entries(componentStore).filter(
+                        ([, v]) => v?.componentType !== GROUP_COMPONENT
+                    )
+                )
                 localStorage.setItem(
                     LOCAL_DRAFT_KEY,
                     JSON.stringify({
                         boardId: localBoardId,
-                        components: componentStore,
+                        components: componentsToSave,
                         timestamp: Date.now(),
                     })
                 )
@@ -418,24 +443,32 @@ const BoardViewPage = (props) => {
 
     // Records ADD action, updates store and syncs to DB
     const addToLocalComponentStore = (id, type, componentInfo) => {
+        // groupobject is a transient visual construct and must never be persisted
+        if (type === GROUP_COMPONENT || componentInfo?.componentType === GROUP_COMPONENT) {
+            return
+        }
+
+        // Strip transient grouping coords — not part of DB schema
+        const { relativeX: _rX, relativeY: _rY, ...safeInfo } = componentInfo ?? {}
+
         // Trigger background board creation on first interaction
         ensureBackgroundBoard()
 
         recordToHistoryLog({
             action: 'ADD',
             id,
-            componentInfo,
+            componentInfo: safeInfo,
         })
 
         const updatedComponentStore = {
             ...stateRefForComponentStore.current,
-            [id]: componentInfo,
+            [id]: safeInfo,
         }
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
-        if (isPersistedRef.current && componentInfo) {
-            insertComponent({ variables: { object: componentInfo } }).catch(
+        if (isPersistedRef.current && safeInfo) {
+            insertComponent({ variables: { object: safeInfo } }).catch(
                 (error) => {
                     const isPermissionError = error.graphQLErrors?.some(
                         (e) => e.extensions?.code === 'permission-error'
@@ -478,11 +511,14 @@ const BoardViewPage = (props) => {
         }
 
         const updatedComponentStore = { ...stateRefForComponentStore.current }
-        updatedComponentStore[id] = {
+        const merged = {
             ...updatedComponentStore[id],
             ...bulkObj,
             updatedBy: userId,
         }
+        delete merged.relativeX
+        delete merged.relativeY
+        updatedComponentStore[id] = merged
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
@@ -550,7 +586,9 @@ const BoardViewPage = (props) => {
         setComponentStore(updatedComponentStore)
 
         // Tell Canvas to untrack this id so a future restore (undo) gets a fresh wrapper
-        window.dispatchEvent(new CustomEvent('elementRemoved', { detail: { id } }))
+        window.dispatchEvent(
+            new CustomEvent('elementRemoved', { detail: { id } })
+        )
 
         if (isPersistedRef.current) {
             deleteComponent({
@@ -610,16 +648,13 @@ const BoardViewPage = (props) => {
     }
 
     const persistBoard = async () => {
-        let serverBoardId = backgroundBoardIdRef.current
-
-        // If background board wasn't created yet (e.g. user shares before first draw),
-        // create it now
-        if (!serverBoardId) {
-            const { data: boardData } = await createBoard({
-                variables: { object: {} },
-            })
-            serverBoardId = boardData.board.id
-        }
+        // Always create a fresh board at share time. The background board
+        // pre-created by ensureBackgroundBoard may be stale (e.g. DB was reset
+        // between sessions) — using its ID would cause a FK violation on insert.
+        const { data: boardData } = await createBoard({
+            variables: { object: {} },
+        })
+        const serverBoardId = boardData.board.id
 
         // Insert all components to DB under the server board ID.
         // Generate a fresh UUID for each component's id so re-sharing from '/'
@@ -627,12 +662,14 @@ const BoardViewPage = (props) => {
         const componentsForDB = Object.values(
             stateRefForComponentStore.current
         ).map((comp) => {
-            const cleaned = stripTypename(comp)
+            const { relativeX: _rX, relativeY: _rY, ...cleaned } = stripTypename(comp)
             return { ...cleaned, id: generateUUID(), boardId: serverBoardId }
         })
 
         if (componentsForDB.length > 0) {
-            await insertBulkComponents({ variables: { objects: componentsForDB } })
+            await insertBulkComponents({
+                variables: { objects: componentsForDB },
+            })
         }
 
         // Mint a new local board ID so the '/' session continues independently
@@ -739,7 +776,9 @@ const BoardViewPage = (props) => {
             setComponentStore(updatedStore)
 
             // Tell Canvas to untrack this id so undo-of-undo (redo) can create a fresh wrapper
-            window.dispatchEvent(new CustomEvent('elementRemoved', { detail: { id } }))
+            window.dispatchEvent(
+                new CustomEvent('elementRemoved', { detail: { id } })
+            )
 
             if (isPersistedRef.current) {
                 deleteComponent({
@@ -832,8 +871,22 @@ const BoardViewPage = (props) => {
                         const y1 = prevProps.y1 ?? line.vertices[0].y
                         const x2 = prevProps.x2 ?? line.vertices[1].x
                         const y2 = prevProps.y2 ?? line.vertices[1].y
-                        updateX1Y1Vertices(Two, line, x1, y1, pointCircle1Group, two)
-                        updateX2Y2Vertices(Two, line, x2, y2, pointCircle2Group, two)
+                        updateX1Y1Vertices(
+                            Two,
+                            line,
+                            x1,
+                            y1,
+                            pointCircle1Group,
+                            two
+                        )
+                        updateX2Y2Vertices(
+                            Two,
+                            line,
+                            x2,
+                            y2,
+                            pointCircle2Group,
+                            two
+                        )
                     }
                 }
 
@@ -912,8 +965,8 @@ const BoardViewPage = (props) => {
     const currentFontFamily = isTextSelected
         ? selectedComponent?.shape?.data?.family || 'Caveat'
         : isRectangleWithText
-        ? selectedComponent?.text?.data?.family || 'Caveat'
-        : undefined
+          ? selectedComponent?.text?.data?.family || 'Caveat'
+          : undefined
 
     const handleTextSizeChange = (newLabel) => {
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
@@ -1028,7 +1081,10 @@ const BoardViewPage = (props) => {
         const componentId = selectedComponent?.group?.data?.elementData?.id
         const existingMetadata =
             stateRefForComponentStore.current[componentId]?.metadata ?? {}
-        const updatedMetadata = { ...existingMetadata, textFontFamily: fontFamily }
+        const updatedMetadata = {
+            ...existingMetadata,
+            textFontFamily: fontFamily,
+        }
         if (selectedComponent?.group?.data?.elementData) {
             selectedComponent.group.data.elementData.metadata = updatedMetadata
         }
@@ -1125,7 +1181,7 @@ const BoardViewPage = (props) => {
                                 zIndex: 20,
                             }}
                             className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                                ${showMobileToolbarPanel ? 'bg-blues-b50' : 'bg-white'}`}
+                                ${showMobileToolbarPanel ? 'bg-accent' : 'bg-card'}`}
                         >
                             <img
                                 src={controlsIcon}
@@ -1153,15 +1209,15 @@ const BoardViewPage = (props) => {
                                     isTextSelected
                                         ? selectedComponent?.shape?.data?.size
                                         : isRectangleWithText
-                                        ? selectedComponent?.text?.data?.size
-                                        : undefined
+                                          ? selectedComponent?.text?.data?.size
+                                          : undefined
                                 }
                                 onTextSizeChange={
                                     isTextSelected
                                         ? handleTextSizeChange
                                         : isRectangleWithText
-                                        ? handleRectangleTextSizeChange
-                                        : undefined
+                                          ? handleRectangleTextSizeChange
+                                          : undefined
                                 }
                                 toggle={showToolbar}
                                 componentState={selectedComponent}
@@ -1181,8 +1237,8 @@ const BoardViewPage = (props) => {
                                     isTextSelected
                                         ? handleTextFontFamilyChange
                                         : isRectangleWithText
-                                        ? handleRectangleTextFontFamilyChange
-                                        : undefined
+                                          ? handleRectangleTextFontFamilyChange
+                                          : undefined
                                 }
                                 postToolbarUpdate={() => {
                                     twoJSInstance.update()
@@ -1202,7 +1258,7 @@ const BoardViewPage = (props) => {
                                 zIndex: 20,
                             }}
                             className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                                ${showMobilePencilPanel ? 'bg-blues-b50' : 'bg-white'}`}
+                                ${showMobilePencilPanel ? 'bg-accent' : 'bg-card'}`}
                         >
                             <img
                                 src={controlsIcon}
@@ -1303,7 +1359,7 @@ const BoardViewPage = (props) => {
                             Saved board URL:{' '}
                             <a
                                 href={storageLimitBoardUrl}
-                                className="text-primary-blue underline"
+                                className="text-accent-dark underline"
                             >
                                 {storageLimitBoardUrl}
                             </a>

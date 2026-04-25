@@ -10,9 +10,9 @@ const HamburgerIcon = () => (
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
     >
-        <rect x="2" y="3.5" width="12" height="1.5" rx="0.75" fill="#344563" />
-        <rect x="2" y="7.25" width="12" height="1.5" rx="0.75" fill="#344563" />
-        <rect x="2" y="11" width="12" height="1.5" rx="0.75" fill="#344563" />
+        <rect x="2" y="3.5" width="12" height="1.5" rx="0.75" fill="#8C7E6A" />
+        <rect x="2" y="7.25" width="12" height="1.5" rx="0.75" fill="#8C7E6A" />
+        <rect x="2" y="11" width="12" height="1.5" rx="0.75" fill="#8C7E6A" />
     </svg>
 )
 
@@ -26,14 +26,14 @@ const ExternalIcon = () => (
     >
         <path
             d="M5 2H2a1 1 0 00-1 1v7a1 1 0 001 1h7a1 1 0 001-1V7"
-            stroke="#8993A4"
+            stroke="#8C7E6A"
             strokeWidth="1.2"
             strokeLinecap="round"
             strokeLinejoin="round"
         />
         <path
             d="M7.5 1.5H10.5M10.5 1.5V4.5M10.5 1.5L5.5 6.5"
-            stroke="#8993A4"
+            stroke="#8C7E6A"
             strokeWidth="1.2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -61,7 +61,7 @@ const MenuDrawer = () => {
     return (
         <div
             ref={refNode}
-            className="relative bg-white rounded-lg shadow-md"
+            className="relative bg-sidebar border border-border-panel shadow-card rounded-card"
             style={{ position: 'fixed', top: '8px', left: '10px', zIndex: 10 }}
         >
             {/* Trigger button — matches ShapesToolbar item sizing exactly */}
@@ -70,7 +70,7 @@ const MenuDrawer = () => {
                 className={`
                     w-9 h-9 flex items-center justify-center rounded cursor-pointer
                     transition-all ease-in-out duration-200
-                    ${showMenu ? 'bg-blues-b50' : 'hover:bg-blues-b50'}
+                    ${showMenu ? 'bg-accent/30' : 'hover:bg-accent/30'}
                 `}
                 onClick={() => setShowMenu((prev) => !prev)}
             >
@@ -88,24 +88,24 @@ const MenuDrawer = () => {
                 }}
             >
                 <div
-                    className="bg-white border border-neutrals-n40 rounded-lg shadow-lg py-1"
+                    className="bg-card border border-border-panel rounded-lg shadow-lg py-1"
                     style={{ width: '188px' }}
                 >
                     {/* Section label */}
                     <div className="px-3 pt-1 pb-1.5">
-                        <span className="text-xs font-semibold text-neutrals-n300 uppercase tracking-wider">
+                        <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
                             More
                         </span>
                     </div>
 
-                    <div className="h-px bg-neutrals-n40 mx-2 mb-1" />
+                    <div className="h-px bg-border-panel mx-2 mb-1" />
 
                     <a
                         href="https://github.com/craftbase-org/craftbase/releases"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between px-3 py-2 mx-1 text-sm text-neutrals-n700
-                            hover:bg-blues-b50 rounded cursor-pointer no-underline
+                        className="flex items-center justify-between px-3 py-2 mx-1 text-sm text-ink-mid
+                            hover:bg-accent/30 rounded cursor-pointer no-underline
                             transition-colors ease-in-out duration-150"
                         onClick={() => setShowMenu(false)}
                     >
@@ -119,12 +119,12 @@ const MenuDrawer = () => {
                             >
                                 <path
                                     d="M2 1h10a1 1 0 011 1v10a1 1 0 01-1 1H2a1 1 0 01-1-1V2a1 1 0 011-1z"
-                                    stroke="#505F79"
+                                    stroke="#8C7E6A"
                                     strokeWidth="1.1"
                                 />
                                 <path
                                     d="M4 4.5h6M4 7h6M4 9.5h3.5"
-                                    stroke="#505F79"
+                                    stroke="#8C7E6A"
                                     strokeWidth="1.1"
                                     strokeLinecap="round"
                                 />
@@ -136,8 +136,8 @@ const MenuDrawer = () => {
 
                     <Link
                         to={routes.support}
-                        className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-neutrals-n700
-                            hover:bg-blues-b50 rounded cursor-pointer no-underline
+                        className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                            hover:bg-accent/30 rounded cursor-pointer no-underline
                             transition-colors ease-in-out duration-150"
                         onClick={() => setShowMenu(false)}
                     >
@@ -152,12 +152,12 @@ const MenuDrawer = () => {
                                 cx="7"
                                 cy="7"
                                 r="5.5"
-                                stroke="#505F79"
+                                stroke="#8C7E6A"
                                 strokeWidth="1.1"
                             />
                             <path
                                 d="M7 4.5v3.5M7 9.5v.5"
-                                stroke="#505F79"
+                                stroke="#8C7E6A"
                                 strokeWidth="1.1"
                                 strokeLinecap="round"
                             />

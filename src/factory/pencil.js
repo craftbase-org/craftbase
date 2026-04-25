@@ -8,8 +8,16 @@ export default class PencilFactory extends Main {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill, width, height, radius, stroke, linewidth, metadata, strokeType } =
-            this.properties
+        const {
+            fill,
+            width,
+            height,
+            radius,
+            stroke,
+            linewidth,
+            metadata,
+            strokeType,
+        } = this.properties
 
         const hasLwData = metadata.length > 0 && metadata[0].lw !== undefined
 
@@ -27,7 +35,7 @@ export default class PencilFactory extends Main {
                     )
                 })
                 path.noFill()
-                path.stroke = stroke || '#000'
+                path.stroke = stroke || '#3A342C'
                 path.closed = false
                 path.cap = 'round'
                 path.join = 'round'
@@ -51,7 +59,7 @@ export default class PencilFactory extends Main {
                 )
             })
             path.noFill()
-            path.stroke = '#000'
+            path.stroke = '#3A342C'
             path.closed = false
         }
 

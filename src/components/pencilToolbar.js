@@ -35,10 +35,11 @@ const PencilToolbar = ({
                     bottom: '60px',
                     right: '10px',
                     zIndex: 10,
-                    background: 'rgba(255,255,255,1)',
+                    background: '#EDE8DC',
+                    border: '1px solid #D4C9B4',
                     width: '192px',
                 }}
-                className="shadow-lg px-3 py-2.5 rounded-xl flex flex-col gap-2"
+                className="shadow-card px-3 py-2.5 rounded-xl flex flex-col gap-2"
             >
                 {/* Color dots */}
                 <div className="flex flex-row flex-wrap gap-1.5">
@@ -56,7 +57,7 @@ const PencilToolbar = ({
                                             ? '1px solid #d1d5db'
                                             : '1px solid transparent',
                                     outline: isSelected
-                                        ? '2px solid #0052cc'
+                                        ? '2px solid #C4901A'
                                         : 'none',
                                     outlineOffset: '1px',
                                 }}
@@ -66,7 +67,7 @@ const PencilToolbar = ({
                     })}
                 </div>
 
-                <hr className="border-gray-100" />
+                <hr className="border-border-panel" />
 
                 {/* Stroke type */}
                 <div className="flex flex-row gap-1.5">
@@ -77,19 +78,19 @@ const PencilToolbar = ({
                                 key={type.value}
                                 onClick={() => onStrokeTypeChange(type.value)}
                                 className={`flex-1 h-7 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200
-                                    ${isSelected ? 'bg-blues-b50' : 'hover:bg-blues-b50'}`}
+                                    ${isSelected ? 'bg-accent/20' : 'hover:bg-accent/20'}`}
                                 style={{
                                     border: isSelected
-                                        ? '2px solid #0052cc'
-                                        : '1px solid #e5e7eb',
+                                        ? '2px solid #C4901A'
+                                        : '1px solid #C4B89A',
                                 }}
                             >
                                 <span
                                     className="text-sm font-bold tracking-widest"
                                     style={{
                                         color: isSelected
-                                            ? '#0052cc'
-                                            : '#6b7280',
+                                            ? '#C4901A'
+                                            : '#8C7E6A',
                                         paddingBottom:
                                             type.value === 'dotted'
                                                 ? '0.35rem'
@@ -103,7 +104,7 @@ const PencilToolbar = ({
                     })}
                 </div>
 
-                <hr className="border-gray-100" />
+                <hr className="border-border-panel" />
 
                 {/* Stroke width */}
                 <div className="flex flex-row gap-1.5">
@@ -114,11 +115,11 @@ const PencilToolbar = ({
                                 key={value}
                                 onClick={() => onLinewidthChange(value)}
                                 className={`flex-1 h-7 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200
-                                    ${isSelected ? 'bg-blues-b50' : 'hover:bg-blues-b50'}`}
+                                    ${isSelected ? 'bg-accent/20' : 'hover:bg-accent/20'}`}
                                 style={{
                                     border: isSelected
-                                        ? '2px solid #0052cc'
-                                        : '1px solid #e5e7eb',
+                                        ? '2px solid #C4901A'
+                                        : '1px solid #C4B89A',
                                 }}
                             >
                                 <div
@@ -127,8 +128,8 @@ const PencilToolbar = ({
                                         width: '16px',
                                         height: strokeHeight,
                                         backgroundColor: isSelected
-                                            ? '#0052cc'
-                                            : '#6b7280',
+                                            ? '#C4901A'
+                                            : '#8C7E6A',
                                     }}
                                 />
                             </button>
@@ -147,21 +148,29 @@ const PencilToolbar = ({
                 right: 16,
                 top: 65,
                 zIndex: 1,
-                background: 'rgba(255, 255, 255, 1)',
+                background: '#EDE8DC',
+                border: '1px solid #D4C9B4',
                 overflow: 'auto',
                 display: 'flex',
                 flexDirection: 'column',
             }}
-            className="shadow-lg px-2 py-2 rounded-md"
+            className="shadow-card px-2 py-2 rounded-md"
         >
-            <ColorPicker
-                title="Stroke Color"
-                currentColor={pencilStrokeColor}
-                onChangeComplete={onColorChange}
-            />
-            <hr className="my-2 w-full" />
-            <div className="w-full text-left text-xs">
-                <label htmlFor="pencil-border-widths-row">Stroke Width</label>
+            <div className="py-2">
+                <ColorPicker
+                    title="Stroke Color"
+                    currentColor={pencilStrokeColor}
+                    onChangeComplete={onColorChange}
+                />
+            </div>
+            {/* <hr className="my-2 w-full" /> */}
+            <div className="w-full text-left text-xs py-2">
+                <label
+                    htmlFor="pencil-border-widths-row"
+                    className="text-ink-muted"
+                >
+                    Stroke Width
+                </label>
                 <div
                     id="pencil-border-widths-row"
                     data-parent="floating-toolbar"
@@ -176,13 +185,13 @@ const PencilToolbar = ({
                                 onClick={() => onLinewidthChange(value)}
                                 className={`flex-1 w-1/4 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
                                     isSelected
-                                        ? 'bg-blues-b50'
-                                        : 'hover:bg-blues-b50'
+                                        ? 'bg-accent/20'
+                                        : 'hover:bg-accent/20'
                                 }`}
                                 style={{
                                     border: isSelected
-                                        ? '2px solid #0052cc'
-                                        : '1px solid #e5e7eb',
+                                        ? '2px solid #C4901A'
+                                        : '1px solid #C4B89A',
                                 }}
                             >
                                 <div
@@ -190,8 +199,8 @@ const PencilToolbar = ({
                                     style={{
                                         height: strokeHeight,
                                         backgroundColor: isSelected
-                                            ? '#0052cc'
-                                            : '#6b7280',
+                                            ? '#C4901A'
+                                            : '#8C7E6A',
                                     }}
                                 />
                             </button>
@@ -199,9 +208,14 @@ const PencilToolbar = ({
                     })}
                 </div>
             </div>
-            <hr className="my-2 w-full" />
-            <div className="w-full text-left text-xs">
-                <label htmlFor="pencil-stroke-type-row">Stroke Type</label>
+            {/* <hr className="my-2 w-full" /> */}
+            <div className="w-full text-left text-xs py-2">
+                <label
+                    htmlFor="pencil-stroke-type-row"
+                    className="text-ink-muted"
+                >
+                    Stroke Type
+                </label>
                 <div
                     id="pencil-stroke-type-row"
                     data-parent="floating-toolbar"
@@ -216,21 +230,21 @@ const PencilToolbar = ({
                                 onClick={() => onStrokeTypeChange(type.value)}
                                 className={`flex-1 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
                                     isSelected
-                                        ? 'bg-blues-b50'
-                                        : 'hover:bg-blues-b50'
+                                        ? 'bg-accent/20'
+                                        : 'hover:bg-accent/20'
                                 }`}
                                 style={{
                                     border: isSelected
-                                        ? '2px solid #0052cc'
-                                        : '1px solid #e5e7eb',
+                                        ? '2px solid #C4901A'
+                                        : '1px solid #C4B89A',
                                 }}
                             >
                                 <span
                                     className="text-base font-bold tracking-widest"
                                     style={{
                                         color: isSelected
-                                            ? '#0052cc'
-                                            : '#6b7280',
+                                            ? '#C4901A'
+                                            : '#8C7E6A',
                                         paddingBottom:
                                             type.value === 'dotted'
                                                 ? '0.4rem'

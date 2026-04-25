@@ -10,7 +10,7 @@ Sentry.init({
     environment: import.meta.env.MODE,
     integrations: [Sentry.browserTracingIntegration()],
     tracesSampleRate: 0.2,
-    enabled: import.meta.env.MODE !== 'local' ? true : false,
+    enabled: import.meta.env.MODE !== 'development' ? true : false,
 })
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />)

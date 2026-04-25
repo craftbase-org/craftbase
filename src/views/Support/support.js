@@ -16,7 +16,7 @@ const ChevronLeft = () => (
     >
         <path
             d="M10 12L6 8l4-4"
-            stroke="#0052CC"
+            stroke="currentColor"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -44,24 +44,22 @@ const cards = [
 ]
 
 const SupportPage = () => {
-    // Hook used only where HTML structure changes between breakpoints
     const { isMobile } = useMediaQueryUtils()
 
     return (
-        <div className="min-h-screen bg-neutrals-n20">
+        <div className="min-h-screen bg-canvas">
             {/* Nav */}
-            <nav className="sticky top-0 z-10 bg-white border-b border-neutrals-n40 shadow-sm">
+            <nav className="sticky top-0 z-10 bg-sidebar border-b border-border-panel shadow-sm">
                 <div className="w-full max-w-2xl laptop:max-w-full mx-auto px-4 tablet-landscape:px-6 py-3 flex items-center justify-between">
-                    <span className="text-primary-blue font-bold text-sm tablet-landscape:text-base tracking-tight font-display">
+                    <span className="text-ink font-bold text-sm tablet-landscape:text-base tracking-tight font-display">
                         Craftbase
                     </span>
                     <Link
                         to={routes.index}
-                        className="flex items-center gap-1 text-sm text-primary-blue no-underline font-medium
-                            px-2 py-1 rounded-md hover:bg-blues-b50 transition-all ease-in duration-150"
+                        className="flex items-center gap-1 text-sm text-ink-mid no-underline font-medium
+                            px-2 py-1 rounded-md hover:bg-accent/30 transition-all ease-in duration-150"
                     >
                         <ChevronLeft />
-                        {/* Different label text = different HTML — valid hook use */}
                         {isMobile ? 'Back' : 'Back to board'}
                     </Link>
                 </div>
@@ -71,47 +69,45 @@ const SupportPage = () => {
             <main className="w-full max-w-2xl mx-auto px-4 tablet-landscape:px-6 py-8 tablet-landscape:py-12">
                 {/* Header */}
                 <div className="mb-6 tablet-landscape:mb-10">
-                    <h1 className="text-xl tablet-landscape:text-2xl font-bold text-neutrals-n700 tracking-tight mb-2 font-display">
+                    <h1 className="text-xl tablet-landscape:text-2xl font-bold text-ink tracking-tight mb-2 font-display">
                         Support
                     </h1>
-                    <p className="text-xs tablet-landscape:text-sm text-neutrals-n300 leading-relaxed">
+                    <p className="text-xs tablet-landscape:text-sm text-ink-muted leading-relaxed">
                         We're here to help. Choose how you'd like to get in
                         touch.
                     </p>
                 </div>
 
-                {/* Contact banner — layout flips on mobile */}
+                {/* Contact banner */}
                 <div
-                    className="bg-blues-b50 border border-blues-b75 rounded-lg p-3 tablet-landscape:p-4 mb-6 tablet-landscape:mb-8
-                    flex flex-col tablet-landscape:flex-row tablet-landscape:items-center gap-3"
+                    className="bg-card border border-border-card rounded-card p-3 tablet-landscape:p-4 mb-6 tablet-landscape:mb-8
+                    flex flex-col tablet-landscape:flex-row tablet-landscape:items-center gap-3 shadow-card"
                 >
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-primary-blue flex items-center justify-center flex-shrink-0">
+                        <div className="w-9 h-9 rounded-card bg-accent flex items-center justify-center flex-shrink-0">
                             <img
                                 src={EnvelopeIcon}
                                 className="w-5 h-5"
                                 alt="Email"
                             />
                         </div>
-                        {/* Label sits beside icon on mobile since banner is flex-col */}
                         {isMobile && (
-                            <div className="text-xs font-semibold text-blues-b400">
+                            <div className="text-xs font-semibold text-ink-mid">
                                 Get in touch directly
                             </div>
                         )}
                     </div>
                     <div className="flex items-start flex-col gap-1">
-                        {/* Label sits above email on tablet+ since banner is flex-row */}
                         {!isMobile && (
-                            <div className="text-xs font-semibold text-blues-b400">
+                            <div className="text-xs font-semibold text-ink-mid">
                                 Get in touch directly
                             </div>
                         )}
-                        <div className="text-xs text-blues-b500">
+                        <div className="text-xs text-ink-muted">
                             Email the contact person at{' '}
                             <a
                                 href="mailto:meetzaveri96@gmail.com"
-                                className="text-primary-blue font-semibold no-underline border-b border-primary-blue"
+                                className="text-accent-dark font-semibold no-underline border-b border-accent-dark"
                             >
                                 meetzaveri96@gmail.com
                             </a>
@@ -121,14 +117,14 @@ const SupportPage = () => {
 
                 {/* Divider */}
                 <div className="flex items-center gap-3 mb-4 tablet-landscape:mb-5">
-                    <div className="flex-1 h-px bg-neutrals-n40" />
-                    <span className="text-xs font-semibold text-neutrals-n80 uppercase tracking-wider whitespace-nowrap">
+                    <div className="flex-1 h-px bg-border-panel" />
+                    <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap">
                         Community
                     </span>
-                    <div className="flex-1 h-px bg-neutrals-n40" />
+                    <div className="flex-1 h-px bg-border-panel" />
                 </div>
 
-                {/* Cards — 1 col on mobile, 2 cols on tablet+ */}
+                {/* Cards */}
                 <div className="grid grid-cols-1 tablet-landscape:grid-cols-2 gap-3">
                     {cards.map((card) => (
                         <a
@@ -136,20 +132,20 @@ const SupportPage = () => {
                             href={card.href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-start gap-3 bg-white border border-neutrals-n40 rounded-lg p-4 no-underline
-                                shadow-md hover:shadow-lg transition-shadow ease-in duration-150"
+                            className="flex items-start gap-3 bg-card border border-border-card rounded-card p-4 no-underline
+                                shadow-card hover:shadow-card-accent transition-shadow ease-in duration-150"
                         >
-                            <div className="w-9 h-9 rounded-lg bg-blues-b50 flex items-center justify-center flex-shrink-0">
+                            <div className="w-9 h-9 rounded-card bg-accent/20 flex items-center justify-center flex-shrink-0">
                                 {card.icon}
                             </div>
                             <div className="flex flex-col">
-                                <div className="text-sm font-semibold text-neutrals-n700 mb-1">
+                                <div className="text-sm font-semibold text-ink mb-1">
                                     {card.label}
                                 </div>
-                                <div className="text-xs text-neutrals-n300 leading-relaxed mb-3">
+                                <div className="text-xs text-ink-muted leading-relaxed mb-3">
                                     {card.description}
                                 </div>
-                                <div className="text-xs font-semibold text-primary-blue">
+                                <div className="text-xs font-semibold text-accent-dark">
                                     {card.cta}
                                 </div>
                             </div>

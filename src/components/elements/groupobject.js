@@ -4,47 +4,13 @@ const factoryModules = import.meta.glob('../../factory/*.js')
 import Two from 'two.js'
 import { useBoardContext } from 'views/Board/board'
 import { useMutation } from '@apollo/client'
-import {
-    UPDATE_COMPONENT_INFO,
-    INSERT_BULK_COMPONENTS,
-    DELETE_BULK_COMPONENTS,
-} from 'schema/mutations'
+import { UPDATE_COMPONENT_INFO, DELETE_BULK_COMPONENTS } from 'schema/mutations'
 import ObjectSelector from 'components/utils/objectSelector'
 import getEditComponents from 'components/utils/editWrapper'
-import { elementOnBlurHandler, generateUUID } from 'utils/misc'
-
-function getComponentSchema(obj, boardId, parentGroupX, parentGroupY) {
-    let generateId = generateUUID()
-    return {
-        id: generateId,
-        boardId: boardId,
-        componentType: obj.componentType,
-        fill: obj.fill,
-        children: obj?.children ? obj.children : null,
-        metadata: obj?.metadata ? obj.metadata : {},
-        x: parentGroupX + obj.x + 100,
-        x1: obj.x1,
-        x2: obj.x2,
-        y: parentGroupY + obj.y + 100,
-        y1: obj.y1,
-        y2: obj.y2,
-        width: obj.width,
-        height: obj.height,
-        linewidth: obj.linewidth,
-        stroke: obj.stroke,
-    }
-}
+import { elementOnBlurHandler } from 'utils/misc'
 
 function GroupedObjectWrapper(props) {
     // console.log('history', history)
-    const [
-        insertComponents,
-        {
-            loading: insertComponentsLoading,
-            data: insertComponentsSuccess,
-            error: insertComponentsError,
-        },
-    ] = useMutation(INSERT_BULK_COMPONENTS)
     const [
         deleteComponents,
         {
@@ -65,7 +31,6 @@ function GroupedObjectWrapper(props) {
     } = useBoardContext()
 
     const two = props.twoJSInstance
-    const [cloneGroupElements, setCloneGroupElements] = useState(null)
     const [deleteGroupElements, setDeleteGroupElements] = useState(null)
     const [groupId, setGroupId] = useState(null)
     // const [twoGroupInstance,setTwoGroupInstance] = useState(null)
@@ -81,16 +46,19 @@ function GroupedObjectWrapper(props) {
         //     groupInstance.translation.y
         // )
         elementOnBlurHandler(e, selectorInstance, two)
+        window.dispatchEvent(new CustomEvent('groupBlurred'))
         // on un-group, these components will return back to their individual state
         // with their new positions depending on group's x,y was changed
         if (deleteGroupElements === null) {
             const userId = localStorage.getItem('userId')
             let childrenIdsOfTheGroup = props.children.map((item) => item.id)
 
+            let foundOriginalCount = 0
+
             // two.scene.children means all the elements you see in canvas drawing area
             two.scene.children.forEach((element) => {
                 if (childrenIdsOfTheGroup.includes(element?.elementData?.id)) {
-                    // here element refers to twoJS shape instead of element data from DB
+                    foundOriginalCount++
                     element.opacity = 1
                     let findRelativeDataForChild = {}
                     props.children.forEach((item) => {
@@ -98,24 +66,20 @@ function GroupedObjectWrapper(props) {
                             findRelativeDataForChild = item
                         }
                     })
-                    // console.log(
-                    //     'element?.elementData in group on blur',
-                    //     element?.elementData,
-                    // )
-                    // console.log('element two.js object', element)
-                    // console.log('groupInstance', groupInstance)
                     let newX =
                         parseInt(groupInstance.translation.x) +
                         parseInt(findRelativeDataForChild.x)
                     let newY =
                         parseInt(groupInstance.translation.y) +
                         parseInt(findRelativeDataForChild.y)
-                    // console.log('element data', element)
                     element.translation.x = newX
                     element.translation.y = newY
 
                     let newMetadata = element.elementData.metadata
-                    if (element.elementData.componentType === 'pencil') {
+                    if (
+                        element.elementData.componentType === 'pencil' &&
+                        Array.isArray(element.elementData.metadata)
+                    ) {
                         newMetadata = element.elementData.metadata.map(
                             (vert, index) => {
                                 const lwProp =
@@ -123,10 +87,6 @@ function GroupedObjectWrapper(props) {
                                 if (index === 0) {
                                     return { x: newX, y: newY, ...lwProp }
                                 } else if (index > 0) {
-                                    // here the logic is to get relative vertex coordinates to the original metadata
-                                    // so we want to get result of ( relative coordinate + orginal_vert(x) - originalX )
-                                    // here originalX means the coordinates of first set of vertices
-                                    // since they were the first coordinates to start a path
                                     return {
                                         x:
                                             newX +
@@ -147,19 +107,9 @@ function GroupedObjectWrapper(props) {
                                 }
                             }
                         )
-                        element.children.forEach((eachChild, index) => {
+                        element.children.forEach((eachChild) => {
                             if (eachChild.vertices) {
-                                // console.log(
-                                //     'For each in element.children ... is a Path'
-                                // )
-
-                                // console.log(
-                                //     'element.elementData.metadata',
-                                //     element.elementData.metadata
-                                // )
-                                // console.log('newMetadata', newMetadata)
                                 eachChild.vertices = []
-
                                 newMetadata.forEach(function (point) {
                                     eachChild.vertices.push(
                                         new Two.Vector(
@@ -171,18 +121,6 @@ function GroupedObjectWrapper(props) {
                             }
                         })
                     }
-
-                    // update those component's properties
-                    // updateComponentInfo({
-                    //     variables: {
-                    //         id: element?.elementData?.id,
-                    //         updateObj: {
-                    //             x: element.translation.x,
-                    //             y: element.translation.y,
-                    //             updatedBy: userId,
-                    //         },
-                    //     },
-                    // })
 
                     let updateObj = {
                         metadata: newMetadata,
@@ -197,38 +135,63 @@ function GroupedObjectWrapper(props) {
                     two.update()
                 }
             })
-            // props.unGroup && props.unGroup(groupInstance)
+
+            // Pasted group: children were never added as individual scene elements,
+            // so nothing was found above. Add each child to the component store at
+            // its absolute position so they persist as individual elements.
+            if (foundOriginalCount === 0 && props.children.length > 0) {
+                const gx = parseInt(groupInstance.translation.x)
+                const gy = parseInt(groupInstance.translation.y)
+                props.children.forEach((child) => {
+                    const localX = parseInt(child.x ?? child.relativeX ?? 0)
+                    const localY = parseInt(child.y ?? child.relativeY ?? 0)
+                    const absX = gx + localX
+                    const absY = gy + localY
+
+                    let childMetadata = child.metadata
+                    if (
+                        child.componentType === 'pencil' &&
+                        Array.isArray(child.metadata)
+                    ) {
+                        childMetadata = child.metadata.map((vert, index) => {
+                            const lwProp =
+                                vert.lw !== undefined ? { lw: vert.lw } : {}
+                            if (index === 0) {
+                                return { x: absX, y: absY, ...lwProp }
+                            }
+                            return {
+                                x: absX + parseInt(vert.x - localX),
+                                y: absY + parseInt(vert.y - localY),
+                                ...lwProp,
+                            }
+                        })
+                    }
+
+                    addToLocalComponentStore(child.id, child.componentType, {
+                        ...child,
+                        x: absX,
+                        y: absY,
+                        metadata: childMetadata,
+                    })
+                })
+            }
         }
         two.remove([groupInstance])
         two.update()
     }
 
     function onFocusHandler(e) {
-        // console.log('on groupobject focus')
         document.getElementById(`${groupInstance.id}`).style.outline = 0
+        window.dispatchEvent(
+            new CustomEvent('groupFocused', {
+                detail: { group: groupInstance },
+            })
+        )
     }
 
-    // const customEventListener = (action, shapeData) => {
-    //     if (action === 'COPY') {
-    //         setCloneGroupElements(shapeData)
-    //     }
-    // }
-
     function onKeyDown(evt) {
-        // unclosed event listener (temp)
-        if (evt.key === 'c' && (evt.ctrlKey || evt.metaKey)) {
-            // set element data for copy and paste action
-            setCloneGroupElements(groupInstance.elementData)
-            // alert('Ctrl + c pressed in group oject')
-            // customEventListener('COPY', shape.elementData)
-            // domElement.removeEventListener('keydown', onKeyDown)
-        }
-
         if (evt.keyCode === 8 || evt.keyCode === 46) {
-            // console.log('handle key down event', evt)
             // DELETE/BACKSPACE KEY WAS PRESSED
-            // props.handleDeleteComponent &&
-            //     props.handleDeleteComponent(groupObject)
             setDeleteGroupElements(groupInstance.elementData)
 
             two.remove([groupInstance])
@@ -236,37 +199,8 @@ function GroupedObjectWrapper(props) {
         }
     }
 
-    const onPasteEvent = (evt) => {
-        if (evt.key === 'v' && (evt.ctrlKey || evt.metaKey)) {
-            if (cloneGroupElements?.id !== undefined) {
-                // console.log('clone element', cloneGroupElements)
-
-                let objects = cloneGroupElements.children.map((item, index) => {
-                    let component = getComponentSchema(
-                        item,
-                        props.boardId,
-                        parseInt(cloneGroupElements.x),
-                        parseInt(cloneGroupElements.y)
-                    )
-                    return component
-                })
-                // console.log('objects for insert component bulk', objects)
-                insertComponents({
-                    variables: {
-                        objects: objects,
-                    },
-                })
-                // alert(`Ctrl+V was pressed ${cloneGroupElements.id}`)
-                // setCloneGroupElements(null)
-            }
-            onBlurHandler(evt)
-        }
-    }
-
     const handleOnDeleteGroupElements = () => {
         if (deleteGroupElements?.id !== undefined) {
-            // console.log('delete element', deleteGroupElements)
-
             let idsArr = deleteGroupElements.children.map((item, index) => {
                 return item.id
             })
@@ -278,17 +212,8 @@ function GroupedObjectWrapper(props) {
             })
 
             setDeleteGroupElements(null)
-            // alert(`Ctrl+V was pressed ${cloneGroupElements.id}`)
-            // setCloneGroupElements(null)
         }
     }
-
-    useEffect(() => {
-        window.addEventListener('keydown', onPasteEvent)
-        return () => {
-            window.removeEventListener('keydown', onPasteEvent)
-        }
-    }, [cloneGroupElements])
 
     useEffect(() => {
         if (deleteGroupElements !== null) {
@@ -335,38 +260,37 @@ function GroupedObjectWrapper(props) {
 
         for (let index = 0; index < props.children.length; index++) {
             const item = props.children[index]
-            // console.log('item in children', item)
-            factoryModules[`../../factory/${item.componentType}.js`]().then(
-                (component) => {
-                    const componentFactory = new component.default(
-                        two,
-                        item.x,
-                        item.y,
-                        { ...item }
-                    )
-                    const factoryObject = componentFactory.createElement()
-                    const coreObject = factoryObject.group
-                    // console.log('factoryObject', factoryObject)
-                    // set component's coordinates
-                    coreObject.translation.x = item.x
-                    coreObject.translation.y = item.y
+            const factoryKey = `../../factory/${item.componentType}.js`
+            if (typeof factoryModules[factoryKey] !== 'function') continue
+            factoryModules[factoryKey]().then((component) => {
+                const componentFactory = new component.default(
+                    two,
+                    item.x,
+                    item.y,
+                    { ...item }
+                )
+                const factoryObject = componentFactory.createElement()
+                const coreObject = factoryObject.group
+                // console.log('factoryObject', factoryObject)
+                // set component's coordinates
+                coreObject.translation.x = item.x
+                coreObject.translation.y = item.y
 
-                    const meta = item.metadata || {}
-                    if (meta.hasText && meta.textContent) {
-                        const twoText = two.makeText(meta.textContent, 0, 0)
-                        twoText.fill = meta.textFill || '#000'
-                        twoText.size = meta.textFontSize || 24
-                        twoText.alignment = 'center'
-                        twoText.baseline = meta.textBaseLine || 'middle'
-                        twoText.family = meta.textFamily || 'Caveat'
-                        coreObject.add(twoText)
-                    }
-
-                    group.add(coreObject)
-                    // group.children.unshift(coreObject)
-                    two.update()
+                const meta = item.metadata || {}
+                if (meta.hasText && meta.textContent) {
+                    const twoText = two.makeText(meta.textContent, 0, 0)
+                    twoText.fill = meta.textFill || '#000'
+                    twoText.size = meta.textFontSize || 24
+                    twoText.alignment = 'center'
+                    twoText.baseline = meta.textBaseLine || 'middle'
+                    twoText.family = meta.textFamily || 'Caveat'
+                    coreObject.add(twoText)
                 }
-            )
+
+                group.add(coreObject)
+                // group.children.unshift(coreObject)
+                two.update()
+            })
         }
 
         // console.log('after group children has been added', group.children)

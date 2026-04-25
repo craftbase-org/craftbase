@@ -2,6 +2,20 @@
     --font-ui: 'Geist', system-ui, sans-serif;
     --font-display: 'Fraunces', Georgia, serif;
     --font-sketch: 'Caveat', cursive;
+    --font-mono: 'Geist Mono', monospace;
+
+    --color-canvas: #F5F0E8;
+    --color-sidebar: #EDE8DC;
+    --color-card: #FFFCF5;
+    --color-topbar: #1A1612;
+    --color-accent: #E8C87A;
+    --color-accent-dark: #C4901A;
+    --color-accent-glow: rgba(184, 134, 11, 0.18);
+    --color-ink: #1A1612;
+    --color-ink-mid: #5A4E3C;
+    --color-ink-muted: #8C7E6A;
+    --color-border-panel: #D4C9B4;
+    --color-border-card: #C4B89A;
 }
 
 body {
@@ -30,7 +44,9 @@ code {
     z-index: -9;
 }
 #main-two-root svg {
-    background: #f4f4f2;
+    background-color: #F5F0E8;
+    background-image: radial-gradient(circle, #C4B89A 1px, transparent 1px);
+    background-size: 24px 24px;
     z-index: -1;
 }
 

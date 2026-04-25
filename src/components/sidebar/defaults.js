@@ -30,15 +30,15 @@ const DefaultsDropdown = () => {
 
     return (
         <div
-            className="secondary-sidebar-content fixed bg-white block text-left pb-4 rounded-md shadow-lg w-36"
+            className="secondary-sidebar-content fixed bg-card block text-left pb-4 rounded-card shadow-card border border-border-panel w-36"
             style={{ left: '10px', top: '56px' }}
         >
-            <div className="w-full px-2 font-semibold text-xs pt-1 pb-1 border-b-2">
+            <div className="w-full px-2 font-semibold text-xs pt-1 pb-1 border-b border-border-panel text-ink-muted">
                 {' '}
                 Defaults{' '}
             </div>
             <div id="stroke-width-section" className="pt-2 px-2">
-                <div className="w-full text-black font-normal text-xs pl-0 mb-2">
+                <div className="w-full text-ink-muted font-normal text-xs pl-0 mb-2">
                     Stroke Width
                 </div>
                 <div className="flex gap-2">
@@ -51,14 +51,14 @@ const DefaultsDropdown = () => {
                                 }
                                 className={`flex-1 w-4 h-6 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
                                     defaultLinewidth === value
-                                        ? 'bg-blues-b50'
-                                        : 'hover:bg-blues-b50'
+                                        ? 'bg-accent/20'
+                                        : 'hover:bg-accent/20'
                                 }`}
                                 style={{
                                     border:
                                         defaultLinewidth === value
-                                            ? '2px solid #0052cc'
-                                            : '1px solid #e5e7eb',
+                                            ? '2px solid #C4901A'
+                                            : '1px solid #C4B89A',
                                 }}
                             >
                                 <div
@@ -67,8 +67,8 @@ const DefaultsDropdown = () => {
                                         height: strokeHeight, // e.g. 1.5px, 2.5px, 4px
                                         backgroundColor:
                                             defaultLinewidth === value
-                                                ? '#0052cc'
-                                                : '#6b7280',
+                                                ? '#C4901A'
+                                                : '#8C7E6A',
                                     }}
                                 />
                             </button>
@@ -78,7 +78,7 @@ const DefaultsDropdown = () => {
             </div>
 
             <div id="stroke-type-section" className="pt-3 px-2">
-                <div className="w-full text-black font-normal text-xs pl-0 mb-2">
+                <div className="w-full text-ink-muted font-normal text-xs pl-0 mb-2">
                     Stroke Type
                 </div>
                 <div className="flex gap-2">
@@ -95,21 +95,21 @@ const DefaultsDropdown = () => {
                                 }
                                 className={`flex-1 w-4 h-6 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
                                     isSelected
-                                        ? 'bg-blues-b50'
-                                        : 'hover:bg-blues-b50'
+                                        ? 'bg-accent/20'
+                                        : 'hover:bg-accent/20'
                                 }`}
                                 style={{
                                     border: isSelected
-                                        ? '2px solid #0052cc'
-                                        : '1px solid #e5e7eb',
+                                        ? '2px solid #C4901A'
+                                        : '1px solid #C4B89A',
                                 }}
                             >
                                 <span
                                     className="text-base font-bold tracking-widest"
                                     style={{
                                         color: isSelected
-                                            ? '#0052cc'
-                                            : '#6b7280',
+                                            ? '#C4901A'
+                                            : '#8C7E6A',
                                         paddingBottom:
                                             value === 'dotted'
                                                 ? '0.4rem'

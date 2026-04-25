@@ -6,15 +6,15 @@ const Button = (props) => {
         ' focus:outline-none rounded-md hover:shadow-lg flex items-center '
 
     switch (props.intent) {
-        case 'primary': // red
-            baseClassNames += ' bg-primary-blue text-white '
+        case 'primary':
+            baseClassNames += ' bg-accent text-ink '
             break
-        case 'info': // white
+        case 'info':
             baseClassNames += ' bg-neutrals-n500 text-neutrals-n40 '
             break
-        case 'secondary': // white
+        case 'secondary':
             baseClassNames +=
-                ' bg-white text-primary-blue border border-primary-blue'
+                ' bg-card text-ink border border-accent-dark'
             break
         default:
             baseClassNames +=
@@ -66,8 +66,8 @@ const Button = (props) => {
                                 marginLeft: '8px',
                                 borderBottomColor:
                                     props.intent === 'secondary'
-                                        ? '#0052CC'
-                                        : '#fff',
+                                        ? '#C4901A'
+                                        : '#1A1612',
                             }}
                         />
                     </div>

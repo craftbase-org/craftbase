@@ -85,7 +85,7 @@ const PrimarySidebar = () => {
                         componentType: label,
                         linewidth: defaultLinewidth,
                         strokeType: defaultStrokeType,
-                        stroke: '#000',
+                        stroke: '#3A342C',
                         children: {},
                         metadata: [],
                         x: -9999,
@@ -228,7 +228,7 @@ const PrimarySidebar = () => {
                                     componentType: label,
                                     linewidth: defaultLinewidth,
                                     strokeType: defaultStrokeType,
-                                    stroke: '#000',
+                                    stroke: '#3A342C',
                                     children: {},
                                     metadata: [],
                                     x: parseInt(
@@ -348,7 +348,7 @@ const PrimarySidebar = () => {
                 {isLiveSession ? (
                     <>
                         <div className="w-9 h-9 text-sm pr-2">
-                            <a className=" flex items-center px-4 py-2 rounded-md  bg-white text-black shadow-md ">
+                            <a className="flex items-center px-4 py-2 rounded-card bg-card text-ink shadow-card">
                                 <span className="text-sm ">Live</span>
 
                                 <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">

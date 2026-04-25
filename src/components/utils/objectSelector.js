@@ -28,7 +28,7 @@ export default class Selector {
         area.opacity = 1
         area.linewidth = 2
         // area.dashes[0] = 6
-        area.stroke = '#0052CC'
+        area.stroke = '#C4901A'
         // area.curved = true;
         // console.log("area", area);
         this.area = area
@@ -73,7 +73,7 @@ export default class Selector {
                     )
                     circleGroup.linewidth = 1.5
                     circleGroup.opacity = 0
-                    circleGroup.stroke = '#0052CC'
+                    circleGroup.stroke = '#C4901A'
                     this.circleGroup = circleGroup
                     break
 
