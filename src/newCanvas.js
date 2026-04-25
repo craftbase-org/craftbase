@@ -875,6 +875,9 @@ function addZUI(
                 let avoidDragging = false
                 let isGroupSelector = false
 
+                // Snapshot before clearing — used below to select arrow by endpoint click
+                const hoveredEndpointGroup = lastHoveredCircleGroup
+
                 // Hide all arrow endpoint circles and hover indicator before processing the new selection
                 lastHoveredCircleGroup = null
                 hoverCircle.opacity = 0
@@ -887,6 +890,25 @@ function addZUI(
 
                 const path = e.path || (e.composedPath && e.composedPath())
                 ;({ shape, avoidDragging } = resolveShapeFromPath(path, two))
+
+                // Endpoint circles are opacity:0 so pointer-events don't fire on them.
+                // If the cursor was hovering over an endpoint (hoverCircle was visible),
+                // use that to select the parent arrow — only in select/pan mode.
+                if (shape === null && hoveredEndpointGroup) {
+                    const parentArrow = two.scene.children.find(
+                        (child) =>
+                            child?.elementData?.componentType === 'arrowLine' &&
+                            (child.children[1] === hoveredEndpointGroup ||
+                                child.children[2] === hoveredEndpointGroup)
+                    )
+                    if (parentArrow) {
+                        if (parentArrow.children[1])
+                            parentArrow.children[1].opacity = 1
+                        if (parentArrow.children[2])
+                            parentArrow.children[2].opacity = 1
+                        shape = parentArrow
+                    }
+                }
 
                 // Track for copy BEFORE drag-prevention clears shape (pencil uses
                 // avoid-dragging so shape would become {} immediately after).
@@ -1034,6 +1056,7 @@ function addZUI(
                     !shape.elementData.isGroupSelector &&
                     !controllerHandledSelection
                 ) {
+                    selectionController.detach()
                     // this internal state is required for floating toolbar component since floating
                     // toolbar relies on the exact structure/schema for component's internal state
                     // so that any changes made from toolbar can be applied directly on component's two.js properties

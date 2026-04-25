@@ -174,6 +174,7 @@ const BoardViewPage = (props) => {
         localStorage.removeItem('arrowDrawMode')
         localStorage.removeItem('textDrawMode')
         localStorage.removeItem('lastAddedElementId')
+        localStorage.removeItem(RUBBER_MODE_KEY)
     }, [])
 
     // Restore draft and background board ID from localStorage on mount (local mode only)

@@ -187,6 +187,15 @@ export default class SelectionController {
 
     // ---------- Attach / detach ----------
 
+    _bringToFront() {
+        const scene = this.two.scene
+        const idx = scene.children.indexOf(this.ui)
+        if (idx !== -1 && idx !== scene.children.length - 1) {
+            scene.children.splice(idx, 1)
+            scene.children.push(this.ui)
+        }
+    }
+
     attach(group, shape) {
         const type = group?.elementData?.componentType
         const adapter = SHAPE_ADAPTERS[type]
@@ -204,6 +213,7 @@ export default class SelectionController {
             null
         this.targets.add(group)
 
+        this._bringToFront()
         this.ui.visible = true
         this.syncToTarget()
         this.two.update()
