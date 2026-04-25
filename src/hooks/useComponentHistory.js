@@ -68,6 +68,15 @@ export function useComponentHistory({
         setHistoryLog(updatedLog)
     }
 
+    const recordBatchToHistoryLog = (entries) => {
+        const updatedLog = [
+            ...historyLogRef.current,
+            { action: 'BATCH', entries, timestamp: Date.now() },
+        ]
+        historyLogRef.current = updatedLog
+        setHistoryLog(updatedLog)
+    }
+
     const undoLastAction = () => {
         if (historyLogRef.current.length === 0) return
 
@@ -122,6 +131,37 @@ export function useComponentHistory({
                     }
                 })
             }
+            requestAnimationFrame(() => two?.update())
+        } else if (action === 'BATCH') {
+            const updatedStore = { ...stateRefForComponentStore.current }
+
+            lastEntry.entries.forEach((entry) => {
+                if (entry.action === 'DELETE') {
+                    const restoredState = { ...entry.prevState, boardId }
+                    updatedStore[entry.id] = restoredState
+                    if (isPersistedRef.current) {
+                        insertComponent({
+                            variables: { object: stripTypename(restoredState) },
+                        })
+                    }
+                } else if (entry.action === 'ADD') {
+                    delete updatedStore[entry.id]
+                    window.dispatchEvent(
+                        new CustomEvent('elementRemoved', { detail: { id: entry.id } })
+                    )
+                    const sceneGroup = two?.scene.children.find(
+                        (c) => c?.elementData?.id === entry.id
+                    )
+                    if (sceneGroup) two?.remove([sceneGroup])
+                    if (isPersistedRef.current) {
+                        deleteComponent({ variables: { id: entry.id } })
+                    }
+                }
+            })
+
+            stateRefForComponentStore.current = updatedStore
+            setComponentStore(updatedStore)
+            requestAnimationFrame(() => two?.update())
         } else if (action === 'UPDATE_VERTICES') {
             const { prevX, prevY } = lastEntry
 
@@ -229,6 +269,7 @@ export function useComponentHistory({
         historyLog,
         historyLogRef,
         recordToHistoryLog,
+        recordBatchToHistoryLog,
         undoLastAction,
         clearHistory,
     }

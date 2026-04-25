@@ -4,27 +4,21 @@ const factoryModules = import.meta.glob('../../factory/*.js')
 import Two from 'two.js'
 import { useBoardContext } from 'views/Board/board'
 import { useMutation } from '@apollo/client'
-import { UPDATE_COMPONENT_INFO, DELETE_BULK_COMPONENTS } from 'schema/mutations'
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import ObjectSelector from 'components/utils/objectSelector'
 import getEditComponents from 'components/utils/editWrapper'
 import { elementOnBlurHandler } from 'utils/misc'
 
 function GroupedObjectWrapper(props) {
     // console.log('history', history)
-    const [
-        deleteComponents,
-        {
-            loading: deleteComponentsLoading,
-            data: deleteComponentsSuccess,
-            error: deleteComponentsError,
-        },
-    ] = useMutation(DELETE_BULK_COMPONENTS)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
     const {
         addToLocalComponentStore,
         updateComponentBulkPropertiesInLocalStore,
+        deleteBulkComponentsFromLocalStore,
+        recordBatchToHistoryLog,
         isPencilMode,
         isArrowDrawMode,
         isArrowSelected,
@@ -142,6 +136,7 @@ function GroupedObjectWrapper(props) {
             if (foundOriginalCount === 0 && props.children.length > 0) {
                 const gx = parseInt(groupInstance.translation.x)
                 const gy = parseInt(groupInstance.translation.y)
+                const batchEntries = []
                 props.children.forEach((child) => {
                     const localX = parseInt(child.x ?? child.relativeX ?? 0)
                     const localY = parseInt(child.y ?? child.relativeY ?? 0)
@@ -167,13 +162,21 @@ function GroupedObjectWrapper(props) {
                         })
                     }
 
-                    addToLocalComponentStore(child.id, child.componentType, {
+                    const childData = {
                         ...child,
                         x: absX,
                         y: absY,
                         metadata: childMetadata,
-                    })
+                    }
+                    addToLocalComponentStore(
+                        child.id,
+                        child.componentType,
+                        childData,
+                        true // skipHistory — batch entry recorded below
+                    )
+                    batchEntries.push({ action: 'ADD', id: child.id })
                 })
+                recordBatchToHistoryLog(batchEntries)
             }
         }
         two.remove([groupInstance])
@@ -201,16 +204,18 @@ function GroupedObjectWrapper(props) {
 
     const handleOnDeleteGroupElements = () => {
         if (deleteGroupElements?.id !== undefined) {
-            let idsArr = deleteGroupElements.children.map((item, index) => {
-                return item.id
-            })
+            const idsArr = deleteGroupElements.children.map((item) => item.id)
 
-            deleteComponents({
-                variables: {
-                    _in: idsArr,
-                },
-            })
+            // Remove original individual scene elements that were hidden under the group
+            const toRemove = two.scene.children.filter((el) =>
+                idsArr.includes(el?.elementData?.id)
+            )
+            if (toRemove.length > 0) {
+                two.remove(toRemove)
+                two.update()
+            }
 
+            deleteBulkComponentsFromLocalStore(idsArr)
             setDeleteGroupElements(null)
         }
     }

@@ -14,6 +14,7 @@ import {
     INSERT_COMPONENT,
     INSERT_BULK_COMPONENTS,
     DELETE_COMPONENT_BY_ID,
+    DELETE_BULK_COMPONENTS,
     UPDATE_COMPONENT_INFO,
     CREATE_BOARD,
 } from 'schema/mutations'
@@ -38,6 +39,7 @@ import {
     PENDING_SHAPE_PROPS_KEY,
     LAST_ADDED_ELEMENT_ID_KEY,
     PENCIL_MODE_KEY,
+    BACKGROUND_BOARD_STORAGE_KEY,
 } from 'constants/misc'
 import { useDrawingModes } from 'hooks/useDrawingModes'
 import { usePencilDefaults } from 'hooks/usePencilDefaults'
@@ -109,6 +111,8 @@ const BoardViewPage = (props) => {
         },
     ] = useMutation(DELETE_COMPONENT_BY_ID)
 
+    const [deleteBulkComponents] = useMutation(DELETE_BULK_COMPONENTS)
+
     const [
         updateUserRevisit,
         {
@@ -135,7 +139,8 @@ const BoardViewPage = (props) => {
     const [selectedComponent, setSelectedComponent] = useState(null)
     const [currentElement, setCurrentElement] = useState(null)
     const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
-    const [showPermissionErrorModal, setShowPermissionErrorModal] = useState(false)
+    const [showPermissionErrorModal, setShowPermissionErrorModal] =
+        useState(false)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef()
@@ -143,10 +148,14 @@ const BoardViewPage = (props) => {
     const skipComponentStoreResetRef = useRef(false)
 
     const {
-        pointerToggle, setPointerToggle,
-        isPencilMode, setPencilMode,
-        isArrowDrawMode, setIsArrowDrawMode,
-        isTextDrawMode, setIsTextDrawMode,
+        pointerToggle,
+        setPointerToggle,
+        isPencilMode,
+        setPencilMode,
+        isArrowDrawMode,
+        setIsArrowDrawMode,
+        isTextDrawMode,
+        setIsTextDrawMode,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
@@ -154,17 +163,25 @@ const BoardViewPage = (props) => {
     } = useDrawingModes()
 
     const {
-        showToolbar, toggleToolbar,
-        showMobileToolbarPanel, setShowMobileToolbarPanel,
-        showMobilePencilPanel, setShowMobilePencilPanel,
+        showToolbar,
+        toggleToolbar,
+        showMobileToolbarPanel,
+        setShowMobileToolbarPanel,
+        showMobilePencilPanel,
+        setShowMobilePencilPanel,
     } = useMobileToolbarPanels({ isPencilMode, isMobile, selectedComponent })
 
     const {
-        defaultLinewidth, setDefaultLinewidth,
-        defaultStrokeType, setDefaultStrokeType,
-        pencilDefaultLinewidth, setPencilDefaultLinewidth,
-        pencilDefaultStrokeType, setPencilDefaultStrokeType,
-        pencilStrokeColor, setPencilStrokeColor,
+        defaultLinewidth,
+        setDefaultLinewidth,
+        defaultStrokeType,
+        setDefaultStrokeType,
+        pencilDefaultLinewidth,
+        setPencilDefaultLinewidth,
+        pencilDefaultStrokeType,
+        setPencilDefaultStrokeType,
+        pencilStrokeColor,
+        setPencilStrokeColor,
         setDefaultLinewidthInBoard,
         setDefaultStrokeTypeInBoard,
         setPencilStrokeColorInBoard,
@@ -193,6 +210,7 @@ const BoardViewPage = (props) => {
         historyLog,
         historyLogRef,
         recordToHistoryLog,
+        recordBatchToHistoryLog,
         undoLastAction,
         clearHistory,
     } = useComponentHistory({
@@ -250,7 +268,6 @@ const BoardViewPage = (props) => {
             getComponentsForBoardData &&
             getComponentsForBoardData.components
         ) {
-
             if (getComponentsForBoardData.components.length > 0) {
                 let baseComponentStore = { ...componentStore }
                 getComponentsForBoardData.components.forEach((item) => {
@@ -353,23 +370,32 @@ const BoardViewPage = (props) => {
     }
 
     // Records ADD action, updates store and syncs to DB
-    const addToLocalComponentStore = (id, type, componentInfo) => {
+    const addToLocalComponentStore = (id, type, componentInfo, skipHistory = false) => {
         // groupobject is a transient visual construct and must never be persisted
-        if (type === GROUP_COMPONENT || componentInfo?.componentType === GROUP_COMPONENT) {
+        if (
+            type === GROUP_COMPONENT ||
+            componentInfo?.componentType === GROUP_COMPONENT
+        ) {
             return
         }
 
         // Strip transient grouping coords — not part of DB schema
-        const { relativeX: _rX, relativeY: _rY, ...safeInfo } = componentInfo ?? {}
+        const {
+            relativeX: _rX,
+            relativeY: _rY,
+            ...safeInfo
+        } = componentInfo ?? {}
 
         // Trigger background board creation on first interaction
         ensureBackgroundBoard()
 
-        recordToHistoryLog({
-            action: 'ADD',
-            id,
-            componentInfo: safeInfo,
-        })
+        if (!skipHistory) {
+            recordToHistoryLog({
+                action: 'ADD',
+                id,
+                componentInfo: safeInfo,
+            })
+        }
 
         const updatedComponentStore = {
             ...stateRefForComponentStore.current,
@@ -483,6 +509,29 @@ const BoardViewPage = (props) => {
         }
     }
 
+    const deleteBulkComponentsFromLocalStore = (ids) => {
+        const batchEntries = ids.map((id) => ({
+            action: 'DELETE',
+            id,
+            prevState: { ...stateRefForComponentStore.current[id] },
+        }))
+        recordBatchToHistoryLog(batchEntries)
+
+        const updatedComponentStore = { ...stateRefForComponentStore.current }
+        ids.forEach((id) => {
+            delete updatedComponentStore[id]
+            window.dispatchEvent(
+                new CustomEvent('elementRemoved', { detail: { id } })
+            )
+        })
+        stateRefForComponentStore.current = updatedComponentStore
+        setComponentStore(updatedComponentStore)
+
+        if (isPersistedRef.current && ids.length > 0) {
+            deleteBulkComponents({ variables: { _in: ids } })
+        }
+    }
+
     // Snapshots full component state before deletion, then removes from store and DB
     const deleteComponentFromLocalStore = (id) => {
         recordToHistoryLog({
@@ -537,7 +586,11 @@ const BoardViewPage = (props) => {
         const componentsForDB = Object.values(
             stateRefForComponentStore.current
         ).map((comp) => {
-            const { relativeX: _rX, relativeY: _rY, ...cleaned } = stripTypename(comp)
+            const {
+                relativeX: _rX,
+                relativeY: _rY,
+                ...cleaned
+            } = stripTypename(comp)
             return { ...cleaned, id: generateUUID(), boardId: serverBoardId }
         })
 
@@ -592,7 +645,9 @@ const BoardViewPage = (props) => {
     onStorageLimitRef.current = async () => {
         try {
             const serverBoardId = await persistBoard()
-            setStorageLimitBoardUrl(`${window.location.origin}/board/${serverBoardId}`)
+            setStorageLimitBoardUrl(
+                `${window.location.origin}/board/${serverBoardId}`
+            )
             setShowStorageLimitModal(true)
         } catch (e) {
             console.error('Failed to auto-persist board on storage limit:', e)
@@ -600,6 +655,12 @@ const BoardViewPage = (props) => {
     }
 
     const clearBoard = () => {
+        if (isPersisted) {
+            const ids = Object.keys(componentStore)
+            if (ids.length > 0) {
+                deleteBulkComponents({ variables: { _in: ids } })
+            }
+        }
         twoJSInstanceRef.current?.clear()
         twoJSInstanceRef.current?.update()
         setComponentStore({})
@@ -803,6 +864,7 @@ const BoardViewPage = (props) => {
         updateComponentVerticesInLocalStore,
         updateComponentBulkPropertiesInLocalStore,
         deleteComponentFromLocalStore,
+        deleteBulkComponentsFromLocalStore,
         setTwoJSInstanceInBoard,
         setSelectedComponentInBoard,
         defaultLinewidth,
@@ -817,6 +879,7 @@ const BoardViewPage = (props) => {
         createBoardLoading,
         historyLog,
         historyLogRef,
+        recordBatchToHistoryLog,
         undoLastAction,
         clearBoard,
     }
