@@ -9,6 +9,7 @@ import {
     GROUP_COMPONENT,
     componentTypes,
     RUBBER_MODE_KEY,
+    VIEWPORT_KEY_PREFIX,
 } from 'constants/misc'
 import Spinner from 'components/common/spinner'
 
@@ -133,6 +134,7 @@ function addZUI(
     let lastPencilTime = 0
     let lastPencilLinewidth = null
 
+    let viewportSaveTimer = null
     let scenario = null
     let SCENARIO_JUST_ADDED_ELEMENT = 'justAddedElement'
     let SCENARIO_PENCIL_MODE = 'pencilMode'
@@ -1798,6 +1800,20 @@ function addZUI(
         }
 
         two.update()
+
+        if (props.boardId) {
+            clearTimeout(viewportSaveTimer)
+            viewportSaveTimer = setTimeout(() => {
+                localStorage.setItem(
+                    `${VIEWPORT_KEY_PREFIX}${props.boardId}`,
+                    JSON.stringify({
+                        tx: two.scene.translation.x,
+                        ty: two.scene.translation.y,
+                        scale: two.scene.scale,
+                    })
+                )
+            }, 300)
+        }
     }
 
     // --- Touch handlers ---
@@ -2184,6 +2200,18 @@ const Canvas = (props) => {
                 zui_instance.zui.zoomSet(scale, 0, 0)
                 // translateSurface increments from the post-zoom translation
                 // (still 0,0) to the saved position.
+                zui_instance.zui.translateSurface(tx, ty)
+                two.update()
+            }
+        }
+
+        if (!isMobile && props.boardId) {
+            const saved = localStorage.getItem(
+                `${VIEWPORT_KEY_PREFIX}${props.boardId}`
+            )
+            if (saved) {
+                const { tx, ty, scale } = JSON.parse(saved)
+                zui_instance.zui.zoomSet(scale, 0, 0)
                 zui_instance.zui.translateSurface(tx, ty)
                 two.update()
             }
