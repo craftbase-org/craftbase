@@ -1134,8 +1134,16 @@ function addZUI(
                         e.clientX,
                         e.clientY
                     )
-                    const relX = surfaceCoords.x - arrowDrawElement.position.x
-                    const relY = surfaceCoords.y - arrowDrawElement.position.y
+                    let relX = surfaceCoords.x - arrowDrawElement.position.x
+                    let relY = surfaceCoords.y - arrowDrawElement.position.y
+
+                    if (e.shiftKey) {
+                        if (Math.abs(relY) < Math.abs(relX)) {
+                            relY = 0
+                        } else {
+                            relX = 0
+                        }
+                    }
 
                     const line = arrowDrawElement.children[0]
                     const pointCircle2Group = arrowDrawElement.children[2]
