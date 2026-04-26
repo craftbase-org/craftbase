@@ -254,14 +254,19 @@ const BoardViewPage = (props) => {
         }
     }, [boardId])
 
-    // Update revisit count when loading a persisted board
+    // Update revisit count on every board open, persisted or local
     useEffect(() => {
-        if (!isPersisted) return
         const userId = localStorage.getItem('userId')
         if (userId) {
             updateUserRevisit({ variables: { userId } })
         }
-        localStorage.setItem('lastOpenBoard', boardId)
+    }, [])
+
+    // Track last opened board only once it's persisted
+    useEffect(() => {
+        if (isPersisted && boardId) {
+            localStorage.setItem('lastOpenBoard', boardId)
+        }
     }, [isPersisted])
 
     useEffect(() => {
@@ -377,7 +382,12 @@ const BoardViewPage = (props) => {
     }
 
     // Records ADD action, updates store and syncs to DB
-    const addToLocalComponentStore = (id, type, componentInfo, skipHistory = false) => {
+    const addToLocalComponentStore = (
+        id,
+        type,
+        componentInfo,
+        skipHistory = false
+    ) => {
         // groupobject is a transient visual construct and must never be persisted
         if (
             type === GROUP_COMPONENT ||
