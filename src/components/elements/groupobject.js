@@ -265,6 +265,16 @@ function GroupedObjectWrapper(props) {
     }, [deleteGroupElements])
 
     useEffect(() => {
+        const onZoomChanged = (e) => {
+            if (!selectorInstance) return
+            selectorInstance.setScale(e.detail.scale)
+            two.update()
+        }
+        window.addEventListener('zoomChanged', onZoomChanged)
+        return () => window.removeEventListener('zoomChanged', onZoomChanged)
+    }, [])
+
+    useEffect(() => {
         // console.log('group object props', props)
         // Calculate x and y through dividing width and height by 2 or vice versa
         // if x and y are given then multiply width and height into 2
@@ -376,7 +386,8 @@ function GroupedObjectWrapper(props) {
             rectangle.getBoundingClientRect(true).left,
             rectangle.getBoundingClientRect(true).right,
             rectangle.getBoundingClientRect(true).top,
-            rectangle.getBoundingClientRect(true).bottom
+            rectangle.getBoundingClientRect(true).bottom,
+            two.scene.scale
         )
         two.update()
 

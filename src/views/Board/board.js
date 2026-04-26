@@ -19,6 +19,7 @@ import {
     CREATE_BOARD,
 } from 'schema/mutations'
 import Canvas from '../../newCanvas'
+import ZoomControls from 'components/ZoomControls'
 import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import PencilToolbar from 'components/pencilToolbar'
@@ -135,6 +136,7 @@ const BoardViewPage = (props) => {
     const [componentStore, setComponentStore] = useState({})
     const [lastAddedElement, setLastAddedElement] = useState(null)
     const [twoJSInstance, setTwoJSInstance] = useState(null)
+    const [zuiInBoard, setZuiInBoard] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
     const [currentElement, setCurrentElement] = useState(null)
     const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
@@ -144,6 +146,7 @@ const BoardViewPage = (props) => {
 
     const stateRefForComponentStore = useRef()
     const twoJSInstanceRef = useRef(null)
+    const zuiInBoardRef = useRef(null)
     const skipComponentStoreResetRef = useRef(false)
 
     const {
@@ -332,6 +335,11 @@ const BoardViewPage = (props) => {
     const setTwoJSInstanceInBoard = (two) => {
         twoJSInstanceRef.current = two
         setTwoJSInstance(two)
+    }
+
+    const setZuiInstanceInBoard = (zuiInst) => {
+        zuiInBoardRef.current = zuiInst
+        setZuiInBoard(zuiInst)
     }
 
     const setSelectedComponentInBoard = (shape) => {
@@ -868,7 +876,10 @@ const BoardViewPage = (props) => {
         updateComponentBulkPropertiesInLocalStore,
         deleteComponentFromLocalStore,
         deleteBulkComponentsFromLocalStore,
+        twoJSInstance,
         setTwoJSInstanceInBoard,
+        setZuiInstanceInBoard,
+        zuiInBoard,
         setSelectedComponentInBoard,
         defaultLinewidth,
         setDefaultLinewidthInBoard,
@@ -1023,6 +1034,7 @@ const BoardViewPage = (props) => {
                         pencilDefaultStrokeType={pencilDefaultStrokeType}
                         pencilStrokeColor={pencilStrokeColor}
                     />
+                    {!isMobile && <ZoomControls />}
                 </div>
             </BoardContext.Provider>
             {/* {isMobile ? (
