@@ -1857,6 +1857,7 @@ const Canvas = (props) => {
     const zuiInstanceRef = useRef(null)
     const renderGroupRef = useRef(null)
     const prevElementsRef = useRef([])
+    const componentsToRenderRef = useRef([])
 
     const { clipboardRef, lastMouseRef } = useCanvasClipboard({
         twoJSInstance,
@@ -2123,7 +2124,7 @@ const Canvas = (props) => {
 
     const handleSetComponentsToRender = (currentComponents) => {
         let arr = [...prevElementsRef.current]
-        let components = [...componentsToRender]
+        let components = [...componentsToRenderRef.current]
         if (currentComponents && twoJSInstance) {
             // console.log(
             //     'newCanvas ... Canvas ... handleSetComponentsToRender ... condition(currentComponents && twoJSInstance) === true ',
@@ -2181,6 +2182,7 @@ const Canvas = (props) => {
                     components.push(component)
                 }
             })
+            componentsToRenderRef.current = components
             setComponentsToRender(components)
             if (twoJSInstance) prevElementsRef.current = arr
         }
