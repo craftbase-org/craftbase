@@ -510,6 +510,8 @@ const BoardViewPage = (props) => {
     }
 
     const deleteBulkComponentsFromLocalStore = (ids) => {
+        ensureBackgroundBoard()
+
         const batchEntries = ids.map((id) => ({
             action: 'DELETE',
             id,
@@ -534,6 +536,8 @@ const BoardViewPage = (props) => {
 
     // Snapshots full component state before deletion, then removes from store and DB
     const deleteComponentFromLocalStore = (id) => {
+        ensureBackgroundBoard()
+
         recordToHistoryLog({
             action: 'DELETE',
             id,
