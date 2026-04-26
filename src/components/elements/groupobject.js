@@ -59,7 +59,7 @@ function GroupedObjectWrapper(props) {
                 if (!element.elementData) return
                 if (childrenIdsOfTheGroup.includes(element.elementData.id)) {
                     foundOriginalCount++
-                    element.opacity = element.elementData.metadata?.opacity ?? 1
+                    element.opacity = 1
                     let findRelativeDataForChild = {}
                     props.children.forEach((item) => {
                         if (item.id === element?.elementData?.id) {
