@@ -1,6 +1,6 @@
 {
     "name": "craftbase",
-    "version": "0.6.3",
+    "version": "0.7.0",
     "private": true,
     "dependencies": {
         "@apollo/client": "^3.10.4",
