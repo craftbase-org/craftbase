@@ -583,30 +583,21 @@ const Toolbar = (props) => {
                         })
                         componentState.shape.data.opacity = arr[0]
 
-                        const componentId =
-                            componentState?.group?.data?.elementData?.id
                         const existingMetadata =
                             componentState?.group?.data?.elementData
                                 ?.metadata ?? {}
-                        const userId = localStorage.getItem('userId')
                         const updatedMetadata = {
                             ...existingMetadata,
                             opacity: arr[0],
                         }
-                        // Keep elementData in sync so subsequent saves include latest opacity
+                        // Keep elementData in sync so subsequent reads include latest opacity
                         if (componentState?.group?.data?.elementData) {
                             componentState.group.data.elementData.metadata =
                                 updatedMetadata
                         }
-                        updateComponentInfo({
-                            variables: {
-                                id: componentId,
-                                updateObj: {
-                                    metadata: updatedMetadata,
-                                    updatedBy: userId,
-                                },
-                            },
-                        })
+                        // Route through updateComponent so the local store (and therefore
+                        // localStorage draft) is updated alongside the cloud mutation.
+                        updateComponent('metadata', updatedMetadata)
                     }}
                 />
             ),

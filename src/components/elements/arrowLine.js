@@ -9,11 +9,13 @@ import ElementCreator from 'factory/arrowLine'
 
 import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
 import { strokeTypeToDashes } from 'utils/misc'
+import { useMediaQueryUtils } from 'constants/exportHooks'
 
 function ArrowLine(props) {
     const [showToolbar, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer({})
     const stateRefForGroup = useRef()
+    const { isMobile } = useMediaQueryUtils()
 
     const two = props.twoJSInstance
     let selectorInstance = null
@@ -77,6 +79,7 @@ function ArrowLine(props) {
             y2: props.y2 ?? 10,
             strokeType: props.strokeType,
             linewidth: props.linewidth,
+            isMobile,
         })
         // Get all instances of every sub child element
         const {

@@ -252,6 +252,14 @@ export default class SelectionController {
     syncToTarget() {
         if (!this.currentGroup || !this.currentShape || !this.currentAdapter)
             return
+
+        const scale = this.zui.scale || 1
+        this.box.linewidth = 1.5 / scale
+        // Cap handle growth at 1.25× base so they stay small relative to the element at extreme zoom-out
+        const handleSize = Math.min(HANDLE_BASE_PX / scale, HANDLE_BASE_PX * 1.25)
+        this.endpoints.size = handleSize
+        this.midEndpoints.size = handleSize
+
         const { width, height } = this.currentAdapter.getLocalSize(
             this.currentShape
         )

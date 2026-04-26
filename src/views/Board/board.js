@@ -5,7 +5,7 @@ import React, {
     useContext,
     createContext,
 } from 'react'
-import { useSubscription, useMutation, useQuery } from '@apollo/client'
+import { useMutation, useQuery } from '@apollo/client'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useMediaQueryUtils } from 'constants/exportHooks'
 import { GET_COMPONENTS_FOR_BOARD_QUERY } from 'schema/queries'
@@ -14,29 +14,52 @@ import {
     INSERT_COMPONENT,
     INSERT_BULK_COMPONENTS,
     DELETE_COMPONENT_BY_ID,
+    DELETE_BULK_COMPONENTS,
     UPDATE_COMPONENT_INFO,
     CREATE_BOARD,
 } from 'schema/mutations'
 import Canvas from '../../newCanvas'
+import ZoomControls from 'components/ZoomControls'
 import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import PencilToolbar from 'components/pencilToolbar'
-import BottomToolbar from 'components/bottomToolbar'
 import controlsIcon from 'assets/controls.svg'
 import Spinner from 'components/common/spinnerWithSize'
-import Modal from 'components/common/modal'
-import Button from 'components/common/button'
-import {
-    generateUUID,
-    strokeTypeToDashes,
-    clearDashesOnTwoJSShape,
-} from 'utils/misc'
+import PermissionErrorModal from 'components/modals/PermissionErrorModal'
+import StorageLimitModal from 'components/modals/StorageLimitModal'
+import { generateUUID } from 'utils/misc'
 import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
-import { RUBBER_MODE_KEY, GROUP_COMPONENT } from 'constants/misc'
-import Two from 'two.js'
-import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
+import {
+    RUBBER_MODE_KEY,
+    GROUP_COMPONENT,
+    DRAFT_STORAGE_KEY,
+    ARROW_DRAW_MODE_KEY,
+    TEXT_DRAW_MODE_KEY,
+    PENDING_SHAPE_TYPE_KEY,
+    PENDING_SHAPE_PROPS_KEY,
+    LAST_ADDED_ELEMENT_ID_KEY,
+    PENCIL_MODE_KEY,
+    BACKGROUND_BOARD_STORAGE_KEY,
+} from 'constants/misc'
+import { useDrawingModes } from 'hooks/useDrawingModes'
+import { usePencilDefaults } from 'hooks/usePencilDefaults'
+import { useMobileToolbarPanels } from 'hooks/useMobileToolbarPanels'
+import { useLocalDraftPersistence } from 'hooks/useLocalDraftPersistence'
+import { useComponentHistory } from 'hooks/useComponentHistory'
 
 export const BoardContext = createContext()
+
+// Strips __typename fields injected by Apollo before sending data back to Hasura
+function stripTypename(obj) {
+    if (Array.isArray(obj)) return obj.map(stripTypename)
+    if (obj && typeof obj === 'object') {
+        const { __typename, ...rest } = obj
+        return Object.fromEntries(
+            Object.entries(rest).map(([k, v]) => [k, stripTypename(v)])
+        )
+    }
+    return obj
+}
 
 const BoardViewPage = (props) => {
     const routeParams = useParams()
@@ -46,7 +69,7 @@ const BoardViewPage = (props) => {
         // Reuse the boardId stored with the local draft so viewport persistence
         // keys stay stable across page refreshes in local (non-persisted) mode.
         try {
-            const draft = localStorage.getItem('craftbase_local_draft')
+            const draft = localStorage.getItem(DRAFT_STORAGE_KEY)
             if (draft) {
                 const parsed = JSON.parse(draft)
                 if (parsed?.boardId) return parsed.boardId
@@ -88,6 +111,8 @@ const BoardViewPage = (props) => {
         },
     ] = useMutation(DELETE_COMPONENT_BY_ID)
 
+    const [deleteBulkComponents] = useMutation(DELETE_BULK_COMPONENTS)
+
     const [
         updateUserRevisit,
         {
@@ -110,173 +135,110 @@ const BoardViewPage = (props) => {
 
     const [componentStore, setComponentStore] = useState({})
     const [lastAddedElement, setLastAddedElement] = useState(null)
-    const [pointerToggle, setPointerToggle] = useState(false)
-    const [isPencilMode, setPencilMode] = useState(false)
-    const [isArrowDrawMode, setIsArrowDrawMode] = useState(false)
-    const [isTextDrawMode, setIsTextDrawMode] = useState(false)
-    const [showToolbar, toggleToolbar] = useState(false)
-    const [showMobileToolbarPanel, setShowMobileToolbarPanel] = useState(false)
-    const [showMobilePencilPanel, setShowMobilePencilPanel] = useState(false)
     const [twoJSInstance, setTwoJSInstance] = useState(null)
+    const [zuiInBoard, setZuiInBoard] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
-    const [defaultLinewidth, setDefaultLinewidth] = useState(2)
-    const [defaultStrokeType, setDefaultStrokeType] = useState(null)
-    const [pencilDefaultLinewidth, setPencilDefaultLinewidth] = useState(2)
-    const [pencilDefaultStrokeType, setPencilDefaultStrokeType] = useState(null)
-    const [pencilStrokeColor, setPencilStrokeColor] = useState('#3A342C')
     const [currentElement, setCurrentElement] = useState(null)
+    const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
+    const [showPermissionErrorModal, setShowPermissionErrorModal] =
+        useState(false)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef()
     const twoJSInstanceRef = useRef(null)
+    const zuiInBoardRef = useRef(null)
     const skipComponentStoreResetRef = useRef(false)
-    const [historyLog, setHistoryLog] = useState([])
-    const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
-    const historyLogRef = useRef([])
 
-    // Reset mobile toolbar panel whenever the selected component changes
-    useEffect(() => {
-        setShowMobileToolbarPanel(false)
-    }, [selectedComponent])
+    const {
+        pointerToggle,
+        setPointerToggle,
+        isPencilMode,
+        setPencilMode,
+        isArrowDrawMode,
+        setIsArrowDrawMode,
+        isTextDrawMode,
+        setIsTextDrawMode,
+        setArrowDrawModeInBoard,
+        setTextDrawModeInBoard,
+        setRubberModeInBoard,
+        clearDrawModesFromStorage,
+    } = useDrawingModes()
 
-    // Reset mobile pencil panel when pencil mode is turned off
-    useEffect(() => {
-        if (!isPencilMode) setShowMobilePencilPanel(false)
-    }, [isPencilMode])
+    const {
+        showToolbar,
+        toggleToolbar,
+        showMobileToolbarPanel,
+        setShowMobileToolbarPanel,
+        showMobilePencilPanel,
+        setShowMobilePencilPanel,
+    } = useMobileToolbarPanels({ isPencilMode, isMobile, selectedComponent })
 
-    // Close pencil panel as soon as the user touches the canvas on mobile
-    useEffect(() => {
-        if (!isPencilMode || !isMobile) return
-        const canvasEl = document.getElementById('main-two-root')
-        if (!canvasEl) return
-        const handleCanvasTouch = () => setShowMobilePencilPanel(false)
-        canvasEl.addEventListener('touchstart', handleCanvasTouch, {
-            passive: true,
-        })
-        return () =>
-            canvasEl.removeEventListener('touchstart', handleCanvasTouch)
-    }, [isPencilMode, isMobile])
+    const {
+        defaultLinewidth,
+        setDefaultLinewidth,
+        defaultStrokeType,
+        setDefaultStrokeType,
+        pencilDefaultLinewidth,
+        setPencilDefaultLinewidth,
+        pencilDefaultStrokeType,
+        setPencilDefaultStrokeType,
+        pencilStrokeColor,
+        setPencilStrokeColor,
+        setDefaultLinewidthInBoard,
+        setDefaultStrokeTypeInBoard,
+        setPencilStrokeColorInBoard,
+    } = usePencilDefaults({ toggleToolbar, setSelectedComponent })
 
-    const LOCAL_DRAFT_KEY = 'craftbase_local_draft'
-    const DRAFT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
-    const [showStorageLimitModal, setShowStorageLimitModal] = useState(false)
-    const [showPermissionErrorModal, setShowPermissionErrorModal] =
-        useState(false)
-    const [storageLimitBoardUrl, setStorageLimitBoardUrl] = useState(null)
-    const draftSaveTimerRef = useRef(null)
+    const onStorageLimitRef = useRef(null)
+
+    const {
+        showStorageLimitModal,
+        setShowStorageLimitModal,
+        storageLimitBoardUrl,
+        setStorageLimitBoardUrl,
+        handleStartNewCanvas,
+        handleContinueOnSavedBoard,
+    } = useLocalDraftPersistence({
+        isPersisted,
+        localBoardId,
+        componentStore,
+        setComponentStore,
+        backgroundBoardIdRef,
+        setBackgroundBoardId,
+        onStorageLimitRef,
+    })
+
+    const {
+        historyLog,
+        historyLogRef,
+        recordToHistoryLog,
+        recordBatchToHistoryLog,
+        undoLastAction,
+        clearHistory,
+    } = useComponentHistory({
+        twoJSInstanceRef,
+        stateRefForComponentStore,
+        isPersistedRef,
+        boardId,
+        isPersisted,
+        insertComponent,
+        deleteComponent,
+        updateComponentInfo,
+        setComponentStore,
+        setShowPermissionErrorModal,
+        setDefaultLinewidth,
+        setDefaultStrokeType,
+        setToolbarRefreshKey,
+        selectedComponent,
+        stripTypename,
+    })
 
     // Clear stale interaction flags from localStorage on mount so a page refresh
     // never triggers SCENARIO_DRAW_SHAPE / SCENARIO_ARROW_DRAW / etc. on the
     // first mousedown. These keys are only meaningful within a single page session.
     useEffect(() => {
-        localStorage.removeItem('pendingShapeType')
-        localStorage.removeItem('pendingShapeProps')
-        localStorage.removeItem('arrowDrawMode')
-        localStorage.removeItem('textDrawMode')
-        localStorage.removeItem('lastAddedElementId')
-        localStorage.removeItem(RUBBER_MODE_KEY)
+        clearDrawModesFromStorage()
     }, [])
-
-    // Restore draft and background board ID from localStorage on mount (local mode only)
-    useEffect(() => {
-        if (isPersisted) return
-
-        const savedBgBoardId = localStorage.getItem(
-            'craftbase_background_board_id'
-        )
-        if (savedBgBoardId) {
-            backgroundBoardIdRef.current = savedBgBoardId
-            setBackgroundBoardId(savedBgBoardId)
-        }
-
-        try {
-            const draft = localStorage.getItem(LOCAL_DRAFT_KEY)
-            if (draft) {
-                const parsed = JSON.parse(draft)
-                const age = Date.now() - (parsed.timestamp || 0)
-                if (age < DRAFT_EXPIRY_MS && parsed.components) {
-                    const safeComponents = Object.fromEntries(
-                        Object.entries(parsed.components).filter(
-                            ([, v]) => v?.componentType !== GROUP_COMPONENT
-                        )
-                    )
-                    setComponentStore(safeComponents)
-                } else {
-                    localStorage.removeItem(LOCAL_DRAFT_KEY)
-                    localStorage.removeItem('craftbase_background_board_id')
-                }
-            }
-        } catch (e) {
-            localStorage.removeItem(LOCAL_DRAFT_KEY)
-            localStorage.removeItem('craftbase_background_board_id')
-        }
-    }, [])
-
-    // Save draft to localStorage on changes (debounced, local mode only)
-    useEffect(() => {
-        if (isPersisted) return
-        if (Object.keys(componentStore).length === 0) return
-
-        if (draftSaveTimerRef.current) {
-            clearTimeout(draftSaveTimerRef.current)
-        }
-        draftSaveTimerRef.current = setTimeout(() => {
-            try {
-                const componentsToSave = Object.fromEntries(
-                    Object.entries(componentStore).filter(
-                        ([, v]) => v?.componentType !== GROUP_COMPONENT
-                    )
-                )
-                localStorage.setItem(
-                    LOCAL_DRAFT_KEY,
-                    JSON.stringify({
-                        boardId: localBoardId,
-                        components: componentsToSave,
-                        timestamp: Date.now(),
-                    })
-                )
-            } catch (e) {
-                if (
-                    e instanceof DOMException &&
-                    e.name === 'QuotaExceededError'
-                ) {
-                    handleStorageLimitReached()
-                }
-            }
-        }, 500)
-
-        return () => {
-            if (draftSaveTimerRef.current) {
-                clearTimeout(draftSaveTimerRef.current)
-            }
-        }
-    }, [componentStore, isPersisted])
-
-    const handleStorageLimitReached = async () => {
-        try {
-            const serverBoardId = await persistBoard()
-            setStorageLimitBoardUrl(
-                `${window.location.origin}/board/${serverBoardId}`
-            )
-            setShowStorageLimitModal(true)
-        } catch (e) {
-            console.error('Failed to auto-persist board on storage limit:', e)
-        }
-    }
-
-    const handleStartNewCanvas = () => {
-        localStorage.removeItem(LOCAL_DRAFT_KEY)
-        setShowStorageLimitModal(false)
-        setStorageLimitBoardUrl(null)
-        window.location.href = '/'
-    }
-
-    const handleContinueOnSavedBoard = () => {
-        setShowStorageLimitModal(false)
-        if (storageLimitBoardUrl) {
-            window.location.href = storageLimitBoardUrl
-        }
-    }
 
     // Reset component store whenever the board changes (persisted mode only).
     // In local mode the boardId is a stable UUID and draft restore handles initialization.
@@ -292,14 +254,19 @@ const BoardViewPage = (props) => {
         }
     }, [boardId])
 
-    // Update revisit count when loading a persisted board
+    // Update revisit count on every board open, persisted or local
     useEffect(() => {
-        if (!isPersisted) return
         const userId = localStorage.getItem('userId')
         if (userId) {
             updateUserRevisit({ variables: { userId } })
         }
-        localStorage.setItem('lastOpenBoard', boardId)
+    }, [])
+
+    // Track last opened board only once it's persisted
+    useEffect(() => {
+        if (isPersisted && boardId) {
+            localStorage.setItem('lastOpenBoard', boardId)
+        }
     }, [isPersisted])
 
     useEffect(() => {
@@ -308,20 +275,11 @@ const BoardViewPage = (props) => {
             getComponentsForBoardData &&
             getComponentsForBoardData.components
         ) {
-            // console.log(
-            //     'getComponentsForBoardData',
-            //     getComponentsForBoardData.components
-            // )
-
             if (getComponentsForBoardData.components.length > 0) {
                 let baseComponentStore = { ...componentStore }
                 getComponentsForBoardData.components.forEach((item) => {
                     baseComponentStore[item.id] = item
                 })
-                // console.log(
-                //     'updating component store when get components',
-                //     baseComponentStore
-                // )
                 setComponentStore(baseComponentStore)
             }
         }
@@ -367,10 +325,10 @@ const BoardViewPage = (props) => {
         setPencilMode(value)
         if (value) {
             cancelPendingElement()
-            localStorage.setItem('pencilMode', 'TRUE')
+            localStorage.setItem(PENCIL_MODE_KEY, 'TRUE')
             document.getElementById('main-two-root').style.cursor = 'crosshair'
         } else {
-            localStorage.removeItem('pencilMode')
+            localStorage.removeItem(PENCIL_MODE_KEY)
         }
     }
 
@@ -384,6 +342,11 @@ const BoardViewPage = (props) => {
         setTwoJSInstance(two)
     }
 
+    const setZuiInstanceInBoard = (zuiInst) => {
+        zuiInBoardRef.current = zuiInst
+        setZuiInBoard(zuiInst)
+    }
+
     const setSelectedComponentInBoard = (shape) => {
         if (shape === null) {
             setSelectedComponent(null)
@@ -392,29 +355,6 @@ const BoardViewPage = (props) => {
             setSelectedComponent(shape)
             toggleToolbar(true)
         }
-    }
-
-    // Strips __typename fields injected by Apollo before sending data back to Hasura
-    const stripTypename = (obj) => {
-        if (Array.isArray(obj)) return obj.map(stripTypename)
-        if (obj && typeof obj === 'object') {
-            const { __typename, ...rest } = obj
-            return Object.fromEntries(
-                Object.entries(rest).map(([k, v]) => [k, stripTypename(v)])
-            )
-        }
-        return obj
-    }
-
-    // Appends an action entry to the undo history stack
-    const recordToHistoryLog = (entry) => {
-        const updatedLog = [
-            ...historyLogRef.current,
-            { ...entry, timestamp: Date.now() },
-        ]
-        historyLogRef.current = updatedLog
-        console.log('historyLog', updatedLog)
-        setHistoryLog(updatedLog)
     }
 
     // Creates a board in the background on first interaction (non-blocking).
@@ -433,7 +373,7 @@ const BoardViewPage = (props) => {
             const newBoardId = boardData.board.id
             backgroundBoardIdRef.current = newBoardId
             setBackgroundBoardId(newBoardId)
-            localStorage.setItem('craftbase_background_board_id', newBoardId)
+            localStorage.setItem(BACKGROUND_BOARD_STORAGE_KEY, newBoardId)
         } catch (e) {
             console.error('Background board creation failed:', e)
         } finally {
@@ -442,23 +382,37 @@ const BoardViewPage = (props) => {
     }
 
     // Records ADD action, updates store and syncs to DB
-    const addToLocalComponentStore = (id, type, componentInfo) => {
+    const addToLocalComponentStore = (
+        id,
+        type,
+        componentInfo,
+        skipHistory = false
+    ) => {
         // groupobject is a transient visual construct and must never be persisted
-        if (type === GROUP_COMPONENT || componentInfo?.componentType === GROUP_COMPONENT) {
+        if (
+            type === GROUP_COMPONENT ||
+            componentInfo?.componentType === GROUP_COMPONENT
+        ) {
             return
         }
 
         // Strip transient grouping coords — not part of DB schema
-        const { relativeX: _rX, relativeY: _rY, ...safeInfo } = componentInfo ?? {}
+        const {
+            relativeX: _rX,
+            relativeY: _rY,
+            ...safeInfo
+        } = componentInfo ?? {}
 
         // Trigger background board creation on first interaction
         ensureBackgroundBoard()
 
-        recordToHistoryLog({
-            action: 'ADD',
-            id,
-            componentInfo: safeInfo,
-        })
+        if (!skipHistory) {
+            recordToHistoryLog({
+                action: 'ADD',
+                id,
+                componentInfo: safeInfo,
+            })
+        }
 
         const updatedComponentStore = {
             ...stateRefForComponentStore.current,
@@ -572,8 +526,35 @@ const BoardViewPage = (props) => {
         }
     }
 
+    const deleteBulkComponentsFromLocalStore = (ids) => {
+        ensureBackgroundBoard()
+
+        const batchEntries = ids.map((id) => ({
+            action: 'DELETE',
+            id,
+            prevState: { ...stateRefForComponentStore.current[id] },
+        }))
+        recordBatchToHistoryLog(batchEntries)
+
+        const updatedComponentStore = { ...stateRefForComponentStore.current }
+        ids.forEach((id) => {
+            delete updatedComponentStore[id]
+            window.dispatchEvent(
+                new CustomEvent('elementRemoved', { detail: { id } })
+            )
+        })
+        stateRefForComponentStore.current = updatedComponentStore
+        setComponentStore(updatedComponentStore)
+
+        if (isPersistedRef.current && ids.length > 0) {
+            deleteBulkComponents({ variables: { _in: ids } })
+        }
+    }
+
     // Snapshots full component state before deletion, then removes from store and DB
     const deleteComponentFromLocalStore = (id) => {
+        ensureBackgroundBoard()
+
         recordToHistoryLog({
             action: 'DELETE',
             id,
@@ -596,42 +577,6 @@ const BoardViewPage = (props) => {
                 errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
             })
         }
-    }
-
-    const setArrowDrawModeInBoard = (val) => {
-        setIsArrowDrawMode(val)
-    }
-
-    const setTextDrawModeInBoard = (val) => {
-        setIsTextDrawMode(val)
-    }
-
-    const setRubberModeInBoard = (val) => {
-        if (val) {
-            localStorage.setItem(RUBBER_MODE_KEY, 'true')
-            document.getElementById('main-two-root').style.cursor = 'crosshair'
-        } else {
-            localStorage.removeItem(RUBBER_MODE_KEY)
-            document.getElementById('main-two-root').style.cursor = 'default'
-        }
-    }
-
-    const setDefaultLinewidthInBoard = (val) => {
-        setDefaultLinewidth(val)
-        setPencilDefaultLinewidth(val)
-        toggleToolbar(false)
-        setSelectedComponent(null)
-    }
-
-    const setDefaultStrokeTypeInBoard = (val) => {
-        setDefaultStrokeType(val)
-        setPencilDefaultStrokeType(val)
-        toggleToolbar(false)
-        setSelectedComponent(null)
-    }
-
-    const setPencilStrokeColorInBoard = (val) => {
-        setPencilStrokeColor(val)
     }
 
     const setCurrentElementInBoard = (val) => {
@@ -662,7 +607,11 @@ const BoardViewPage = (props) => {
         const componentsForDB = Object.values(
             stateRefForComponentStore.current
         ).map((comp) => {
-            const { relativeX: _rX, relativeY: _rY, ...cleaned } = stripTypename(comp)
+            const {
+                relativeX: _rX,
+                relativeY: _rY,
+                ...cleaned
+            } = stripTypename(comp)
             return { ...cleaned, id: generateUUID(), boardId: serverBoardId }
         })
 
@@ -693,7 +642,7 @@ const BoardViewPage = (props) => {
         // Persist draft immediately under the new local ID
         try {
             localStorage.setItem(
-                LOCAL_DRAFT_KEY,
+                DRAFT_STORAGE_KEY,
                 JSON.stringify({
                     boardId: newLocalId,
                     components: updatedStore,
@@ -705,247 +654,38 @@ const BoardViewPage = (props) => {
         // Clear the background board (its work is now on the shared board)
         backgroundBoardIdRef.current = null
         setBackgroundBoardId(null)
-        localStorage.removeItem('craftbase_background_board_id')
+        localStorage.removeItem(BACKGROUND_BOARD_STORAGE_KEY)
         localStorage.setItem('lastOpenBoard', serverBoardId)
 
         // Stay in local (non-persisted) mode — new drawings on '/' are a fresh session
         return serverBoardId
     }
 
-    // Applies a single property back to a Two.js shape during undo.
-    // Visual properties (fill, stroke, etc.) live directly on the shape object.
-    const applyPropertyToTwoJSGroup = (group, name, value) => {
-        const shape = group.children?.[0]
-        if (!shape) return
-
-        switch (name) {
-            case 'fill':
-            case 'stroke':
-            case 'linewidth':
-            case 'radius':
-            case 'width':
-            case 'height':
-            case 'textColor':
-            case 'iconStroke':
-                shape[name] = value
-                break
-            case 'strokeType':
-                shape.dashes = strokeTypeToDashes(value)
-                if (!value || value === 'solid') {
-                    clearDashesOnTwoJSShape(shape)
-                }
-                break
-            case 'metadata':
-                if (value && typeof value === 'object') {
-                    Object.entries(value).forEach(([k, v]) => {
-                        shape[k] = v
-                    })
-                }
-                break
-            default:
-                break
-        }
-    }
-
-    // Pops the last history entry and reverses it.
-    // Store is always updated before Two.js visuals to keep the ref correct
-    // even if rendering fails.
-    const undoLastAction = () => {
-        if (historyLogRef.current.length === 0) return
-
-        const updatedLog = [...historyLogRef.current]
-        const lastEntry = updatedLog.pop()
-        historyLogRef.current = updatedLog
-        setHistoryLog(updatedLog)
-
-        const { action, id } = lastEntry
-
-        const two = twoJSInstanceRef.current
-
-        if (action === 'ADD') {
-            const group = two?.scene.children.find(
-                (c) => c?.elementData?.id === id
+    // Assign storage-limit handler ref so useLocalDraftPersistence can call it
+    // without a direct dependency on persistBoard being defined at hook-call time.
+    onStorageLimitRef.current = async () => {
+        try {
+            const serverBoardId = await persistBoard()
+            setStorageLimitBoardUrl(
+                `${window.location.origin}/board/${serverBoardId}`
             )
-            if (group) {
-                console.log('Group ID FOUND while doing undo')
-                two.remove([group])
-            }
-            const updatedStore = { ...stateRefForComponentStore.current }
-            delete updatedStore[id]
-            stateRefForComponentStore.current = updatedStore
-            setComponentStore(updatedStore)
-
-            // Tell Canvas to untrack this id so undo-of-undo (redo) can create a fresh wrapper
-            window.dispatchEvent(
-                new CustomEvent('elementRemoved', { detail: { id } })
-            )
-
-            if (isPersistedRef.current) {
-                deleteComponent({
-                    variables: { id },
-                    errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
-                })
-            }
-            requestAnimationFrame(() => two.update())
-        } else if (action === 'DELETE') {
-            const { prevState } = lastEntry
-            const restoredState = { ...prevState, boardId: boardId }
-            const updatedStore = {
-                ...stateRefForComponentStore.current,
-                [id]: restoredState,
-            }
-            stateRefForComponentStore.current = updatedStore
-            setComponentStore(updatedStore)
-            if (isPersistedRef.current) {
-                insertComponent({
-                    variables: { object: stripTypename(restoredState) },
-                }).catch((error) => {
-                    const isPermissionError = error.graphQLErrors?.some(
-                        (e) => e.extensions?.code === 'permission-error'
-                    )
-                    if (isPermissionError) {
-                        undoLastAction()
-                        setShowPermissionErrorModal(true)
-                    }
-                })
-            }
-        } else if (action === 'UPDATE_VERTICES') {
-            const { prevX, prevY } = lastEntry
-
-            // Update store FIRST
-            const updatedStore = { ...stateRefForComponentStore.current }
-            updatedStore[id] = { ...updatedStore[id], x: prevX, y: prevY }
-            stateRefForComponentStore.current = updatedStore
-            setComponentStore(updatedStore)
-
-            // Then update Two.js visuals
-            const group = two?.scene.children.find(
-                (c) => c?.elementData?.id === id
-            )
-            if (group) {
-                group.translation.x = prevX
-                group.translation.y = prevY
-                two?.update()
-            }
-            if (isPersistedRef.current) {
-                updateComponentInfo({
-                    variables: { id, updateObj: { x: prevX, y: prevY } },
-                })
-            }
-            requestAnimationFrame(() => two?.update())
-        } else if (action === 'UPDATE_BULK') {
-            const { prevProps } = lastEntry
-
-            // Update store — only restore the properties that were changed
-            const updatedStore = { ...stateRefForComponentStore.current }
-            updatedStore[id] = {
-                ...updatedStore[id],
-                ...prevProps,
-            }
-            stateRefForComponentStore.current = updatedStore
-            setComponentStore(updatedStore)
-
-            // Then update Two.js visuals
-            const group = two?.scene.children.find(
-                (c) => c?.elementData?.id === id
-            )
-            if (group) {
-                if (prevProps.x !== undefined) group.translation.x = prevProps.x
-                if (prevProps.y !== undefined) group.translation.y = prevProps.y
-                Object.entries(prevProps).forEach(([name, val]) => {
-                    applyPropertyToTwoJSGroup(group, name, val)
-                })
-
-                // Restore arrow endpoint vertices (x1/y1/x2/y2)
-                const hasArrowVertices =
-                    prevProps.x1 !== undefined ||
-                    prevProps.y1 !== undefined ||
-                    prevProps.x2 !== undefined ||
-                    prevProps.y2 !== undefined
-                if (hasArrowVertices) {
-                    const line = group.children?.[0]
-                    const pointCircle1Group = group.children?.[1]
-                    const pointCircle2Group = group.children?.[2]
-                    if (line && pointCircle1Group && pointCircle2Group) {
-                        const x1 = prevProps.x1 ?? line.vertices[0].x
-                        const y1 = prevProps.y1 ?? line.vertices[0].y
-                        const x2 = prevProps.x2 ?? line.vertices[1].x
-                        const y2 = prevProps.y2 ?? line.vertices[1].y
-                        updateX1Y1Vertices(
-                            Two,
-                            line,
-                            x1,
-                            y1,
-                            pointCircle1Group,
-                            two
-                        )
-                        updateX2Y2Vertices(
-                            Two,
-                            line,
-                            x2,
-                            y2,
-                            pointCircle2Group,
-                            two
-                        )
-                    }
-                }
-
-                two?.update()
-
-                if (
-                    prevProps.width !== undefined ||
-                    prevProps.height !== undefined
-                ) {
-                    window.dispatchEvent(
-                        new CustomEvent('undoSelectorSync', {
-                            detail: { elementId: id },
-                        })
-                    )
-                }
-            }
-
-            if (lastEntry.syncDefaults) {
-                if (prevProps.linewidth !== undefined)
-                    setDefaultLinewidth(prevProps.linewidth)
-                if (prevProps.strokeType !== undefined) {
-                    setDefaultStrokeType(
-                        prevProps.strokeType === 'solid'
-                            ? null
-                            : prevProps.strokeType
-                    )
-                }
-            }
-            if (prevProps.strokeType !== undefined) {
-                if (selectedComponent?.group?.data?.elementData) {
-                    selectedComponent.group.data.elementData.strokeType =
-                        prevProps.strokeType
-                }
-            }
-            if (
-                prevProps.linewidth !== undefined ||
-                prevProps.strokeType !== undefined
-            ) {
-                setToolbarRefreshKey((k) => k + 1)
-            }
-
-            if (isPersistedRef.current) {
-                updateComponentInfo({
-                    variables: { id, updateObj: prevProps },
-                })
-            }
-            requestAnimationFrame(() => two?.update())
+            setShowStorageLimitModal(true)
+        } catch (e) {
+            console.error('Failed to auto-persist board on storage limit:', e)
         }
     }
 
     const clearBoard = () => {
+        if (isPersisted) {
+            const ids = Object.keys(componentStore)
+            if (ids.length > 0) {
+                deleteBulkComponents({ variables: { _in: ids } })
+            }
+        }
         twoJSInstanceRef.current?.clear()
         twoJSInstanceRef.current?.update()
         setComponentStore({})
-        historyLogRef.current = []
-        setHistoryLog([])
-        if (!isPersisted) {
-            localStorage.removeItem(LOCAL_DRAFT_KEY)
-        }
+        clearHistory(isPersisted)
     }
 
     const isArrowSelected =
@@ -1095,16 +835,16 @@ const BoardViewPage = (props) => {
     }
 
     const cancelPendingElement = () => {
-        const pendingId = localStorage.getItem('lastAddedElementId')
+        const pendingId = localStorage.getItem(LAST_ADDED_ELEMENT_ID_KEY)
         if (pendingId) {
             undoLastAction()
             setLastAddedElement(null)
         }
-        localStorage.removeItem('lastAddedElementId')
-        localStorage.removeItem('arrowDrawMode')
-        localStorage.removeItem('textDrawMode')
-        localStorage.removeItem('pendingShapeType')
-        localStorage.removeItem('pendingShapeProps')
+        localStorage.removeItem(LAST_ADDED_ELEMENT_ID_KEY)
+        localStorage.removeItem(ARROW_DRAW_MODE_KEY)
+        localStorage.removeItem(TEXT_DRAW_MODE_KEY)
+        localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)
+        localStorage.removeItem(PENDING_SHAPE_PROPS_KEY)
         setIsArrowDrawMode(false)
         setIsTextDrawMode(false)
         // Detach selectionController so its hover listener stops overriding the cursor
@@ -1145,7 +885,11 @@ const BoardViewPage = (props) => {
         updateComponentVerticesInLocalStore,
         updateComponentBulkPropertiesInLocalStore,
         deleteComponentFromLocalStore,
+        deleteBulkComponentsFromLocalStore,
+        twoJSInstance,
         setTwoJSInstanceInBoard,
+        setZuiInstanceInBoard,
+        zuiInBoard,
         setSelectedComponentInBoard,
         defaultLinewidth,
         setDefaultLinewidthInBoard,
@@ -1159,6 +903,7 @@ const BoardViewPage = (props) => {
         createBoardLoading,
         historyLog,
         historyLogRef,
+        recordBatchToHistoryLog,
         undoLastAction,
         clearBoard,
     }
@@ -1299,7 +1044,7 @@ const BoardViewPage = (props) => {
                         pencilDefaultStrokeType={pencilDefaultStrokeType}
                         pencilStrokeColor={pencilStrokeColor}
                     />
-                    <BottomToolbar />
+                    {!isMobile && <ZoomControls />}
                 </div>
             </BoardContext.Provider>
             {/* {isMobile ? (
@@ -1311,76 +1056,17 @@ const BoardViewPage = (props) => {
                     </div>
                 </div>
             ) : null} */}
-            <Modal
+            <PermissionErrorModal
                 open={showPermissionErrorModal}
                 onClose={() => setShowPermissionErrorModal(false)}
-                locked={false}
-            >
-                <div className="p-4" style={{ minWidth: '400px' }}>
-                    <h2 className="text-lg font-semibold mb-2">
-                        Permission Denied
-                    </h2>
-                    <p className="text-sm text-neutrals-n700 mb-4">
-                        You don't have permission to add components to this
-                        board. If you already have access, please refresh the
-                        page and try again.
-                    </p>
-                    <div className="flex gap-2">
-                        <Button
-                            intent="primary"
-                            size="medium"
-                            label="Refresh"
-                            onClick={() => window.location.reload()}
-                        />
-                        <Button
-                            intent="secondary"
-                            size="medium"
-                            label="Dismiss"
-                            onClick={() => setShowPermissionErrorModal(false)}
-                        />
-                    </div>
-                </div>
-            </Modal>
-            <Modal
+            />
+            <StorageLimitModal
                 open={showStorageLimitModal}
                 onClose={() => setShowStorageLimitModal(false)}
-                locked={false}
-            >
-                <div className="p-4" style={{ minWidth: '400px' }}>
-                    <h2 className="text-lg font-semibold mb-2">
-                        Storage Limit Reached
-                    </h2>
-                    <p className="text-sm text-neutrals-n700 mb-4">
-                        Your local storage is full. Your current work has been
-                        saved to the server.
-                    </p>
-                    {storageLimitBoardUrl && (
-                        <p className="text-sm text-neutrals-n700 mb-4 break-all">
-                            Saved board URL:{' '}
-                            <a
-                                href={storageLimitBoardUrl}
-                                className="text-accent-dark underline"
-                            >
-                                {storageLimitBoardUrl}
-                            </a>
-                        </p>
-                    )}
-                    <div className="flex gap-2">
-                        <Button
-                            intent="primary"
-                            size="medium"
-                            label="Start New Canvas"
-                            onClick={handleStartNewCanvas}
-                        />
-                        <Button
-                            intent="secondary"
-                            size="medium"
-                            label="Continue on Saved Board"
-                            onClick={handleContinueOnSavedBoard}
-                        />
-                    </div>
-                </div>
-            </Modal>
+                boardUrl={storageLimitBoardUrl}
+                onStartNew={handleStartNewCanvas}
+                onContinue={handleContinueOnSavedBoard}
+            />
         </>
     )
 }

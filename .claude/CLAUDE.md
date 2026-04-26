@@ -38,13 +38,45 @@ The Board component uses React Context (`BoardContext`) to pass state and method
 **Rule**: Any Two.js event handler that needs live React state **must** read from a `useRef`, not from `props` or state directly.
 
 Pattern:
+
 ```js
 const myValueRef = useRef(props.myValue)
-useEffect(() => { myValueRef.current = props.myValue }, [props.myValue])
+useEffect(() => {
+    myValueRef.current = props.myValue
+}, [props.myValue])
 // pass myValueRef into addZUI, read myValueRef.current inside handlers
 ```
 
 This is because Two.js attaches raw DOM `addEventListener` calls outside React's reconciliation loop — React cannot re-bind them on re-render. The ref object is stable across renders; `.current` always holds the latest value at call time.
+
+## Two.js scene.subtractions Pitfall
+
+**Symptom**: `Uncaught NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is no longer a child of this node.` thrown from `_Group2.render` → `subtractions.forEach(svg.group.removeChild)`.
+
+**Why it happens**:
+
+- `two.remove(element)` does NOT remove SVG nodes immediately. It removes the element from `scene.children` and pushes it into `scene.subtractions`. The actual `parent.removeChild(elem)` happens on the next `two.update()`, inside the renderer's `subtractions.forEach`.
+- If between `two.remove(element)` and `two.update()` the element's SVG node is detached by some other path — for example, the element was nested inside another group's SVG element which got removed — then Two.js's tracked `parentNode` no longer matches the actual DOM tree. The `removeChild` call throws.
+- `scene.flagReset()` only clears `scene.subtractions` after a successful render. **If the render throws, the array stays populated, and every subsequent `two.update()` retries the same broken operation and crashes again** — this is why the same error keeps reappearing as you fix one trigger after another.
+
+**Common triggers**:
+
+1. Removing a parent group via `two.remove([parentGroup])`. Two.js detaches the parent's SVG node from the DOM, taking nested SVG nodes with it. Any element whose Two.js bookkeeping still says "I'm a child of scene._renderer.elem" is now lying.
+2. Multiple `two.update()` calls firing in close succession from different sources (an event handler, an element component's cleanup, a `requestAnimationFrame` callback). Each can put the SVG in a half-reconciled state that the next one trips over.
+3. React component cleanup effects calling `two.remove(group)` after we've already manually removed the same group elsewhere — double subtraction.
+
+**Rules to avoid it**:
+
+- **Don't compete with the element components for Two.js cleanup.** Each shape component (e.g. `rectangle.js`, `circle.js`) calls `two.remove(group)` in its `useEffect` cleanup. If you also call `two.remove` on the same elements from a parent component, you get a double-subtract. Pick one owner: either remove manually and let the cleanup be a no-op (Two.js's `Group.remove` safely skips ids it doesn't own), or do nothing and let the cleanup own it.
+- **Don't call `two.update()` inside a Two.js DOM event handler that fires synchronously during another `two.update()`** (notably `blur`, which fires when Two.js detaches a focused SVG node). The outer update is mid-reconciliation; calling `two.update()` again corrupts the SVG tree.
+- **If `two.update()` might throw during a tear-down path, wrap it in `try/catch` AND clear `two.scene.subtractions.length = 0; two.scene._flagSubtractions = false`** in the catch. Otherwise the bad subtraction sticks around and every future `two.update()` repeats the crash.
+
+**Where the source lives** (when you need to verify behavior):
+
+- `node_modules/two.js/src/renderers/svg.js` — `svg.group.removeChild` (has a `parentNode != this.elem` early-return check) and `svg.group.render` (calls `subtractions.forEach`).
+- `node_modules/two.js/src/group.js` — `subtractions`/`additions` arrays, `flagReset()` clearing logic, the `splice()` helper that pushes into `subtractions` when a child is detached.
+
+**Reference**: `src/components/elements/groupobject.js` `handleOnDeleteGroupElements` is the canonical example of cleanly tearing down a group with a `try/catch` + subtraction reset.
 
 ## Directory Structure
 
@@ -83,10 +115,13 @@ Reusable React UI components.
     - `spinner.js`, `spinnerWithSize.js` - Loading indicators
 
 - **`utils/`**: Component-specific utility functions
+    - `elementRenderWrappers.js` - `ElementRenderWrapper` and `GroupRenderWrapper` factory functions used by Canvas to lazily mount element components
+
+- **`modals/`**: Standalone modal components
+    - `PermissionErrorModal.js` - Permission error modal (extracted from board.js)
+    - `StorageLimitModal.js` - Storage quota exceeded modal (extracted from board.js)
 
 - **`floatingToolbar.js`**: Floating toolbar for quick actions (every time when a user clicks component, this floating toolbar gets visible and invisible when the focus is moved away from component)
-
-- **`ProgressiveImageLoader/`**: Progressive image loading component
 
 ### `/src/factory/`
 
@@ -117,9 +152,19 @@ GraphQL schema definitions for backend communication (Hasura).
 Application constants and configuration.
 
 - `elementSchema.js` - Element schema definitions
-- `properties.js` - Property configurations
 - `misc.js` - Miscellaneous constants
 - `exportHooks.js` - Custom hook exports
+
+### `/src/hooks`
+
+Custom React hooks extracted from board.js and newCanvas.js.
+
+- `useDrawingModes.js` - Draw mode state (`isPencilMode`, `isArrowDrawMode`, `isTextDrawMode`, pointer toggle)
+- `usePencilDefaults.js` - Pencil/stroke defaults (`defaultLinewidth`, `defaultStrokeType`, `pencilStrokeColor`) and their setters
+- `useMobileToolbarPanels.js` - Mobile panel visibility state with useEffect-based auto-close logic
+- `useLocalDraftPersistence.js` - localStorage draft save/restore + storage-quota modal state
+- `useComponentHistory.js` - Undo/history stack (`historyLog`, `recordToHistoryLog`, `undoLastAction`, `clearHistory`)
+- `useCanvasClipboard.js` - Copy (Ctrl+C) and paste (Ctrl+V) logic for canvas elements
 
 ### `/src/utils`
 
@@ -128,12 +173,8 @@ Utility functions and helpers.
 - `constants.js` - Shared constants
 - `misc.js` - Miscellaneous utilities
 - `updateVertices.js` - Vertex update utilities
-
-### `/src/hooks`
-
-Custom React hooks.
-
-- `intersectionObserver.js` - Intersection Observer hook
+- `canvasUtils.js` - Pure Two.js canvas helpers: `setArrowEndpointsVisible`, `applyShapeStyle`, `cloneElementData`, `resolveShapeFromPath`, `pollUntilElement`
+- `drawModeUtils.js` - localStorage draw mode helpers: `getArrowDrawMode`, `isSelectPanMode`, `clearAllDrawModes`
 
 ### `/src/icons`
 
@@ -175,13 +216,25 @@ The **BoardContext** (created in `src/views/Board/board.js`) provides:
 - Component store state
 - Selected component state
 - Two.js instance
-- Pencil mode state
-- Toolbar visibility
+- Pencil mode state (from `useDrawingModes` hook)
+- Toolbar visibility (from `useMobileToolbarPanels` hook)
+- Pencil/stroke defaults (from `usePencilDefaults` hook)
+- Undo/history functions — `recordToHistoryLog`, `undoLastAction` (from `useComponentHistory` hook)
 - GraphQL mutation functions
 - `boardId`, `isPersisted`, `persistBoard`, `backgroundBoardId` (canvas-first UX)
 - Other board-level state and handlers
 
 Child components access this context via `useContext(BoardContext)`.
+
+### Hook composition in board.js
+
+`board.js` composes several custom hooks in this order (order matters — each may depend on the previous):
+
+1. `useDrawingModes()` — draw mode state and setters
+2. `useMobileToolbarPanels({ isPencilMode, isMobile, selectedComponent })` — panel visibility
+3. `usePencilDefaults({ toggleToolbar, setSelectedComponent })` — defaults and their setters
+4. `useLocalDraftPersistence({ ..., onStorageLimitRef })` — draft persistence + quota modal
+5. `useComponentHistory({ ... })` — undo stack
 
 ## Technology Stack
 

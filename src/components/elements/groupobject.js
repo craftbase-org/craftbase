@@ -1,30 +1,24 @@
-import React, { useEffect, useState, Fragment } from 'react'
+import React, { useEffect, useState, useRef, Fragment } from 'react'
 
 const factoryModules = import.meta.glob('../../factory/*.js')
 import Two from 'two.js'
 import { useBoardContext } from 'views/Board/board'
 import { useMutation } from '@apollo/client'
-import { UPDATE_COMPONENT_INFO, DELETE_BULK_COMPONENTS } from 'schema/mutations'
+import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
 import ObjectSelector from 'components/utils/objectSelector'
 import getEditComponents from 'components/utils/editWrapper'
 import { elementOnBlurHandler } from 'utils/misc'
 
 function GroupedObjectWrapper(props) {
     // console.log('history', history)
-    const [
-        deleteComponents,
-        {
-            loading: deleteComponentsLoading,
-            data: deleteComponentsSuccess,
-            error: deleteComponentsError,
-        },
-    ] = useMutation(DELETE_BULK_COMPONENTS)
     const [updateComponentInfo] = useMutation(UPDATE_COMPONENT_INFO, {
         ignoreResults: true,
     })
     const {
         addToLocalComponentStore,
         updateComponentBulkPropertiesInLocalStore,
+        deleteBulkComponentsFromLocalStore,
+        recordBatchToHistoryLog,
         isPencilMode,
         isArrowDrawMode,
         isArrowSelected,
@@ -33,10 +27,15 @@ function GroupedObjectWrapper(props) {
     const two = props.twoJSInstance
     const [deleteGroupElements, setDeleteGroupElements] = useState(null)
     const [groupId, setGroupId] = useState(null)
+    const isDeletingRef = useRef(false)
     // const [twoGroupInstance,setTwoGroupInstance] = useState(null)
     let rectangleInstance = null
     let groupInstance = null
     let selectorInstance = null
+
+    function isInScene(element) {
+        return element && two.scene.children.includes(element)
+    }
 
     function onBlurHandler(e) {
         // console.log(
@@ -49,7 +48,7 @@ function GroupedObjectWrapper(props) {
         window.dispatchEvent(new CustomEvent('groupBlurred'))
         // on un-group, these components will return back to their individual state
         // with their new positions depending on group's x,y was changed
-        if (deleteGroupElements === null) {
+        if (!isDeletingRef.current) {
             const userId = localStorage.getItem('userId')
             let childrenIdsOfTheGroup = props.children.map((item) => item.id)
 
@@ -57,7 +56,8 @@ function GroupedObjectWrapper(props) {
 
             // two.scene.children means all the elements you see in canvas drawing area
             two.scene.children.forEach((element) => {
-                if (childrenIdsOfTheGroup.includes(element?.elementData?.id)) {
+                if (!element.elementData) return
+                if (childrenIdsOfTheGroup.includes(element.elementData.id)) {
                     foundOriginalCount++
                     element.opacity = 1
                     let findRelativeDataForChild = {}
@@ -142,6 +142,7 @@ function GroupedObjectWrapper(props) {
             if (foundOriginalCount === 0 && props.children.length > 0) {
                 const gx = parseInt(groupInstance.translation.x)
                 const gy = parseInt(groupInstance.translation.y)
+                const batchEntries = []
                 props.children.forEach((child) => {
                     const localX = parseInt(child.x ?? child.relativeX ?? 0)
                     const localY = parseInt(child.y ?? child.relativeY ?? 0)
@@ -167,17 +168,27 @@ function GroupedObjectWrapper(props) {
                         })
                     }
 
-                    addToLocalComponentStore(child.id, child.componentType, {
+                    const childData = {
                         ...child,
                         x: absX,
                         y: absY,
                         metadata: childMetadata,
-                    })
+                    }
+                    addToLocalComponentStore(
+                        child.id,
+                        child.componentType,
+                        childData,
+                        true // skipHistory — batch entry recorded below
+                    )
+                    batchEntries.push({ action: 'ADD', id: child.id })
                 })
+                recordBatchToHistoryLog(batchEntries)
             }
         }
-        two.remove([groupInstance])
-        two.update()
+        if (isInScene(groupInstance)) {
+            two.remove([groupInstance])
+            two.update()
+        }
     }
 
     function onFocusHandler(e) {
@@ -190,27 +201,59 @@ function GroupedObjectWrapper(props) {
     }
 
     function onKeyDown(evt) {
+        console.log('GroupedObjectWrapper ... onKeyDown')
         if (evt.keyCode === 8 || evt.keyCode === 46) {
+            console.log(
+                'GroupedObjectWrapper ... onKeyDown ... condition(evt.keyCode === 8 || evt.keyCode === 46) === true',
+                groupInstance
+            )
             // DELETE/BACKSPACE KEY WAS PRESSED
+            // set ref before removal so the blur handler (stale closure) skips un-group logic
+            isDeletingRef.current = true
             setDeleteGroupElements(groupInstance.elementData)
 
-            two.remove([groupInstance])
-            two.update()
+            if (isInScene(groupInstance)) {
+                two.remove([groupInstance])
+                // two.update() is handled by elementOnBlurHandler which fires synchronously
+                // during the DOM removal above — calling it again here causes a double-remove crash
+            }
         }
     }
 
     const handleOnDeleteGroupElements = () => {
         if (deleteGroupElements?.id !== undefined) {
-            let idsArr = deleteGroupElements.children.map((item, index) => {
-                return item.id
-            })
+            const idsArr = deleteGroupElements.children.map((item) => item.id)
 
-            deleteComponents({
-                variables: {
-                    _in: idsArr,
-                },
-            })
+            // Synchronously remove the hidden child elements from Two.js scene and
+            // reconcile the SVG DOM before deleteBulkComponentsFromLocalStore triggers
+            // React unmounts. The element components' cleanup effects call
+            // two.remove(group), which becomes a no-op once the elements are already
+            // out of two.scene.children (Two.js Group.remove() skips ids it doesn't own).
+            // This prevents the half-reconciled SVG state that causes mousedown's
+            // two.update() to throw NotFoundError on subsequent clicks.
+            const toRemove = two.scene.children.filter(
+                (el) =>
+                    el.elementData && idsArr.includes(el.elementData.id)
+            )
+            if (toRemove.length > 0) {
+                two.remove(toRemove)
+                try {
+                    two.update()
+                } catch (err) {
+                    // If the SVG tree is in an inconsistent state from a prior
+                    // operation (e.g., elements nested under a removed group),
+                    // clear the leftover subtractions so they don't re-trigger the
+                    // same crash on the next two.update() call.
+                    console.warn(
+                        'two.update() during group delete reconciliation:',
+                        err
+                    )
+                    two.scene.subtractions.length = 0
+                    two.scene._flagSubtractions = false
+                }
+            }
 
+            deleteBulkComponentsFromLocalStore(idsArr)
             setDeleteGroupElements(null)
         }
     }
@@ -220,6 +263,16 @@ function GroupedObjectWrapper(props) {
             handleOnDeleteGroupElements()
         }
     }, [deleteGroupElements])
+
+    useEffect(() => {
+        const onZoomChanged = (e) => {
+            if (!selectorInstance) return
+            selectorInstance.setScale(e.detail.scale)
+            two.update()
+        }
+        window.addEventListener('zoomChanged', onZoomChanged)
+        return () => window.removeEventListener('zoomChanged', onZoomChanged)
+    }, [])
 
     useEffect(() => {
         // console.log('group object props', props)
@@ -275,6 +328,9 @@ function GroupedObjectWrapper(props) {
                 // set component's coordinates
                 coreObject.translation.x = item.x
                 coreObject.translation.y = item.y
+                if (item.metadata?.opacity !== undefined) {
+                    coreObject.opacity = item.metadata.opacity
+                }
 
                 const meta = item.metadata || {}
                 if (meta.hasText && meta.textContent) {
@@ -330,7 +386,8 @@ function GroupedObjectWrapper(props) {
             rectangle.getBoundingClientRect(true).left,
             rectangle.getBoundingClientRect(true).right,
             rectangle.getBoundingClientRect(true).top,
-            rectangle.getBoundingClientRect(true).bottom
+            rectangle.getBoundingClientRect(true).bottom,
+            two.scene.scale
         )
         two.update()
 
@@ -440,7 +497,9 @@ function GroupedObjectWrapper(props) {
         // })
 
         return () => {
-            two.remove(group)
+            if (isInScene(group)) {
+                two.remove(group)
+            }
         }
     }, [])
 
