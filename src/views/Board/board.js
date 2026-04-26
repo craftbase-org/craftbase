@@ -22,7 +22,6 @@ import Canvas from '../../newCanvas'
 import Sidebar from 'components/sidebar/primary'
 import Toolbar from 'components/floatingToolbar'
 import PencilToolbar from 'components/pencilToolbar'
-import BottomToolbar from 'components/bottomToolbar'
 import controlsIcon from 'assets/controls.svg'
 import Spinner from 'components/common/spinnerWithSize'
 import PermissionErrorModal from 'components/modals/PermissionErrorModal'
@@ -1024,7 +1023,6 @@ const BoardViewPage = (props) => {
                         pencilDefaultStrokeType={pencilDefaultStrokeType}
                         pencilStrokeColor={pencilStrokeColor}
                     />
-                    <BottomToolbar />
                 </div>
             </BoardContext.Provider>
             {/* {isMobile ? (
