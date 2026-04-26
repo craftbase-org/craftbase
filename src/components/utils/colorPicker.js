@@ -76,7 +76,11 @@ const ColorPicker = ({ title, onChangeComplete, currentColor }) => {
 
     return (
         <Fragment>
-            {title && <div className="p-0 text-left text-xs">{title}</div>}
+            {title && (
+                <div className="p-0 text-left text-xs text-gray-500">
+                    {title}
+                </div>
+            )}
             <ColorPickerContainer
                 id="color-picker-toolbar"
                 data-parent="floating-toolbar"

@@ -28,7 +28,7 @@ export default class Selector {
         area.opacity = 1
         area.linewidth = 2
         // area.dashes[0] = 6
-        area.stroke = '#0052CC'
+        area.stroke = '#C4901A'
         // area.curved = true;
         // console.log("area", area);
         this.area = area
@@ -73,7 +73,7 @@ export default class Selector {
                     )
                     circleGroup.linewidth = 1.5
                     circleGroup.opacity = 0
-                    circleGroup.stroke = '#0052CC'
+                    circleGroup.stroke = '#C4901A'
                     this.circleGroup = circleGroup
                     break
 
@@ -106,7 +106,23 @@ export default class Selector {
         return this.areaGroup.id
     }
 
-    update(x1, x2, y1, y2) {
+    setScale(scale) {
+        const s = scale > 0 ? scale : 1
+        this.area.linewidth = 2 / s
+        if (this.showCircles && this.circle1) {
+            // Cap radius at 3× base so circles don't obscure the bounding box at extreme zoom-out
+            const radius = Math.min(4 / s, 12)
+            this.circle1.radius = radius
+            this.circle2.radius = radius
+            if (this.showCircles === 4) {
+                this.circle3.radius = radius
+                this.circle4.radius = radius
+                this.circleGroup.linewidth = Math.min(1.5 / s, 4.5)
+            }
+        }
+    }
+
+    update(x1, x2, y1, y2, scale = 1) {
         // console.log("on selector update", x1, x2, y1, y2);
         this.vertices = {
             x1,
@@ -143,6 +159,7 @@ export default class Selector {
             }
         }
 
+        this.setScale(scale)
         this.areaGroup.opacity = 1
         this.two.update()
     }

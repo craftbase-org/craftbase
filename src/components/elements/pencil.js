@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 
 import { elementOnBlurHandler, strokeTypeToDashes } from 'utils/misc'
@@ -99,7 +98,7 @@ function Pencil(props) {
             const initialSceneCoords = document
                 .getElementById(two.scene.id)
                 .getBoundingClientRect()
-            console.log('initialSceneCoords', initialSceneCoords)
+            // console.log('initialSceneCoords', initialSceneCoords)
 
             setInternalState((draft) => {
                 draft.element = {

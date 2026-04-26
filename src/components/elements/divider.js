@@ -1,7 +1,6 @@
 import Two from 'two.js'
 import React, { useEffect, useState, useRef } from 'react'
 import PropTypes from 'prop-types'
-import interact from 'interactjs'
 import { useQuery, useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
 import { useBoardContext } from 'views/Board/board'
@@ -174,112 +173,8 @@ function Divider(props) {
 
             // const { mousemove, mouseup } = handleDrag(two, group, 'line')
 
-            interact(`#${group.id}`).on('click', () => {
-                console.log('on click ')
-                resizeLine.opacity = 1
-                pointCircle1.opacity = 1
-                pointCircle1.opacity = 1
-                pointCircle2.opacity = 1
-                pointCircle2.opacity = 1
-                pointCircle1.translation.x = line.vertices[0].x - 4
-                pointCircle1.translation.y =
-                    line.vertices[0].y + parseInt(line.linewidth)
-                pointCircle2.translation.x = line.vertices[1].x + 4
-                pointCircle2.translation.y =
-                    line.vertices[1].y + parseInt(line.linewidth)
-
-                two.update()
-                // toggleToolbar(true)
-            })
-
             // Captures double click event for text
             // and generates temporary textarea support for it
-
-            interact(`#${pointCircle1.id}`).draggable({
-                // enable inertial throwing
-                inertia: false,
-
-                listeners: {
-                    start(event) {
-                        console.log(
-                            'start dragging point circle',
-                            event.clientX,
-                            event.pageX,
-                            line.translation.x1,
-                            group.translation.x
-                        )
-                    },
-                    move(event) {
-                        let x1 = (line.vertices[0].x += event.dx)
-                        let y1 = (line.vertices[0].y += event.dy)
-                        updateX1Y1Vertices(line, x1, y1, pointCircle1)
-                        group.center()
-                        two.update()
-                        // pointCircle1.translation.x =
-                        //     event.pageX + group.translation.x
-                        // pointCircle1.translation.y = event.pageY
-                        // two.update()
-                    },
-                    end(event) {
-                        // Had to use mutation as seperate here in this component due to
-                        // no control of pointcircle available in canvas component
-
-                        let updateObj = {
-                            x: group.translation.x,
-                            y: group.translation.y,
-                            x1: parseInt(line.vertices[0].x),
-                            y1: parseInt(line.vertices[0].y),
-                        }
-                        updateComponentBulkPropertiesInLocalStore(
-                            props.id,
-                            updateObj
-                        )
-                    },
-                },
-            })
-
-            interact(`#${pointCircle2.id}`).draggable({
-                // enable inertial throwing
-                inertia: false,
-
-                listeners: {
-                    start(event) {
-                        console.log(
-                            'start dragging point circle',
-                            event.clientX,
-                            event.pageX,
-                            line.translation.x1,
-                            group.translation.x
-                        )
-                    },
-                    move(event) {
-                        let x2 = (line.vertices[1].x += event.dx)
-                        let y2 = (line.vertices[1].y += event.dy)
-                        updateX2Y2Vertices(line, x2, y2, pointCircle2)
-                        group.center()
-                        two.update()
-                        // pointCircle1.translation.x =
-                        //     event.pageX + group.translation.x
-                        // pointCircle1.translation.y = event.pageY
-                        // two.update()
-                    },
-                    end(event) {
-                        // Had to use mutation as seperate here in this component due to
-                        // no control of pointcircle available in canvas component
-
-                        let updateObj = {
-                            x: group.translation.x,
-                            y: group.translation.y,
-                            x2: parseInt(line.vertices[1].x),
-                            y2: parseInt(line.vertices[1].y),
-                        }
-                        updateComponentBulkPropertiesInLocalStore(
-                            props.id,
-                            updateObj
-                        )
-                    },
-                },
-            })
 
             // interact(`#${group.id}`).draggable({
             //     // enable inertial throwing
@@ -326,7 +221,9 @@ function Divider(props) {
 
     useEffect(() => {
         if (internalState?.line?.data) {
-            internalState.line.data.dashes = strokeTypeToDashes(props.strokeType)
+            internalState.line.data.dashes = strokeTypeToDashes(
+                props.strokeType
+            )
             two.update()
         }
     }, [props.strokeType])

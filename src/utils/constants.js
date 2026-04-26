@@ -1,20 +1,17 @@
-import DividerSVG from 'wireframeAssets/divider.svg'
+import CircleIcon from 'wireframeAssets/circle.svg?react'
+import RectangleIcon from 'wireframeAssets/rectangle.svg?react'
+import TextIcon from 'wireframeAssets/text.svg?react'
+import PencilIcon from 'wireframeAssets/pencil.svg?react'
+import PointerIcon from 'wireframeAssets/cursor.svg?react'
+import EraserIcon from 'wireframeAssets/eraser.svg?react'
 
-import CircleIcon from 'wireframeAssets/circle.svg'
-import RectangleIcon from 'wireframeAssets/rectangle.svg'
-import TextIcon from 'wireframeAssets/text.svg'
-import PencilIcon from 'wireframeAssets/pencil.svg'
-import PointerIcon from 'wireframeAssets/cursor.svg'
-
-import RightArrowIcon from 'assets/right_arrow.svg'
+import RightArrowIcon from 'assets/right_arrow.svg?react'
 
 export const color_blue = '#0052CC'
 export const color_teal = '#008DA6'
 export const color_green = '#006644'
 export const color_red = '#BF2600'
 export const color_slate = '#091E42'
-
-export const defaultScaleConstant = 73
 
 export const properties = {
     colorBg: 'color_bg',
@@ -98,27 +95,6 @@ export const essentialShades = [
     '#6554C0',
 ]
 
-export const staticDrawerData = {
-    shapes: [
-        {
-            elementName: 'circle',
-            elementDisplayName: 'Circle',
-            elementSVG: CircleIcon,
-            hasDrawer: false,
-            noAction: false,
-            drawerData: [],
-        },
-        {
-            elementName: 'rectangle',
-            elementDisplayName: 'Rectangle / Square',
-            elementSVG: RectangleIcon,
-            hasDrawer: false,
-            noAction: false,
-            drawerData: [],
-        },
-    ],
-}
-
 export const staticPrimaryElementData = [
     {
         sectionName: 'Basic',
@@ -126,7 +102,7 @@ export const staticPrimaryElementData = [
             {
                 elementName: 'pointer',
                 elementDisplayName: 'Pointer',
-                elementSVG: PointerIcon,
+                elementIcon: PointerIcon,
                 hasDrawer: false,
                 noAction: true,
                 drawerData: [],
@@ -134,7 +110,7 @@ export const staticPrimaryElementData = [
             {
                 elementName: 'circle',
                 elementDisplayName: 'Circle',
-                elementSVG: CircleIcon,
+                elementIcon: CircleIcon,
                 hasDrawer: false,
                 noAction: false,
                 drawerData: [],
@@ -142,7 +118,7 @@ export const staticPrimaryElementData = [
             {
                 elementName: 'rectangle',
                 elementDisplayName: 'Rectangle / Square',
-                elementSVG: RectangleIcon,
+                elementIcon: RectangleIcon,
                 hasDrawer: false,
                 noAction: false,
                 drawerData: [],
@@ -150,15 +126,7 @@ export const staticPrimaryElementData = [
             {
                 elementName: 'arrowLine',
                 elementDisplayName: 'Arrow',
-                elementSVG: RightArrowIcon,
-                hasDrawer: false,
-                noAction: false,
-                drawerData: [],
-            },
-            {
-                elementName: 'divider',
-                elementDisplayName: 'Divider',
-                elementSVG: DividerSVG,
+                elementIcon: RightArrowIcon,
                 hasDrawer: false,
                 noAction: false,
                 drawerData: [],
@@ -166,7 +134,7 @@ export const staticPrimaryElementData = [
             {
                 elementName: 'pencil',
                 elementDisplayName: 'Pencil',
-                elementSVG: PencilIcon,
+                elementIcon: PencilIcon,
                 hasDrawer: false,
                 noAction: false,
                 drawerData: [],
@@ -175,9 +143,17 @@ export const staticPrimaryElementData = [
             {
                 elementName: 'text',
                 elementDisplayName: 'Text',
-                elementSVG: TextIcon,
+                elementIcon: TextIcon,
                 hasDrawer: false,
                 noAction: false,
+                drawerData: [],
+            },
+            {
+                elementName: 'rubber',
+                elementDisplayName: 'Eraser',
+                elementIcon: EraserIcon,
+                hasDrawer: false,
+                noAction: true,
                 drawerData: [],
             },
         ],

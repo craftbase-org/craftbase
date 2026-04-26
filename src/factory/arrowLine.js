@@ -8,12 +8,14 @@ export default class ArrowLineFactory extends Main {
         const prevY = this.y
         const {
             fill,
+            stroke,
             x1 = 20,
             x2 = 100,
             y1 = 10,
             y2 = 10,
             linewidth,
             strokeType,
+            isMobile,
         } = this.properties
 
         // console.log('arrow line factory x1, y1, x2, y2', x1, y1, x2, y2)
@@ -21,21 +23,24 @@ export default class ArrowLineFactory extends Main {
         line.linewidth = linewidth ? linewidth : 1
         line.dashes = strokeTypeToDashes(strokeType)
         line.fill = 'none'
+        if (stroke) line.stroke = stroke
         // line.vertices[1].y = 200
         // const centerPointCircle = two.makeEllipse(0, 0, 5, 5)
         // centerPointCircle.fill = '#FFF'
-        // centerPointCircle.stroke = '#0052CC'
+        // centerPointCircle.stroke = '#3A342C'
         // centerPointCircle.linewidth = 2
 
-        const pointCircle1 = two.makeCircle(0, 0, 4)
+        const circleRadius = isMobile ? 6 : 4
+
+        const pointCircle1 = two.makeCircle(0, 0, circleRadius)
         pointCircle1.fill = '#f4f4f2'
-        pointCircle1.stroke = '#0052CC'
+        pointCircle1.stroke = '#3A342C'
         pointCircle1.linewidth = 1.5
         // pointCircle1.noStroke()
 
-        const pointCircle2 = two.makeCircle(0, 0, 4)
+        const pointCircle2 = two.makeCircle(0, 0, circleRadius)
         pointCircle2.fill = '#f4f4f2'
-        pointCircle2.stroke = '#0052CC'
+        pointCircle2.stroke = '#3A342C'
         pointCircle2.linewidth = 1.5
         // pointCircle2.noStroke()
 

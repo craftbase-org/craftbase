@@ -39,18 +39,18 @@ const BorderStyleBox = ({
                             onChangeStrokeType && onChangeStrokeType(type.value)
                         }
                         className={`flex-1 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
-                            isSelected ? 'bg-blues-b50' : 'hover:bg-blues-b50'
+                            isSelected ? 'bg-accent/20' : 'hover:bg-accent/20'
                         }`}
                         style={{
                             border: isSelected
-                                ? '2px solid #0052cc'
-                                : '1px solid #e5e7eb',
+                                ? '2px solid #C4901A'
+                                : '1px solid #C4B89A',
                         }}
                     >
                         <span
                             className="text-base font-bold tracking-widest"
                             style={{
-                                color: isSelected ? '#0052cc' : '#6b7280',
+                                color: isSelected ? '#C4901A' : '#8C7E6A',
                                 paddingBottom:
                                     type.value === 'dotted' ? '0.4rem' : '0px',
                             }}
@@ -78,19 +78,19 @@ const BorderStyleBox = ({
                     data-parent="floating-toolbar"
                     onClick={() => onChangeBorderWidth(value)}
                     className={`flex-1 w-1/4 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
-                        isSelected ? 'bg-blues-b50' : 'hover:bg-blues-b50'
+                        isSelected ? 'bg-accent/20' : 'hover:bg-accent/20'
                     }`}
                     style={{
                         border: isSelected
-                            ? '2px solid #0052cc'
-                            : '1px solid #e5e7eb',
+                            ? '2px solid #C4901A'
+                            : '1px solid #C4B89A',
                     }}
                 >
                     <div
                         className="w-full my-2 mx-2 rounded-full"
                         style={{
                             height: strokeHeight,
-                            backgroundColor: isSelected ? '#0052cc' : '#6b7280',
+                            backgroundColor: isSelected ? '#C4901A' : '#8C7E6A',
                         }}
                     />
                 </button>
@@ -101,7 +101,9 @@ const BorderStyleBox = ({
     return (
         <Fragment>
             <BorderStyleBoxContainer className={`text-left p-0 text-xs`}>
-                <label htmlFor="border-widths-row">Stroke Width</label>
+                <label htmlFor="border-widths-row" className="text-ink-muted">
+                    Stroke Width
+                </label>
                 <div
                     id="border-widths-row"
                     data-parent="floating-toolbar"
@@ -109,8 +111,10 @@ const BorderStyleBox = ({
                 >
                     {renderBorderWidths()}
                 </div>
-                <hr className="my-2" />
-                <label htmlFor="border-type-row">Stroke Type</label>
+
+                <label htmlFor="border-type-row" className="text-ink-muted">
+                    Stroke Type
+                </label>
                 <div
                     id="border-type-row"
                     data-parent="floating-toolbar"
@@ -118,14 +122,16 @@ const BorderStyleBox = ({
                 >
                     {renderBorderType()}
                 </div>
+                <div className="pt-2">
+                    <ColorPicker
+                        title="Stroke Fill"
+                        currentColor={currentColor}
+                        onChangeComplete={(color) => {
+                            onChangeColor(color)
+                        }}
+                    />
+                </div>
                 <hr className="my-2" />
-                <ColorPicker
-                    title="Stroke Fill"
-                    currentColor={currentColor}
-                    onChangeComplete={(color) => {
-                        onChangeColor(color)
-                    }}
-                />
             </BorderStyleBoxContainer>
         </Fragment>
     )
