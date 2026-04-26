@@ -1606,6 +1606,13 @@ function addZUI(
             lastTouch = e.touches[0]
             touchStartX = lastTouch.clientX
             touchStartY = lastTouch.clientY
+
+            // Clear any previous selection before processing the new tap.
+            // On desktop this happens via focus/blur, but synthetic mouse events
+            // don't transfer browser focus on mobile, so we do it explicitly here
+            // — before mousedown so the new selection set inside mousedown survives.
+            window.dispatchEvent(new CustomEvent('clearSelector', {}))
+
             // Dispatch mousedown on the actual element under the finger so
             // element-level listeners (interactjs resize handles, click handlers) fire correctly.
             const target =
@@ -1702,11 +1709,6 @@ function addZUI(
                 const tapDy = endY - lastTapY
                 const tapDist = Math.sqrt(tapDx * tapDx + tapDy * tapDy)
                 const isDoubleTap = now - lastTapTime < 300 && tapDist < 30
-
-                // Clear all existing selectors first — on desktop this happens
-                // via blur when focus shifts between elements, but synthetic
-                // mouse events don't transfer browser focus on mobile.
-                window.dispatchEvent(new CustomEvent('clearSelector', {}))
 
                 const target =
                     document.elementFromPoint(endX, endY) || domElement

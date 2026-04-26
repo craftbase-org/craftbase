@@ -21,16 +21,22 @@ const ZoomControls = () => {
 
     const zoom = (delta) => {
         if (!zuiInBoard || !twoJSInstance) return
-        zuiInBoard.zui.zoomBy(delta, window.innerWidth / 2, window.innerHeight / 2)
+        zuiInBoard.zui.zoomBy(
+            delta,
+            window.innerWidth / 2,
+            window.innerHeight / 2
+        )
         twoJSInstance.update()
         window.dispatchEvent(
-            new CustomEvent('zoomChanged', { detail: { scale: zuiInBoard.zui.scale } })
+            new CustomEvent('zoomChanged', {
+                detail: { scale: zuiInBoard.zui.scale },
+            })
         )
     }
 
     return (
         <div
-            style={{ position: 'fixed', bottom: 20, left: 20, zIndex: 10 }}
+            style={{ position: 'fixed', bottom: 20, left: 10, zIndex: 10 }}
             className="flex items-center gap-1 bg-card rounded-lg shadow-md px-2 py-1"
         >
             <button
