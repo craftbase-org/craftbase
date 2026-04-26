@@ -39,11 +39,18 @@ import {
     smoothLinewidth,
     simplifyWithLinewidth,
 } from 'utils/pencilHelper'
-import { setArrowEndpointsVisible, pollUntilElement, cloneElementData, resolveShapeFromPath } from 'utils/canvasUtils'
+import {
+    setArrowEndpointsVisible,
+    pollUntilElement,
+    cloneElementData,
+    resolveShapeFromPath,
+} from 'utils/canvasUtils'
 import { isSelectPanMode } from 'utils/drawModeUtils'
 import { useCanvasClipboard } from 'hooks/useCanvasClipboard'
-import { ElementRenderWrapper, GroupRenderWrapper } from 'components/utils/elementRenderWrappers'
-
+import {
+    ElementRenderWrapper,
+    GroupRenderWrapper,
+} from 'components/utils/elementRenderWrappers'
 
 /**
  * @typedef {Object} elementData
@@ -490,7 +497,9 @@ function addZUI(
 
     function mousedown(e) {
         // initialize shape definition
-        const lastAddedElementId = localStorage.getItem(LAST_ADDED_ELEMENT_ID_KEY)
+        const lastAddedElementId = localStorage.getItem(
+            LAST_ADDED_ELEMENT_ID_KEY
+        )
 
         // Controller handle check — runs before the bare-canvas clearSelector
         // dispatch and the DOM path walk. Corner handles can extend slightly
@@ -567,19 +576,38 @@ function addZUI(
                 // React element appears in the scene before positioning it.
                 // mousemove/mouseup already guard on arrowDrawElement being non-null,
                 // so they are safe no-ops until this resolves.
-                pollUntilElement(two, arrowId, (el) => {
-                    arrowDrawElement = el
-                    arrowDrawElement.position.x = surfaceCoords.x
-                    arrowDrawElement.position.y = surfaceCoords.y
+                pollUntilElement(
+                    two,
+                    arrowId,
+                    (el) => {
+                        arrowDrawElement = el
+                        arrowDrawElement.position.x = surfaceCoords.x
+                        arrowDrawElement.position.y = surfaceCoords.y
 
-                    const line = arrowDrawElement.children[0]
-                    const pointCircle1Group = arrowDrawElement.children[1]
-                    const pointCircle2Group = arrowDrawElement.children[2]
+                        const line = arrowDrawElement.children[0]
+                        const pointCircle1Group = arrowDrawElement.children[1]
+                        const pointCircle2Group = arrowDrawElement.children[2]
 
-                    updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
-                    updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
-                    two.update()
-                }, { maxRetries: 30 })
+                        updateX1Y1Vertices(
+                            Two,
+                            line,
+                            0,
+                            0,
+                            pointCircle1Group,
+                            two
+                        )
+                        updateX2Y2Vertices(
+                            Two,
+                            line,
+                            0,
+                            0,
+                            pointCircle2Group,
+                            two
+                        )
+                        two.update()
+                    },
+                    { maxRetries: 30 }
+                )
 
                 break
             }
@@ -643,7 +671,8 @@ function addZUI(
 
                 if (previewShape) {
                     previewShape.fill = drawShapeProps?.fill || '#fff'
-                    previewShape.stroke = drawShapeProps?.stroke || SHAPE_DEFAULT_STROKE
+                    previewShape.stroke =
+                        drawShapeProps?.stroke || SHAPE_DEFAULT_STROKE
                     previewShape.linewidth = drawShapeProps?.linewidth || 1
                     previewShape.opacity = DEFAULT_PREVIEW_OPACITY
                     two.update()
@@ -886,7 +915,6 @@ function addZUI(
                         })
                 }
 
-
                 if (
                     !avoidDragging &&
                     !shape.elementData.isGroupSelector &&
@@ -941,7 +969,9 @@ function addZUI(
     }
 
     function mousemove(e) {
-        const lastAddedElementId = localStorage.getItem(LAST_ADDED_ELEMENT_ID_KEY)
+        const lastAddedElementId = localStorage.getItem(
+            LAST_ADDED_ELEMENT_ID_KEY
+        )
 
         if (
             lastAddedElementId !== null &&
@@ -1802,7 +1832,6 @@ function addZUI(
 }
 
 const Canvas = (props) => {
-
     const { isMobile } = useMediaQueryUtils()
 
     const {
@@ -1820,7 +1849,6 @@ const Canvas = (props) => {
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [zuiInstance, setZuiInstance] = useState(null)
-    const [prevElements, setPrevElements] = useState([])
     const [onGroup, setOnGroup] = useState(null)
     const [componentsToRender, setComponentsToRender] = useState([])
 
@@ -1828,6 +1856,7 @@ const Canvas = (props) => {
     const isPencilModeRef = useRef(props.isPencilMode)
     const zuiInstanceRef = useRef(null)
     const renderGroupRef = useRef(null)
+    const prevElementsRef = useRef([])
 
     const { clipboardRef, lastMouseRef } = useCanvasClipboard({
         twoJSInstance,
@@ -1922,7 +1951,11 @@ const Canvas = (props) => {
             // Reset stale drag state so a resize followed by a store update
             // (e.g. undo) doesn't leave the element dragging on next mousemove
             zuiInstance.resetDragState()
-            domElement.addEventListener('mousemove', zuiInstance.mousemove, false)
+            domElement.addEventListener(
+                'mousemove',
+                zuiInstance.mousemove,
+                false
+            )
         }
 
         if (Object.values(props.componentStore).length > 0 && twoJSInstance) {
@@ -1932,7 +1965,9 @@ const Canvas = (props) => {
 
     useEffect(() => {
         if (props.lastAddedElement !== null) {
-            handleSetComponentsToRender([{ ...props.lastAddedElement, isDummy: true }])
+            handleSetComponentsToRender([
+                { ...props.lastAddedElement, isDummy: true },
+            ])
         }
     }, [props.lastAddedElement])
 
@@ -2087,16 +2122,21 @@ const Canvas = (props) => {
     }
 
     const handleSetComponentsToRender = (currentComponents) => {
-        let arr = [...prevElements]
+        let arr = [...prevElementsRef.current]
         let components = [...componentsToRender]
         if (currentComponents && twoJSInstance) {
+            // console.log(
+            //     'newCanvas ... Canvas ... handleSetComponentsToRender ... condition(currentComponents && twoJSInstance) === true ',
+            //     prevElementsRef.current,
+            //     currentComponents
+            // )
             currentComponents.forEach((item) => {
-                // prevElements is the sole authority on whether a wrapper already exists.
+                // prevElementsRef is the sole authority on whether a wrapper already exists.
                 // We must NOT check existsInScene here: on slow networks the React lazy
                 // module may still be loading (no Two.js group yet) when a second shape is
                 // drawn, causing existsInScene=false even though a wrapper was already
                 // created — which would produce a second wrapper and a duplicate shape.
-                // Deletion removes the id from prevElements via the 'elementRemoved' event,
+                // Deletion removes the id from the ref via the 'elementRemoved' event,
                 // so undo-of-delete still gets a fresh wrapper.
                 const moduleLoader =
                     elementModules[
@@ -2109,8 +2149,11 @@ const Canvas = (props) => {
                     return
                 }
 
-                if (prevElements.includes(item.id)) {
+                if (prevElementsRef.current.includes(item.id)) {
                     // do nothing
+                    // console.log(
+                    //     'newCanvas ... Canvas ... handleSetComponentsToRender ... condition(currentComponents && twoJSInstance) === true ... condition(prevElements.includes(item.id)) === true'
+                    // )
                 } else {
                     arr.push(item.id)
                     const ElementToRender = React.lazy(() => moduleLoader())
@@ -2139,18 +2182,30 @@ const Canvas = (props) => {
                 }
             })
             setComponentsToRender(components)
-            twoJSInstance && setPrevElements(arr)
+            if (twoJSInstance) prevElementsRef.current = arr
         }
     }
     renderGroupRef.current = handleSetComponentsToRender
 
-    // When an element is deleted or its ADD is undone, remove it from prevElements
+    // When an element is deleted or its ADD is undone, remove it from prevElementsRef
     // so handleSetComponentsToRender can create a fresh wrapper if the element is
     // ever restored (e.g. undo of a delete).
     useEffect(() => {
         const handleElementRemoved = (e) => {
+            // console.log(
+            //     'newCanvas ... Canvas ... elementRemoved Event Listener',
+            //     prevElementsRef.current
+            // )
             const { id } = e.detail
-            setPrevElements((prev) => prev.filter((eid) => eid !== id))
+            let updatedPrevElementsArr = prevElementsRef.current
+            updatedPrevElementsArr = updatedPrevElementsArr.filter(
+                (eid) => eid !== id
+            )
+            // console.log(
+            //     'newCanvas ... Canvas ... elementRemoved Event Listener ... updatedPrevElementsArr',
+            //     updatedPrevElementsArr
+            // )
+            prevElementsRef.current = updatedPrevElementsArr
         }
         window.addEventListener('elementRemoved', handleElementRemoved)
         return () => {
