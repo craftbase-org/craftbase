@@ -229,6 +229,13 @@ const Toolbar = (props) => {
                 },
             })
         }
+        // Keep live elementData in sync. Element components set this once on
+        // mount, so without this write, consumers reading from the live group
+        // (copy/paste, future toolbar reads) see stale fill/stroke/textColor.
+        if (componentState?.group?.data?.elementData) {
+            componentState.group.data.elementData[propertyToUpdate] =
+                propertyValue
+        }
         postToolbarUpdate && postToolbarUpdate()
     }
 

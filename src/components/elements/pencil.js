@@ -93,6 +93,9 @@ function Pencil(props) {
             document
                 .getElementById(group.id)
                 .setAttribute('data-component-id', props.id)
+            document
+                .getElementById(group.id)
+                .setAttribute('data-linewidth', String(props.linewidth ?? ''))
 
             // console.log('two circle', group.id)
             const initialSceneCoords = document
