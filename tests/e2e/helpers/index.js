@@ -261,6 +261,40 @@ export async function clickUndoButton(page) {
     await page.click('[title="Undo"]')
 }
 
+/**
+ * Switches the toolbar to select/pan (Pointer) mode. Clears any draw-mode
+ * flags left over by drawArrow/drawPencilStroke/placeText (they each set
+ * localStorage flags during their flow), so the next mousedown on empty canvas
+ * is interpreted as the start of a marquee group selection.
+ */
+export async function clickPointerTool(page) {
+    await page.click('[aria-label="Pointer"]')
+}
+
+/**
+ * Drags an empty marquee rectangle on the canvas (Path: isGroupSelector branch
+ * in src/newCanvas.js). Caller must already be in select/pan mode and the
+ * (startX, startY) point must land on empty canvas. On mouseup, newCanvas calls
+ * setOnGroupHandler which builds a groupobject from any element whose stored
+ * (x, y) falls inside the marquee bounds.
+ *
+ * Returns the ElementHandle for the new groupobject SVG group, identified by
+ * data-label="groupobject_coord" set in groupobject.js after Two.js mounts it.
+ */
+export async function dragSelectArea(
+    page,
+    { startX, startY, endX, endY },
+    { timeout = 5_000 } = {}
+) {
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(endX, endY, { steps: 10 })
+    await page.mouse.up()
+
+    await page.waitForSelector('[data-label="groupobject_coord"]', { timeout })
+    return page.$('[data-label="groupobject_coord"]')
+}
+
 export async function addTextToRectangle(page, rectHandle, text) {
     const box = await rectHandle.boundingBox()
     const cx = box.x + box.width / 2
