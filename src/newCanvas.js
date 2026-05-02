@@ -1572,7 +1572,9 @@ function addZUI(
         if (e.shiftKey === true || e.metaKey === true) {
             let dy = (e.wheelDeltaY || -e.deltaY) / 1000
             zui.zoomBy(dy, e.clientX, e.clientY)
-            window.dispatchEvent(new CustomEvent('zoomChanged', { detail: { scale: zui.scale } }))
+            window.dispatchEvent(
+                new CustomEvent('zoomChanged', { detail: { scale: zui.scale } })
+            )
         } else {
             zui.translateSurface(-e.deltaX, -e.deltaY)
         }
@@ -1810,7 +1812,9 @@ function addZUI(
         const distDelta = newDist - distance
         if (Math.abs(distDelta) > 0.5) {
             zui.zoomBy(distDelta / 250, newMidX, newMidY)
-            window.dispatchEvent(new CustomEvent('zoomChanged', { detail: { scale: zui.scale } }))
+            window.dispatchEvent(
+                new CustomEvent('zoomChanged', { detail: { scale: zui.scale } })
+            )
         }
 
         twoFingerMidX = newMidX
@@ -2267,7 +2271,6 @@ const Canvas = (props) => {
     return (
         <>
             <div id="selector-rect"></div>
-            <div id="pan-dragger"></div>
             <div id="main-two-root"></div>
             {componentsToRender.map((Component, index) => (
                 <Suspense key={index} fallback={<Loader />}>
