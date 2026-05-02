@@ -357,31 +357,38 @@ function addZUI(
                     // like font-size and text-color) rather than the stale
                     // currentMetadata snapshot captured at dblclick time.
                     const latestMeta = group.elementData?.metadata || {}
+                    const updatedMetadata = {
+                        ...latestMeta,
+                        hasText: true,
+                        textContent: newContent,
+                        textFill:
+                            latestMeta.textFill ||
+                            twoText.fill ||
+                            '#3A342C',
+                        textFontSize:
+                            latestMeta.textFontSize || twoText.size || 24,
+                        textFamily:
+                            latestMeta.textFamily ||
+                            twoText.family ||
+                            'Caveat',
+                        textFontFamily:
+                            latestMeta.textFontFamily ||
+                            twoText.family ||
+                            'Caveat',
+                        textBaseLine:
+                            latestMeta.textBaseLine ||
+                            twoText.baseline ||
+                            'middle',
+                    }
                     updateComponentBulkPropertiesInLocalStore(componentId, {
-                        metadata: {
-                            ...latestMeta,
-                            hasText: true,
-                            textContent: newContent,
-                            textFill:
-                                latestMeta.textFill ||
-                                twoText.fill ||
-                                '#3A342C',
-                            textFontSize:
-                                latestMeta.textFontSize || twoText.size || 24,
-                            textFamily:
-                                latestMeta.textFamily ||
-                                twoText.family ||
-                                'Caveat',
-                            textFontFamily:
-                                latestMeta.textFontFamily ||
-                                twoText.family ||
-                                'Caveat',
-                            textBaseLine:
-                                latestMeta.textBaseLine ||
-                                twoText.baseline ||
-                                'middle',
-                        },
+                        metadata: updatedMetadata,
                     })
+                    // Keep the live group's elementData in sync so consumers
+                    // that read from it (copy/paste, toolbar) see the latest
+                    // text content without waiting for a re-render.
+                    if (group.elementData) {
+                        group.elementData.metadata = updatedMetadata
+                    }
                 }
 
                 input.remove()
