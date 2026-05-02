@@ -211,9 +211,12 @@ const BoardViewPage = (props) => {
     const {
         historyLog,
         historyLogRef,
+        bucketLog,
+        bucketLogRef,
         recordToHistoryLog,
         recordBatchToHistoryLog,
         undoLastAction,
+        redoLastAction,
         clearHistory,
     } = useComponentHistory({
         twoJSInstanceRef,
@@ -903,8 +906,11 @@ const BoardViewPage = (props) => {
         createBoardLoading,
         historyLog,
         historyLogRef,
+        bucketLog,
+        bucketLogRef,
         recordBatchToHistoryLog,
         undoLastAction,
+        redoLastAction,
         clearBoard,
     }
 

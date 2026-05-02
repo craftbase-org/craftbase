@@ -1861,6 +1861,7 @@ const Canvas = (props) => {
         setTextDrawModeInBoard,
         setCurrentElementInBoard,
         undoLastAction,
+        redoLastAction,
     } = useBoardContext()
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
@@ -2125,15 +2126,22 @@ const Canvas = (props) => {
     }, [zuiInstance])
 
     useEffect(() => {
-        const onUndoKeyDown = (evt) => {
-            if (evt.key === 'z' && (evt.ctrlKey || evt.metaKey)) {
+        const onUndoRedoKeyDown = (evt) => {
+            if (
+                evt.key.toLowerCase() === 'z' &&
+                (evt.ctrlKey || evt.metaKey)
+            ) {
                 evt.preventDefault()
-                undoLastAction()
+                if (evt.shiftKey) {
+                    redoLastAction()
+                } else {
+                    undoLastAction()
+                }
             }
         }
-        window.addEventListener('keydown', onUndoKeyDown)
-        return () => window.removeEventListener('keydown', onUndoKeyDown)
-    }, [undoLastAction])
+        window.addEventListener('keydown', onUndoRedoKeyDown)
+        return () => window.removeEventListener('keydown', onUndoRedoKeyDown)
+    }, [undoLastAction, redoLastAction])
 
     const setOnGroupHandler = (obj) => {
         setOnGroup(obj)

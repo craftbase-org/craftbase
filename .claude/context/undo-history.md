@@ -2,20 +2,22 @@
 
 ## Overview
 
-Board mutations are tracked in a stack (`historyLog`) that powers Ctrl+Z undo. Every function that modifies component state **must** call `recordToHistoryLog` before touching the store or DB.
+Board mutations are tracked in two parallel stacks: `historyLog` (powers Ctrl/Cmd+Z undo) and `bucketLog` (powers Ctrl/Cmd+Shift+Z redo). Every function that modifies component state **must** call `recordToHistoryLog` before touching the store or DB.
 
-All history state lives in `src/hooks/useComponentHistory.js`. The hook is called in `src/views/Board/board.js` and its returned values (`recordToHistoryLog`, `undoLastAction`, `clearHistory`) are spread into `BoardContext`.
+All history state lives in `src/hooks/useComponentHistory.js`. The hook is called in `src/views/Board/board.js` and its returned values (`recordToHistoryLog`, `undoLastAction`, `redoLastAction`, `clearHistory`, `bucketLog`, etc.) are spread into `BoardContext`.
 
-`applyPropertyToTwoJSGroup` is a module-level helper function in `useComponentHistory.js` (not exported — used internally by `undoLastAction` to mutate Two.js shape properties when reversing an `UPDATE_BULK` action).
+`applyPropertyToTwoJSGroup` is a module-level helper in `useComponentHistory.js` (not exported — used internally by both undo and redo to mutate Two.js shape properties when reversing/replaying an `UPDATE_BULK` action).
 
 ## State
 
 ```js
 const [historyLog, setHistoryLog] = useState([])
 const historyLogRef = useRef([])   // always kept in sync with historyLog state
+const [bucketLog, setBucketLog] = useState([])
+const bucketLogRef = useRef([])    // redo stack
 ```
 
-`historyLogRef` is the authoritative copy used inside callbacks to avoid stale closure issues.
+The `*Ref` copies are the authoritative versions used inside callbacks to avoid stale closure issues.
 
 ## Recording an action
 
@@ -23,7 +25,7 @@ const historyLogRef = useRef([])   // always kept in sync with historyLog state
 recordToHistoryLog(entry)
 ```
 
-Appends `{ ...entry, timestamp: Date.now() }` to the stack. Called at the top of each mutating function, **before** any store or DB change.
+Appends `{ ...entry, timestamp: Date.now() }` to the stack. Called at the top of each mutating function, **before** any store or DB change. Also clears `bucketLog` — a fresh user action invalidates the redo branch (standard editor behavior).
 
 ### Entry shapes by action type
 
@@ -48,6 +50,30 @@ It pops the last entry, then reverses it completely:
 | `UPDATE_BULK` | Restores previous property values in store and Two.js shape, calls `updateComponentInfo` |
 
 Store is always updated **before** Two.js visuals to keep `stateRefForComponentStore` correct even if rendering fails. Canvas is flushed with `requestAnimationFrame(() => two?.update())`.
+
+Before reverting, `undoLastAction` also captures the **post-action ("next") state** so the entry can be re-applied later by redo:
+
+| action | extra fields captured for redo |
+|---|---|
+| `UPDATE_VERTICES` | `nextX`, `nextY` (current `x`/`y` from store) |
+| `UPDATE_BULK` | `nextProps` (current values for each key in `prevProps`) |
+| `ADD` / `DELETE` / `BATCH` | none — original entry already has everything redo needs |
+
+The enriched entry is pushed onto `bucketLog`.
+
+## Replaying an action — `redoLastAction()`
+
+Pops from `bucketLog`, re-applies the action (mirror of undo), then pushes the original-shape entry back onto `historyLog` directly (bypassing `recordToHistoryLog` so `bucketLog` is **not** cleared during a redo). Disabled in the UI when `bucketLog.length === 0`. Only ever holds entries that came from `undoLastAction`.
+
+| action | what it does |
+|---|---|
+| `ADD` | Re-inserts using `componentInfo` (mirror of `DELETE` undo) |
+| `DELETE` | Removes from store/scene (mirror of `ADD` undo) |
+| `UPDATE_VERTICES` | Applies `nextX`/`nextY` |
+| `UPDATE_BULK` | Applies `nextProps` (and respects `bulkObj`/`syncDefaults`) |
+| `BATCH` | Iterates `entries` forward; `ADD`→insert, `DELETE`→remove |
+
+Both `undoLastAction` and `redoLastAction` dispatch through the same per-action helpers (`applyRemove`, `applyInsert`, `applyVertices`, `applyBulkProps`, `applyBatch`) — only the source of the props differs (`prev*` vs `next*`).
 
 ## Rule: use `undoLastAction()` for any rollback
 

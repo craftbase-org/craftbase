@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { staticPrimaryElementData } from 'utils/constants'
 import { useBoardContext } from 'views/Board/board'
 import UndoIcon from 'assets/undo_amber.svg?react'
+import RedoIcon from 'assets/redo.svg?react'
 import { useMediaQueryUtils } from 'constants/exportHooks'
 
 const allElements = staticPrimaryElementData.flatMap(
@@ -13,7 +14,9 @@ const ShapesToolbar = ({ addElement }) => {
         currentElement,
         setCurrentElementInBoard,
         undoLastAction,
+        redoLastAction,
         historyLog,
+        bucketLog,
     } = useBoardContext()
     const { isMobile } = useMediaQueryUtils()
 
@@ -80,6 +83,21 @@ const ShapesToolbar = ({ addElement }) => {
                 }}
             >
                 <UndoIcon className={iconSize} aria-label="Undo" />
+            </div>
+            <div
+                title="Redo"
+                className={`
+                    ${btnSize} flex items-center justify-center rounded cursor-pointer
+                    transition-all ease-in-out duration-200 text-ink-muted
+                    ${bucketLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/30 hover:text-ink'}
+                `}
+                onClick={() => {
+                    if (bucketLog.length > 0) {
+                        redoLastAction()
+                    }
+                }}
+            >
+                <RedoIcon className={iconSize} aria-label="Redo" />
             </div>
         </div>
     )
