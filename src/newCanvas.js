@@ -38,6 +38,7 @@ import {
     velocityToLinewidth,
     smoothLinewidth,
     simplifyWithLinewidth,
+    chaikinSmooth,
 } from 'utils/pencilHelper'
 import {
     setArrowEndpointsVisible,
@@ -46,6 +47,7 @@ import {
     resolveShapeFromPath,
 } from 'utils/canvasUtils'
 import { isSelectPanMode } from 'utils/drawModeUtils'
+import { createDiamondPath } from 'factory/diamond'
 import { useCanvasClipboard } from 'hooks/useCanvasClipboard'
 import {
     ElementRenderWrapper,
@@ -91,7 +93,8 @@ function addZUI(
     setPointerElement,
     updateComponentBulkPropertiesInLocalStore,
     deleteComponentFromLocalStore,
-    isPencilModeRef
+    isPencilModeRef,
+    createTextAtSurfaceRef
 ) {
     let shape = null
     let lastSelectedShape = null
@@ -119,6 +122,7 @@ function addZUI(
 
     // Velocity-based pencil state
     let pencilGroup = null
+    let pencilPath = null
     let pencilRawPoints = []
     let lastPencilPoint = null
     let lastPencilTime = 0
@@ -144,6 +148,11 @@ function addZUI(
     let drawShapeType = null
     let drawShapeProps = null
     let lastPlacedElement = null
+    // Empty-canvas mousedown stores its origin here. The dotted group
+    // selector is only materialised on the first mousemove, so a click
+    // without drag never produces a stray rectangle (and dblclick on
+    // empty canvas can spawn a text element cleanly).
+    let pendingGroupSelectorOrigin = null
 
     const toSurface = (e) => zui.clientToSurface(e.clientX, e.clientY)
     zui.addLimits(0.06, 8)
@@ -206,6 +215,27 @@ function addZUI(
             shape = {}
         }
 
+        // Empty-canvas dblclick → create new text element at click point.
+        // Skipped if a shape was hit (preserve dblclick-to-edit), if the
+        // dblclick landed on avoid-dragging UI, or if a draw mode is active.
+        if (!avoidDragging && (!shape || Object.keys(shape).length === 0)) {
+            const inDrawMode =
+                isPencilModeRef?.current === true ||
+                arrowDrawElement !== null ||
+                localStorage.getItem(RUBBER_MODE_KEY) === 'true' ||
+                localStorage.getItem(TEXT_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(ARROW_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(PENDING_SHAPE_TYPE_KEY) !== null
+            if (!inDrawMode && createTextAtSurfaceRef?.current) {
+                const surfaceCoords = toSurface(e)
+                createTextAtSurfaceRef.current(
+                    surfaceCoords.x,
+                    surfaceCoords.y
+                )
+                return
+            }
+        }
+
         const showTextInput = (
             group,
             twoText,
@@ -262,6 +292,69 @@ function addZUI(
             const centerX = screenRect.left + screenRect.width / 2
             const centerY = screenRect.top + screenRect.height / 2
 
+            // Locate the parent rectangle child so we can auto-grow it when
+            // the text outgrows the box during edit. Only meaningful for
+            // rectangle-with-text (componentId is set in that path).
+            const rectChild = componentId
+                ? group.children.find(
+                      (c) =>
+                          typeof c.value !== 'string' &&
+                          typeof c.width === 'number' &&
+                          typeof c.height === 'number'
+                  )
+                : null
+            // Inner padding (surface units) preserved between the text and
+            // the rectangle edge so glyphs never touch the border.
+            const RECT_INNER_PAD_X = 24
+            const RECT_INNER_PAD_Y = 12
+            // Diamond's inscribed rect is smaller than its bbox; keep
+            // padding tight so growth isn't aggressive. The slanted edges
+            // already provide visual breathing room.
+            const DIAMOND_INNER_PAD_X = 12
+            const DIAMOND_INNER_PAD_Y = 6
+            const shapeKind = group?.elementData?.componentType
+
+            // Returns the minimum (w, h) for the host shape that fits a
+            // text rect of (textSurfaceW, textSurfaceH). Per-shape geometry.
+            const fitShape = (currentW, currentH, textSurfaceW, textSurfaceH) => {
+                if (shapeKind === componentTypes.diamond) {
+                    // Inscribed rect constraint: tw/w + th/h <= 1.
+                    // Pad first, then solve for minimum w (keeping h fixed).
+                    const TW = textSurfaceW + DIAMOND_INNER_PAD_X * 2
+                    const TH = textSurfaceH + DIAMOND_INNER_PAD_Y * 2
+                    let h = currentH
+                    if (TH >= h - 1) {
+                        // Text taller than current diamond — bump h just
+                        // enough (text occupies ~85% of vertical budget).
+                        h = Math.ceil(TH / 0.85)
+                    }
+                    const denom = 1 - TH / h
+                    const wNeed =
+                        denom > 0
+                            ? Math.ceil(TW / denom)
+                            : Number.POSITIVE_INFINITY
+                    return { w: Math.max(currentW, wNeed), h }
+                }
+                // rectangle (default)
+                const w = Math.max(
+                    currentW,
+                    Math.ceil(textSurfaceW + RECT_INNER_PAD_X * 2)
+                )
+                const h = Math.max(
+                    currentH,
+                    Math.ceil(textSurfaceH + RECT_INNER_PAD_Y * 2)
+                )
+                return { w, h }
+            }
+            // px-per-surface-unit derived from the rect's current screen
+            // size; lets us convert the textarea's pixel measurement back
+            // into Two.js surface units before resizing the rectangle.
+            const rectScreen = rectChild?._renderer?.elem?.getBoundingClientRect()
+            const zoom =
+                rectChild && rectScreen && rectChild.width
+                    ? rectScreen.width / rectChild.width
+                    : 1
+
             document.getElementById('main-two-root').append(input)
 
             // ── Offscreen measurement helper ──
@@ -306,6 +399,30 @@ function addZUI(
                 // Centre over the original text midpoint
                 input.style.left = `${centerX - contentWidth / 2}px`
                 input.style.top = `${centerY - contentHeight / 2}px`
+
+                // Grow the parent rectangle so the centered text never
+                // overflows its bounds. Symmetric growth preserves the
+                // rectangle's center, which keeps centerX/centerY valid.
+                if (rectChild) {
+                    const textSurfaceW = measuredW / zoom
+                    const textSurfaceH = measuredH / zoom
+                    const { w: nextW, h: nextH } = fitShape(
+                        rectChild.width,
+                        rectChild.height,
+                        textSurfaceW,
+                        textSurfaceH
+                    )
+                    let rectChanged = false
+                    if (rectChild.width < nextW) {
+                        rectChild.width = nextW
+                        rectChanged = true
+                    }
+                    if (rectChild.height < nextH) {
+                        rectChild.height = nextH
+                        rectChanged = true
+                    }
+                    if (rectChanged) two.update()
+                }
             }
 
             autoSizeAndCenter()
@@ -357,31 +474,48 @@ function addZUI(
                     // like font-size and text-color) rather than the stale
                     // currentMetadata snapshot captured at dblclick time.
                     const latestMeta = group.elementData?.metadata || {}
-                    updateComponentBulkPropertiesInLocalStore(componentId, {
-                        metadata: {
-                            ...latestMeta,
-                            hasText: true,
-                            textContent: newContent,
-                            textFill:
-                                latestMeta.textFill ||
-                                twoText.fill ||
-                                '#3A342C',
-                            textFontSize:
-                                latestMeta.textFontSize || twoText.size || 24,
-                            textFamily:
-                                latestMeta.textFamily ||
-                                twoText.family ||
-                                'Caveat',
-                            textFontFamily:
-                                latestMeta.textFontFamily ||
-                                twoText.family ||
-                                'Caveat',
-                            textBaseLine:
-                                latestMeta.textBaseLine ||
-                                twoText.baseline ||
-                                'middle',
-                        },
-                    })
+                    const updatedMetadata = {
+                        ...latestMeta,
+                        hasText: true,
+                        textContent: newContent,
+                        textFill:
+                            latestMeta.textFill ||
+                            twoText.fill ||
+                            '#3A342C',
+                        textFontSize:
+                            latestMeta.textFontSize || twoText.size || 24,
+                        textFamily:
+                            latestMeta.textFamily ||
+                            twoText.family ||
+                            'Caveat',
+                        textFontFamily:
+                            latestMeta.textFontFamily ||
+                            twoText.family ||
+                            'Caveat',
+                        textBaseLine:
+                            latestMeta.textBaseLine ||
+                            twoText.baseline ||
+                            'middle',
+                    }
+                    const persistPayload = { metadata: updatedMetadata }
+                    if (rectChild) {
+                        persistPayload.width = Math.round(rectChild.width)
+                        persistPayload.height = Math.round(rectChild.height)
+                    }
+                    updateComponentBulkPropertiesInLocalStore(
+                        componentId,
+                        persistPayload
+                    )
+                    // Keep the live group's elementData in sync so consumers
+                    // that read from it (copy/paste, toolbar) see the latest
+                    // text content without waiting for a re-render.
+                    if (group.elementData) {
+                        group.elementData.metadata = updatedMetadata
+                        if (rectChild) {
+                            group.elementData.width = persistPayload.width
+                            group.elementData.height = persistPayload.height
+                        }
+                    }
                 }
 
                 input.remove()
@@ -389,7 +523,11 @@ function addZUI(
         }
 
         if (shape !== null && !isPencilModeRef?.current) {
-            if (shape.elementData?.componentType === componentTypes.rectangle) {
+            const ct = shape.elementData?.componentType
+            if (
+                ct === componentTypes.rectangle ||
+                ct === componentTypes.diamond
+            ) {
                 const meta = shape.elementData.metadata || {}
                 let twoText = shape.children.find(
                     (child) => typeof child.value === 'string'
@@ -667,6 +805,12 @@ function addZUI(
                         0,
                         3
                     )
+                } else if (drawShapeType === 'diamond') {
+                    previewShape = createDiamondPath(two, 0, 0, 6)
+                    previewShape.translation.set(
+                        surfaceCoords.x,
+                        surfaceCoords.y
+                    )
                 }
 
                 if (previewShape) {
@@ -724,7 +868,8 @@ function addZUI(
                 domElement.addEventListener('mousemove', mousemove, false)
                 domElement.addEventListener('mouseup', mouseup, false)
 
-                // Create a group for live preview segments
+                // Single growing curved path for live preview — matches the
+                // final factory render so there's no visual jump on mouseup.
                 pencilGroup = two.makeGroup()
                 pencilRawPoints = []
                 lastPencilLinewidth = defaultLinewidthValue
@@ -737,6 +882,21 @@ function addZUI(
                     y: startCoords.y,
                     lw: lastPencilLinewidth,
                 })
+
+                // Note: two.makePath only treats numeric (x, y) pair args as
+                // vertices. Passing a Two.Anchor here would be silently dropped,
+                // leaving the path empty and missing the mousedown start point.
+                pencilPath = two.makePath()
+                pencilPath.vertices.push(
+                    new Two.Anchor(startCoords.x, startCoords.y)
+                )
+                pencilPath.noFill()
+                pencilPath.stroke = pencilStrokeColorValue
+                pencilPath.linewidth = defaultLinewidthValue
+                pencilPath.cap = 'round'
+                pencilPath.join = 'round'
+                pencilPath.closed = false
+                pencilGroup.add(pencilPath)
                 break
             }
             case SCENARIO_RUBBER_MODE: {
@@ -798,9 +958,8 @@ function addZUI(
                     lastSelectedShape = null
                     selectionController.detach()
                     // When a text input overlay is active (about to blur),
-                    // the click is just dismissing the input — skip creating
-                    // the group selector so no orphaned dotted rectangle
-                    // is left on the canvas.
+                    // the click is just dismissing the input — skip the
+                    // pending-selector setup so no rect is ever materialised.
                     const activeTextInput =
                         document.querySelector('.temp-input-area')
 
@@ -808,37 +967,18 @@ function addZUI(
                         shape = {}
                         avoidDragging = true
                     } else {
-                        const { x1, x2, y1, y2 } = {
-                            x1: 0,
-                            x2: 10,
-                            y1: 0,
-                            y2: 10,
-                        }
-                        const area = two.makePath(
-                            x1,
-                            y1,
-                            x2,
-                            y1,
-                            x2,
-                            y2,
-                            x1,
-                            y2
+                        // Defer rect creation to the first mousemove. We
+                        // still need mousemove/mouseup wired up below so
+                        // the next mousemove can materialise the selector.
+                        pendingGroupSelectorOrigin = toSurface(e)
+                        mouse.copy(pendingGroupSelectorOrigin)
+                        domElement.addEventListener(
+                            'mousemove',
+                            mousemove,
+                            false
                         )
-                        area.fill = 'rgba(0,0,0,0)'
-                        area.opacity = 1
-                        area.linewidth = 1
-                        area.dashes[0] = 4
-                        area.stroke = SELECTION_PREVIEW_STROKE
-
-                        let newSelectorGroup = two.makeGroup(area)
-
-                        const m = toSurface(e)
-                        mouse.copy(m)
-                        newSelectorGroup.position.copy(mouse)
-
-                        two.update()
-                        shape = newSelectorGroup
-                        isGroupSelector = true
+                        domElement.addEventListener('mouseup', mouseup, false)
+                        return
                     }
                 }
 
@@ -1070,27 +1210,25 @@ function addZUI(
                     0.3
                 )
 
-                // Create a 2-point path segment for live preview
-                const segment = two.makePath(
-                    lastPencilPoint.x,
-                    lastPencilPoint.y,
-                    pencilCoords.x,
-                    pencilCoords.y
-                )
-                segment.noFill()
-                segment.stroke = pencilStrokeColorValue
-                segment.linewidth = smoothedLw
-                segment.cap = 'round'
-                segment.join = 'round'
-                segment.closed = false
-                pencilGroup.add(segment)
-
-                // Record point with linewidth
+                // Record point with linewidth (kept for future variable-width work)
                 pencilRawPoints.push({
                     x: pencilCoords.x,
                     y: pencilCoords.y,
                     lw: smoothedLw,
                 })
+
+                // Rebuild the preview path from the smoothed raw points so the
+                // live stroke matches the final factory render exactly.
+                if (pencilPath) {
+                    const smoothedPreview =
+                        pencilRawPoints.length > 2
+                            ? chaikinSmooth(pencilRawPoints, 2)
+                            : pencilRawPoints
+                    pencilPath.vertices.splice(0)
+                    smoothedPreview.forEach((pt) => {
+                        pencilPath.vertices.push(new Two.Anchor(pt.x, pt.y))
+                    })
+                }
 
                 lastPencilPoint = { x: pencilCoords.x, y: pencilCoords.y }
                 lastPencilTime = now
@@ -1108,6 +1246,29 @@ function addZUI(
                     Once I shift that handling to this one main component,
                     I'll remove this first if condition block
                 */
+
+                // Empty-canvas mousedown deferred selector creation here.
+                // First mousemove materialises the dotted rect at the
+                // original mousedown position so it grows with the cursor.
+                if (pendingGroupSelectorOrigin && !shape?.elementData) {
+                    const area = two.makePath(0, 0, 10, 0, 10, 10, 0, 10)
+                    area.fill = 'rgba(0,0,0,0)'
+                    area.opacity = 1
+                    area.linewidth = 1
+                    area.dashes[0] = 4
+                    area.stroke = SELECTION_PREVIEW_STROKE
+                    const newSelectorGroup = two.makeGroup(area)
+                    newSelectorGroup.position.copy(pendingGroupSelectorOrigin)
+                    shape = newSelectorGroup
+                    shape.elementData = {
+                        isGroupSelector: true,
+                        prevX: parseInt(shape.translation.x),
+                        prevY: parseInt(shape.translation.y),
+                    }
+                    dragging = true
+                    pendingGroupSelectorOrigin = null
+                    two.update()
+                }
 
                 if (isResizeEvent === true) {
                     domElement.removeEventListener(
@@ -1408,6 +1569,7 @@ function addZUI(
             case SCENARIO_PENCIL_MODE: {
                 const capturedPencilGroup = pencilGroup
                 pencilGroup = null
+                pencilPath = null
 
                 if (pencilRawPoints.length < 2) {
                     // Too few points to form a stroke — remove preview immediately
@@ -1421,10 +1583,11 @@ function addZUI(
                     break
                 }
 
-                // Simplify points while preserving lw
+                // Light simplification keeps the final shape close to what the
+                // user actually drew (smaller epsilon = more fidelity).
                 const simplifiedPoints = simplifyWithLinewidth(
                     pencilRawPoints,
-                    1.5
+                    0.3
                 )
 
                 let pencilId = generateUUID()
@@ -1476,22 +1639,38 @@ function addZUI(
                 // diff to check new x,y and prev x,y
                 let oldShapeData = {}
                 let newShapeData = {}
+                // No mousemove happened between empty-canvas mousedown and
+                // this mouseup → no selector was ever materialised. Just
+                // clear the pending origin and let the cleanup below run.
+                if (pendingGroupSelectorOrigin) {
+                    pendingGroupSelectorOrigin = null
+                }
                 if (shape?.elementData?.isGroupSelector) {
                     // check on mouse up if shape's a group selector or not
                     // if yes, then call setOnGroup for adding a group in two.js space
                     let area = shape.children[0]
-                    let obj = {
-                        x: area.vertices[0].x + shape.translation.x,
-                        y: area.vertices[0].y + shape.translation.y,
-                        left: area.vertices[0].x + shape.translation.x,
-                        right: area.vertices[1].x + shape.translation.x,
-                        top: area.vertices[0].y + shape.translation.y,
-                        bottom: area.vertices[3].y + shape.translation.y,
-                        width: area.vertices[2].x - area.vertices[0].x,
-                        height: area.vertices[3].y - area.vertices[0].y,
-                    }
+                    const groupWidth =
+                        area.vertices[2].x - area.vertices[0].x
+                    const groupHeight =
+                        area.vertices[3].y - area.vertices[0].y
                     two.remove(shape)
-                    setOnGroupHandler(obj)
+                    // The selector starts as a 10x10 rect (see mousedown). If
+                    // it never grew, the user just clicked without dragging —
+                    // don't materialise an empty groupobject skeleton (and
+                    // crucially, don't leave one behind that would intercept
+                    // the second click of a dblclick on empty canvas).
+                    if (groupWidth > 10 || groupHeight > 10) {
+                        setOnGroupHandler({
+                            x: area.vertices[0].x + shape.translation.x,
+                            y: area.vertices[0].y + shape.translation.y,
+                            left: area.vertices[0].x + shape.translation.x,
+                            right: area.vertices[1].x + shape.translation.x,
+                            top: area.vertices[0].y + shape.translation.y,
+                            bottom: area.vertices[3].y + shape.translation.y,
+                            width: groupWidth,
+                            height: groupHeight,
+                        })
+                    }
                     setSelectedComponentInBoard(null)
                 } else if (shape?.elementData) {
                     if (
@@ -1572,7 +1751,9 @@ function addZUI(
         if (e.shiftKey === true || e.metaKey === true) {
             let dy = (e.wheelDeltaY || -e.deltaY) / 1000
             zui.zoomBy(dy, e.clientX, e.clientY)
-            window.dispatchEvent(new CustomEvent('zoomChanged', { detail: { scale: zui.scale } }))
+            window.dispatchEvent(
+                new CustomEvent('zoomChanged', { detail: { scale: zui.scale } })
+            )
         } else {
             zui.translateSurface(-e.deltaX, -e.deltaY)
         }
@@ -1810,7 +1991,9 @@ function addZUI(
         const distDelta = newDist - distance
         if (Math.abs(distDelta) > 0.5) {
             zui.zoomBy(distDelta / 250, newMidX, newMidY)
-            window.dispatchEvent(new CustomEvent('zoomChanged', { detail: { scale: zui.scale } }))
+            window.dispatchEvent(
+                new CustomEvent('zoomChanged', { detail: { scale: zui.scale } })
+            )
         }
 
         twoFingerMidX = newMidX
@@ -1850,6 +2033,9 @@ const Canvas = (props) => {
         setTextDrawModeInBoard,
         setCurrentElementInBoard,
         undoLastAction,
+        redoLastAction,
+        enableTextDrawMode,
+        createTextAtSurface,
     } = useBoardContext()
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
@@ -1863,6 +2049,12 @@ const Canvas = (props) => {
     const renderGroupRef = useRef(null)
     const prevElementsRef = useRef([])
     const componentsToRenderRef = useRef([])
+    // Holds the latest createTextAtSurface from BoardContext so the dblclick
+    // handler (registered once inside addZUI) sees fresh closure state.
+    const createTextAtSurfaceRef = useRef(null)
+    useEffect(() => {
+        createTextAtSurfaceRef.current = createTextAtSurface
+    }, [createTextAtSurface])
 
     const { clipboardRef, lastMouseRef } = useCanvasClipboard({
         twoJSInstance,
@@ -1891,7 +2083,8 @@ const Canvas = (props) => {
             setCurrentElementInBoard,
             updateComponentBulkPropertiesInLocalStore,
             deleteComponentFromLocalStore,
-            isPencilModeRef
+            isPencilModeRef,
+            createTextAtSurfaceRef
         )
 
         setZuiInstance(zui_instance)
@@ -2114,15 +2307,44 @@ const Canvas = (props) => {
     }, [zuiInstance])
 
     useEffect(() => {
-        const onUndoKeyDown = (evt) => {
-            if (evt.key === 'z' && (evt.ctrlKey || evt.metaKey)) {
+        const onUndoRedoKeyDown = (evt) => {
+            if (
+                evt.key.toLowerCase() === 'z' &&
+                (evt.ctrlKey || evt.metaKey)
+            ) {
                 evt.preventDefault()
-                undoLastAction()
+                if (evt.shiftKey) {
+                    redoLastAction()
+                } else {
+                    undoLastAction()
+                }
             }
         }
-        window.addEventListener('keydown', onUndoKeyDown)
-        return () => window.removeEventListener('keydown', onUndoKeyDown)
-    }, [undoLastAction])
+
+        const onTextModeKeyDown = (evt) => {
+            if (evt.key !== 't' && evt.key !== 'T') return
+            if (evt.ctrlKey || evt.metaKey || evt.altKey) return
+            const tag = document.activeElement?.tagName
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return
+            if (
+                localStorage.getItem(TEXT_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(ARROW_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(RUBBER_MODE_KEY) === 'true' ||
+                localStorage.getItem(PENCIL_MODE_KEY) === 'TRUE' ||
+                localStorage.getItem(PENDING_SHAPE_TYPE_KEY) !== null
+            )
+                return
+            evt.preventDefault()
+            enableTextDrawMode?.()
+        }
+
+        window.addEventListener('keydown', onUndoRedoKeyDown)
+        window.addEventListener('keydown', onTextModeKeyDown)
+        return () => {
+            window.removeEventListener('keydown', onUndoRedoKeyDown)
+            window.removeEventListener('keydown', onTextModeKeyDown)
+        }
+    }, [undoLastAction, redoLastAction, enableTextDrawMode])
 
     const setOnGroupHandler = (obj) => {
         setOnGroup(obj)
@@ -2267,7 +2489,6 @@ const Canvas = (props) => {
     return (
         <>
             <div id="selector-rect"></div>
-            <div id="pan-dragger"></div>
             <div id="main-two-root"></div>
             {componentsToRender.map((Component, index) => (
                 <Suspense key={index} fallback={<Loader />}>

@@ -1,5 +1,7 @@
 import CircleIcon from 'wireframeAssets/circle.svg?react'
 import RectangleIcon from 'wireframeAssets/rectangle.svg?react'
+import DiamondIcon from 'wireframeAssets/diamond.svg?react'
+import ShapesIcon from 'wireframeAssets/shapes.svg?react'
 import TextIcon from 'wireframeAssets/text.svg?react'
 import PencilIcon from 'wireframeAssets/pencil.svg?react'
 import PointerIcon from 'wireframeAssets/cursor.svg?react'
@@ -108,20 +110,28 @@ export const staticPrimaryElementData = [
                 drawerData: [],
             },
             {
-                elementName: 'circle',
-                elementDisplayName: 'Circle',
-                elementIcon: CircleIcon,
-                hasDrawer: false,
-                noAction: false,
-                drawerData: [],
-            },
-            {
-                elementName: 'rectangle',
-                elementDisplayName: 'Rectangle / Square',
-                elementIcon: RectangleIcon,
-                hasDrawer: false,
-                noAction: false,
-                drawerData: [],
+                elementName: 'shapes',
+                elementDisplayName: 'Shapes',
+                elementIcon: ShapesIcon,
+                hasDrawer: true,
+                noAction: true,
+                drawerData: [
+                    {
+                        elementName: 'rectangle',
+                        elementDisplayName: 'Rectangle / Square',
+                        elementIcon: RectangleIcon,
+                    },
+                    {
+                        elementName: 'circle',
+                        elementDisplayName: 'Circle',
+                        elementIcon: CircleIcon,
+                    },
+                    {
+                        elementName: 'diamond',
+                        elementDisplayName: 'Diamond',
+                        elementIcon: DiamondIcon,
+                    },
+                ],
             },
             {
                 elementName: 'arrowLine',

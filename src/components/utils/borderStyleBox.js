@@ -65,7 +65,7 @@ const BorderStyleBox = ({
 
     const renderBorderWidths = () => {
         const widths = [
-            { value: 1, strokeHeight: '1px' },
+            { value: 0, strokeHeight: '0px' },
             { value: 2, strokeHeight: '2px' },
             { value: 4, strokeHeight: '4px' },
             { value: 6, strokeHeight: '6px' },
@@ -86,13 +86,33 @@ const BorderStyleBox = ({
                             : '1px solid #C4B89A',
                     }}
                 >
-                    <div
-                        className="w-full my-2 mx-2 rounded-full"
-                        style={{
-                            height: strokeHeight,
-                            backgroundColor: isSelected ? '#C4901A' : '#8C7E6A',
-                        }}
-                    />
+                    {value === 0 ? (
+                        <>
+                            <div
+                                className="my-2 w-0.5 h-0.5 rotate-45"
+                                style={{
+                                    // height: strokeHeight, // e.g. 1.5px, 2.5px, 4px
+                                    background:
+                                        currentWidth === value
+                                            ? '#C4901A'
+                                            : '#8C7E6A',
+                                }}
+                            ></div>
+                        </>
+                    ) : (
+                        <>
+                            <div
+                                className="w-full my-2 mx-1 rounded-full"
+                                style={{
+                                    height: strokeHeight, // e.g. 1.5px, 2.5px, 4px
+                                    backgroundColor:
+                                        currentWidth === value
+                                            ? '#C4901A'
+                                            : '#8C7E6A',
+                                }}
+                            ></div>
+                        </>
+                    )}
                 </button>
             )
         })

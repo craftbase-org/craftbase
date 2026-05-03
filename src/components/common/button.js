@@ -14,7 +14,7 @@ const Button = (props) => {
             break
         case 'secondary':
             baseClassNames +=
-                ' bg-card text-ink border border-accent-dark'
+                ' bg-card-bg text-ink border border-accent-dark'
             break
         default:
             baseClassNames +=

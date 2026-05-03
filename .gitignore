@@ -11,6 +11,7 @@
 # production
 /dist
 /build
+/public/build-info.json
 
 # misc
 .DS_Store

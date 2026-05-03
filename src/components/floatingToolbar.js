@@ -229,6 +229,13 @@ const Toolbar = (props) => {
                 },
             })
         }
+        // Keep live elementData in sync. Element components set this once on
+        // mount, so without this write, consumers reading from the live group
+        // (copy/paste, future toolbar reads) see stale fill/stroke/textColor.
+        if (componentState?.group?.data?.elementData) {
+            componentState.group.data.elementData[propertyToUpdate] =
+                propertyValue
+        }
         postToolbarUpdate && postToolbarUpdate()
     }
 
@@ -272,7 +279,7 @@ const Toolbar = (props) => {
                                     className={`w-9 h-8 text-xs font-semibold border rounded transition-colors ${
                                         state.selectedTextSize === label
                                             ? 'bg-accent/20 text-accent-dark border-accent-dark border-2'
-                                            : 'bg-card text-ink-mid border-border-card hover:bg-accent/20'
+                                            : 'bg-card-bg text-ink-mid border-border-card hover:bg-accent/20'
                                     }`}
                                 >
                                     {label}
@@ -308,7 +315,7 @@ const Toolbar = (props) => {
                                     className={`w-12 h-8 text-sm border rounded transition-colors ${
                                         currentFontFamily === family
                                             ? 'bg-accent/20 text-accent-dark border-accent-dark border-2'
-                                            : 'bg-card text-ink-mid border-border-card hover:bg-accent/20'
+                                            : 'bg-card-bg text-ink-mid border-border-card hover:bg-accent/20'
                                     }`}
                                 >
                                     Aa

@@ -61,7 +61,7 @@ This is because Two.js attaches raw DOM `addEventListener` calls outside React's
 
 **Common triggers**:
 
-1. Removing a parent group via `two.remove([parentGroup])`. Two.js detaches the parent's SVG node from the DOM, taking nested SVG nodes with it. Any element whose Two.js bookkeeping still says "I'm a child of scene._renderer.elem" is now lying.
+1. Removing a parent group via `two.remove([parentGroup])`. Two.js detaches the parent's SVG node from the DOM, taking nested SVG nodes with it. Any element whose Two.js bookkeeping still says "I'm a child of scene.\_renderer.elem" is now lying.
 2. Multiple `two.update()` calls firing in close succession from different sources (an event handler, an element component's cleanup, a `requestAnimationFrame` callback). Each can put the SVG in a half-reconciled state that the next one trips over.
 3. React component cleanup effects calling `two.remove(group)` after we've already manually removed the same group elsewhere — double subtraction.
 
@@ -207,7 +207,7 @@ Global stylesheets.
 1. **User Interaction** → Canvas event listeners (mouse, drag, zoom)
 2. **Component Creation** → Factory generates template → Element renderer creates Two.js object
 3. **State Updates** → React Context (BoardContext) + local component state → Component re-renders
-4. **Backend Sync** → GraphQL mutations fire only when `isPersisted` is true. In local mode (`/`), state lives in React + localStorage draft only. See `.claude/context/canvas-first-ux.md` for the full deferred persistence flow.
+4. **Backend Sync** → GraphQL mutations fire only when `isPersisted` is true. In local mode (`/`), state lives in React + localStorage draft only.
 
 ## React Context
 
@@ -269,10 +269,7 @@ When testing on a real mobile device (laptop and phone on same WiFi):
 
 See detailed notes in `.claude/context/` for feature-specific implementation details:
 
-- `.claude/context/canvas-first-ux.md` - Canvas-first UX: deferred persistence, dual-mode board, localStorage drafts, background board creation, share flow, storage quota handling
 - `.claude/context/floating-toolbar.md` - Floating toolbar activation and structure
-- `.claude/context/text-element-creation.md` - Details on how text element works in canvas (the flow from first mouse click to scaling text element size in canvas).
-- `.claude/context/shape-selection.md` - It describes regarding shape selection & its placement flow on canvas
 - `.claude/context/undo-history.md` - Undo/history stack: action entry shapes, `recordToHistoryLog`, and `undoLastAction()` as the canonical rollback for any failed mutation
 - `.claude/context/responsive-design.md` - When to use Tailwind responsive prefixes vs `useMediaQueryUtils` hook; breakpoint values for both; the core decision rule
 - `.claude/context/font-guide.md` - Font system: Geist (UI chrome), Fraunces (branding/headings), Caveat (canvas sketch); CSS variables, Tailwind config, and usage rules per area

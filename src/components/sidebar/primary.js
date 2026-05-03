@@ -15,7 +15,7 @@ import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
 import MenuDrawer from './menuDrawer'
 
-const DRAW_SHAPE_TYPES = ['circle', 'rectangle']
+const DRAW_SHAPE_TYPES = ['circle', 'rectangle', 'diamond']
 
 const PrimarySidebar = () => {
     const {
@@ -25,6 +25,7 @@ const PrimarySidebar = () => {
         togglePointer,
         togglePencilMode,
         addToLocalComponentStore,
+        enableTextDrawMode,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
@@ -116,10 +117,7 @@ const PrimarySidebar = () => {
         )
     }
 
-    const handleTextElement = (label) => {
-        togglePencilMode(false)
-        togglePointer(false)
-
+    const handleTextElement = () => {
         let savingEl = document.getElementById('show-saving-loader')
         savingEl.style.opacity = 1
         savingEl.style.zIndex = 1
@@ -129,45 +127,7 @@ const PrimarySidebar = () => {
             savingEl.style.zIndex = -1
         }, 100)
 
-        let shapeData = null
-        let generateId = generateUUID()
-
-        if (getComponentTypesData) {
-            getComponentTypesData.componentTypes.forEach((item, index) => {
-                if (item.label === label) {
-                    const userId = localStorage.getItem('userId')
-                    shapeData = {
-                        id: generateId,
-                        componentType: 'newText',
-                        linewidth: defaultLinewidth,
-                        strokeType: defaultStrokeType,
-                        children: {},
-                        metadata: item.metadata || {},
-                        x: -9999,
-                        y: -9999,
-                        x2: 0,
-                        boardId: boardId,
-                        width: item.width,
-                        height: item.height,
-                        fill: item.fill,
-                        textColor: item.textColor,
-                        updatedBy: userId,
-                    }
-                }
-            })
-        }
-
-        updateLastAddedElement(shapeData)
-        document.getElementById('main-two-root').style.cursor = 'crosshair'
-        localStorage.setItem('textDrawMode', 'true')
-        localStorage.setItem('lastAddedElementId', generateId)
-        setTextDrawModeInBoard(true)
-        // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
-        addToLocalComponentStore(
-            shapeData.id,
-            shapeData.componentType,
-            shapeData
-        )
+        enableTextDrawMode()
     }
 
     const addElement = (label) => {
@@ -254,6 +214,37 @@ const PrimarySidebar = () => {
                             }
                         }
                     )
+                }
+
+                // Fallback for diamond when the DB catalog doesn't have a
+                // diamond row yet. Lets the shape work end-to-end without a
+                // Hasura seed. Mirrors rectangle defaults.
+                if (!shapeData && label === 'diamond') {
+                    const userId = localStorage.getItem('userId')
+                    shapeData = {
+                        id: generateId,
+                        componentType: label,
+                        linewidth: defaultLinewidth,
+                        strokeType: defaultStrokeType,
+                        stroke: '#3A342C',
+                        children: {},
+                        x: parseInt(
+                            window.outerWidth -
+                                (randomNumber * window.outerWidth) / 100
+                        ),
+                        y: parseInt(
+                            window.outerHeight -
+                                (randomNumber * window.outerHeight) / 100
+                        ),
+                        x2: 0,
+                        boardId: boardId,
+                        metadata: {},
+                        width: 160,
+                        height: 160,
+                        fill: '#fff',
+                        textColor: '#3A342C',
+                        updatedBy: userId,
+                    }
                 }
 
                 // shapeData is null if getComponentTypesData hasn't loaded yet (e.g. incognito
@@ -348,7 +339,7 @@ const PrimarySidebar = () => {
                 {isLiveSession ? (
                     <>
                         <div className="w-9 h-9 text-sm pr-2">
-                            <a className="flex items-center px-4 py-2 rounded-card bg-card text-ink shadow-card">
+                            <a className="flex items-center px-4 py-2 rounded-card bg-card-bg text-ink shadow-card">
                                 <span className="text-sm ">Live</span>
 
                                 <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">

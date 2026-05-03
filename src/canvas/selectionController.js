@@ -32,6 +32,7 @@ const TEXT_ADAPTER = {
 const SHAPE_ADAPTERS = {
     rectangle: DEFAULT_ADAPTER,
     circle: DEFAULT_ADAPTER,
+    diamond: DEFAULT_ADAPTER,
     // newText: TEXT_ADAPTER,
 }
 

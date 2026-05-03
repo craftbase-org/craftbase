@@ -10,7 +10,7 @@ const STROKE_TYPES = [
 ]
 
 const STROKE_WIDTHS = [
-    { label: '1', value: 1, strokeHeight: '1px' },
+    { label: '0', value: 0, strokeHeight: '0px' },
     { label: '2', value: 2, strokeHeight: '2px' },
     { label: '4', value: 4, strokeHeight: '4px' },
     { label: '6', value: 6, strokeHeight: '6px' },
@@ -30,7 +30,7 @@ const DefaultsDropdown = () => {
 
     return (
         <div
-            className="secondary-sidebar-content fixed bg-card block text-left pb-4 rounded-card shadow-card border border-border-panel w-36"
+            className="secondary-sidebar-content fixed bg-card-bg block text-left pb-4 rounded-card shadow-card border border-border-panel w-36"
             style={{ left: '10px', top: '56px' }}
         >
             <div className="w-full px-2 font-semibold text-xs pt-1 pb-1 border-b border-border-panel text-ink-muted">
@@ -58,19 +58,36 @@ const DefaultsDropdown = () => {
                                     border:
                                         defaultLinewidth === value
                                             ? '2px solid #C4901A'
-                                            : '1px solid #C4B89A',
+                                            : '2px solid #C4B89A',
                                 }}
                             >
-                                <div
-                                    className="w-full my-2 mx-1 rounded-full"
-                                    style={{
-                                        height: strokeHeight, // e.g. 1.5px, 2.5px, 4px
-                                        backgroundColor:
-                                            defaultLinewidth === value
-                                                ? '#C4901A'
-                                                : '#8C7E6A',
-                                    }}
-                                />
+                                {value === 0 ? (
+                                    <>
+                                        <div
+                                            className="my-2 w-0.5 h-0.5 rotate-45"
+                                            style={{
+                                                // height: strokeHeight, // e.g. 1.5px, 2.5px, 4px
+                                                background:
+                                                    defaultLinewidth === value
+                                                        ? '#C4901A'
+                                                        : '#8C7E6A',
+                                            }}
+                                        ></div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div
+                                            className="w-full my-2 mx-1 rounded-full"
+                                            style={{
+                                                height: strokeHeight, // e.g. 1.5px, 2.5px, 4px
+                                                backgroundColor:
+                                                    defaultLinewidth === value
+                                                        ? '#C4901A'
+                                                        : '#8C7E6A',
+                                            }}
+                                        ></div>
+                                    </>
+                                )}
                             </button>
                         )
                     )}

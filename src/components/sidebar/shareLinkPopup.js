@@ -82,7 +82,7 @@ const ShareLinkPopup = ({}) => {
                 >
                     <div
                         className="
-                        bg-card text-ink-mid border border-border-panel
+                        bg-card-bg text-ink-mid border border-border-panel
                         rounded-md px-2 py-4 shadow-card
                         "
                         style={{ width: '560px' }}

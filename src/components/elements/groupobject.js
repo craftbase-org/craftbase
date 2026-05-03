@@ -112,7 +112,7 @@ function GroupedObjectWrapper(props) {
                                 eachChild.vertices = []
                                 newMetadata.forEach(function (point) {
                                     eachChild.vertices.push(
-                                        new Two.Vector(
+                                        new Two.Anchor(
                                             point.x - newX,
                                             point.y - newY
                                         )

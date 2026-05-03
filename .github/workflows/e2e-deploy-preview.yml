@@ -1,0 +1,91 @@
+name: E2E (deploy preview)
+
+on:
+    pull_request:
+        branches:
+            - main
+            - dev
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - ready_for_review
+
+concurrency:
+    group: e2e-${{ github.event.pull_request.number }}
+    cancel-in-progress: true
+
+jobs:
+    e2e-deploy-preview:
+        runs-on: ubuntu-latest
+        name: e2e-deploy-preview
+        if: github.event.pull_request.draft == false
+
+        env:
+            NETLIFY_SITE_NAME: craftbase
+            EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+            PR_NUMBER: ${{ github.event.pull_request.number }}
+
+        steps:
+            - name: Checkout PR head
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event.pull_request.head.sha }}
+
+            - name: Resolve deploy preview URL
+              id: preview
+              run: |
+                  PREVIEW_URL="https://deploy-preview-${PR_NUMBER}--${NETLIFY_SITE_NAME}.netlify.app"
+                  echo "url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+                  echo "Preview URL: ${PREVIEW_URL}"
+                  echo "Expected SHA: ${EXPECTED_SHA}"
+
+            - name: Wait for Netlify deploy preview to serve this commit
+              env:
+                  PREVIEW_URL: ${{ steps.preview.outputs.url }}
+              run: |
+                  set -u
+                  MAX_ATTEMPTS=40
+                  SLEEP_SECONDS=15
+                  for i in $(seq 1 ${MAX_ATTEMPTS}); do
+                      ACTUAL=$(curl -fsS \
+                          -H 'Cache-Control: no-cache' \
+                          "${PREVIEW_URL}/build-info.json?t=$(date +%s)" \
+                          | jq -r '.sha' 2>/dev/null || echo "")
+                      if [ "${ACTUAL}" = "${EXPECTED_SHA}" ]; then
+                          echo "Deploy preview is live with sha=${ACTUAL} (attempt ${i})"
+                          exit 0
+                      fi
+                      echo "Attempt ${i}/${MAX_ATTEMPTS}: got sha='${ACTUAL}', expected '${EXPECTED_SHA}'"
+                      sleep ${SLEEP_SECONDS}
+                  done
+                  echo "::error::Timed out waiting for ${PREVIEW_URL} to report sha=${EXPECTED_SHA}"
+                  exit 1
+
+            - name: Set up Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: yarn
+
+            - name: Install dependencies
+              run: yarn install --frozen-lockfile
+
+            - name: Install Playwright browsers
+              run: npx playwright install --with-deps chromium
+
+            - name: Run Playwright e2e tests against deploy preview
+              env:
+                  PLAYWRIGHT_BASE_URL: ${{ steps.preview.outputs.url }}
+              run: yarn test:e2e
+
+            - name: Upload Playwright report
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: playwright-report-pr-${{ github.event.pull_request.number }}
+                  path: |
+                      playwright-report
+                      test-results
+                  retention-days: 7
+                  if-no-files-found: ignore
