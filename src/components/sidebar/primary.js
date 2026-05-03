@@ -25,6 +25,7 @@ const PrimarySidebar = () => {
         togglePointer,
         togglePencilMode,
         addToLocalComponentStore,
+        enableTextDrawMode,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
@@ -116,10 +117,7 @@ const PrimarySidebar = () => {
         )
     }
 
-    const handleTextElement = (label) => {
-        togglePencilMode(false)
-        togglePointer(false)
-
+    const handleTextElement = () => {
         let savingEl = document.getElementById('show-saving-loader')
         savingEl.style.opacity = 1
         savingEl.style.zIndex = 1
@@ -129,45 +127,7 @@ const PrimarySidebar = () => {
             savingEl.style.zIndex = -1
         }, 100)
 
-        let shapeData = null
-        let generateId = generateUUID()
-
-        if (getComponentTypesData) {
-            getComponentTypesData.componentTypes.forEach((item, index) => {
-                if (item.label === label) {
-                    const userId = localStorage.getItem('userId')
-                    shapeData = {
-                        id: generateId,
-                        componentType: 'newText',
-                        linewidth: defaultLinewidth,
-                        strokeType: defaultStrokeType,
-                        children: {},
-                        metadata: item.metadata || {},
-                        x: -9999,
-                        y: -9999,
-                        x2: 0,
-                        boardId: boardId,
-                        width: item.width,
-                        height: item.height,
-                        fill: item.fill,
-                        textColor: item.textColor,
-                        updatedBy: userId,
-                    }
-                }
-            })
-        }
-
-        updateLastAddedElement(shapeData)
-        document.getElementById('main-two-root').style.cursor = 'crosshair'
-        localStorage.setItem('textDrawMode', 'true')
-        localStorage.setItem('lastAddedElementId', generateId)
-        setTextDrawModeInBoard(true)
-        // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
-        addToLocalComponentStore(
-            shapeData.id,
-            shapeData.componentType,
-            shapeData
-        )
+        enableTextDrawMode()
     }
 
     const addElement = (label) => {

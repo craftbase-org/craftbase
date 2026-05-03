@@ -91,7 +91,8 @@ function addZUI(
     setPointerElement,
     updateComponentBulkPropertiesInLocalStore,
     deleteComponentFromLocalStore,
-    isPencilModeRef
+    isPencilModeRef,
+    createTextAtSurfaceRef
 ) {
     let shape = null
     let lastSelectedShape = null
@@ -144,6 +145,11 @@ function addZUI(
     let drawShapeType = null
     let drawShapeProps = null
     let lastPlacedElement = null
+    // Empty-canvas mousedown stores its origin here. The dotted group
+    // selector is only materialised on the first mousemove, so a click
+    // without drag never produces a stray rectangle (and dblclick on
+    // empty canvas can spawn a text element cleanly).
+    let pendingGroupSelectorOrigin = null
 
     const toSurface = (e) => zui.clientToSurface(e.clientX, e.clientY)
     zui.addLimits(0.06, 8)
@@ -204,6 +210,24 @@ function addZUI(
 
         if (avoidDragging) {
             shape = {}
+        }
+
+        // Empty-canvas dblclick → create new text element at click point.
+        // Skipped if a shape was hit (preserve dblclick-to-edit), if the
+        // dblclick landed on avoid-dragging UI, or if a draw mode is active.
+        if (!avoidDragging && (!shape || Object.keys(shape).length === 0)) {
+            const inDrawMode =
+                localStorage.getItem(TEXT_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(ARROW_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(PENDING_SHAPE_TYPE_KEY) !== null
+            if (!inDrawMode && createTextAtSurfaceRef?.current) {
+                const surfaceCoords = toSurface(e)
+                createTextAtSurfaceRef.current(
+                    surfaceCoords.x,
+                    surfaceCoords.y
+                )
+                return
+            }
         }
 
         const showTextInput = (
@@ -805,9 +829,8 @@ function addZUI(
                     lastSelectedShape = null
                     selectionController.detach()
                     // When a text input overlay is active (about to blur),
-                    // the click is just dismissing the input — skip creating
-                    // the group selector so no orphaned dotted rectangle
-                    // is left on the canvas.
+                    // the click is just dismissing the input — skip the
+                    // pending-selector setup so no rect is ever materialised.
                     const activeTextInput =
                         document.querySelector('.temp-input-area')
 
@@ -815,37 +838,18 @@ function addZUI(
                         shape = {}
                         avoidDragging = true
                     } else {
-                        const { x1, x2, y1, y2 } = {
-                            x1: 0,
-                            x2: 10,
-                            y1: 0,
-                            y2: 10,
-                        }
-                        const area = two.makePath(
-                            x1,
-                            y1,
-                            x2,
-                            y1,
-                            x2,
-                            y2,
-                            x1,
-                            y2
+                        // Defer rect creation to the first mousemove. We
+                        // still need mousemove/mouseup wired up below so
+                        // the next mousemove can materialise the selector.
+                        pendingGroupSelectorOrigin = toSurface(e)
+                        mouse.copy(pendingGroupSelectorOrigin)
+                        domElement.addEventListener(
+                            'mousemove',
+                            mousemove,
+                            false
                         )
-                        area.fill = 'rgba(0,0,0,0)'
-                        area.opacity = 1
-                        area.linewidth = 1
-                        area.dashes[0] = 4
-                        area.stroke = SELECTION_PREVIEW_STROKE
-
-                        let newSelectorGroup = two.makeGroup(area)
-
-                        const m = toSurface(e)
-                        mouse.copy(m)
-                        newSelectorGroup.position.copy(mouse)
-
-                        two.update()
-                        shape = newSelectorGroup
-                        isGroupSelector = true
+                        domElement.addEventListener('mouseup', mouseup, false)
+                        return
                     }
                 }
 
@@ -1115,6 +1119,29 @@ function addZUI(
                     Once I shift that handling to this one main component,
                     I'll remove this first if condition block
                 */
+
+                // Empty-canvas mousedown deferred selector creation here.
+                // First mousemove materialises the dotted rect at the
+                // original mousedown position so it grows with the cursor.
+                if (pendingGroupSelectorOrigin && !shape?.elementData) {
+                    const area = two.makePath(0, 0, 10, 0, 10, 10, 0, 10)
+                    area.fill = 'rgba(0,0,0,0)'
+                    area.opacity = 1
+                    area.linewidth = 1
+                    area.dashes[0] = 4
+                    area.stroke = SELECTION_PREVIEW_STROKE
+                    const newSelectorGroup = two.makeGroup(area)
+                    newSelectorGroup.position.copy(pendingGroupSelectorOrigin)
+                    shape = newSelectorGroup
+                    shape.elementData = {
+                        isGroupSelector: true,
+                        prevX: parseInt(shape.translation.x),
+                        prevY: parseInt(shape.translation.y),
+                    }
+                    dragging = true
+                    pendingGroupSelectorOrigin = null
+                    two.update()
+                }
 
                 if (isResizeEvent === true) {
                     domElement.removeEventListener(
@@ -1483,22 +1510,38 @@ function addZUI(
                 // diff to check new x,y and prev x,y
                 let oldShapeData = {}
                 let newShapeData = {}
+                // No mousemove happened between empty-canvas mousedown and
+                // this mouseup → no selector was ever materialised. Just
+                // clear the pending origin and let the cleanup below run.
+                if (pendingGroupSelectorOrigin) {
+                    pendingGroupSelectorOrigin = null
+                }
                 if (shape?.elementData?.isGroupSelector) {
                     // check on mouse up if shape's a group selector or not
                     // if yes, then call setOnGroup for adding a group in two.js space
                     let area = shape.children[0]
-                    let obj = {
-                        x: area.vertices[0].x + shape.translation.x,
-                        y: area.vertices[0].y + shape.translation.y,
-                        left: area.vertices[0].x + shape.translation.x,
-                        right: area.vertices[1].x + shape.translation.x,
-                        top: area.vertices[0].y + shape.translation.y,
-                        bottom: area.vertices[3].y + shape.translation.y,
-                        width: area.vertices[2].x - area.vertices[0].x,
-                        height: area.vertices[3].y - area.vertices[0].y,
-                    }
+                    const groupWidth =
+                        area.vertices[2].x - area.vertices[0].x
+                    const groupHeight =
+                        area.vertices[3].y - area.vertices[0].y
                     two.remove(shape)
-                    setOnGroupHandler(obj)
+                    // The selector starts as a 10x10 rect (see mousedown). If
+                    // it never grew, the user just clicked without dragging —
+                    // don't materialise an empty groupobject skeleton (and
+                    // crucially, don't leave one behind that would intercept
+                    // the second click of a dblclick on empty canvas).
+                    if (groupWidth > 10 || groupHeight > 10) {
+                        setOnGroupHandler({
+                            x: area.vertices[0].x + shape.translation.x,
+                            y: area.vertices[0].y + shape.translation.y,
+                            left: area.vertices[0].x + shape.translation.x,
+                            right: area.vertices[1].x + shape.translation.x,
+                            top: area.vertices[0].y + shape.translation.y,
+                            bottom: area.vertices[3].y + shape.translation.y,
+                            width: groupWidth,
+                            height: groupHeight,
+                        })
+                    }
                     setSelectedComponentInBoard(null)
                 } else if (shape?.elementData) {
                     if (
@@ -1862,6 +1905,8 @@ const Canvas = (props) => {
         setCurrentElementInBoard,
         undoLastAction,
         redoLastAction,
+        enableTextDrawMode,
+        createTextAtSurface,
     } = useBoardContext()
 
     const [twoJSInstance, setTwoJSInstance] = useState(null)
@@ -1875,6 +1920,12 @@ const Canvas = (props) => {
     const renderGroupRef = useRef(null)
     const prevElementsRef = useRef([])
     const componentsToRenderRef = useRef([])
+    // Holds the latest createTextAtSurface from BoardContext so the dblclick
+    // handler (registered once inside addZUI) sees fresh closure state.
+    const createTextAtSurfaceRef = useRef(null)
+    useEffect(() => {
+        createTextAtSurfaceRef.current = createTextAtSurface
+    }, [createTextAtSurface])
 
     const { clipboardRef, lastMouseRef } = useCanvasClipboard({
         twoJSInstance,
@@ -1903,7 +1954,8 @@ const Canvas = (props) => {
             setCurrentElementInBoard,
             updateComponentBulkPropertiesInLocalStore,
             deleteComponentFromLocalStore,
-            isPencilModeRef
+            isPencilModeRef,
+            createTextAtSurfaceRef
         )
 
         setZuiInstance(zui_instance)
@@ -2139,9 +2191,31 @@ const Canvas = (props) => {
                 }
             }
         }
+
+        const onTextModeKeyDown = (evt) => {
+            if (evt.key !== 't' && evt.key !== 'T') return
+            if (evt.ctrlKey || evt.metaKey || evt.altKey) return
+            const tag = document.activeElement?.tagName
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return
+            if (
+                localStorage.getItem(TEXT_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(ARROW_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(RUBBER_MODE_KEY) === 'true' ||
+                localStorage.getItem(PENCIL_MODE_KEY) === 'TRUE' ||
+                localStorage.getItem(PENDING_SHAPE_TYPE_KEY) !== null
+            )
+                return
+            evt.preventDefault()
+            enableTextDrawMode?.()
+        }
+
         window.addEventListener('keydown', onUndoRedoKeyDown)
-        return () => window.removeEventListener('keydown', onUndoRedoKeyDown)
-    }, [undoLastAction, redoLastAction])
+        window.addEventListener('keydown', onTextModeKeyDown)
+        return () => {
+            window.removeEventListener('keydown', onUndoRedoKeyDown)
+            window.removeEventListener('keydown', onTextModeKeyDown)
+        }
+    }, [undoLastAction, redoLastAction, enableTextDrawMode])
 
     const setOnGroupHandler = (obj) => {
         setOnGroup(obj)
