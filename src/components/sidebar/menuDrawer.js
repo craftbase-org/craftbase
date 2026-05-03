@@ -123,7 +123,7 @@ const MenuDrawer = () => {
                     }}
                 >
                     <div
-                        className="bg-card border border-border-panel rounded-lg shadow-lg py-1"
+                        className="bg-card-bg border border-border-panel rounded-lg shadow-lg py-1"
                         style={{ width: '188px' }}
                     >
                         {/* Section label */}

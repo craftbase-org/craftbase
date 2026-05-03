@@ -308,7 +308,7 @@ const PrimarySidebar = () => {
                 {isLiveSession ? (
                     <>
                         <div className="w-9 h-9 text-sm pr-2">
-                            <a className="flex items-center px-4 py-2 rounded-card bg-card text-ink shadow-card">
+                            <a className="flex items-center px-4 py-2 rounded-card bg-card-bg text-ink shadow-card">
                                 <span className="text-sm ">Live</span>
 
                                 <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">

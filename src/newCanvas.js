@@ -217,6 +217,9 @@ function addZUI(
         // dblclick landed on avoid-dragging UI, or if a draw mode is active.
         if (!avoidDragging && (!shape || Object.keys(shape).length === 0)) {
             const inDrawMode =
+                isPencilModeRef?.current === true ||
+                arrowDrawElement !== null ||
+                localStorage.getItem(RUBBER_MODE_KEY) === 'true' ||
                 localStorage.getItem(TEXT_DRAW_MODE_KEY) === 'true' ||
                 localStorage.getItem(ARROW_DRAW_MODE_KEY) === 'true' ||
                 localStorage.getItem(PENDING_SHAPE_TYPE_KEY) !== null

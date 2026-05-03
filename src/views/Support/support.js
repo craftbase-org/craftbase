@@ -80,7 +80,7 @@ const SupportPage = () => {
 
                 {/* Contact banner */}
                 <div
-                    className="bg-card border border-border-card rounded-card p-3 tablet-landscape:p-4 mb-6 tablet-landscape:mb-8
+                    className="bg-card-bg border border-border-card rounded-card p-3 tablet-landscape:p-4 mb-6 tablet-landscape:mb-8
                     flex flex-col tablet-landscape:flex-row tablet-landscape:items-center gap-3 shadow-card"
                 >
                     <div className="flex items-center gap-3">
@@ -132,7 +132,7 @@ const SupportPage = () => {
                             href={card.href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-start gap-3 bg-card border border-border-card rounded-card p-4 no-underline
+                            className="flex items-start gap-3 bg-card-bg border border-border-card rounded-card p-4 no-underline
                                 shadow-card hover:shadow-card-accent transition-shadow ease-in duration-150"
                         >
                             <div className="w-9 h-9 rounded-card bg-accent/20 flex items-center justify-center flex-shrink-0">
