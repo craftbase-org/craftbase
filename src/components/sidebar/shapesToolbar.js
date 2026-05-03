@@ -74,7 +74,9 @@ const ShapesToolbar = ({ addElement }) => {
                                 transition-all ease-in-out duration-200
                                 ${
                                     isActive
-                                        ? 'bg-accent text-ink'
+                                        ? isMobile
+                                            ? 'bg-accent-dark text-white'
+                                            : 'bg-accent text-ink'
                                         : 'text-ink-muted hover:bg-accent/30 hover:text-ink'
                                 }
                             `}
@@ -85,10 +87,20 @@ const ShapesToolbar = ({ addElement }) => {
                                     setDrawerAnchor({
                                         left: rect.left,
                                         top: rect.bottom,
+                                        rectTop: rect.top,
                                     })
-                                    const isToggleClose = openDrawer === element.elementName
-                                    setOpenDrawer(isToggleClose ? null : element.elementName)
-                                    setCurrentElementInBoard(isToggleClose ? 'pointer' : element.elementName)
+                                    const isToggleClose =
+                                        openDrawer === element.elementName
+                                    setOpenDrawer(
+                                        isToggleClose
+                                            ? null
+                                            : element.elementName
+                                    )
+                                    setCurrentElementInBoard(
+                                        isToggleClose
+                                            ? 'pointer'
+                                            : element.elementName
+                                    )
                                 } else {
                                     setOpenDrawer(null)
                                     addElement(element.elementName)
@@ -144,11 +156,22 @@ const ShapesToolbar = ({ addElement }) => {
                 <div
                     className={`fixed bg-sidebar border border-border-panel shadow-card rounded-card flex items-center flex-row
                         ${isMobile ? 'px-1 py-1 gap-0.5' : 'px-2 py-1 gap-1'}`}
-                    style={{
-                        top: drawerAnchor.top + 6,
-                        left: drawerAnchor.left,
-                        zIndex: 11,
-                    }}
+                    style={
+                        isMobile
+                            ? {
+                                  bottom:
+                                      window.innerHeight -
+                                      drawerAnchor.rectTop +
+                                      6,
+                                  left: drawerAnchor.left,
+                                  zIndex: 11,
+                              }
+                            : {
+                                  top: drawerAnchor.top + 6,
+                                  left: drawerAnchor.left,
+                                  zIndex: 11,
+                              }
+                    }
                 >
                     {shapeDrawerElements.map((item) => {
                         const Icon = item.elementIcon
@@ -162,7 +185,9 @@ const ShapesToolbar = ({ addElement }) => {
                                     transition-all ease-in-out duration-200
                                     ${
                                         isActive
-                                            ? 'bg-accent text-ink'
+                                            ? isMobile
+                                                ? 'bg-accent-dark text-white'
+                                                : 'bg-accent text-ink'
                                             : 'text-ink-muted hover:bg-accent/30 hover:text-ink'
                                     }
                                 `}

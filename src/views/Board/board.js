@@ -1006,7 +1006,7 @@ const BoardViewPage = (props) => {
                                 right: '10px',
                                 zIndex: 20,
                             }}
-                            className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
+                            className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150
                                 ${showMobileToolbarPanel ? 'bg-accent' : 'bg-card-bg'}`}
                         >
                             <img
@@ -1083,7 +1083,7 @@ const BoardViewPage = (props) => {
                                 right: '10px',
                                 zIndex: 20,
                             }}
-                            className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
+                            className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150
                                 ${showMobilePencilPanel ? 'bg-accent' : 'bg-card-bg'}`}
                         >
                             <img
