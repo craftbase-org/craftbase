@@ -86,6 +86,8 @@ export async function drawShape(page, type, { startX, startY, endX, endY }) {
         (els) => els.length
     )
 
+    // Rectangle/Circle live inside the "Shapes" drawer — open it first.
+    await page.click('[aria-label="Shapes"]')
     await page.click(`[aria-label="${ariaLabel}"]`)
 
     await page.mouse.move(startX, startY)

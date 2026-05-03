@@ -38,6 +38,7 @@ import {
     velocityToLinewidth,
     smoothLinewidth,
     simplifyWithLinewidth,
+    chaikinSmooth,
 } from 'utils/pencilHelper'
 import {
     setArrowEndpointsVisible,
@@ -787,7 +788,6 @@ function addZUI(
                 pencilPath.cap = 'round'
                 pencilPath.join = 'round'
                 pencilPath.closed = false
-                pencilPath.curved = true
                 pencilGroup.add(pencilPath)
                 break
             }
@@ -1102,19 +1102,25 @@ function addZUI(
                     0.3
                 )
 
-                // Append to the single growing curved path
-                if (pencilPath) {
-                    pencilPath.vertices.push(
-                        new Two.Anchor(pencilCoords.x, pencilCoords.y)
-                    )
-                }
-
                 // Record point with linewidth (kept for future variable-width work)
                 pencilRawPoints.push({
                     x: pencilCoords.x,
                     y: pencilCoords.y,
                     lw: smoothedLw,
                 })
+
+                // Rebuild the preview path from the smoothed raw points so the
+                // live stroke matches the final factory render exactly.
+                if (pencilPath) {
+                    const smoothedPreview =
+                        pencilRawPoints.length > 2
+                            ? chaikinSmooth(pencilRawPoints, 2)
+                            : pencilRawPoints
+                    pencilPath.vertices.splice(0)
+                    smoothedPreview.forEach((pt) => {
+                        pencilPath.vertices.push(new Two.Anchor(pt.x, pt.y))
+                    })
+                }
 
                 lastPencilPoint = { x: pencilCoords.x, y: pencilCoords.y }
                 lastPencilTime = now
