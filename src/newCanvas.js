@@ -120,6 +120,7 @@ function addZUI(
 
     // Velocity-based pencil state
     let pencilGroup = null
+    let pencilPath = null
     let pencilRawPoints = []
     let lastPencilPoint = null
     let lastPencilTime = 0
@@ -758,7 +759,8 @@ function addZUI(
                 domElement.addEventListener('mousemove', mousemove, false)
                 domElement.addEventListener('mouseup', mouseup, false)
 
-                // Create a group for live preview segments
+                // Single growing curved path for live preview — matches the
+                // final factory render so there's no visual jump on mouseup.
                 pencilGroup = two.makeGroup()
                 pencilRawPoints = []
                 lastPencilLinewidth = defaultLinewidthValue
@@ -771,6 +773,22 @@ function addZUI(
                     y: startCoords.y,
                     lw: lastPencilLinewidth,
                 })
+
+                // Note: two.makePath only treats numeric (x, y) pair args as
+                // vertices. Passing a Two.Anchor here would be silently dropped,
+                // leaving the path empty and missing the mousedown start point.
+                pencilPath = two.makePath()
+                pencilPath.vertices.push(
+                    new Two.Anchor(startCoords.x, startCoords.y)
+                )
+                pencilPath.noFill()
+                pencilPath.stroke = pencilStrokeColorValue
+                pencilPath.linewidth = defaultLinewidthValue
+                pencilPath.cap = 'round'
+                pencilPath.join = 'round'
+                pencilPath.closed = false
+                pencilPath.curved = true
+                pencilGroup.add(pencilPath)
                 break
             }
             case SCENARIO_RUBBER_MODE: {
@@ -1084,22 +1102,14 @@ function addZUI(
                     0.3
                 )
 
-                // Create a 2-point path segment for live preview
-                const segment = two.makePath(
-                    lastPencilPoint.x,
-                    lastPencilPoint.y,
-                    pencilCoords.x,
-                    pencilCoords.y
-                )
-                segment.noFill()
-                segment.stroke = pencilStrokeColorValue
-                segment.linewidth = smoothedLw
-                segment.cap = 'round'
-                segment.join = 'round'
-                segment.closed = false
-                pencilGroup.add(segment)
+                // Append to the single growing curved path
+                if (pencilPath) {
+                    pencilPath.vertices.push(
+                        new Two.Anchor(pencilCoords.x, pencilCoords.y)
+                    )
+                }
 
-                // Record point with linewidth
+                // Record point with linewidth (kept for future variable-width work)
                 pencilRawPoints.push({
                     x: pencilCoords.x,
                     y: pencilCoords.y,
@@ -1445,6 +1455,7 @@ function addZUI(
             case SCENARIO_PENCIL_MODE: {
                 const capturedPencilGroup = pencilGroup
                 pencilGroup = null
+                pencilPath = null
 
                 if (pencilRawPoints.length < 2) {
                     // Too few points to form a stroke — remove preview immediately
@@ -1458,10 +1469,11 @@ function addZUI(
                     break
                 }
 
-                // Simplify points while preserving lw
+                // Light simplification keeps the final shape close to what the
+                // user actually drew (smaller epsilon = more fidelity).
                 const simplifiedPoints = simplifyWithLinewidth(
                     pencilRawPoints,
-                    1.5
+                    0.3
                 )
 
                 let pencilId = generateUUID()
