@@ -47,6 +47,7 @@ import {
     resolveShapeFromPath,
 } from 'utils/canvasUtils'
 import { isSelectPanMode } from 'utils/drawModeUtils'
+import { createDiamondPath } from 'factory/diamond'
 import { useCanvasClipboard } from 'hooks/useCanvasClipboard'
 import {
     ElementRenderWrapper,
@@ -306,6 +307,45 @@ function addZUI(
             // the rectangle edge so glyphs never touch the border.
             const RECT_INNER_PAD_X = 24
             const RECT_INNER_PAD_Y = 12
+            // Diamond's inscribed rect is smaller than its bbox; keep
+            // padding tight so growth isn't aggressive. The slanted edges
+            // already provide visual breathing room.
+            const DIAMOND_INNER_PAD_X = 12
+            const DIAMOND_INNER_PAD_Y = 6
+            const shapeKind = group?.elementData?.componentType
+
+            // Returns the minimum (w, h) for the host shape that fits a
+            // text rect of (textSurfaceW, textSurfaceH). Per-shape geometry.
+            const fitShape = (currentW, currentH, textSurfaceW, textSurfaceH) => {
+                if (shapeKind === componentTypes.diamond) {
+                    // Inscribed rect constraint: tw/w + th/h <= 1.
+                    // Pad first, then solve for minimum w (keeping h fixed).
+                    const TW = textSurfaceW + DIAMOND_INNER_PAD_X * 2
+                    const TH = textSurfaceH + DIAMOND_INNER_PAD_Y * 2
+                    let h = currentH
+                    if (TH >= h - 1) {
+                        // Text taller than current diamond — bump h just
+                        // enough (text occupies ~85% of vertical budget).
+                        h = Math.ceil(TH / 0.85)
+                    }
+                    const denom = 1 - TH / h
+                    const wNeed =
+                        denom > 0
+                            ? Math.ceil(TW / denom)
+                            : Number.POSITIVE_INFINITY
+                    return { w: Math.max(currentW, wNeed), h }
+                }
+                // rectangle (default)
+                const w = Math.max(
+                    currentW,
+                    Math.ceil(textSurfaceW + RECT_INNER_PAD_X * 2)
+                )
+                const h = Math.max(
+                    currentH,
+                    Math.ceil(textSurfaceH + RECT_INNER_PAD_Y * 2)
+                )
+                return { w, h }
+            }
             // px-per-surface-unit derived from the rect's current screen
             // size; lets us convert the textarea's pixel measurement back
             // into Two.js surface units before resizing the rectangle.
@@ -366,19 +406,19 @@ function addZUI(
                 if (rectChild) {
                     const textSurfaceW = measuredW / zoom
                     const textSurfaceH = measuredH / zoom
-                    const minRectW = Math.ceil(
-                        textSurfaceW + RECT_INNER_PAD_X * 2
-                    )
-                    const minRectH = Math.ceil(
-                        textSurfaceH + RECT_INNER_PAD_Y * 2
+                    const { w: nextW, h: nextH } = fitShape(
+                        rectChild.width,
+                        rectChild.height,
+                        textSurfaceW,
+                        textSurfaceH
                     )
                     let rectChanged = false
-                    if (rectChild.width < minRectW) {
-                        rectChild.width = minRectW
+                    if (rectChild.width < nextW) {
+                        rectChild.width = nextW
                         rectChanged = true
                     }
-                    if (rectChild.height < minRectH) {
-                        rectChild.height = minRectH
+                    if (rectChild.height < nextH) {
+                        rectChild.height = nextH
                         rectChanged = true
                     }
                     if (rectChanged) two.update()
@@ -483,7 +523,11 @@ function addZUI(
         }
 
         if (shape !== null && !isPencilModeRef?.current) {
-            if (shape.elementData?.componentType === componentTypes.rectangle) {
+            const ct = shape.elementData?.componentType
+            if (
+                ct === componentTypes.rectangle ||
+                ct === componentTypes.diamond
+            ) {
                 const meta = shape.elementData.metadata || {}
                 let twoText = shape.children.find(
                     (child) => typeof child.value === 'string'
@@ -760,6 +804,12 @@ function addZUI(
                         0,
                         0,
                         3
+                    )
+                } else if (drawShapeType === 'diamond') {
+                    previewShape = createDiamondPath(two, 0, 0, 6)
+                    previewShape.translation.set(
+                        surfaceCoords.x,
+                        surfaceCoords.y
                     )
                 }
 

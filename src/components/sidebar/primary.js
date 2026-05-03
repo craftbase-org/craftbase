@@ -15,7 +15,7 @@ import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
 import MenuDrawer from './menuDrawer'
 
-const DRAW_SHAPE_TYPES = ['circle', 'rectangle']
+const DRAW_SHAPE_TYPES = ['circle', 'rectangle', 'diamond']
 
 const PrimarySidebar = () => {
     const {
@@ -214,6 +214,37 @@ const PrimarySidebar = () => {
                             }
                         }
                     )
+                }
+
+                // Fallback for diamond when the DB catalog doesn't have a
+                // diamond row yet. Lets the shape work end-to-end without a
+                // Hasura seed. Mirrors rectangle defaults.
+                if (!shapeData && label === 'diamond') {
+                    const userId = localStorage.getItem('userId')
+                    shapeData = {
+                        id: generateId,
+                        componentType: label,
+                        linewidth: defaultLinewidth,
+                        strokeType: defaultStrokeType,
+                        stroke: '#3A342C',
+                        children: {},
+                        x: parseInt(
+                            window.outerWidth -
+                                (randomNumber * window.outerWidth) / 100
+                        ),
+                        y: parseInt(
+                            window.outerHeight -
+                                (randomNumber * window.outerHeight) / 100
+                        ),
+                        x2: 0,
+                        boardId: boardId,
+                        metadata: {},
+                        width: 160,
+                        height: 160,
+                        fill: '#fff',
+                        textColor: '#3A342C',
+                        updatedBy: userId,
+                    }
                 }
 
                 // shapeData is null if getComponentTypesData hasn't loaded yet (e.g. incognito

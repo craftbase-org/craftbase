@@ -1,5 +1,6 @@
 import CircleIcon from 'wireframeAssets/circle.svg?react'
 import RectangleIcon from 'wireframeAssets/rectangle.svg?react'
+import DiamondIcon from 'wireframeAssets/diamond.svg?react'
 import ShapesIcon from 'wireframeAssets/shapes.svg?react'
 import TextIcon from 'wireframeAssets/text.svg?react'
 import PencilIcon from 'wireframeAssets/pencil.svg?react'
@@ -124,6 +125,11 @@ export const staticPrimaryElementData = [
                         elementName: 'circle',
                         elementDisplayName: 'Circle',
                         elementIcon: CircleIcon,
+                    },
+                    {
+                        elementName: 'diamond',
+                        elementDisplayName: 'Diamond',
+                        elementIcon: DiamondIcon,
                     },
                 ],
             },

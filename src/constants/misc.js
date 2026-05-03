@@ -5,6 +5,7 @@ export const VIEWPORT_KEY_PREFIX = 'craftbase_viewport_'
 
 export const componentTypes = {
     rectangle: 'rectangle',
+    diamond: 'diamond',
 }
 
 // Draw mode localStorage keys

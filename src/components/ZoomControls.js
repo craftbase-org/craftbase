@@ -37,7 +37,7 @@ const ZoomControls = () => {
     return (
         <div
             style={{ position: 'fixed', bottom: 20, left: 10, zIndex: 10 }}
-            className="flex items-center gap-1 bg-card-bg rounded-lg shadow-md px-2 py-1"
+            className="flex items-center gap-1 bg-card-bg rounded-lg shadow-card px-2 py-1"
         >
             <button
                 onClick={() => zoom(-0.2)}
