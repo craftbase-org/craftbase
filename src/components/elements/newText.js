@@ -25,9 +25,7 @@ function NewText(props) {
     const [showMobilePanel, setShowMobilePanel] = useState(false)
     const [internalState, setInternalState] = useImmer({})
     const mobileTriggerRef = useRef(null)
-    const [textValue, setTextValue] = useState(
-        props?.metadata?.content || 'Text'
-    )
+    const [textValue, setTextValue] = useState(props?.metadata?.content || '')
     const [textSize, setTextSize] = useState(props?.metadata?.fontSize || 36)
     const textValueRef = useRef(textValue)
     const twoTextRef = useRef(null)
@@ -284,7 +282,7 @@ function NewText(props) {
             input.style.fontWeight = twoText.weight || 'normal'
             input.style.lineHeight = `${lineH}px`
             input.style.letterSpacing = '0px'
-            input.style.textAlign = 'center'
+            input.style.textAlign = 'left'
             input.style.position = 'absolute'
             input.style.outline = 'none'
             input.style.resize = 'none'
@@ -293,9 +291,13 @@ function NewText(props) {
             input.style.boxSizing = 'border-box'
             input.className = 'temp-input-area'
 
-            // Anchor point: the SVG text element's screen-space center
-            const centerX = screenRect.left + screenRect.width / 2
+            // Anchor point: pin the textarea's left edge to the SVG text's
+            // left edge so typing expands rightward only. Vertical centering
+            // is preserved so taller line-heights stay aligned with the text.
             const centerY = screenRect.top + screenRect.height / 2
+            // Account for the textarea's horizontal padding (8px) so the
+            // first glyph lines up with where the SVG text starts.
+            const leftAnchor = screenRect.left - 8
 
             document.getElementById('main-two-root').append(input)
 
@@ -338,8 +340,8 @@ function NewText(props) {
                 input.style.width = `${contentWidth}px`
                 input.style.height = `${contentHeight}px`
 
-                // Centre over the original text midpoint
-                input.style.left = `${centerX - contentWidth / 2}px`
+                // Pin left edge; only width grows so the box expands right.
+                input.style.left = `${leftAnchor}px`
                 input.style.top = `${centerY - contentHeight / 2}px`
             }
 

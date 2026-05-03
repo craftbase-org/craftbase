@@ -154,8 +154,8 @@ const ShapesToolbar = ({ addElement }) => {
 
             {openDrawer && shapeDrawerElements.length > 0 && drawerAnchor && (
                 <div
-                    className={`fixed bg-sidebar border border-border-panel shadow-card rounded-card flex items-center flex-row
-                        ${isMobile ? 'px-1 py-1 gap-0.5' : 'px-2 py-1 gap-1'}`}
+                    className={`fixed bg-sidebar shadow-card rounded-card flex items-center flex-row
+                        ${isMobile ? 'px-1 py-1 gap-0.5 border-b-4 border-accent-dark' : 'px-2 py-1 gap-1 border-t-4 border-accent-dark'}`}
                     style={
                         isMobile
                             ? {

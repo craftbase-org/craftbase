@@ -291,6 +291,30 @@ function addZUI(
             const centerX = screenRect.left + screenRect.width / 2
             const centerY = screenRect.top + screenRect.height / 2
 
+            // Locate the parent rectangle child so we can auto-grow it when
+            // the text outgrows the box during edit. Only meaningful for
+            // rectangle-with-text (componentId is set in that path).
+            const rectChild = componentId
+                ? group.children.find(
+                      (c) =>
+                          typeof c.value !== 'string' &&
+                          typeof c.width === 'number' &&
+                          typeof c.height === 'number'
+                  )
+                : null
+            // Inner padding (surface units) preserved between the text and
+            // the rectangle edge so glyphs never touch the border.
+            const RECT_INNER_PAD_X = 24
+            const RECT_INNER_PAD_Y = 12
+            // px-per-surface-unit derived from the rect's current screen
+            // size; lets us convert the textarea's pixel measurement back
+            // into Two.js surface units before resizing the rectangle.
+            const rectScreen = rectChild?._renderer?.elem?.getBoundingClientRect()
+            const zoom =
+                rectChild && rectScreen && rectChild.width
+                    ? rectScreen.width / rectChild.width
+                    : 1
+
             document.getElementById('main-two-root').append(input)
 
             // ── Offscreen measurement helper ──
@@ -335,6 +359,30 @@ function addZUI(
                 // Centre over the original text midpoint
                 input.style.left = `${centerX - contentWidth / 2}px`
                 input.style.top = `${centerY - contentHeight / 2}px`
+
+                // Grow the parent rectangle so the centered text never
+                // overflows its bounds. Symmetric growth preserves the
+                // rectangle's center, which keeps centerX/centerY valid.
+                if (rectChild) {
+                    const textSurfaceW = measuredW / zoom
+                    const textSurfaceH = measuredH / zoom
+                    const minRectW = Math.ceil(
+                        textSurfaceW + RECT_INNER_PAD_X * 2
+                    )
+                    const minRectH = Math.ceil(
+                        textSurfaceH + RECT_INNER_PAD_Y * 2
+                    )
+                    let rectChanged = false
+                    if (rectChild.width < minRectW) {
+                        rectChild.width = minRectW
+                        rectChanged = true
+                    }
+                    if (rectChild.height < minRectH) {
+                        rectChild.height = minRectH
+                        rectChanged = true
+                    }
+                    if (rectChanged) two.update()
+                }
             }
 
             autoSizeAndCenter()
@@ -409,14 +457,24 @@ function addZUI(
                             twoText.baseline ||
                             'middle',
                     }
-                    updateComponentBulkPropertiesInLocalStore(componentId, {
-                        metadata: updatedMetadata,
-                    })
+                    const persistPayload = { metadata: updatedMetadata }
+                    if (rectChild) {
+                        persistPayload.width = Math.round(rectChild.width)
+                        persistPayload.height = Math.round(rectChild.height)
+                    }
+                    updateComponentBulkPropertiesInLocalStore(
+                        componentId,
+                        persistPayload
+                    )
                     // Keep the live group's elementData in sync so consumers
                     // that read from it (copy/paste, toolbar) see the latest
                     // text content without waiting for a re-render.
                     if (group.elementData) {
                         group.elementData.metadata = updatedMetadata
+                        if (rectChild) {
+                            group.elementData.width = persistPayload.width
+                            group.elementData.height = persistPayload.height
+                        }
                     }
                 }
 
