@@ -262,6 +262,21 @@ export async function clickUndoButton(page) {
 }
 
 /**
+ * Triggers redo via keyboard. Cmd/Ctrl+Shift+Z is the redo shortcut; the
+ * handler in newCanvas.js accepts either ctrlKey or metaKey alongside shiftKey.
+ */
+export async function triggerRedoKeyboard(page) {
+    await page.keyboard.press('Meta+Shift+z')
+}
+
+/**
+ * Clicks the Redo button in the shapes toolbar (title="Redo").
+ */
+export async function clickRedoButton(page) {
+    await page.click('[title="Redo"]')
+}
+
+/**
  * Switches the toolbar to select/pan (Pointer) mode. Clears any draw-mode
  * flags left over by drawArrow/drawPencilStroke/placeText (they each set
  * localStorage flags during their flow), so the next mousedown on empty canvas
