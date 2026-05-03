@@ -86,6 +86,8 @@ export async function drawShape(page, type, { startX, startY, endX, endY }) {
         (els) => els.length
     )
 
+    // Rectangle/Circle live inside the "Shapes" drawer — open it first.
+    await page.click('[aria-label="Shapes"]')
     await page.click(`[aria-label="${ariaLabel}"]`)
 
     await page.mouse.move(startX, startY)
@@ -259,6 +261,21 @@ export async function triggerUndoKeyboard(page) {
  */
 export async function clickUndoButton(page) {
     await page.click('[title="Undo"]')
+}
+
+/**
+ * Triggers redo via keyboard. Cmd/Ctrl+Shift+Z is the redo shortcut; the
+ * handler in newCanvas.js accepts either ctrlKey or metaKey alongside shiftKey.
+ */
+export async function triggerRedoKeyboard(page) {
+    await page.keyboard.press('Meta+Shift+z')
+}
+
+/**
+ * Clicks the Redo button in the shapes toolbar (title="Redo").
+ */
+export async function clickRedoButton(page) {
+    await page.click('[title="Redo"]')
 }
 
 /**

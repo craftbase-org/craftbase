@@ -8,7 +8,10 @@ import React, {
 import { useMutation, useQuery } from '@apollo/client'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useMediaQueryUtils } from 'constants/exportHooks'
-import { GET_COMPONENTS_FOR_BOARD_QUERY } from 'schema/queries'
+import {
+    GET_COMPONENTS_FOR_BOARD_QUERY,
+    GET_COMPONENT_TYPES,
+} from 'schema/queries'
 import {
     UPDATE_USER_REVISIT_COUNT,
     INSERT_COMPONENT,
@@ -28,6 +31,7 @@ import Spinner from 'components/common/spinnerWithSize'
 import PermissionErrorModal from 'components/modals/PermissionErrorModal'
 import StorageLimitModal from 'components/modals/StorageLimitModal'
 import { generateUUID } from 'utils/misc'
+import { pollUntilElement } from 'utils/canvasUtils'
 import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
 import {
     RUBBER_MODE_KEY,
@@ -93,6 +97,8 @@ const BoardViewPage = (props) => {
         fetchPolicy: 'cache-first',
         skip: !isPersisted,
     })
+
+    const { data: getComponentTypesData } = useQuery(GET_COMPONENT_TYPES)
 
     const [insertComponent] = useMutation(INSERT_COMPONENT, {
         ignoreResults: true,
@@ -211,9 +217,12 @@ const BoardViewPage = (props) => {
     const {
         historyLog,
         historyLogRef,
+        bucketLog,
+        bucketLogRef,
         recordToHistoryLog,
         recordBatchToHistoryLog,
         undoLastAction,
+        redoLastAction,
         clearHistory,
     } = useComponentHistory({
         twoJSInstanceRef,
@@ -434,6 +443,73 @@ const BoardViewPage = (props) => {
                 }
             )
         }
+    }
+
+    // Builds a text-element shapeData object using the dynamic defaults
+    // returned by GET_COMPONENT_TYPES (so dblclick/T-key paths produce the
+    // exact same shape the sidebar Text button does).
+    const buildTextShapeData = (id, x, y) => {
+        if (!getComponentTypesData) return null
+        let typeItem = null
+        getComponentTypesData.componentTypes.forEach((item) => {
+            if (item.label === 'text') typeItem = item
+        })
+        if (!typeItem) return null
+        const userId = localStorage.getItem('userId')
+        return {
+            id,
+            componentType: 'newText',
+            linewidth: defaultLinewidth,
+            strokeType: defaultStrokeType,
+            children: {},
+            metadata: typeItem.metadata || {},
+            x: parseInt(x),
+            y: parseInt(y),
+            x2: 0,
+            boardId: boardId,
+            width: typeItem.width,
+            height: typeItem.height,
+            fill: typeItem.fill,
+            textColor: typeItem.textColor,
+            updatedBy: userId,
+        }
+    }
+
+    // One-shot text-draw mode: cursor → crosshair, next mousedown on canvas
+    // places the pending text element via SCENARIO_TEXT_DRAW in newCanvas.js.
+    const enableTextDrawMode = () => {
+        togglePencilMode(false)
+        togglePointer(false)
+        const id = generateUUID()
+        const shapeData = buildTextShapeData(id, -9999, -9999)
+        if (!shapeData) return
+        updateLastAddedElement(shapeData)
+        document.getElementById('main-two-root').style.cursor = 'crosshair'
+        localStorage.setItem(TEXT_DRAW_MODE_KEY, 'true')
+        localStorage.setItem(LAST_ADDED_ELEMENT_ID_KEY, id)
+        setTextDrawModeInBoard(true)
+        addToLocalComponentStore(id, 'newText', shapeData)
+    }
+
+    // Place a text element at the given surface coords and immediately open
+    // the editing textarea. We can't dispatch triggerTextInput on a fixed
+    // timer — the NewText component is lazy-loaded, so on first use the
+    // listener may not be registered for several hundred ms. Poll the Two.js
+    // scene for the element instead, then dispatch once it's mounted.
+    const createTextAtSurface = (x, y) => {
+        const id = generateUUID()
+        const shapeData = buildTextShapeData(id, x, y)
+        if (!shapeData) return
+        addToLocalComponentStore(id, 'newText', shapeData)
+        const two = twoJSInstanceRef.current
+        if (!two) return
+        pollUntilElement(two, id, () => {
+            window.dispatchEvent(
+                new CustomEvent('triggerTextInput', {
+                    detail: { elementId: id },
+                })
+            )
+        })
     }
 
     // Snapshots only the properties being changed before applying bulk updates
@@ -882,6 +958,8 @@ const BoardViewPage = (props) => {
         togglePointer,
         updateLastAddedElement,
         addToLocalComponentStore,
+        enableTextDrawMode,
+        createTextAtSurface,
         updateComponentVerticesInLocalStore,
         updateComponentBulkPropertiesInLocalStore,
         deleteComponentFromLocalStore,
@@ -903,8 +981,11 @@ const BoardViewPage = (props) => {
         createBoardLoading,
         historyLog,
         historyLogRef,
+        bucketLog,
+        bucketLogRef,
         recordBatchToHistoryLog,
         undoLastAction,
+        redoLastAction,
         clearBoard,
     }
 
@@ -925,8 +1006,8 @@ const BoardViewPage = (props) => {
                                 right: '10px',
                                 zIndex: 20,
                             }}
-                            className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                                ${showMobileToolbarPanel ? 'bg-accent' : 'bg-card'}`}
+                            className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150
+                                ${showMobileToolbarPanel ? 'bg-accent' : 'bg-card-bg'}`}
                         >
                             <img
                                 src={controlsIcon}
@@ -1002,8 +1083,8 @@ const BoardViewPage = (props) => {
                                 right: '10px',
                                 zIndex: 20,
                             }}
-                            className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                                ${showMobilePencilPanel ? 'bg-accent' : 'bg-card'}`}
+                            className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150
+                                ${showMobilePencilPanel ? 'bg-accent' : 'bg-card-bg'}`}
                         >
                             <img
                                 src={controlsIcon}

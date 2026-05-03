@@ -30,7 +30,7 @@ const DefaultsDropdown = () => {
 
     return (
         <div
-            className="secondary-sidebar-content fixed bg-card block text-left pb-4 rounded-card shadow-card border border-border-panel w-36"
+            className="secondary-sidebar-content fixed bg-card-bg block text-left pb-4 rounded-card shadow-card border border-border-panel w-36"
             style={{ left: '10px', top: '56px' }}
         >
             <div className="w-full px-2 font-semibold text-xs pt-1 pb-1 border-b border-border-panel text-ink-muted">

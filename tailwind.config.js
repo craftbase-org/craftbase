@@ -109,7 +109,7 @@ module.exports = {
                 // Canvas & surfaces
                 canvas: '#F5F0E8', // main canvas bg — the parchment
                 sidebar: '#EDE8DC', // left/right panel bg
-                card: '#FFFCF5', // default shape/card fill
+                'card-bg': '#FFFCF5', // default shape/card fill
 
                 // Chrome
                 topbar: '#1A1612', // espresso top bar

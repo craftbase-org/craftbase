@@ -558,7 +558,7 @@ function NewText(props) {
                         zIndex: 20,
                     }}
                     className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                        ${showMobilePanel ? 'bg-accent' : 'bg-card'}`}
+                        ${showMobilePanel ? 'bg-accent' : 'bg-card-bg'}`}
                 >
                     <img
                         src={controlsIcon}

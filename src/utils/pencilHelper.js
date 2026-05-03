@@ -132,6 +132,37 @@ export function mergeSegmentsByLinewidth(points, lwTolerance = 0.3) {
 }
 
 /**
+ * Chaikin's corner-cutting smoothing. Each iteration replaces every interior
+ * pair (P, Q) with two points at 1/4 and 3/4 along PQ. Endpoints are kept
+ * exact. Result stays inside the original polygon — no overshoot — and gentle
+ * curves round out while sharp corners only get a small bevel.
+ */
+export function chaikinSmooth(points, iterations = 1) {
+    if (points.length < 3 || iterations < 1) return points
+    let result = points
+    for (let iter = 0; iter < iterations; iter++) {
+        const next = [result[0]]
+        for (let i = 0; i < result.length - 1; i++) {
+            const p = result[i]
+            const q = result[i + 1]
+            next.push({
+                x: 0.75 * p.x + 0.25 * q.x,
+                y: 0.75 * p.y + 0.25 * q.y,
+                lw: p.lw,
+            })
+            next.push({
+                x: 0.25 * p.x + 0.75 * q.x,
+                y: 0.25 * p.y + 0.75 * q.y,
+                lw: q.lw,
+            })
+        }
+        next.push(result[result.length - 1])
+        result = next
+    }
+    return result
+}
+
+/**
  * Computes the average linewidth for a segment of points.
  */
 export function averageLinewidth(points) {
