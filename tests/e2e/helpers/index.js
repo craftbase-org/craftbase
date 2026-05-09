@@ -143,12 +143,9 @@ const STROKE_WIDTH_INDEX_BY_LABEL = { '0': 1, '2': 2, '4': 3, '6': 4 }
 /**
  * Clicks the unified element-properties toolbar's Stroke Width button matching
  * the given label ('0' | '2' | '4' | '6'). The buttons are unlabeled visual
- * swatches, so we pick by position within #stroke-width-section. The currently
- * active "set" determines which default is updated:
- *   - SHAPE / ARROW / RECT_WITH_TEXT (idle or shape/arrow draw mode) → defaultLinewidth
- *   - PENCIL (pencil mode active)                                    → pencilDefaultLinewidth
- * Callers who need the pencil default must enter pencil mode first via
- * `clickToolbarButton(page, 'Pencil')`.
+ * swatches, so we pick by position within #stroke-width-section. All sets
+ * (SHAPE / ARROW / PENCIL / RECT_WITH_TEXT) write to the same unified
+ * `defaultLinewidth`.
  */
 export async function setDefaultStrokeWidth(page, label) {
     const idx = STROKE_WIDTH_INDEX_BY_LABEL[label]

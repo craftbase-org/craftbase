@@ -94,21 +94,13 @@ function readEffectiveValues({
     isMobile,
     defaults,
 }) {
-    const isPencilSet = setKey === 'PENCIL'
     if (!selectedComponent) {
-        // Pure default mode.
+        // Pure default mode — pencil/arrow/shape all share the same defaults.
         return {
             fill: defaults.defaultFill,
-            stroke: isPencilSet
-                ? defaults.pencilStrokeColor
-                : defaults.defaultStrokeColor,
-            linewidth: isPencilSet
-                ? defaults.pencilDefaultLinewidth
-                : defaults.defaultLinewidth,
-            strokeType:
-                (isPencilSet
-                    ? defaults.pencilDefaultStrokeType
-                    : defaults.defaultStrokeType) ?? 'solid',
+            stroke: defaults.defaultStrokeColor,
+            linewidth: defaults.defaultLinewidth,
+            strokeType: defaults.defaultStrokeType ?? 'solid',
             opacity: defaults.defaultOpacity ?? 1,
             textColor: defaults.defaultTextColor,
             textSize: defaults.defaultTextSize,
@@ -309,9 +301,6 @@ const ElementPropertiesToolbar = () => {
         defaultTextColor,
         defaultTextSize,
         defaultTextFontFamily,
-        pencilStrokeColor,
-        pencilDefaultLinewidth,
-        pencilDefaultStrokeType,
     } = ctx
     const { isMobile } = useMediaQueryUtils()
 
@@ -342,9 +331,6 @@ const ElementPropertiesToolbar = () => {
         defaultTextColor,
         defaultTextSize,
         defaultTextFontFamily,
-        pencilStrokeColor,
-        pencilDefaultLinewidth,
-        pencilDefaultStrokeType,
     }
 
     const [values, setValues] = useState(() =>
@@ -382,9 +368,6 @@ const ElementPropertiesToolbar = () => {
         defaultTextColor,
         defaultTextSize,
         defaultTextFontFamily,
-        pencilStrokeColor,
-        pencilDefaultLinewidth,
-        pencilDefaultStrokeType,
     ])
 
     if (!setKey) return null

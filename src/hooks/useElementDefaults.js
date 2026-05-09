@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { PENCIL_DEFAULT_COLOR } from '../constants/misc'
 
 const STORAGE_KEY = 'craftbase:elementDefaults'
 
 const INITIAL_DEFAULTS = {
-    // Shape defaults
+    // Shape defaults — also used by pencil and arrow (single unified set).
     defaultFill: '#FFFFFF',
     defaultStrokeColor: '#3A342C',
     defaultLinewidth: 2,
@@ -14,10 +13,6 @@ const INITIAL_DEFAULTS = {
     defaultTextColor: '#1A1612',
     defaultTextSize: 'M',
     defaultTextFontFamily: 'Caveat',
-    // Pencil defaults (kept separate from shape stroke defaults)
-    pencilStrokeColor: PENCIL_DEFAULT_COLOR,
-    pencilDefaultLinewidth: 2,
-    pencilDefaultStrokeType: null,
 }
 
 function loadFromStorage() {
@@ -56,16 +51,6 @@ export function useElementDefaults() {
         initial.defaultTextFontFamily
     )
 
-    const [pencilStrokeColor, setPencilStrokeColor] = useState(
-        initial.pencilStrokeColor
-    )
-    const [pencilDefaultLinewidth, setPencilDefaultLinewidth] = useState(
-        initial.pencilDefaultLinewidth
-    )
-    const [pencilDefaultStrokeType, setPencilDefaultStrokeType] = useState(
-        initial.pencilDefaultStrokeType
-    )
-
     const isFirstRender = useRef(true)
     useEffect(() => {
         if (isFirstRender.current) {
@@ -84,9 +69,6 @@ export function useElementDefaults() {
                     defaultTextColor,
                     defaultTextSize,
                     defaultTextFontFamily,
-                    pencilStrokeColor,
-                    pencilDefaultLinewidth,
-                    pencilDefaultStrokeType,
                 })
             )
         } catch (_) {}
@@ -99,9 +81,6 @@ export function useElementDefaults() {
         defaultTextColor,
         defaultTextSize,
         defaultTextFontFamily,
-        pencilStrokeColor,
-        pencilDefaultLinewidth,
-        pencilDefaultStrokeType,
     ])
 
     // Pure setters — these never deselect or close anything.
@@ -114,11 +93,6 @@ export function useElementDefaults() {
     const setDefaultTextSizeInBoard = (val) => setDefaultTextSize(val)
     const setDefaultTextFontFamilyInBoard = (val) =>
         setDefaultTextFontFamily(val)
-    const setPencilStrokeColorInBoard = (val) => setPencilStrokeColor(val)
-    const setPencilDefaultLinewidthInBoard = (val) =>
-        setPencilDefaultLinewidth(val)
-    const setPencilDefaultStrokeTypeInBoard = (val) =>
-        setPencilDefaultStrokeType(val)
 
     return {
         // values
@@ -130,9 +104,6 @@ export function useElementDefaults() {
         defaultTextColor,
         defaultTextSize,
         defaultTextFontFamily,
-        pencilStrokeColor,
-        pencilDefaultLinewidth,
-        pencilDefaultStrokeType,
         // raw setters (used by undo/history to restore prior defaults silently)
         setDefaultFill,
         setDefaultStrokeColor,
@@ -142,9 +113,6 @@ export function useElementDefaults() {
         setDefaultTextColor,
         setDefaultTextSize,
         setDefaultTextFontFamily,
-        setPencilStrokeColor,
-        setPencilDefaultLinewidth,
-        setPencilDefaultStrokeType,
         // board-facing setters (currently identical to raw, kept for API symmetry)
         setDefaultFillInBoard,
         setDefaultStrokeColorInBoard,
@@ -154,8 +122,5 @@ export function useElementDefaults() {
         setDefaultTextColorInBoard,
         setDefaultTextSizeInBoard,
         setDefaultTextFontFamilyInBoard,
-        setPencilStrokeColorInBoard,
-        setPencilDefaultLinewidthInBoard,
-        setPencilDefaultStrokeTypeInBoard,
     }
 }

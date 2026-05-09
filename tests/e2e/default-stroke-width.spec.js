@@ -85,11 +85,9 @@ test.describe('Default stroke width applies to drawn shapes', () => {
     })
 
     test('drawn pencil stroke uses default stroke width', async ({ page }) => {
-        // Pencil keeps its own `pencilDefaultLinewidth`, separate from the
-        // shape default (so a thick-dashed rectangle doesn't bleed into the
-        // next pencil stroke). The unified toolbar reflects the PENCIL set
-        // only while pencil mode is active — enter it first, then click the
-        // stroke-width swatch.
+        // Pencil shares the unified `defaultLinewidth` with shapes/arrows.
+        // Enter pencil mode so the toolbar is available, then click the
+        // stroke-width swatch — the next pencil stroke picks it up.
         await clickToolbarButton(page, 'Pencil')
         await setDefaultStrokeWidth(page, DEFAULT_LABEL)
 

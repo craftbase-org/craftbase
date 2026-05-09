@@ -183,9 +183,6 @@ const BoardViewPage = (props) => {
         defaultTextColor,
         defaultTextSize,
         defaultTextFontFamily,
-        pencilStrokeColor,
-        pencilDefaultLinewidth,
-        pencilDefaultStrokeType,
         // raw setters (used by createApplyProperty + history)
         setDefaultFill,
         setDefaultStrokeColor,
@@ -195,13 +192,9 @@ const BoardViewPage = (props) => {
         setDefaultTextColor,
         setDefaultTextSize,
         setDefaultTextFontFamily,
-        setPencilStrokeColor,
-        setPencilDefaultLinewidth,
-        setPencilDefaultStrokeType,
         // board-facing setters (kept for any external callers)
         setDefaultLinewidthInBoard,
         setDefaultStrokeTypeInBoard,
-        setPencilStrokeColorInBoard,
     } = useElementDefaults()
 
     const onStorageLimitRef = useRef(null)
@@ -920,7 +913,6 @@ const BoardViewPage = (props) => {
     }
 
     const applyProperty = createApplyProperty({
-        isPencilMode,
         selectedComponent,
         twoJSInstance,
         updateComponentBulkPropertiesInLocalStore,
@@ -938,9 +930,6 @@ const BoardViewPage = (props) => {
         setDefaultTextColor,
         setDefaultTextSize,
         setDefaultTextFontFamily,
-        setPencilStrokeColor,
-        setPencilDefaultLinewidth,
-        setPencilDefaultStrokeType,
     })
 
     const updateBulkPropsForRectangleWithText = (id, obj) => {
@@ -999,13 +988,9 @@ const BoardViewPage = (props) => {
         defaultTextColor,
         defaultTextSize,
         defaultTextFontFamily,
-        pencilStrokeColor,
-        pencilDefaultLinewidth,
-        pencilDefaultStrokeType,
         // Legacy named setters kept for primary sidebar / shape factory paths.
         setDefaultLinewidthInBoard,
         setDefaultStrokeTypeInBoard,
-        setPencilStrokeColorInBoard,
         // Mobile panel
         showMobileToolbarPanel,
         setShowMobileToolbarPanel,
@@ -1064,9 +1049,7 @@ const BoardViewPage = (props) => {
                         componentStore={componentStore}
                         defaultLinewidth={defaultLinewidth}
                         defaultStrokeType={defaultStrokeType}
-                        pencilDefaultLinewidth={pencilDefaultLinewidth}
-                        pencilDefaultStrokeType={pencilDefaultStrokeType}
-                        pencilStrokeColor={pencilStrokeColor}
+                        defaultStrokeColor={defaultStrokeColor}
                         onCameraChange={props.onCameraChange}
                         renderBackground={props.renderBackground}
                     />

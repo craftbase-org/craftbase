@@ -14,8 +14,6 @@ import { strokeTypeToDashes, clearDashesOnTwoJSShape } from './misc'
 export function createApplyProperty(deps) {
     return function applyProperty(propertyKey, value) {
         const {
-            // mode flags
-            isPencilMode,
             // live state
             selectedComponent,
             twoJSInstance,
@@ -27,7 +25,7 @@ export function createApplyProperty(deps) {
             handleRectangleTextSizeChange,
             handleTextFontFamilyChange,
             handleRectangleTextFontFamilyChange,
-            // default setters — shape set
+            // default setters (single unified set — shapes, arrows, pencil, text)
             setDefaultFill,
             setDefaultStrokeColor,
             setDefaultLinewidth,
@@ -36,31 +34,19 @@ export function createApplyProperty(deps) {
             setDefaultTextColor,
             setDefaultTextSize,
             setDefaultTextFontFamily,
-            // default setters — pencil set
-            setPencilStrokeColor,
-            setPencilDefaultLinewidth,
-            setPencilDefaultStrokeType,
         } = deps
 
         // 1. Update the matching default.
-        if (isPencilMode) {
-            if (propertyKey === 'stroke') setPencilStrokeColor(value)
-            else if (propertyKey === 'linewidth')
-                setPencilDefaultLinewidth(value)
-            else if (propertyKey === 'strokeType')
-                setPencilDefaultStrokeType(value === 'solid' ? null : value)
-        } else {
-            if (propertyKey === 'fill') setDefaultFill(value)
-            else if (propertyKey === 'stroke') setDefaultStrokeColor(value)
-            else if (propertyKey === 'linewidth') setDefaultLinewidth(value)
-            else if (propertyKey === 'strokeType')
-                setDefaultStrokeType(value === 'solid' ? null : value)
-            else if (propertyKey === 'opacity') setDefaultOpacity(value)
-            else if (propertyKey === 'textColor') setDefaultTextColor(value)
-            else if (propertyKey === 'textSize') setDefaultTextSize(value)
-            else if (propertyKey === 'textFontFamily')
-                setDefaultTextFontFamily(value)
-        }
+        if (propertyKey === 'fill') setDefaultFill(value)
+        else if (propertyKey === 'stroke') setDefaultStrokeColor(value)
+        else if (propertyKey === 'linewidth') setDefaultLinewidth(value)
+        else if (propertyKey === 'strokeType')
+            setDefaultStrokeType(value === 'solid' ? null : value)
+        else if (propertyKey === 'opacity') setDefaultOpacity(value)
+        else if (propertyKey === 'textColor') setDefaultTextColor(value)
+        else if (propertyKey === 'textSize') setDefaultTextSize(value)
+        else if (propertyKey === 'textFontFamily')
+            setDefaultTextFontFamily(value)
 
         // 2. If nothing is selected, we're done.
         if (!selectedComponent) return

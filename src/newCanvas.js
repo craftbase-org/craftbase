@@ -78,7 +78,7 @@ import {
 var isDrawing
 var defaultLinewidthValue = 1
 var defaultStrokeTypeValue = null
-var pencilStrokeColorValue = PENCIL_DEFAULT_COLOR
+var defaultStrokeColorValue = PENCIL_DEFAULT_COLOR
 
 function addZUI(
     props,
@@ -892,7 +892,7 @@ function addZUI(
                     new Two.Anchor(startCoords.x, startCoords.y)
                 )
                 pencilPath.noFill()
-                pencilPath.stroke = pencilStrokeColorValue
+                pencilPath.stroke = defaultStrokeColorValue
                 pencilPath.linewidth = defaultLinewidthValue
                 pencilPath.cap = 'round'
                 pencilPath.join = 'round'
@@ -1601,7 +1601,7 @@ function addZUI(
                     x: 0,
                     y: 0,
                     linewidth: defaultLinewidthValue,
-                    stroke: pencilStrokeColorValue,
+                    stroke: defaultStrokeColorValue,
                     strokeType: defaultStrokeTypeValue,
                 }
 
@@ -2210,16 +2210,17 @@ const Canvas = (props) => {
     }, [props.isPencilMode])
 
     useEffect(() => {
-        defaultLinewidthValue = props.pencilDefaultLinewidth || 1
-    }, [props.pencilDefaultLinewidth])
+        defaultLinewidthValue = props.defaultLinewidth || 1
+    }, [props.defaultLinewidth])
 
     useEffect(() => {
-        defaultStrokeTypeValue = props.pencilDefaultStrokeType || null
-    }, [props.pencilDefaultStrokeType])
+        defaultStrokeTypeValue = props.defaultStrokeType || null
+    }, [props.defaultStrokeType])
 
     useEffect(() => {
-        pencilStrokeColorValue = props.pencilStrokeColor || PENCIL_DEFAULT_COLOR
-    }, [props.pencilStrokeColor])
+        defaultStrokeColorValue =
+            props.defaultStrokeColor || PENCIL_DEFAULT_COLOR
+    }, [props.defaultStrokeColor])
 
     // on group select use effect hook
     useEffect(() => {
