@@ -7,11 +7,11 @@ import React, {
 } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useMediaQueryUtils } from '../../constants/exportHooks'
+import { useMediaQueryUtils } from 'constants/exportHooks'
 import {
     GET_COMPONENTS_FOR_BOARD_QUERY,
     GET_COMPONENT_TYPES,
-} from '../../schema/queries'
+} from 'schema/queries'
 import {
     UPDATE_USER_REVISIT_COUNT,
     INSERT_COMPONENT,
@@ -20,19 +20,19 @@ import {
     DELETE_BULK_COMPONENTS,
     UPDATE_COMPONENT_INFO,
     CREATE_BOARD,
-} from '../../schema/mutations'
+} from 'schema/mutations'
 import Canvas from '../../newCanvas'
-import ZoomControls from '../../components/ZoomControls'
-import Sidebar from '../../components/sidebar/primary'
-import Toolbar from '../../components/floatingToolbar'
-import PencilToolbar from '../../components/pencilToolbar'
-import controlsIcon from '../../assets/controls.svg'
-import Spinner from '../../components/common/spinnerWithSize'
-import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
-import StorageLimitModal from '../../components/modals/StorageLimitModal'
-import { generateUUID } from '../../utils/misc'
-import { pollUntilElement } from '../../utils/canvasUtils'
-import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from '../../utils/constants'
+import ZoomControls from 'components/ZoomControls'
+import Sidebar from 'components/sidebar/primary'
+import Toolbar from 'components/floatingToolbar'
+import PencilToolbar from 'components/pencilToolbar'
+import controlsIcon from 'assets/controls.svg'
+import Spinner from 'components/common/spinnerWithSize'
+import PermissionErrorModal from 'components/modals/PermissionErrorModal'
+import StorageLimitModal from 'components/modals/StorageLimitModal'
+import { generateUUID } from 'utils/misc'
+import { pollUntilElement } from 'utils/canvasUtils'
+import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
 import {
     RUBBER_MODE_KEY,
     GROUP_COMPONENT,
@@ -44,12 +44,12 @@ import {
     LAST_ADDED_ELEMENT_ID_KEY,
     PENCIL_MODE_KEY,
     BACKGROUND_BOARD_STORAGE_KEY,
-} from '../../constants/misc'
-import { useDrawingModes } from '../../hooks/useDrawingModes'
-import { usePencilDefaults } from '../../hooks/usePencilDefaults'
-import { useMobileToolbarPanels } from '../../hooks/useMobileToolbarPanels'
-import { useLocalDraftPersistence } from '../../hooks/useLocalDraftPersistence'
-import { useComponentHistory } from '../../hooks/useComponentHistory'
+} from 'constants/misc'
+import { useDrawingModes } from 'hooks/useDrawingModes'
+import { usePencilDefaults } from 'hooks/usePencilDefaults'
+import { useMobileToolbarPanels } from 'hooks/useMobileToolbarPanels'
+import { useLocalDraftPersistence } from 'hooks/useLocalDraftPersistence'
+import { useComponentHistory } from 'hooks/useComponentHistory'
 
 export const BoardContext = createContext()
 
@@ -1008,7 +1008,7 @@ const BoardViewPage = (props) => {
                                 zIndex: 20,
                             }}
                             className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150
-                                ${showMobileToolbarPanel ? 'bg-accent' : 'bg-card-bg'}`}
+                                ${showMobileToolbarPanel ? 'bg-accent-dark' : 'bg-accent-dark'}`}
                         >
                             <img
                                 src={controlsIcon}

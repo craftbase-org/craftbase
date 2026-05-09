@@ -5,9 +5,16 @@ import UndoIcon from '../../assets/undo_amber.svg?react'
 import RedoIcon from '../../assets/redo.svg?react'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 
-const allElements = staticPrimaryElementData.flatMap(
+const allElementsRaw = staticPrimaryElementData.flatMap(
     (section) => section.elements
 )
+
+const flattenShapesForDesktop = (elements) =>
+    elements.flatMap((el) =>
+        el.elementName === 'shapes'
+            ? el.drawerData.map((d) => ({ ...d, hasDrawer: false, noAction: false, drawerData: [] }))
+            : [el]
+    )
 
 const ShapesToolbar = ({ addElement }) => {
     const {
@@ -22,6 +29,8 @@ const ShapesToolbar = ({ addElement }) => {
     const [openDrawer, setOpenDrawer] = useState(null)
     const [drawerAnchor, setDrawerAnchor] = useState(null)
     const drawerRef = useRef(null)
+
+    const allElements = isMobile ? allElementsRaw : flattenShapesForDesktop(allElementsRaw)
 
     useEffect(() => {
         setCurrentElementInBoard('pointer')
