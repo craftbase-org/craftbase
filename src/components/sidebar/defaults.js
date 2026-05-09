@@ -1,7 +1,7 @@
 import React from 'react'
 
-import { useBoardContext } from 'views/Board/board'
-import { useMediaQueryUtils } from 'constants/exportHooks'
+import { useBoardContext } from '../../views/Board/board'
+import { useMediaQueryUtils } from '../../constants/exportHooks'
 
 const STROKE_TYPES = [
     { label: '—', value: 'solid' },

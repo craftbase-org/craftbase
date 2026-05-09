@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
-import { useBoardContext } from 'views/Board/board'
+import { useBoardContext } from '../../views/Board/board'
 
-import { elementOnBlurHandler } from 'utils/misc'
-import getEditComponents from 'components/utils/editWrapper'
-import NewTextFactory from 'factory/newText'
-import Toolbar from 'components/floatingToolbar'
-import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
-import { useMediaQueryUtils } from 'constants/exportHooks'
-import controlsIcon from 'assets/controls.svg'
+import { elementOnBlurHandler } from '../../utils/misc'
+import getEditComponents from '../utils/editWrapper'
+import NewTextFactory from '../../factory/newText'
+import Toolbar from '../floatingToolbar'
+import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from '../../utils/constants'
+import { useMediaQueryUtils } from '../../constants/exportHooks'
+import controlsIcon from '../../assets/controls.svg'
 
 function NewText(props) {
     const {

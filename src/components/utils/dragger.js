@@ -1,7 +1,7 @@
 import Two from 'two.js'
 import { ZUI } from 'two.js/extras/jsm/zui'
 
-import { offsetHeight } from 'constants/misc'
+import { offsetHeight } from '../../constants/misc'
 
 function handleDrag(twoJSInstance, group, el, cb) {
     console.log('group scene', group, twoJSInstance.scene)

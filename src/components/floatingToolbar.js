@@ -5,13 +5,13 @@ import idx from 'idx'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useImmer } from 'use-immer'
 
-import ColorPicker from 'components/utils/colorPicker'
-import BorderStyleBox from 'components/utils/borderStyleBox'
-import OpacitySlider from 'components/utils/opacitySlider'
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
-import { properties, TEXT_SIZES_ARRAY } from 'utils/constants'
-import { strokeTypeToDashes, clearDashesOnTwoJSShape } from 'utils/misc'
-import Icon from 'icons/icon'
+import ColorPicker from './utils/colorPicker'
+import BorderStyleBox from './utils/borderStyleBox'
+import OpacitySlider from './utils/opacitySlider'
+import { UPDATE_COMPONENT_INFO } from '../schema/mutations'
+import { properties, TEXT_SIZES_ARRAY } from '../utils/constants'
+import { strokeTypeToDashes, clearDashesOnTwoJSShape } from '../utils/misc'
+import Icon from '../icons/icon'
 
 const ToolbarContainer = styled(motion.div)`
     height: 50vh;

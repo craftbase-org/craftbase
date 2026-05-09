@@ -3,14 +3,14 @@ import React, { useEffect, useState, useRef } from 'react'
 import PropTypes from 'prop-types'
 import { useQuery, useMutation } from '@apollo/client'
 import { useImmer } from 'use-immer'
-import { useBoardContext } from 'views/Board/board'
+import { useBoardContext } from '../../views/Board/board'
 
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
-import { elementOnBlurHandler, strokeTypeToDashes } from 'utils/misc'
-import getEditComponents from 'components/utils/editWrapper'
+import { UPDATE_COMPONENT_INFO } from '../../schema/mutations'
+import { elementOnBlurHandler, strokeTypeToDashes } from '../../utils/misc'
+import getEditComponents from '../utils/editWrapper'
 
-import Toolbar from 'components/floatingToolbar'
-import ElementCreator from 'factory/divider'
+import Toolbar from '../floatingToolbar'
+import ElementCreator from '../../factory/divider'
 
 function Divider(props) {
     const {

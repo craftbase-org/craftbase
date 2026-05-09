@@ -1,13 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { useMutation } from '@apollo/client'
 
-import Button from 'components/common/button'
-import Modal from 'components/common/modal'
-import ShareIcon from 'assets/share-android.svg'
-import CopyIcon from 'assets/copy.svg'
-import Spinner from 'components/common/spinnerWithSize'
-import { useBoardContext } from 'views/Board/board'
-import { UPDATE_BOARD_VISIBILITY } from 'schema/mutations'
+import Button from '../common/button'
+import Modal from '../common/modal'
+import ShareIcon from '../../assets/share-android.svg'
+import CopyIcon from '../../assets/copy.svg'
+import Spinner from '../common/spinnerWithSize'
+import { useBoardContext } from '../../views/Board/board'
+import { UPDATE_BOARD_VISIBILITY } from '../../schema/mutations'
 
 const ShareLinkPopup = ({}) => {
     const refNode = useRef(null)

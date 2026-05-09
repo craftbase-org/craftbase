@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react'
 
-import Button from 'components/common/button'
-import LinkIcon from 'assets/link_white.svg'
-import CopyIcon from 'assets/copy.svg'
+import Button from '../common/button'
+import LinkIcon from '../../assets/link_white.svg'
+import CopyIcon from '../../assets/copy.svg'
 
 const randomBgColors = [
     '#BF2600',

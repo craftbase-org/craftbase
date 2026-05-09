@@ -7,7 +7,7 @@ import {
     PENDING_SHAPE_PROPS_KEY,
     LAST_ADDED_ELEMENT_ID_KEY,
     PENCIL_MODE_KEY,
-} from 'constants/misc'
+} from '../constants/misc'
 
 export function useDrawingModes() {
     const [pointerToggle, setPointerToggle] = useState(false)

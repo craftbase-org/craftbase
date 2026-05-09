@@ -1,7 +1,7 @@
 import React, { Fragment } from 'react'
-import ColorPicker from 'components/utils/colorPicker'
-import { useMediaQueryUtils } from 'constants/exportHooks'
-import { essentialShades } from 'utils/constants'
+import ColorPicker from './utils/colorPicker'
+import { useMediaQueryUtils } from '../constants/exportHooks'
+import { essentialShades } from '../utils/constants'
 
 const STROKE_TYPES = [
     { value: 'solid', display: '—' },

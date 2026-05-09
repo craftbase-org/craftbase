@@ -2,12 +2,12 @@ import React, { useEffect, useState, useRef, Fragment } from 'react'
 
 const factoryModules = import.meta.glob('../../factory/*.js')
 import Two from 'two.js'
-import { useBoardContext } from 'views/Board/board'
+import { useBoardContext } from '../../views/Board/board'
 import { useMutation } from '@apollo/client'
-import { UPDATE_COMPONENT_INFO } from 'schema/mutations'
-import ObjectSelector from 'components/utils/objectSelector'
-import getEditComponents from 'components/utils/editWrapper'
-import { elementOnBlurHandler } from 'utils/misc'
+import { UPDATE_COMPONENT_INFO } from '../../schema/mutations'
+import ObjectSelector from '../utils/objectSelector'
+import getEditComponents from '../utils/editWrapper'
+import { elementOnBlurHandler } from '../../utils/misc'
 
 function GroupedObjectWrapper(props) {
     // console.log('history', history)

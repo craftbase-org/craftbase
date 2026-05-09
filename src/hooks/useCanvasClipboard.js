@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { GROUP_COMPONENT } from 'constants/misc'
-import { generateUUID } from 'utils/misc'
-import { cloneElementData } from 'utils/canvasUtils'
+import { GROUP_COMPONENT } from '../constants/misc'
+import { generateUUID } from '../utils/misc'
+import { cloneElementData } from '../utils/canvasUtils'
 
 export function useCanvasClipboard({
     twoJSInstance,

@@ -6,7 +6,7 @@ import {
     LAST_ADDED_ELEMENT_ID_KEY,
     RUBBER_MODE_KEY,
     PENCIL_MODE_KEY,
-} from 'constants/misc'
+} from '../constants/misc'
 
 export function getArrowDrawMode() {
     return localStorage.getItem(ARROW_DRAW_MODE_KEY)

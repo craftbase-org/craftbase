@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PENCIL_DEFAULT_COLOR } from 'constants/misc'
+import { PENCIL_DEFAULT_COLOR } from '../constants/misc'
 
 export function usePencilDefaults({ toggleToolbar, setSelectedComponent } = {}) {
     const [defaultLinewidth, setDefaultLinewidth] = useState(2)

@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
 import Two from 'two.js'
-import { strokeTypeToDashes, clearDashesOnTwoJSShape } from 'utils/misc'
-import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
-import { DRAFT_STORAGE_KEY } from 'constants/misc'
+import { strokeTypeToDashes, clearDashesOnTwoJSShape } from '../utils/misc'
+import { updateX1Y1Vertices, updateX2Y2Vertices } from '../utils/updateVertices'
+import { DRAFT_STORAGE_KEY } from '../constants/misc'
 
 // Applies a single property back to a Two.js shape during undo/redo.
 function applyPropertyToTwoJSGroup(group, name, value) {

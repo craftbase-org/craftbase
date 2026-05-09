@@ -13,13 +13,13 @@ import { setContext } from '@apollo/client/link/context'
 import { getMainDefinition } from '@apollo/client/utilities'
 import { WebSocketLink } from '@apollo/client/link/ws'
 
-import BoardViewContainer from 'views/Board'
-import HomePageViewContainer from 'views/Home'
-import SupportViewContainer from 'views/Support'
+import BoardViewContainer from './views/Board'
+import HomePageViewContainer from './views/Home'
+import SupportViewContainer from './views/Support'
 
 import routes from './routes'
-import { INSERT_USER_ONE } from 'schema/mutations'
-import { generateRandomUsernames } from 'utils/misc'
+import { INSERT_USER_ONE } from './schema/mutations'
+import { generateRandomUsernames } from './utils/misc'
 
 import './App.css'
 

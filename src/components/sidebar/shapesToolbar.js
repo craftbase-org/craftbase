@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { staticPrimaryElementData } from 'utils/constants'
-import { useBoardContext } from 'views/Board/board'
-import UndoIcon from 'assets/undo_amber.svg?react'
-import RedoIcon from 'assets/redo.svg?react'
-import { useMediaQueryUtils } from 'constants/exportHooks'
+import { staticPrimaryElementData } from '../../utils/constants'
+import { useBoardContext } from '../../views/Board/board'
+import UndoIcon from '../../assets/undo_amber.svg?react'
+import RedoIcon from '../../assets/redo.svg?react'
+import { useMediaQueryUtils } from '../../constants/exportHooks'
 
 const allElements = staticPrimaryElementData.flatMap(
     (section) => section.elements

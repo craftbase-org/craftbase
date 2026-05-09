@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef, Suspense } from 'react'
 import Two from 'two.js'
 
 import { ZUI } from 'two.js/extras/jsm/zui'
-import { useBoardContext } from 'views/Board/board'
-import { useMediaQueryUtils } from 'constants/exportHooks'
+import { useBoardContext } from './views/Board/board'
+import { useMediaQueryUtils } from './constants/exportHooks'
 
 import {
     GROUP_COMPONENT,
@@ -25,34 +25,34 @@ import {
     LINE_HEIGHT_MULTIPLIER,
     PENCIL_DISTANCE_THROTTLE,
     DEFAULT_TEXT_SIZE,
-} from 'constants/misc'
-import Spinner from 'components/common/spinner'
+} from './constants/misc'
+import Spinner from './components/common/spinner'
 
 const elementModules = import.meta.glob('./components/elements/*.js')
 
-import Loader from 'components/utils/loader'
-import SelectionController from 'canvas/selectionController'
-import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
-import { generateUUID } from 'utils/misc'
+import Loader from './components/utils/loader'
+import SelectionController from './canvas/selectionController'
+import { updateX1Y1Vertices, updateX2Y2Vertices } from './utils/updateVertices'
+import { generateUUID } from './utils/misc'
 import {
     velocityToLinewidth,
     smoothLinewidth,
     simplifyWithLinewidth,
     chaikinSmooth,
-} from 'utils/pencilHelper'
+} from './utils/pencilHelper'
 import {
     setArrowEndpointsVisible,
     pollUntilElement,
     cloneElementData,
     resolveShapeFromPath,
-} from 'utils/canvasUtils'
-import { isSelectPanMode } from 'utils/drawModeUtils'
-import { createDiamondPath } from 'factory/diamond'
-import { useCanvasClipboard } from 'hooks/useCanvasClipboard'
+} from './utils/canvasUtils'
+import { isSelectPanMode } from './utils/drawModeUtils'
+import { createDiamondPath } from './factory/diamond'
+import { useCanvasClipboard } from './hooks/useCanvasClipboard'
 import {
     ElementRenderWrapper,
     GroupRenderWrapper,
-} from 'components/utils/elementRenderWrappers'
+} from './components/utils/elementRenderWrappers'
 
 /**
  * @typedef {Object} elementData
@@ -94,7 +94,8 @@ function addZUI(
     updateComponentBulkPropertiesInLocalStore,
     deleteComponentFromLocalStore,
     isPencilModeRef,
-    createTextAtSurfaceRef
+    createTextAtSurfaceRef,
+    onCameraChangeRef
 ) {
     let shape = null
     let lastSelectedShape = null
@@ -1760,6 +1761,12 @@ function addZUI(
 
         two.update()
 
+        onCameraChangeRef?.current?.({
+            scale: two.scene.scale,
+            tx: two.scene.translation.x,
+            ty: two.scene.translation.y,
+        })
+
         if (props.boardId) {
             clearTimeout(viewportSaveTimer)
             viewportSaveTimer = setTimeout(() => {
@@ -2001,6 +2008,12 @@ function addZUI(
         distance = newDist
 
         two.update()
+
+        onCameraChangeRef?.current?.({
+            scale: two.scene.scale,
+            tx: two.scene.translation.x,
+            ty: two.scene.translation.y,
+        })
     }
 
     return {
@@ -2056,6 +2069,13 @@ const Canvas = (props) => {
         createTextAtSurfaceRef.current = createTextAtSurface
     }, [createTextAtSurface])
 
+    // Latest onCameraChange callback. Read from inside addZUI's DOM event
+    // handlers via the ref to avoid the stale-closure trap (see CLAUDE.md).
+    const onCameraChangeRef = useRef(props.onCameraChange)
+    useEffect(() => {
+        onCameraChangeRef.current = props.onCameraChange
+    }, [props.onCameraChange])
+
     const { clipboardRef, lastMouseRef } = useCanvasClipboard({
         twoJSInstance,
         zuiInstanceRef,
@@ -2084,7 +2104,8 @@ const Canvas = (props) => {
             updateComponentBulkPropertiesInLocalStore,
             deleteComponentFromLocalStore,
             isPencilModeRef,
-            createTextAtSurfaceRef
+            createTextAtSurfaceRef,
+            onCameraChangeRef
         )
 
         setZuiInstance(zui_instance)
@@ -2124,6 +2145,12 @@ const Canvas = (props) => {
                 two.update()
             }
         }
+
+        onCameraChangeRef.current?.({
+            scale: two.scene.scale,
+            tx: two.scene.translation.x,
+            ty: two.scene.translation.y,
+        })
 
         const boardId = props.boardId
         const tabsOpen = localStorage.getItem(`tabs_open_${boardId}`)
@@ -2489,6 +2516,7 @@ const Canvas = (props) => {
     return (
         <>
             <div id="selector-rect"></div>
+            {props.renderBackground?.()}
             <div id="main-two-root"></div>
             {componentsToRender.map((Component, index) => (
                 <Suspense key={index} fallback={<Loader />}>

@@ -1,8 +1,8 @@
 import React, { Fragment, useState } from 'react'
 import PropTypes from 'prop-types'
 import styled, { css } from 'styled-components'
-import { allColorShades, essentialShades } from 'utils/constants'
-import Icon from 'icons/icon'
+import { allColorShades, essentialShades } from '../../utils/constants'
+import Icon from '../../icons/icon'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const ColorPickerContainer = styled.div`

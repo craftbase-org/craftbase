@@ -1,10 +1,10 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import routes from 'routes'
-import chatAltIcon from 'assets/chat-alt-white.svg'
-import EnvelopeIcon from 'assets/envelope_white.svg'
-import errorIcon from 'assets/error.svg'
-import { useMediaQueryUtils } from 'constants/exportHooks'
+import routes from '../../routes'
+import chatAltIcon from '../../assets/chat-alt-white.svg'
+import EnvelopeIcon from '../../assets/envelope_white.svg'
+import errorIcon from '../../assets/error.svg'
+import { useMediaQueryUtils } from '../../constants/exportHooks'
 
 const ChevronLeft = () => (
     <svg

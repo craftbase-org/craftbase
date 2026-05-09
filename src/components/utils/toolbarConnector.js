@@ -1,4 +1,4 @@
-import { properties } from "utils/constants";
+import { properties } from "../../utils/constants";
 
 export default class ToolBar {
   constructor() {

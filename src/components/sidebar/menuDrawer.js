@@ -1,9 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import routes from 'routes'
-import { useBoardContext } from 'views/Board/board'
-import Modal from 'components/common/modal'
-import Button from 'components/common/button'
+import routes from '../../routes'
+import { useBoardContext } from '../../views/Board/board'
+import Modal from '../common/modal'
+import Button from '../common/button'
 
 const HamburgerIcon = () => (
     <svg
