@@ -12,6 +12,26 @@ For example:
 - Refactor code as you go to keep code clean
 - Keep file sizes small and put helper functions and components in their own files.
 
+# Craftbase as a reusable dependency
+
+**Craftbase is consumed as a library by other apps.** The first such consumer is `craftmaps` (sibling repo at `../craftmaps`), which imports craftbase via `"craftbase": "link:../craftbase"` and treats the `Board` as a generic whiteboarding canvas mounted behind a Mapbox basemap. More consumers are expected over time, so treat craftbase's surface as a **generic, embeddable whiteboard** — not a standalone app exclusive to its own `views/Board` route.
+
+## Implications when editing craftbase
+
+- **Keep `Board` generic.** Don't bake in assumptions about the host app (no map concepts, no consumer-specific UI, no hard-coded routes/branding inside reusable components). If a feature is consumer-specific, it belongs in the consumer, not here.
+- **The public surface lives in `src/lib.js`.** Anything a consumer needs (`Board`, `BoardContext`, `useBoardContext`, hooks, bootstrap helpers like `INSERT_USER_ONE`, `generateRandomUsernames`) must be exported there. Adding a new consumer-facing API? Export it from `lib.js` and avoid breaking existing exports.
+- **Extension points over forks.** When a consumer needs to customize behavior, prefer adding an **optional prop on `Board`** (default-free, no-op when omitted) rather than letting them fork. Existing examples used by craftmaps:
+    - `onCameraChange({ scale, tx, ty })` — fires on ZUI camera updates (wired via `useRef` inside `addZUI` to dodge the stale-closure trap documented below).
+    - `renderBackground={() => <JSX />}` — render slot mounted between `#selector-rect` and `#main-two-root` for the consumer's background layer.
+    - `scaleToDisplay(scale) → string` — overrides the zoom-readout in `ZoomControls` (read from `BoardContext`).
+- **JSX-in-`.js` is part of the contract.** craftbase ships `.js` files containing JSX; consumers configure their bundler to handle this (craftmaps extends vite's esbuild JSX transform to `node_modules/craftbase/src/...` and adds `craftbase` to `optimizeDeps.exclude`). Don't rename to `.jsx` without coordinating — it would break consumers.
+- **Tailwind classes must survive consumer purging.** Consumers add `./node_modules/craftbase/src/**/*.{js,jsx}` to their tailwind `content`. Stick to standard utility classes; avoid dynamically composed class names that purge can't see.
+- **`link:` symlink, not `file:` copy.** Edits in `craftbase/src` are picked up live in craftmaps' dev server with no reinstall. Behavior changes here ship to consumers immediately on their next dev reload — be mindful when changing existing prop shapes or context values.
+
+## When in doubt
+
+If a change feels consumer-specific (map glue, geocoding, basemap controls, anything tying behavior to a specific host), it belongs in the consumer repo. Open an extension point in `Board` if the consumer needs a hook into craftbase, and keep craftbase ignorant of the consumer's domain.
+
 # Code structure
 
 Below is the craftbase project codemap with different sections talking about overview, architecture, directory structure, technology stack and key files.
