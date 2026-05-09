@@ -154,7 +154,7 @@ const SectionLabel = ({ children }) => (
 )
 
 const StrokeWidthRow = ({ value, onChange }) => (
-    <div className="pt-2 px-2">
+    <div id="stroke-width-section" className="pt-2 px-2">
         <SectionLabel>Stroke Width</SectionLabel>
         <div className="flex gap-2">
             {STROKE_WIDTHS.map(({ value: w, strokeHeight }) => {
@@ -200,7 +200,7 @@ const StrokeWidthRow = ({ value, onChange }) => (
 )
 
 const StrokeTypeRow = ({ value, onChange }) => (
-    <div className="pt-3 px-2">
+    <div id="stroke-type-section" className="pt-3 px-2">
         <SectionLabel>Stroke Type</SectionLabel>
         <div className="flex gap-2">
             {STROKE_TYPES.map(({ label, value: v }) => {
