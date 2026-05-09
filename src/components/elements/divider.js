@@ -9,7 +9,6 @@ import { UPDATE_COMPONENT_INFO } from '../../schema/mutations'
 import { elementOnBlurHandler, strokeTypeToDashes } from '../../utils/misc'
 import getEditComponents from '../utils/editWrapper'
 
-import Toolbar from '../floatingToolbar'
 import ElementCreator from '../../factory/divider'
 
 function Divider(props) {

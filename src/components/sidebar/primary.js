@@ -2,7 +2,6 @@ import React, { useState, useEffect, useContext } from 'react'
 import { useQuery } from '@apollo/client'
 import { useNavigate } from 'react-router-dom'
 
-import DefaultsDropdown from './defaults'
 import ShapesToolbar from './shapesToolbar'
 import { GET_COMPONENT_TYPES } from '../../schema/queries'
 import SpinnerWithSize from '../common/spinnerWithSize'
@@ -32,6 +31,9 @@ const PrimarySidebar = () => {
         cancelPendingElement,
         defaultLinewidth,
         defaultStrokeType,
+        defaultFill,
+        defaultStrokeColor,
+        defaultOpacity,
         onCreateBoard,
         createBoardLoading,
     } = useBoardContext()
@@ -86,14 +88,16 @@ const PrimarySidebar = () => {
                         componentType: label,
                         linewidth: defaultLinewidth,
                         strokeType: defaultStrokeType,
-                        stroke: '#3A342C',
+                        stroke: defaultStrokeColor ?? '#3A342C',
                         children: {},
-                        metadata: [],
                         x: -9999,
                         y: -9999,
                         x2: 0,
                         boardId: boardId,
-                        metadata: item.metadata,
+                        metadata: {
+                            ...(item.metadata || {}),
+                            opacity: defaultOpacity ?? 1,
+                        },
                         width: item.width,
                         height: item.height,
                         fill: item.fill,
@@ -183,14 +187,16 @@ const PrimarySidebar = () => {
                         (item, index) => {
                             if (item.label === label) {
                                 const userId = localStorage.getItem('userId')
+                                const useShapeFill = DRAW_SHAPE_TYPES.includes(
+                                    label
+                                )
                                 shapeData = {
                                     id: generateId,
                                     componentType: label,
                                     linewidth: defaultLinewidth,
                                     strokeType: defaultStrokeType,
-                                    stroke: '#3A342C',
+                                    stroke: defaultStrokeColor ?? '#3A342C',
                                     children: {},
-                                    metadata: [],
                                     x: parseInt(
                                         window.outerWidth -
                                             (randomNumber * window.outerWidth) /
@@ -204,10 +210,15 @@ const PrimarySidebar = () => {
                                     ),
                                     x2: label.includes('divider') ? 100 : 0,
                                     boardId: boardId,
-                                    metadata: item.metadata,
+                                    metadata: {
+                                        ...(item.metadata || {}),
+                                        opacity: defaultOpacity ?? 1,
+                                    },
                                     width: item.width,
                                     height: item.height,
-                                    fill: item.fill,
+                                    fill: useShapeFill
+                                        ? defaultFill ?? item.fill
+                                        : item.fill,
                                     textColor: item.textColor,
                                     updatedBy: userId,
                                 }
@@ -226,7 +237,7 @@ const PrimarySidebar = () => {
                         componentType: label,
                         linewidth: defaultLinewidth,
                         strokeType: defaultStrokeType,
-                        stroke: '#3A342C',
+                        stroke: defaultStrokeColor ?? '#3A342C',
                         children: {},
                         x: parseInt(
                             window.outerWidth -
@@ -238,10 +249,10 @@ const PrimarySidebar = () => {
                         ),
                         x2: 0,
                         boardId: boardId,
-                        metadata: {},
+                        metadata: { opacity: defaultOpacity ?? 1 },
                         width: 160,
                         height: 160,
-                        fill: '#fff',
+                        fill: defaultFill ?? '#fff',
                         textColor: '#3A342C',
                         updatedBy: userId,
                     }
@@ -279,14 +290,6 @@ const PrimarySidebar = () => {
         <>
             <ShapesToolbar addElement={addElement} />
             <MenuDrawer />
-            <div
-                id="sidebar-container"
-                className="sidebar-container flex items-center"
-            >
-                <div className=" relative ">
-                    <DefaultsDropdown />
-                </div>
-            </div>
             <div
                 id="show-click-anywhere-btn"
                 className="fixed w-full flex justify-center top-0  opacity-0

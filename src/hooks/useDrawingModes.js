@@ -14,14 +14,28 @@ export function useDrawingModes() {
     const [isPencilMode, setPencilMode] = useState(false)
     const [isArrowDrawMode, setIsArrowDrawMode] = useState(false)
     const [isTextDrawMode, setIsTextDrawMode] = useState(false)
+    const [isRubberMode, setIsRubberMode] = useState(() => {
+        try {
+            return localStorage.getItem(RUBBER_MODE_KEY) === 'true'
+        } catch (_) {
+            return false
+        }
+    })
 
-    const togglePointer = (pointerVal, { cancelPendingElement, setSelectedComponent, toggleToolbar } = {}) => {
+    const togglePointer = (
+        pointerVal,
+        { cancelPendingElement, setSelectedComponent, toggleToolbar } = {}
+    ) => {
         setPointerToggle(pointerVal)
         setPencilMode(false)
         if (pointerVal) {
             cancelPendingElement?.()
             setSelectedComponent?.(null)
             toggleToolbar?.(false)
+            setIsRubberMode(false)
+            try {
+                localStorage.removeItem(RUBBER_MODE_KEY)
+            } catch (_) {}
             document.getElementById('main-two-root').style.cursor = 'default'
         }
     }
@@ -31,6 +45,10 @@ export function useDrawingModes() {
         setPencilMode(value)
         if (value) {
             cancelPendingElement?.()
+            setIsRubberMode(false)
+            try {
+                localStorage.removeItem(RUBBER_MODE_KEY)
+            } catch (_) {}
             localStorage.setItem(PENCIL_MODE_KEY, 'TRUE')
             document.getElementById('main-two-root').style.cursor = 'crosshair'
         } else {
@@ -39,6 +57,7 @@ export function useDrawingModes() {
     }
 
     const setRubberModeInBoard = (val) => {
+        setIsRubberMode(!!val)
         if (val) {
             localStorage.setItem(RUBBER_MODE_KEY, 'true')
             document.getElementById('main-two-root').style.cursor = 'crosshair'
@@ -58,6 +77,7 @@ export function useDrawingModes() {
         localStorage.removeItem(TEXT_DRAW_MODE_KEY)
         localStorage.removeItem(LAST_ADDED_ELEMENT_ID_KEY)
         localStorage.removeItem(RUBBER_MODE_KEY)
+        setIsRubberMode(false)
     }
 
     return {
@@ -69,6 +89,7 @@ export function useDrawingModes() {
         setIsArrowDrawMode,
         isTextDrawMode,
         setIsTextDrawMode,
+        isRubberMode,
         togglePointer,
         togglePencilMode,
         setRubberModeInBoard,

@@ -6,7 +6,7 @@ export { default as Board } from './views/Board'
 export { BoardContext, useBoardContext } from './views/Board/board'
 
 export { useDrawingModes } from './hooks/useDrawingModes'
-export { usePencilDefaults } from './hooks/usePencilDefaults'
+export { useElementDefaults } from './hooks/useElementDefaults'
 export { useMobileToolbarPanels } from './hooks/useMobileToolbarPanels'
 export { useLocalDraftPersistence } from './hooks/useLocalDraftPersistence'
 export { useComponentHistory } from './hooks/useComponentHistory'

@@ -4,7 +4,6 @@ import PropTypes from 'prop-types'
 import { useImmer } from 'use-immer'
 import Two from 'two.js'
 
-import Toolbar from '../floatingToolbar'
 import ElementCreator from '../../factory/arrowLine'
 
 import { updateX1Y1Vertices, updateX2Y2Vertices } from '../../utils/updateVertices'

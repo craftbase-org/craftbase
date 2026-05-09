@@ -4,7 +4,6 @@ import { useImmer } from 'use-immer'
 import { elementOnBlurHandler, strokeTypeToDashes } from '../../utils/misc'
 import getEditComponents from '../utils/editWrapper'
 import PencilFactory from '../../factory/pencil'
-import Toolbar from '../floatingToolbar'
 
 function Pencil(props) {
     const selectedComponents = []

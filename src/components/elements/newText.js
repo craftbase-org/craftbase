@@ -6,10 +6,8 @@ import { useBoardContext } from '../../views/Board/board'
 import { elementOnBlurHandler } from '../../utils/misc'
 import getEditComponents from '../utils/editWrapper'
 import NewTextFactory from '../../factory/newText'
-import Toolbar from '../floatingToolbar'
 import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from '../../utils/constants'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
-import controlsIcon from '../../assets/controls.svg'
 
 function NewText(props) {
     const {
@@ -548,53 +546,6 @@ function NewText(props) {
     return (
         <React.Fragment>
             <div id="two-new-text"></div>
-            {showToolbar && isMobile && (
-                <button
-                    ref={mobileTriggerRef}
-                    title="Text properties"
-                    onClick={() => setShowMobilePanel((prev) => !prev)}
-                    style={{
-                        position: 'fixed',
-                        bottom: '16px',
-                        right: '10px',
-                        zIndex: 20,
-                    }}
-                    className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                        ${showMobilePanel ? 'bg-accent' : 'bg-card-bg'}`}
-                >
-                    <img
-                        src={controlsIcon}
-                        className="w-5 h-5"
-                        alt="Text properties"
-                    />
-                </button>
-            )}
-            {showToolbar && (!isMobile || showMobilePanel) ? (
-                <Toolbar
-                    // Show only text color and opacity; hide everything else
-                    hideColorBackground={true}
-                    currentFontSize={twoTextRef.current.size}
-                    hideColorIcon={true}
-                    hideColorText={false}
-                    hideBorderSection={true}
-                    showTextSizeSection={true}
-                    showFontFamilySection={true}
-                    currentFontFamily={twoTextRef.current?.family || 'Caveat'}
-                    onFontFamilyChange={handleFontFamilyChange}
-                    toggle={showToolbar}
-                    componentState={internalState}
-                    closeToolbar={closeToolbar}
-                    componentId={props.id}
-                    isMobile={isMobile}
-                    updateComponentBulkProperties={
-                        updateComponentBulkPropertiesInLocalStore
-                    }
-                    postToolbarUpdate={() => {
-                        two.update()
-                    }}
-                    onTextSizeChange={handleTextSizeChange}
-                />
-            ) : null}
         </React.Fragment>
     )
 }

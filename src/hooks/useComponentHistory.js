@@ -208,7 +208,7 @@ export function useComponentHistory({
             }
         }
         if (props.linewidth !== undefined || props.strokeType !== undefined) {
-            setToolbarRefreshKey((k) => k + 1)
+            setToolbarRefreshKey?.((k) => k + 1)
         }
 
         if (isPersistedRef.current) {

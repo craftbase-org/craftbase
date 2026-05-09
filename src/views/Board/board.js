@@ -24,8 +24,7 @@ import {
 import Canvas from '../../newCanvas'
 import ZoomControls from 'components/ZoomControls'
 import Sidebar from 'components/sidebar/primary'
-import Toolbar from 'components/floatingToolbar'
-import PencilToolbar from 'components/pencilToolbar'
+import ElementPropertiesToolbar from 'components/sidebar/elementProperties'
 import controlsIcon from 'assets/controls.svg'
 import Spinner from 'components/common/spinnerWithSize'
 import PermissionErrorModal from 'components/modals/PermissionErrorModal'
@@ -46,10 +45,11 @@ import {
     BACKGROUND_BOARD_STORAGE_KEY,
 } from 'constants/misc'
 import { useDrawingModes } from 'hooks/useDrawingModes'
-import { usePencilDefaults } from 'hooks/usePencilDefaults'
+import { useElementDefaults } from 'hooks/useElementDefaults'
 import { useMobileToolbarPanels } from 'hooks/useMobileToolbarPanels'
 import { useLocalDraftPersistence } from 'hooks/useLocalDraftPersistence'
 import { useComponentHistory } from 'hooks/useComponentHistory'
+import { createApplyProperty } from 'utils/applyProperty'
 
 export const BoardContext = createContext()
 
@@ -145,7 +145,6 @@ const BoardViewPage = (props) => {
     const [zuiInBoard, setZuiInBoard] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
     const [currentElement, setCurrentElement] = useState(null)
-    const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
     const [showPermissionErrorModal, setShowPermissionErrorModal] =
         useState(false)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
@@ -164,36 +163,46 @@ const BoardViewPage = (props) => {
         setIsArrowDrawMode,
         isTextDrawMode,
         setIsTextDrawMode,
+        isRubberMode,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
         clearDrawModesFromStorage,
     } = useDrawingModes()
 
-    const {
-        showToolbar,
-        toggleToolbar,
-        showMobileToolbarPanel,
-        setShowMobileToolbarPanel,
-        showMobilePencilPanel,
-        setShowMobilePencilPanel,
-    } = useMobileToolbarPanels({ isPencilMode, isMobile, selectedComponent })
+    const { showMobileToolbarPanel, setShowMobileToolbarPanel } =
+        useMobileToolbarPanels({ isMobile, selectedComponent })
 
     const {
+        // values
+        defaultFill,
+        defaultStrokeColor,
         defaultLinewidth,
-        setDefaultLinewidth,
         defaultStrokeType,
-        setDefaultStrokeType,
-        pencilDefaultLinewidth,
-        setPencilDefaultLinewidth,
-        pencilDefaultStrokeType,
-        setPencilDefaultStrokeType,
+        defaultOpacity,
+        defaultTextColor,
+        defaultTextSize,
+        defaultTextFontFamily,
         pencilStrokeColor,
+        pencilDefaultLinewidth,
+        pencilDefaultStrokeType,
+        // raw setters (used by createApplyProperty + history)
+        setDefaultFill,
+        setDefaultStrokeColor,
+        setDefaultLinewidth,
+        setDefaultStrokeType,
+        setDefaultOpacity,
+        setDefaultTextColor,
+        setDefaultTextSize,
+        setDefaultTextFontFamily,
         setPencilStrokeColor,
+        setPencilDefaultLinewidth,
+        setPencilDefaultStrokeType,
+        // board-facing setters (kept for any external callers)
         setDefaultLinewidthInBoard,
         setDefaultStrokeTypeInBoard,
         setPencilStrokeColorInBoard,
-    } = usePencilDefaults({ toggleToolbar, setSelectedComponent })
+    } = useElementDefaults()
 
     const onStorageLimitRef = useRef(null)
 
@@ -237,7 +246,6 @@ const BoardViewPage = (props) => {
         setShowPermissionErrorModal,
         setDefaultLinewidth,
         setDefaultStrokeType,
-        setToolbarRefreshKey,
         selectedComponent,
         stripTypename,
     })
@@ -324,26 +332,21 @@ const BoardViewPage = (props) => {
         if (pointerVal) {
             cancelPendingElement()
             setSelectedComponent(null)
-            toggleToolbar(false)
+            setRubberModeInBoard(false)
             document.getElementById('main-two-root').style.cursor = 'default'
         }
     }
 
     const togglePencilMode = (value) => {
-        toggleToolbar(false)
         setPencilMode(value)
         if (value) {
             cancelPendingElement()
+            setRubberModeInBoard(false)
             localStorage.setItem(PENCIL_MODE_KEY, 'TRUE')
             document.getElementById('main-two-root').style.cursor = 'crosshair'
         } else {
             localStorage.removeItem(PENCIL_MODE_KEY)
         }
-    }
-
-    function closeToolbar() {
-        toggleToolbar(false)
-        setSelectedComponent(null)
     }
 
     const setTwoJSInstanceInBoard = (two) => {
@@ -357,13 +360,7 @@ const BoardViewPage = (props) => {
     }
 
     const setSelectedComponentInBoard = (shape) => {
-        if (shape === null) {
-            setSelectedComponent(null)
-            toggleToolbar(false)
-        } else {
-            setSelectedComponent(shape)
-            toggleToolbar(true)
-        }
+        setSelectedComponent(shape ?? null)
     }
 
     // Creates a board in the background on first interaction (non-blocking).
@@ -456,13 +453,23 @@ const BoardViewPage = (props) => {
         })
         if (!typeItem) return null
         const userId = localStorage.getItem('userId')
+        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
+        const fontSizePx =
+            sizesMap[defaultTextSize] ?? typeItem.metadata?.fontSize
         return {
             id,
             componentType: 'newText',
             linewidth: defaultLinewidth,
             strokeType: defaultStrokeType,
             children: {},
-            metadata: typeItem.metadata || {},
+            metadata: {
+                ...(typeItem.metadata || {}),
+                ...(fontSizePx !== undefined && { fontSize: fontSizePx }),
+                ...(defaultTextFontFamily && {
+                    textFontFamily: defaultTextFontFamily,
+                }),
+                opacity: defaultOpacity ?? 1,
+            },
             x: parseInt(x),
             y: parseInt(y),
             x2: 0,
@@ -470,7 +477,7 @@ const BoardViewPage = (props) => {
             width: typeItem.width,
             height: typeItem.height,
             fill: typeItem.fill,
-            textColor: typeItem.textColor,
+            textColor: defaultTextColor ?? typeItem.textColor,
             updatedBy: userId,
         }
     }
@@ -769,21 +776,6 @@ const BoardViewPage = (props) => {
         (selectedComponent?.shape?.type === 'arrowLine' ||
             selectedComponent?.group?.data?.elementData?.isLineCircle === true)
 
-    const isTextSelected =
-        selectedComponent !== null &&
-        selectedComponent?.shape?.type === 'newText'
-
-    const isRectangleWithText =
-        selectedComponent !== null &&
-        selectedComponent?.shape?.type === 'rectangle' &&
-        typeof selectedComponent?.text?.data?.value === 'string'
-
-    const currentFontFamily = isTextSelected
-        ? selectedComponent?.shape?.data?.family || 'Caveat'
-        : isRectangleWithText
-          ? selectedComponent?.text?.data?.family || 'Caveat'
-          : undefined
-
     const handleTextSizeChange = (newLabel) => {
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
         const textSize = sizesMap[newLabel]
@@ -927,6 +919,30 @@ const BoardViewPage = (props) => {
         window.dispatchEvent(new CustomEvent('clearSelector', {}))
     }
 
+    const applyProperty = createApplyProperty({
+        isPencilMode,
+        selectedComponent,
+        twoJSInstance,
+        updateComponentBulkPropertiesInLocalStore,
+        updateBulkPropsForRectangleWithText: (id, obj) =>
+            updateBulkPropsForRectangleWithText(id, obj),
+        handleTextSizeChange,
+        handleRectangleTextSizeChange,
+        handleTextFontFamilyChange,
+        handleRectangleTextFontFamilyChange,
+        setDefaultFill,
+        setDefaultStrokeColor,
+        setDefaultLinewidth,
+        setDefaultStrokeType,
+        setDefaultOpacity,
+        setDefaultTextColor,
+        setDefaultTextSize,
+        setDefaultTextFontFamily,
+        setPencilStrokeColor,
+        setPencilDefaultLinewidth,
+        setPencilDefaultStrokeType,
+    })
+
     const updateBulkPropsForRectangleWithText = (id, obj) => {
         let finalObj = { ...obj }
         if (obj.textColor !== undefined) {
@@ -951,6 +967,7 @@ const BoardViewPage = (props) => {
         isArrowDrawMode,
         isTextDrawMode,
         isArrowSelected,
+        isRubberMode,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
@@ -969,13 +986,29 @@ const BoardViewPage = (props) => {
         setTwoJSInstanceInBoard,
         setZuiInstanceInBoard,
         zuiInBoard,
+        selectedComponent,
         setSelectedComponentInBoard,
+        applyProperty,
+        // Defaults — read by ElementPropertiesToolbar, also still exposed
+        // individually so legacy primary.js / Canvas reads keep working.
+        defaultFill,
+        defaultStrokeColor,
         defaultLinewidth,
-        setDefaultLinewidthInBoard,
         defaultStrokeType,
-        setDefaultStrokeTypeInBoard,
+        defaultOpacity,
+        defaultTextColor,
+        defaultTextSize,
+        defaultTextFontFamily,
         pencilStrokeColor,
+        pencilDefaultLinewidth,
+        pencilDefaultStrokeType,
+        // Legacy named setters kept for primary sidebar / shape factory paths.
+        setDefaultLinewidthInBoard,
+        setDefaultStrokeTypeInBoard,
         setPencilStrokeColorInBoard,
+        // Mobile panel
+        showMobileToolbarPanel,
+        setShowMobileToolbarPanel,
         currentElement,
         setCurrentElementInBoard,
         onCreateBoard,
@@ -995,7 +1028,7 @@ const BoardViewPage = (props) => {
             <BoardContext.Provider value={contextValueForSidebar}>
                 <div>
                     <Sidebar />
-                    {selectedComponent && showToolbar && isMobile && (
+                    {!isRubberMode && isMobile && (
                         <button
                             title="Element properties"
                             onClick={() =>
@@ -1007,8 +1040,11 @@ const BoardViewPage = (props) => {
                                 right: '10px',
                                 zIndex: 20,
                             }}
-                            className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150
-                                ${showMobileToolbarPanel ? 'bg-accent-dark' : 'bg-accent-dark'}`}
+                            className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150 ${
+                                showMobileToolbarPanel
+                                    ? 'bg-accent'
+                                    : 'bg-accent-dark'
+                            }`}
                         >
                             <img
                                 src={controlsIcon}
@@ -1017,101 +1053,7 @@ const BoardViewPage = (props) => {
                             />
                         </button>
                     )}
-                    {selectedComponent &&
-                        showToolbar &&
-                        (!isMobile || showMobileToolbarPanel) && (
-                            <Toolbar
-                                hideColorText={
-                                    !isTextSelected && !isRectangleWithText
-                                }
-                                hideColorIcon={true}
-                                hideColorBackground={
-                                    isArrowSelected || isTextSelected
-                                }
-                                hideBorderSection={isTextSelected}
-                                showTextSizeSection={
-                                    isTextSelected || isRectangleWithText
-                                }
-                                currentFontSize={
-                                    isTextSelected
-                                        ? selectedComponent?.shape?.data?.size
-                                        : isRectangleWithText
-                                          ? selectedComponent?.text?.data?.size
-                                          : undefined
-                                }
-                                onTextSizeChange={
-                                    isTextSelected
-                                        ? handleTextSizeChange
-                                        : isRectangleWithText
-                                          ? handleRectangleTextSizeChange
-                                          : undefined
-                                }
-                                toggle={showToolbar}
-                                componentState={selectedComponent}
-                                closeToolbar={closeToolbar}
-                                refreshKey={toolbarRefreshKey}
-                                isMobile={isMobile}
-                                updateComponentBulkProperties={
-                                    isRectangleWithText
-                                        ? updateBulkPropsForRectangleWithText
-                                        : updateComponentBulkPropertiesInLocalStore
-                                }
-                                showFontFamilySection={
-                                    isTextSelected || isRectangleWithText
-                                }
-                                currentFontFamily={currentFontFamily}
-                                onFontFamilyChange={
-                                    isTextSelected
-                                        ? handleTextFontFamilyChange
-                                        : isRectangleWithText
-                                          ? handleRectangleTextFontFamilyChange
-                                          : undefined
-                                }
-                                postToolbarUpdate={() => {
-                                    twoJSInstance.update()
-                                }}
-                            />
-                        )}
-                    {isPencilMode && isMobile && (
-                        <button
-                            title="Pencil properties"
-                            onClick={() =>
-                                setShowMobilePencilPanel((prev) => !prev)
-                            }
-                            style={{
-                                position: 'fixed',
-                                bottom: '16px',
-                                right: '10px',
-                                zIndex: 20,
-                            }}
-                            className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150
-                                ${showMobilePencilPanel ? 'bg-accent' : 'bg-card-bg'}`}
-                        >
-                            <img
-                                src={controlsIcon}
-                                className="w-5 h-5"
-                                alt="Pencil properties"
-                            />
-                        </button>
-                    )}
-                    {isPencilMode && (!isMobile || showMobilePencilPanel) && (
-                        <PencilToolbar
-                            pencilStrokeColor={pencilStrokeColor}
-                            defaultLinewidth={pencilDefaultLinewidth}
-                            defaultStrokeType={pencilDefaultStrokeType}
-                            onColorChange={(color) =>
-                                setPencilStrokeColor(color)
-                            }
-                            onLinewidthChange={(value) =>
-                                setPencilDefaultLinewidth(value)
-                            }
-                            onStrokeTypeChange={(type) =>
-                                setPencilDefaultStrokeType(
-                                    type === 'solid' ? null : type
-                                )
-                            }
-                        />
-                    )}
+                    <ElementPropertiesToolbar />
                     <Canvas
                         pointerToggle={pointerToggle}
                         isPencilMode={isPencilMode}

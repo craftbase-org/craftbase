@@ -30,7 +30,8 @@ export const properties = {
 }
 
 export const allColorShades = [
-    'rgba(0,0,0,0.0)',
+    '#FFFFFF',
+    '#000000',
     '#BF2600',
     '#DE350B',
     '#FF5630',
@@ -89,10 +90,10 @@ export const allColorShades = [
 
 export const essentialShades = [
     '#FFFFFF',
+    '#000000',
     '#FF5630',
     '#FFAB00',
     '#36B37E',
-    '#00B8D9',
     '#0065FF',
     '#6554C0',
 ]
