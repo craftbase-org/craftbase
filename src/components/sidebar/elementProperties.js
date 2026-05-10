@@ -35,6 +35,19 @@ const SETS = {
         'textSize',
         'textFont',
     ],
+    // GROUP: union of every property — toolbar shows them all when a group
+    // is focused. applyGroupProperty silently skips children whose element
+    // type doesn't accept a given property.
+    GROUP: [
+        'fill',
+        'stroke',
+        'strokeWidth',
+        'strokeType',
+        'opacity',
+        'textColor',
+        'textSize',
+        'textFont',
+    ],
 }
 
 const SET_LABELS = {
@@ -43,15 +56,19 @@ const SET_LABELS = {
     PENCIL: 'Pencil',
     TEXT: 'Text',
     RECT_WITH_TEXT: 'Shape',
+    GROUP: 'Group',
 }
 
 function resolveSetKey({
     isRubberMode,
     isPencilMode,
     selectedComponent,
+    selectedGroup,
     isArrowDrawMode,
     isTextDrawMode,
 }) {
+    // A focused group beats every other mode — show the union toolbar.
+    if (selectedGroup) return 'GROUP'
     if (isRubberMode) return null
     if (isPencilMode) return 'PENCIL'
     if (selectedComponent) {
@@ -290,7 +307,9 @@ const ElementPropertiesToolbar = () => {
         isTextDrawMode,
         isRubberMode,
         selectedComponent,
+        selectedGroup,
         applyProperty,
+        applyGroupProperty,
         showMobileToolbarPanel,
         // defaults
         defaultFill,
@@ -310,6 +329,7 @@ const ElementPropertiesToolbar = () => {
                 isRubberMode,
                 isPencilMode,
                 selectedComponent,
+                selectedGroup,
                 isArrowDrawMode,
                 isTextDrawMode,
             }),
@@ -317,6 +337,7 @@ const ElementPropertiesToolbar = () => {
             isRubberMode,
             isPencilMode,
             selectedComponent,
+            selectedGroup,
             isArrowDrawMode,
             isTextDrawMode,
         ]
@@ -350,7 +371,7 @@ const ElementPropertiesToolbar = () => {
     // Collapse any open color picker when context changes (new selection, mode switch).
     useEffect(() => {
         setExpandedSection(null)
-    }, [setKey, selectedComponent])
+    }, [setKey, selectedComponent, selectedGroup])
 
     // Re-sync local UI state whenever the source of truth changes (selection,
     // mode, or any default). Property mutations bump a default, which flows
@@ -386,12 +407,42 @@ const ElementPropertiesToolbar = () => {
     const sections = SETS[setKey]
     const handle = (key) => (val) => {
         setValues((prev) => ({ ...prev, [key]: val }))
+        if (selectedGroup) {
+            // textSize comes through as a label (e.g. 'M'); resolve to the
+            // numeric Two.js size before forwarding to the bulk apply path.
+            // The single-element path goes through handleTextSizeChange which
+            // does this conversion internally; the group path doesn't, so we
+            // do it here.
+            if (key === 'textSize') {
+                const entry = TEXT_SIZES_ARRAY.find((s) => s.label === val)
+                const numeric = entry
+                    ? isMobile
+                        ? entry.mobileValue
+                        : entry.value
+                    : val
+                applyGroupProperty?.(key, numeric)
+            } else {
+                applyGroupProperty?.(key, val)
+            }
+            return
+        }
         applyProperty?.(key, val)
     }
 
     return (
         <div
             id="floating-toolbar"
+            // While a group is focused, prevent the toolbar from stealing
+            // DOM focus on mousedown — the group SVG fires `blur` (and tears
+            // itself down) the moment focus moves elsewhere. Clicks still
+            // fire normally. Skip text inputs so the hex field in ColorPicker
+            // can still receive focus.
+            onMouseDown={(e) => {
+                if (!selectedGroup) return
+                const tag = e.target?.tagName
+                if (tag === 'INPUT' || tag === 'TEXTAREA') return
+                e.preventDefault()
+            }}
             className="secondary-sidebar-content fixed bg-card-bg block text-left pb-4 rounded-card shadow-card border border-border-panel overflow-y-auto tablet:max-h-128"
             style={
                 isMobile

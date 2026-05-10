@@ -344,6 +344,10 @@ function GroupedObjectWrapper(props) {
                     coreObject.add(twoText)
                 }
 
+                // Stamp identity on the visible coreObject so applyGroupProperty
+                // can target it by id while the group is focused.
+                coreObject.elementData = item
+
                 group.add(coreObject)
                 // group.children.unshift(coreObject)
                 two.update()

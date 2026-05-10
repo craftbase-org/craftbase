@@ -53,6 +53,7 @@ import { useMobileToolbarPanels } from 'hooks/useMobileToolbarPanels'
 import { useLocalDraftPersistence } from 'hooks/useLocalDraftPersistence'
 import { useComponentHistory } from 'hooks/useComponentHistory'
 import { createApplyProperty } from 'utils/applyProperty'
+import { createApplyGroupProperty } from 'utils/applyGroupProperty'
 
 export const BoardContext = createContext()
 
@@ -147,6 +148,7 @@ const BoardViewPage = (props) => {
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [zuiInBoard, setZuiInBoard] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
+    const [selectedGroup, setSelectedGroup] = useState(null)
     const [currentElement, setCurrentElement] = useState(null)
     const [showPermissionErrorModal, setShowPermissionErrorModal] =
         useState(false)
@@ -991,6 +993,27 @@ const BoardViewPage = (props) => {
         window.dispatchEvent(new CustomEvent('clearSelector', {}))
     }
 
+    // Track which group (if any) is currently focused on the canvas. groupobject
+    // dispatches groupFocused/groupBlurred on the window — this mirrors them
+    // into React state so the sidebar can react. Independent of newCanvas.js's
+    // own activeGroupRef listeners, which serve event-handler land.
+    useEffect(() => {
+        const onFocus = (e) => setSelectedGroup(e?.detail?.group ?? null)
+        const onBlur = () => setSelectedGroup(null)
+        window.addEventListener('groupFocused', onFocus)
+        window.addEventListener('groupBlurred', onBlur)
+        return () => {
+            window.removeEventListener('groupFocused', onFocus)
+            window.removeEventListener('groupBlurred', onBlur)
+        }
+    }, [])
+
+    const applyGroupProperty = createApplyGroupProperty({
+        selectedGroup,
+        twoJSInstance,
+        updateComponentBulkPropertiesInLocalStore,
+    })
+
     const applyProperty = createApplyProperty({
         selectedComponent,
         twoJSInstance,
@@ -1059,6 +1082,8 @@ const BoardViewPage = (props) => {
         selectedComponent,
         setSelectedComponentInBoard,
         applyProperty,
+        selectedGroup,
+        applyGroupProperty,
         // Defaults — read by ElementPropertiesToolbar, also still exposed
         // individually so legacy primary.js / Canvas reads keep working.
         defaultFill,
