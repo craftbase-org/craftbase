@@ -391,6 +391,7 @@ const ElementPropertiesToolbar = () => {
 
     return (
         <div
+            id="floating-toolbar"
             className="secondary-sidebar-content fixed bg-card-bg block text-left pb-4 rounded-card shadow-card border border-border-panel overflow-y-auto tablet:max-h-128"
             style={
                 isMobile
@@ -408,7 +409,10 @@ const ElementPropertiesToolbar = () => {
             </div>
 
             {sections.includes('fill') && (
-                <div className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]">
+                <div
+                    data-section="fill"
+                    className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]"
+                >
                     <ColorPicker
                         title="Fill"
                         currentColor={values.fill}
@@ -420,7 +424,10 @@ const ElementPropertiesToolbar = () => {
             )}
 
             {sections.includes('stroke') && (
-                <div className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]">
+                <div
+                    data-section="stroke"
+                    className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]"
+                >
                     <ColorPicker
                         title="Stroke"
                         currentColor={values.stroke}
@@ -446,7 +453,10 @@ const ElementPropertiesToolbar = () => {
             )}
 
             {sections.includes('textColor') && (
-                <div className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]">
+                <div
+                    data-section="textColor"
+                    className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]"
+                >
                     <ColorPicker
                         title="Text"
                         currentColor={values.textColor}
