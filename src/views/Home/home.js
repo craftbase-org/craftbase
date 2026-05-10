@@ -240,8 +240,8 @@ const HomePage = (props) => {
 
                     <div className="mt-4">
                         Please contact{' '}
-                        <a href="mailto:meetzaveri96@gmail.com">
-                            meetzaveri96@gmail.com
+                        <a href="mailto:support@craftbase.org">
+                            support@craftbase.org
                         </a>
                     </div>
                 </div> */}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
     RUBBER_MODE_KEY,
     ARROW_DRAW_MODE_KEY,
@@ -69,6 +69,16 @@ export function useDrawingModes() {
 
     const setArrowDrawModeInBoard = (val) => setIsArrowDrawMode(val)
     const setTextDrawModeInBoard = (val) => setIsTextDrawMode(val)
+
+    // Reflect any active draw mode as a class on #main-two-root so CSS can
+    // force the crosshair cursor on inner SVG nodes (.dragger-picker, text)
+    // that would otherwise win with their own cursor: pointer rule.
+    useEffect(() => {
+        const root = document.getElementById('main-two-root')
+        if (!root) return
+        const active = isPencilMode || isArrowDrawMode || isRubberMode
+        root.classList.toggle('draw-mode-active', active)
+    }, [isPencilMode, isArrowDrawMode, isRubberMode])
 
     const clearDrawModesFromStorage = () => {
         localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)

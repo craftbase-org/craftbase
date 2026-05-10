@@ -43,6 +43,9 @@ import {
     LAST_ADDED_ELEMENT_ID_KEY,
     PENCIL_MODE_KEY,
     BACKGROUND_BOARD_STORAGE_KEY,
+    VIEWPORT_KEY_PREFIX,
+    MOBILE_VIEWPORT_KEY_PREFIX,
+    VIEWPORT_TTL_MS,
 } from 'constants/misc'
 import { useDrawingModes } from 'hooks/useDrawingModes'
 import { useElementDefaults } from 'hooks/useElementDefaults'
@@ -248,6 +251,35 @@ const BoardViewPage = (props) => {
     // first mousedown. These keys are only meaningful within a single page session.
     useEffect(() => {
         clearDrawModesFromStorage()
+    }, [])
+
+    // Sweep viewport entries older than VIEWPORT_TTL_MS or missing savedAt.
+    // Each new local draft writes its own craftbase_viewport_<id> key; without
+    // this sweep, localStorage accumulates dead entries indefinitely.
+    useEffect(() => {
+        try {
+            const now = Date.now()
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i)
+                if (
+                    !key ||
+                    (!key.startsWith(VIEWPORT_KEY_PREFIX) &&
+                        !key.startsWith(MOBILE_VIEWPORT_KEY_PREFIX))
+                )
+                    continue
+                try {
+                    const parsed = JSON.parse(localStorage.getItem(key))
+                    if (
+                        !parsed?.savedAt ||
+                        now - parsed.savedAt > VIEWPORT_TTL_MS
+                    ) {
+                        localStorage.removeItem(key)
+                    }
+                } catch (_) {
+                    localStorage.removeItem(key)
+                }
+            }
+        } catch (_) {}
     }, [])
 
     // Reset component store whenever the board changes (persisted mode only).
@@ -758,6 +790,11 @@ const BoardViewPage = (props) => {
                 deleteBulkComponents({ variables: { _in: ids } })
             }
         }
+        // Tear down any active selection before scene clear so the
+        // selectionController doesn't hold stale group/shape refs that
+        // suppress the next selection's UI.
+        window.dispatchEvent(new Event('clearSelector'))
+        setSelectedComponent(null)
         twoJSInstanceRef.current?.clear()
         twoJSInstanceRef.current?.update()
         setComponentStore({})
@@ -768,6 +805,25 @@ const BoardViewPage = (props) => {
         selectedComponent !== null &&
         (selectedComponent?.shape?.type === 'arrowLine' ||
             selectedComponent?.group?.data?.elementData?.isLineCircle === true)
+
+    // Mirror text-property changes to a live editing textarea so the overlay
+    // visually matches what Two.js will render on blur. No-op when no
+    // textarea is open. fontSize is in surface units; we scale to screen
+    // pixels using the current scene zoom.
+    const syncOpenTextarea = ({ fontSize, fontFamily }) => {
+        const ta = document.querySelector('.temp-input-area')
+        if (!ta) return
+        const sceneScale = twoJSInstance?.scene?.scale || 1
+        if (typeof fontSize === 'number') {
+            const cssFontSize = fontSize * sceneScale
+            const lineH = Math.ceil(cssFontSize * 1.6)
+            ta.style.fontSize = `${cssFontSize}px`
+            ta.style.lineHeight = `${lineH}px`
+        }
+        if (fontFamily) {
+            ta.style.fontFamily = fontFamily
+        }
+    }
 
     const handleTextSizeChange = (newLabel) => {
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
@@ -787,39 +843,24 @@ const BoardViewPage = (props) => {
             },
         })
         twoJSInstance?.update()
+        syncOpenTextarea({ fontSize: textSize })
     }
 
-    const handleRectangleTextSizeChange = (newLabel) => {
-        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
-        const textSize = sizesMap[newLabel]
-        const twoText = selectedComponent?.text?.data
-        if (!twoText) return
-        twoText.size = textSize
-        twoJSInstance?.update()
-
-        const componentId = selectedComponent?.group?.data?.elementData?.id
-        // stateRefForComponentStore is always current; group.elementData.metadata
-        // is only set at mount and is stale after blur updates the store.
-        const existingMetadata =
-            stateRefForComponentStore.current[componentId]?.metadata ?? {}
-        const updatedMetadata = { ...existingMetadata, textFontSize: textSize }
-        if (selectedComponent?.group?.data?.elementData) {
-            selectedComponent.group.data.elementData.metadata = updatedMetadata
-        }
-
-        // After Two.js renders the new font size, expand the rectangle if it
-        // is now smaller than the text's bounding box.
+    // Schedule a post-render measurement of the text's bounding box and grow
+    // the parent rectangle if needed. Called after any property change that
+    // affects text dimensions (size, family, etc.).
+    const scheduleRectFitToText = (twoText, componentId, updatedMetadata) => {
         // Capture whether text editing is active NOW so the RAF can detect
-        // if blur fires between the size change and the next frame.
-        const textAreaAtSizeChange = document.querySelector('.temp-input-area')
+        // if blur fires between the property change and the next frame.
+        const textAreaAtChange = document.querySelector('.temp-input-area')
         requestAnimationFrame(() => {
-            // If text editing was active when the size changed but the textarea
-            // is now gone, blur already committed the correct metadata
-            // (textContent + textFill). Overwriting with the stale snapshot
-            // captured here would wipe that out.
+            // If text editing was active when the property changed but the
+            // textarea is now gone, blur already committed the correct
+            // metadata (textContent + textFill). Overwriting with the stale
+            // snapshot captured here would wipe that out.
             if (
-                textAreaAtSizeChange &&
-                !document.body.contains(textAreaAtSizeChange)
+                textAreaAtChange &&
+                !document.body.contains(textAreaAtChange)
             )
                 return
 
@@ -858,6 +899,28 @@ const BoardViewPage = (props) => {
         })
     }
 
+    const handleRectangleTextSizeChange = (newLabel) => {
+        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
+        const textSize = sizesMap[newLabel]
+        const twoText = selectedComponent?.text?.data
+        if (!twoText) return
+        twoText.size = textSize
+        twoJSInstance?.update()
+
+        const componentId = selectedComponent?.group?.data?.elementData?.id
+        // stateRefForComponentStore is always current; group.elementData.metadata
+        // is only set at mount and is stale after blur updates the store.
+        const existingMetadata =
+            stateRefForComponentStore.current[componentId]?.metadata ?? {}
+        const updatedMetadata = { ...existingMetadata, textFontSize: textSize }
+        if (selectedComponent?.group?.data?.elementData) {
+            selectedComponent.group.data.elementData.metadata = updatedMetadata
+        }
+
+        scheduleRectFitToText(twoText, componentId, updatedMetadata)
+        syncOpenTextarea({ fontSize: textSize })
+    }
+
     const handleTextFontFamilyChange = (fontFamily) => {
         const twoText = selectedComponent?.shape?.data
         if (!twoText) return
@@ -873,12 +936,16 @@ const BoardViewPage = (props) => {
             },
         })
         twoJSInstance?.update()
+        syncOpenTextarea({ fontFamily })
+        // Make selection universal: future new elements pick up this family.
+        setDefaultTextFontFamily(fontFamily)
     }
 
     const handleRectangleTextFontFamilyChange = (fontFamily) => {
         const twoText = selectedComponent?.text?.data
         if (!twoText) return
         twoText.family = fontFamily
+        twoJSInstance?.update()
         const componentId = selectedComponent?.group?.data?.elementData?.id
         const existingMetadata =
             stateRefForComponentStore.current[componentId]?.metadata ?? {}
@@ -889,10 +956,12 @@ const BoardViewPage = (props) => {
         if (selectedComponent?.group?.data?.elementData) {
             selectedComponent.group.data.elementData.metadata = updatedMetadata
         }
-        updateComponentBulkPropertiesInLocalStore(componentId, {
-            metadata: updatedMetadata,
-        })
-        twoJSInstance?.update()
+        // Re-fit the rectangle to the new text bbox; some families (e.g.
+        // Fraunces) render wider than Caveat at the same size.
+        scheduleRectFitToText(twoText, componentId, updatedMetadata)
+        syncOpenTextarea({ fontFamily })
+        // Make selection universal: future new elements pick up this family.
+        setDefaultTextFontFamily(fontFamily)
     }
 
     const cancelPendingElement = () => {

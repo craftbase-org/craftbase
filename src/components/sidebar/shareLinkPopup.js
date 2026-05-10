@@ -91,7 +91,7 @@ const ShareLinkPopup = ({}) => {
                             Board Link (Public)
                         </div>
                         <div className="mt-2 flex items-center justify-between">
-                            <div className="text-sm rounded-md bg-sidebar border border-border-card text-ink px-2 py-2">
+                            <div className="text-sm rounded-md bg-sidebar border border-border-card text-ink px-2 py-2 select-text cursor-text break-all">
                                 {shareUrl}
                             </div>
                             <div

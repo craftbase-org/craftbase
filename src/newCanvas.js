@@ -10,6 +10,8 @@ import {
     componentTypes,
     RUBBER_MODE_KEY,
     VIEWPORT_KEY_PREFIX,
+    MOBILE_VIEWPORT_KEY_PREFIX,
+    VIEWPORT_TTL_MS,
     ARROW_DRAW_MODE_KEY,
     TEXT_DRAW_MODE_KEY,
     PENDING_SHAPE_TYPE_KEY,
@@ -257,14 +259,19 @@ function addZUI(
             two.update()
 
             const fontSize = twoText.size || DEFAULT_TEXT_SIZE
+            // Two.js renders text at `fontSize * sceneScale` screen pixels.
+            // Match the textarea/measureSpan to that so visuals stay in sync
+            // and the surface-unit math (measuredW / zoom) remains correct.
+            const sceneScale = two?.scene?.scale || 1
+            const cssFontSize = fontSize * sceneScale
             // Use a generous line-height so ascenders/descenders are
             // never clipped. A LINE_HEIGHT_MULTIPLIER× covers most font metrics.
-            const lineH = Math.ceil(fontSize * LINE_HEIGHT_MULTIPLIER)
+            const lineH = Math.ceil(cssFontSize * LINE_HEIGHT_MULTIPLIER)
             // Vertical padding inside the textarea prevents the top of
             // tall glyphs (H, d, l …) from being cut off by the element
-            // boundary. Half the difference between lineH and fontSize
+            // boundary. Half the difference between lineH and cssFontSize
             // approximates the ascender headroom the browser needs.
-            const vertPad = Math.ceil((lineH - fontSize) / 2) + 4
+            const vertPad = Math.ceil((lineH - cssFontSize) / 2) + 4
 
             const input = document.createElement('textarea')
             const randomId = Math.floor(Math.random() * 90 + 10)
@@ -275,7 +282,7 @@ function addZUI(
             input.style.background = 'transparent'
             input.style.padding = `${vertPad}px 8px`
             input.style.color = twoText.fill || '#3A342C'
-            input.style.fontSize = `${fontSize}px`
+            input.style.fontSize = `${cssFontSize}px`
             input.style.fontFamily = twoText.family || 'Caveat'
             input.style.fontWeight = twoText.weight || 'normal'
             input.style.lineHeight = `${lineH}px`
@@ -367,7 +374,7 @@ function addZUI(
             measureSpan.style.position = 'absolute'
             measureSpan.style.visibility = 'hidden'
             measureSpan.style.whiteSpace = 'pre'
-            measureSpan.style.fontSize = `${fontSize}px`
+            measureSpan.style.fontSize = `${cssFontSize}px`
             measureSpan.style.fontFamily = twoText.family || 'Caveat'
             measureSpan.style.fontWeight = twoText.weight || 'normal'
             measureSpan.style.lineHeight = `${lineH}px`
@@ -539,7 +546,8 @@ function addZUI(
                     twoText.size = meta.textFontSize || DEFAULT_TEXT_SIZE
                     twoText.alignment = 'center'
                     twoText.baseline = meta.textBaseLine || 'middle'
-                    twoText.family = meta.textFamily || 'Caveat'
+                    twoText.family =
+                        meta.textFontFamily || meta.textFamily || 'Caveat'
                     shape.add(twoText)
                     two.update()
                 }
@@ -1776,6 +1784,7 @@ function addZUI(
                         tx: two.scene.translation.x,
                         ty: two.scene.translation.y,
                         scale: two.scene.scale,
+                        savedAt: Date.now(),
                     })
                 )
             }, 300)
@@ -1938,11 +1947,12 @@ function addZUI(
         if (e.touches.length < 2) {
             if (distance > 0 && props.boardId) {
                 localStorage.setItem(
-                    `craftbase_mobile_viewport_${props.boardId}`,
+                    `${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`,
                     JSON.stringify({
                         tx: two.scene.translation.x,
                         ty: two.scene.translation.y,
                         scale: two.scene.scale,
+                        savedAt: Date.now(),
                     })
                 )
             }
@@ -2117,12 +2127,16 @@ const Canvas = (props) => {
         // Use ZUI's own API so its internal zScale stays in sync with the
         // scene — setting two.scene.scale directly desynchronises ZUI and
         // causes the first pan gesture to jump back to the origin.
-        if (isMobile && props.boardId) {
-            const saved = localStorage.getItem(
-                `craftbase_mobile_viewport_${props.boardId}`
-            )
-            if (saved) {
-                const { tx, ty, scale } = JSON.parse(saved)
+        const restoreViewport = (storageKey) => {
+            const saved = localStorage.getItem(storageKey)
+            if (!saved) return
+            try {
+                const parsed = JSON.parse(saved)
+                const { tx, ty, scale, savedAt } = parsed
+                if (!savedAt || Date.now() - savedAt > VIEWPORT_TTL_MS) {
+                    localStorage.removeItem(storageKey)
+                    return
+                }
                 // zoomSet updates zui.zScale + surface.scale atomically.
                 // Centering at (0,0) with initial translation (0,0) means no
                 // translation side-effect from the zoom.
@@ -2131,19 +2145,17 @@ const Canvas = (props) => {
                 // (still 0,0) to the saved position.
                 zui_instance.zui.translateSurface(tx, ty)
                 two.update()
+            } catch (_) {
+                localStorage.removeItem(storageKey)
             }
         }
 
+        if (isMobile && props.boardId) {
+            restoreViewport(`${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`)
+        }
+
         if (!isMobile && props.boardId) {
-            const saved = localStorage.getItem(
-                `${VIEWPORT_KEY_PREFIX}${props.boardId}`
-            )
-            if (saved) {
-                const { tx, ty, scale } = JSON.parse(saved)
-                zui_instance.zui.zoomSet(scale, 0, 0)
-                zui_instance.zui.translateSurface(tx, ty)
-                two.update()
-            }
+            restoreViewport(`${VIEWPORT_KEY_PREFIX}${props.boardId}`)
         }
 
         onCameraChangeRef.current?.({

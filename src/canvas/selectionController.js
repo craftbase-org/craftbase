@@ -191,7 +191,15 @@ export default class SelectionController {
     _bringToFront() {
         const scene = this.two.scene
         const idx = scene.children.indexOf(this.ui)
-        if (idx !== -1 && idx !== scene.children.length - 1) {
+        // If the UI was detached from the scene (e.g. by an external
+        // two.clear() during clearBoard), re-add it. Otherwise this.ui
+        // would stay invisible despite ui.visible = true because it
+        // isn't in the render tree.
+        if (idx === -1) {
+            this.two.add(this.ui)
+            return
+        }
+        if (idx !== scene.children.length - 1) {
             scene.children.splice(idx, 1)
             scene.children.push(this.ui)
         }

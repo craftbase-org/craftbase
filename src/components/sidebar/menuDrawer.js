@@ -123,8 +123,7 @@ const MenuDrawer = () => {
                     }}
                 >
                     <div
-                        className="bg-card-bg border border-border-panel rounded-lg shadow-lg py-1"
-                        style={{ width: '188px' }}
+                        className="bg-card-bg border border-border-panel rounded-lg shadow-lg py-1 w-[188px] max-w-[calc(100vw-20px)]"
                     >
                         {/* Section label */}
                         <div className="px-3 pt-1 pb-1.5">
@@ -203,7 +202,7 @@ const MenuDrawer = () => {
                         <div className="h-px bg-border-panel mx-2 mt-1 mb-1" />
 
                         <button
-                            className="w-full flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-red-500
+                            className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-red-500
                                 hover:bg-red-500/10 rounded cursor-pointer
                                 transition-colors ease-in-out duration-150"
                             style={{ width: 'calc(100% - 8px)' }}

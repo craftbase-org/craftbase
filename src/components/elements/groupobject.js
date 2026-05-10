@@ -339,7 +339,8 @@ function GroupedObjectWrapper(props) {
                     twoText.size = meta.textFontSize || 24
                     twoText.alignment = 'center'
                     twoText.baseline = meta.textBaseLine || 'middle'
-                    twoText.family = meta.textFamily || 'Caveat'
+                    twoText.family =
+                        meta.textFontFamily || meta.textFamily || 'Caveat'
                     coreObject.add(twoText)
                 }
 

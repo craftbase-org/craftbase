@@ -2,6 +2,8 @@ export const offsetHeight = 0
 export const GROUP_COMPONENT = 'groupobject'
 export const RUBBER_MODE_KEY = 'rubberMode'
 export const VIEWPORT_KEY_PREFIX = 'craftbase_viewport_'
+export const MOBILE_VIEWPORT_KEY_PREFIX = 'craftbase_mobile_viewport_'
+export const VIEWPORT_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 export const componentTypes = {
     rectangle: 'rectangle',

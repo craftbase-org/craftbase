@@ -34,6 +34,7 @@ const PrimarySidebar = () => {
         defaultFill,
         defaultStrokeColor,
         defaultOpacity,
+        defaultTextFontFamily,
         onCreateBoard,
         createBoardLoading,
     } = useBoardContext()
@@ -97,6 +98,9 @@ const PrimarySidebar = () => {
                         metadata: {
                             ...(item.metadata || {}),
                             opacity: defaultOpacity ?? 1,
+                            ...(defaultTextFontFamily && {
+                                textFontFamily: defaultTextFontFamily,
+                            }),
                         },
                         width: item.width,
                         height: item.height,
@@ -213,6 +217,9 @@ const PrimarySidebar = () => {
                                     metadata: {
                                         ...(item.metadata || {}),
                                         opacity: defaultOpacity ?? 1,
+                                        ...(defaultTextFontFamily && {
+                                            textFontFamily: defaultTextFontFamily,
+                                        }),
                                     },
                                     width: item.width,
                                     height: item.height,
@@ -249,7 +256,12 @@ const PrimarySidebar = () => {
                         ),
                         x2: 0,
                         boardId: boardId,
-                        metadata: { opacity: defaultOpacity ?? 1 },
+                        metadata: {
+                            opacity: defaultOpacity ?? 1,
+                            ...(defaultTextFontFamily && {
+                                textFontFamily: defaultTextFontFamily,
+                            }),
+                        },
                         width: 160,
                         height: 160,
                         fill: defaultFill ?? '#fff',

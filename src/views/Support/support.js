@@ -106,10 +106,10 @@ const SupportPage = () => {
                         <div className="text-xs text-ink-muted">
                             Email the contact person at{' '}
                             <a
-                                href="mailto:meetzaveri96@gmail.com"
+                                href="mailto:support@craftbase.org"
                                 className="text-accent-dark font-semibold no-underline border-b border-accent-dark"
                             >
-                                meetzaveri96@gmail.com
+                                support@craftbase.org
                             </a>
                         </div>
                     </div>
