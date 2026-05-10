@@ -149,6 +149,9 @@ const BoardViewPage = (props) => {
     const [zuiInBoard, setZuiInBoard] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
     const [selectedGroup, setSelectedGroup] = useState(null)
+    // Mirror of selectedGroup as a ref — useComponentHistory's applyBatch needs
+    // to read the currently-focused group at undo/redo time without re-running.
+    const selectedGroupRef = useRef(null)
     const [currentElement, setCurrentElement] = useState(null)
     const [showPermissionErrorModal, setShowPermissionErrorModal] =
         useState(false)
@@ -247,6 +250,7 @@ const BoardViewPage = (props) => {
         setDefaultLinewidth,
         setDefaultStrokeType,
         selectedComponent,
+        selectedGroupRef,
         stripTypename,
     })
 
@@ -998,8 +1002,15 @@ const BoardViewPage = (props) => {
     // into React state so the sidebar can react. Independent of newCanvas.js's
     // own activeGroupRef listeners, which serve event-handler land.
     useEffect(() => {
-        const onFocus = (e) => setSelectedGroup(e?.detail?.group ?? null)
-        const onBlur = () => setSelectedGroup(null)
+        const onFocus = (e) => {
+            const g = e?.detail?.group ?? null
+            selectedGroupRef.current = g
+            setSelectedGroup(g)
+        }
+        const onBlur = () => {
+            selectedGroupRef.current = null
+            setSelectedGroup(null)
+        }
         window.addEventListener('groupFocused', onFocus)
         window.addEventListener('groupBlurred', onBlur)
         return () => {
@@ -1012,6 +1023,8 @@ const BoardViewPage = (props) => {
         selectedGroup,
         twoJSInstance,
         updateComponentBulkPropertiesInLocalStore,
+        stateRefForComponentStore,
+        recordBatchToHistoryLog,
     })
 
     const applyProperty = createApplyProperty({

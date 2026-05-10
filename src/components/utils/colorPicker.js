@@ -311,7 +311,7 @@ const ColorPicker = ({
                         key={color}
                         onClick={() => handleColorSelect(color)}
                         title={color}
-                        className="w-5 h-5 rounded-full flex-shrink-0 transition-transform hover:scale-110"
+                        className="mr-1 w-5 h-5 rounded-full flex-shrink-0 transition-transform hover:scale-110"
                         style={{
                             background: color,
                             border:

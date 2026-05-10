@@ -53,6 +53,7 @@ export function useComponentHistory({
     setDefaultStrokeType,
     setToolbarRefreshKey,
     selectedComponent,
+    selectedGroupRef,
     stripTypename,
 } = {}) {
     const [historyLog, setHistoryLog] = useState([])
@@ -255,6 +256,78 @@ export function useComponentHistory({
                 if (sceneGroup) two?.remove([sceneGroup])
                 if (isPersistedRef.current) {
                     deleteComponent({ variables: { id: e.id } })
+                }
+            } else if (e.action === 'UPDATE_BULK') {
+                // Used by group bulk-apply: a single BATCH carries one
+                // UPDATE_BULK per group child, so one undo press rolls them
+                // all back together.
+                const propsToApply =
+                    direction === 'undo' ? e.prevProps : e.bulkObj
+                if (!propsToApply) return
+                updatedStore[e.id] = {
+                    ...updatedStore[e.id],
+                    ...propsToApply,
+                }
+                const sceneGroup = two?.scene.children.find(
+                    (c) => c?.elementData?.id === e.id
+                )
+                if (sceneGroup) {
+                    Object.entries(propsToApply).forEach(([name, val]) => {
+                        applyPropertyToTwoJSGroup(sceneGroup, name, val)
+                    })
+                    // Keep the scene element's snapshot in sync so the
+                    // toolbar reads the right values if the user re-selects.
+                    if (sceneGroup.elementData) {
+                        Object.entries(propsToApply).forEach(([k, v]) => {
+                            sceneGroup.elementData[k] = v
+                        })
+                    }
+                }
+                // If a group is currently focused and contains this child,
+                // also mutate the visible coreObj so undo/redo reflects on
+                // screen without waiting for the user to ungroup.
+                const activeGroup = selectedGroupRef?.current
+                const groupChildren = activeGroup?.elementData?.children
+                if (Array.isArray(groupChildren)) {
+                    const inGroup = groupChildren.some((c) => c?.id === e.id)
+                    if (inGroup) {
+                        const coreObj = activeGroup.children?.find(
+                            (c) => c?.elementData?.id === e.id
+                        )
+                        if (coreObj) {
+                            // For opacity, the leaf shape carries the value;
+                            // outer coreObj.opacity must be 1 so the leaf
+                            // alone controls display (mirrors the apply path).
+                            const isOpacityChange =
+                                'metadata' in propsToApply &&
+                                propsToApply.metadata &&
+                                typeof propsToApply.metadata === 'object' &&
+                                'opacity' in propsToApply.metadata
+                            if (isOpacityChange) coreObj.opacity = 1
+                            Object.entries(propsToApply).forEach(
+                                ([name, val]) => {
+                                    applyPropertyToTwoJSGroup(coreObj, name, val)
+                                }
+                            )
+                        }
+                        // Also mirror onto the child entry inside
+                        // group.elementData.children so blur restoration
+                        // doesn't re-apply stale data.
+                        groupChildren.forEach((c) => {
+                            if (c?.id === e.id) {
+                                Object.entries(propsToApply).forEach(
+                                    ([k, v]) => {
+                                        c[k] = v
+                                    }
+                                )
+                            }
+                        })
+                    }
+                }
+                if (isPersistedRef.current) {
+                    updateComponentInfo({
+                        variables: { id: e.id, updateObj: propsToApply },
+                    })
                 }
             }
         })

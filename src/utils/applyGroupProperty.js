@@ -102,6 +102,8 @@ export function createApplyGroupProperty(deps) {
             selectedGroup,
             twoJSInstance,
             updateComponentBulkPropertiesInLocalStore,
+            stateRefForComponentStore,
+            recordBatchToHistoryLog,
         } = deps
 
         const children = selectedGroup?.elementData?.children
@@ -109,6 +111,28 @@ export function createApplyGroupProperty(deps) {
 
         const acceptSet = ACCEPTS[propertyKey]
         if (!acceptSet) return
+
+        // Collected per-child {id, prevProps, bulkObj} entries — emitted as a
+        // single BATCH at the end so one undo press rolls everything back.
+        const batchEntries = []
+        const snapshotPrev = (id, keys) => {
+            const current = stateRefForComponentStore?.current?.[id] || {}
+            const prev = {}
+            keys.forEach((k) => {
+                if (current[k] !== undefined) prev[k] = current[k]
+            })
+            return prev
+        }
+        const recordChild = (id, bulkObj) => {
+            const prevProps = snapshotPrev(id, Object.keys(bulkObj))
+            batchEntries.push({
+                action: 'UPDATE_BULK',
+                id,
+                prevProps,
+                bulkObj,
+            })
+            updateComponentBulkPropertiesInLocalStore(id, bulkObj, true)
+        }
 
         children.forEach((child) => {
             const type = child?.componentType
@@ -129,9 +153,7 @@ export function createApplyGroupProperty(deps) {
                 applyToTwoShape(coreObj, propertyKey, value)
                 if (sceneEl?.elementData) sceneEl.elementData[propertyKey] = value
                 child[propertyKey] = value
-                updateComponentBulkPropertiesInLocalStore(id, {
-                    [propertyKey]: value,
-                })
+                recordChild(id, { [propertyKey]: value })
                 return
             }
 
@@ -141,9 +163,7 @@ export function createApplyGroupProperty(deps) {
                 applyToTwoShape(coreObj, 'strokeType', value)
                 if (sceneEl?.elementData) sceneEl.elementData.strokeType = dbValue
                 child.strokeType = dbValue
-                updateComponentBulkPropertiesInLocalStore(id, {
-                    strokeType: dbValue,
-                })
+                recordChild(id, { strokeType: dbValue })
                 return
             }
 
@@ -172,9 +192,7 @@ export function createApplyGroupProperty(deps) {
                 const updatedMeta = { ...safeMeta, opacity: value }
                 if (sceneEl?.elementData) sceneEl.elementData.metadata = updatedMeta
                 child.metadata = updatedMeta
-                updateComponentBulkPropertiesInLocalStore(id, {
-                    metadata: updatedMeta,
-                })
+                recordChild(id, { metadata: updatedMeta })
                 return
             }
 
@@ -194,9 +212,7 @@ export function createApplyGroupProperty(deps) {
                     if (sceneEl?.elementData)
                         sceneEl.elementData.textColor = value
                     child.textColor = value
-                    updateComponentBulkPropertiesInLocalStore(id, {
-                        textColor: value,
-                    })
+                    recordChild(id, { textColor: value })
                 } else if (type === 'rectangle') {
                     // Rectangle-with-text: only relevant if it actually has text.
                     const sceneText = sceneEl
@@ -219,7 +235,7 @@ export function createApplyGroupProperty(deps) {
                     if (sceneEl?.elementData)
                         sceneEl.elementData.metadata = updatedMeta
                     child.metadata = updatedMeta
-                    updateComponentBulkPropertiesInLocalStore(id, {
+                    recordChild(id, {
                         metadata: updatedMeta,
                         textColor: value,
                     })
@@ -260,12 +276,15 @@ export function createApplyGroupProperty(deps) {
                 if (sceneEl?.elementData)
                     sceneEl.elementData.metadata = updatedMeta
                 child.metadata = updatedMeta
-                updateComponentBulkPropertiesInLocalStore(id, {
-                    metadata: updatedMeta,
-                })
+                recordChild(id, { metadata: updatedMeta })
                 return
             }
         })
+
+        // Emit one BATCH so a single undo press rolls every child back.
+        if (batchEntries.length > 0) {
+            recordBatchToHistoryLog?.(batchEntries)
+        }
 
         twoJSInstance?.update()
     }
