@@ -60,6 +60,7 @@ export async function getCanvasBox(page) {
 const SHAPE_TOOLBAR_LABEL = {
     rectangle: 'Rectangle / Square',
     circle: 'Circle',
+    diamond: 'Diamond',
 }
 
 /**
@@ -86,8 +87,12 @@ export async function drawShape(page, type, { startX, startY, endX, endY }) {
         (els) => els.length
     )
 
-    // Rectangle/Circle live inside the "Shapes" drawer — open it first.
-    await page.click('[aria-label="Shapes"]')
+    // On mobile, Rectangle/Circle/Diamond live inside a "Shapes" drawer that
+    // must be opened first; on desktop they're flattened to top-level buttons
+    // (see flattenShapesForDesktop in shapesToolbar.js) and the drawer parent
+    // never renders. Click the drawer only if it exists.
+    const shapesDrawer = await page.$('[aria-label="Shapes"]')
+    if (shapesDrawer) await shapesDrawer.click()
     await page.click(`[aria-label="${ariaLabel}"]`)
 
     await page.mouse.move(startX, startY)
@@ -130,21 +135,35 @@ async function clickToolbarShape(page, ariaLabel) {
     await page.click(`[aria-label="${ariaLabel}"]`)
 }
 
-// Maps a STROKE_WIDTHS label (see src/components/sidebar/defaults.js) to the
-// 1-based index of its button inside #stroke-width-section.
-const STROKE_WIDTH_INDEX_BY_LABEL = { '1': 1, '2': 2, '4': 3, '6': 4 }
+// Maps a STROKE_WIDTHS label (see STROKE_WIDTHS in
+// src/components/sidebar/elementProperties.js) to the 1-based index of its
+// button inside #stroke-width-section.
+const STROKE_WIDTH_INDEX_BY_LABEL = { '0': 1, '2': 2, '4': 3, '6': 4 }
 
 /**
- * Clicks the Defaults panel's Stroke Width button matching the given label
- * ('1' | '2' | '4' | '6'). The buttons are unlabeled visual swatches, so we
- * pick by position within #stroke-width-section. After clicking, primary.js's
- * addElement reads `defaultLinewidth` from BoardContext when assembling
- * shapeData for the next draw.
+ * Clicks the unified element-properties toolbar's Stroke Width button matching
+ * the given label ('0' | '2' | '4' | '6'). The buttons are unlabeled visual
+ * swatches, so we pick by position within #stroke-width-section. All sets
+ * (SHAPE / ARROW / PENCIL / RECT_WITH_TEXT) write to the same unified
+ * `defaultLinewidth`.
  */
 export async function setDefaultStrokeWidth(page, label) {
     const idx = STROKE_WIDTH_INDEX_BY_LABEL[label]
-    if (!idx) throw new Error(`Unknown stroke width label: ${label}`)
+    if (!idx)
+        throw new Error(
+            `Unknown stroke width label: ${label}. Valid: 0, 2, 4, 6.`
+        )
     await page.click(`#stroke-width-section button:nth-of-type(${idx})`)
+}
+
+/**
+ * Clicks any top-level toolbar button by aria-label (e.g. "Pencil", "Pointer",
+ * "Eraser"). Used by tests that need to switch the active draw mode so the
+ * unified properties toolbar swaps to the matching set before tweaking a
+ * default.
+ */
+export async function clickToolbarButton(page, ariaLabel) {
+    await page.click(`[aria-label="${ariaLabel}"]`)
 }
 
 /**

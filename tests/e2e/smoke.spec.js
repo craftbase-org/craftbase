@@ -20,10 +20,12 @@ test.describe('Smoke — board loads correctly', () => {
 
     test('shapes toolbar is visible', async ({ page }) => {
         // aria-label is set on the icon SVG inside each toolbar button div.
-        // Rectangle/Circle live inside the "Shapes" drawer — open it first.
-        await expect(page.locator('[aria-label="Shapes"]')).toBeVisible()
-        await page.click('[aria-label="Shapes"]')
-        await expect(page.locator('[aria-label="Rectangle / Square"]')).toBeVisible()
+        // On desktop, shapesToolbar.flattenShapesForDesktop hoists Rectangle /
+        // Circle / Diamond out of the "Shapes" drawer to top-level buttons.
+        // On mobile they remain nested behind the drawer parent.
+        await expect(
+            page.locator('[aria-label="Rectangle / Square"]')
+        ).toBeVisible()
         await expect(page.locator('[aria-label="Circle"]')).toBeVisible()
         await expect(page.locator('[aria-label="Text"]')).toBeVisible()
     })

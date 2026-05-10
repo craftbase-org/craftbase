@@ -1,5 +1,5 @@
-import ObjectSelector from "components/utils/objectSelector";
-import ToolBar from "components/utils/toolbarConnector";
+import ObjectSelector from "./objectSelector";
+import ToolBar from "./toolbarConnector";
 
 const getEditComponents = (two, group, constant1) => {
   const selector = new ObjectSelector(two, group, 0, 0, 0, 0, constant1);

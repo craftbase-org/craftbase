@@ -1,5 +1,5 @@
 import Main from './main'
-import { strokeTypeToDashes } from 'utils/misc'
+import { strokeTypeToDashes } from '../utils/misc'
 
 export default class ArrowLineFactory extends Main {
     createElement() {

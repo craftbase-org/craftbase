@@ -2,14 +2,13 @@ import React, { useState, useEffect, useContext } from 'react'
 import { useQuery } from '@apollo/client'
 import { useNavigate } from 'react-router-dom'
 
-import DefaultsDropdown from './defaults'
 import ShapesToolbar from './shapesToolbar'
-import { GET_COMPONENT_TYPES } from 'schema/queries'
-import SpinnerWithSize from 'components/common/spinnerWithSize'
-import Button from 'components/common/button'
-import { generateUUID } from 'utils/misc'
-import { useBoardContext } from 'views/Board/board'
-import { useMediaQueryUtils } from 'constants/exportHooks'
+import { GET_COMPONENT_TYPES } from '../../schema/queries'
+import SpinnerWithSize from '../common/spinnerWithSize'
+import Button from '../common/button'
+import { generateUUID } from '../../utils/misc'
+import { useBoardContext } from '../../views/Board/board'
+import { useMediaQueryUtils } from '../../constants/exportHooks'
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
@@ -24,6 +23,7 @@ const PrimarySidebar = () => {
         updateLastAddedElement,
         togglePointer,
         togglePencilMode,
+        togglePanMode,
         addToLocalComponentStore,
         enableTextDrawMode,
         setArrowDrawModeInBoard,
@@ -32,6 +32,10 @@ const PrimarySidebar = () => {
         cancelPendingElement,
         defaultLinewidth,
         defaultStrokeType,
+        defaultFill,
+        defaultStrokeColor,
+        defaultOpacity,
+        defaultTextFontFamily,
         onCreateBoard,
         createBoardLoading,
     } = useBoardContext()
@@ -86,14 +90,19 @@ const PrimarySidebar = () => {
                         componentType: label,
                         linewidth: defaultLinewidth,
                         strokeType: defaultStrokeType,
-                        stroke: '#3A342C',
+                        stroke: defaultStrokeColor ?? '#3A342C',
                         children: {},
-                        metadata: [],
                         x: -9999,
                         y: -9999,
                         x2: 0,
                         boardId: boardId,
-                        metadata: item.metadata,
+                        metadata: {
+                            ...(item.metadata || {}),
+                            opacity: defaultOpacity ?? 1,
+                            ...(defaultTextFontFamily && {
+                                textFontFamily: defaultTextFontFamily,
+                            }),
+                        },
                         width: item.width,
                         height: item.height,
                         fill: item.fill,
@@ -135,9 +144,15 @@ const PrimarySidebar = () => {
         if (label !== 'rubber') {
             setRubberModeInBoard(false)
         }
+        if (label !== 'pan') {
+            togglePanMode(false)
+        }
         switch (label) {
             case 'pointer':
                 togglePointer(true)
+                break
+            case 'pan':
+                togglePanMode(true)
                 break
             case 'pencil':
                 togglePencilMode(true)
@@ -183,14 +198,16 @@ const PrimarySidebar = () => {
                         (item, index) => {
                             if (item.label === label) {
                                 const userId = localStorage.getItem('userId')
+                                const useShapeFill = DRAW_SHAPE_TYPES.includes(
+                                    label
+                                )
                                 shapeData = {
                                     id: generateId,
                                     componentType: label,
                                     linewidth: defaultLinewidth,
                                     strokeType: defaultStrokeType,
-                                    stroke: '#3A342C',
+                                    stroke: defaultStrokeColor ?? '#3A342C',
                                     children: {},
-                                    metadata: [],
                                     x: parseInt(
                                         window.outerWidth -
                                             (randomNumber * window.outerWidth) /
@@ -204,10 +221,18 @@ const PrimarySidebar = () => {
                                     ),
                                     x2: label.includes('divider') ? 100 : 0,
                                     boardId: boardId,
-                                    metadata: item.metadata,
+                                    metadata: {
+                                        ...(item.metadata || {}),
+                                        opacity: defaultOpacity ?? 1,
+                                        ...(defaultTextFontFamily && {
+                                            textFontFamily: defaultTextFontFamily,
+                                        }),
+                                    },
                                     width: item.width,
                                     height: item.height,
-                                    fill: item.fill,
+                                    fill: useShapeFill
+                                        ? defaultFill ?? item.fill
+                                        : item.fill,
                                     textColor: item.textColor,
                                     updatedBy: userId,
                                 }
@@ -226,7 +251,7 @@ const PrimarySidebar = () => {
                         componentType: label,
                         linewidth: defaultLinewidth,
                         strokeType: defaultStrokeType,
-                        stroke: '#3A342C',
+                        stroke: defaultStrokeColor ?? '#3A342C',
                         children: {},
                         x: parseInt(
                             window.outerWidth -
@@ -238,10 +263,15 @@ const PrimarySidebar = () => {
                         ),
                         x2: 0,
                         boardId: boardId,
-                        metadata: {},
+                        metadata: {
+                            opacity: defaultOpacity ?? 1,
+                            ...(defaultTextFontFamily && {
+                                textFontFamily: defaultTextFontFamily,
+                            }),
+                        },
                         width: 160,
                         height: 160,
-                        fill: '#fff',
+                        fill: defaultFill ?? '#fff',
                         textColor: '#3A342C',
                         updatedBy: userId,
                     }
@@ -279,14 +309,6 @@ const PrimarySidebar = () => {
         <>
             <ShapesToolbar addElement={addElement} />
             <MenuDrawer />
-            <div
-                id="sidebar-container"
-                className="sidebar-container flex items-center"
-            >
-                <div className=" relative ">
-                    <DefaultsDropdown />
-                </div>
-            </div>
             <div
                 id="show-click-anywhere-btn"
                 className="fixed w-full flex justify-center top-0  opacity-0

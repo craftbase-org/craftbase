@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { useImmer } from 'use-immer'
 
-import AddSVG from 'assets/add_icon_only.svg'
-import SubtractSVG from 'assets/subtract.svg'
+import AddSVG from '../../assets/add_icon_only.svg'
+import SubtractSVG from '../../assets/subtract.svg'
 
 const CanvasZoomer = (props) => {
     const [scale, setScale] = useState(1)

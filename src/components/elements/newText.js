@@ -1,15 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
-import { useBoardContext } from 'views/Board/board'
+import { useBoardContext } from '../../views/Board/board'
 
-import { elementOnBlurHandler } from 'utils/misc'
-import getEditComponents from 'components/utils/editWrapper'
-import NewTextFactory from 'factory/newText'
-import Toolbar from 'components/floatingToolbar'
-import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
-import { useMediaQueryUtils } from 'constants/exportHooks'
-import controlsIcon from 'assets/controls.svg'
+import { elementOnBlurHandler } from '../../utils/misc'
+import getEditComponents from '../utils/editWrapper'
+import NewTextFactory from '../../factory/newText'
+import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from '../../utils/constants'
+import { useMediaQueryUtils } from '../../constants/exportHooks'
 
 function NewText(props) {
     const {
@@ -259,14 +257,19 @@ function NewText(props) {
             groupDomElem.style.display = 'none'
 
             const fontSize = twoText.size || 36
+            // Two.js renders text at `fontSize * sceneScale` screen pixels.
+            // Match the textarea/measureSpan to that so the editing overlay
+            // is visually identical to the rendered SVG text under zoom.
+            const sceneScale = two?.scene?.scale || 1
+            const cssFontSize = fontSize * sceneScale
             // Use a generous line-height so ascenders/descenders are
             // never clipped. A 1.6× multiplier covers most font metrics.
-            const lineH = Math.ceil(fontSize * 1.6)
+            const lineH = Math.ceil(cssFontSize * 1.6)
             // Vertical padding inside the textarea prevents the top of
             // tall glyphs (H, d, l …) from being cut off by the element
-            // boundary. Half the difference between lineH and fontSize
+            // boundary. Half the difference between lineH and cssFontSize
             // approximates the ascender headroom the browser needs.
-            const vertPad = Math.ceil((lineH - fontSize) / 2) + 4
+            const vertPad = Math.ceil((lineH - cssFontSize) / 2) + 4
 
             const input = document.createElement('textarea')
             const randomId = Math.floor(Math.random() * 90 + 10)
@@ -277,7 +280,7 @@ function NewText(props) {
             input.style.background = 'transparent'
             input.style.padding = `${vertPad}px 8px`
             input.style.color = twoText.fill || '#3A342C'
-            input.style.fontSize = `${fontSize}px`
+            input.style.fontSize = `${cssFontSize}px`
             input.style.fontFamily = twoText.family || 'Caveat'
             input.style.fontWeight = twoText.weight || 'normal'
             input.style.lineHeight = `${lineH}px`
@@ -310,7 +313,7 @@ function NewText(props) {
             measureSpan.style.position = 'absolute'
             measureSpan.style.visibility = 'hidden'
             measureSpan.style.whiteSpace = 'pre'
-            measureSpan.style.fontSize = `${fontSize}px`
+            measureSpan.style.fontSize = `${cssFontSize}px`
             measureSpan.style.fontFamily = twoText.family || 'Caveat'
             measureSpan.style.fontWeight = twoText.weight || 'normal'
             measureSpan.style.lineHeight = `${lineH}px`
@@ -548,53 +551,6 @@ function NewText(props) {
     return (
         <React.Fragment>
             <div id="two-new-text"></div>
-            {showToolbar && isMobile && (
-                <button
-                    ref={mobileTriggerRef}
-                    title="Text properties"
-                    onClick={() => setShowMobilePanel((prev) => !prev)}
-                    style={{
-                        position: 'fixed',
-                        bottom: '16px',
-                        right: '10px',
-                        zIndex: 20,
-                    }}
-                    className={`w-10 h-10 rounded-lg shadow-md flex items-center justify-center transition-colors duration-150
-                        ${showMobilePanel ? 'bg-accent' : 'bg-card-bg'}`}
-                >
-                    <img
-                        src={controlsIcon}
-                        className="w-5 h-5"
-                        alt="Text properties"
-                    />
-                </button>
-            )}
-            {showToolbar && (!isMobile || showMobilePanel) ? (
-                <Toolbar
-                    // Show only text color and opacity; hide everything else
-                    hideColorBackground={true}
-                    currentFontSize={twoTextRef.current.size}
-                    hideColorIcon={true}
-                    hideColorText={false}
-                    hideBorderSection={true}
-                    showTextSizeSection={true}
-                    showFontFamilySection={true}
-                    currentFontFamily={twoTextRef.current?.family || 'Caveat'}
-                    onFontFamilyChange={handleFontFamilyChange}
-                    toggle={showToolbar}
-                    componentState={internalState}
-                    closeToolbar={closeToolbar}
-                    componentId={props.id}
-                    isMobile={isMobile}
-                    updateComponentBulkProperties={
-                        updateComponentBulkPropertiesInLocalStore
-                    }
-                    postToolbarUpdate={() => {
-                        two.update()
-                    }}
-                    onTextSizeChange={handleTextSizeChange}
-                />
-            ) : null}
         </React.Fragment>
     )
 }

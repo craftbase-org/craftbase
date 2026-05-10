@@ -1,7 +1,7 @@
 import Main from './main'
 import Two from 'two.js'
-import { chaikinSmooth } from 'utils/pencilHelper'
-import { strokeTypeToDashes } from 'utils/misc'
+import { chaikinSmooth } from '../utils/pencilHelper'
+import { strokeTypeToDashes } from '../utils/misc'
 
 export default class PencilFactory extends Main {
     createElement() {

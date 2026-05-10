@@ -2,6 +2,8 @@ export const offsetHeight = 0
 export const GROUP_COMPONENT = 'groupobject'
 export const RUBBER_MODE_KEY = 'rubberMode'
 export const VIEWPORT_KEY_PREFIX = 'craftbase_viewport_'
+export const MOBILE_VIEWPORT_KEY_PREFIX = 'craftbase_mobile_viewport_'
+export const VIEWPORT_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 export const componentTypes = {
     rectangle: 'rectangle',
@@ -15,6 +17,7 @@ export const PENDING_SHAPE_TYPE_KEY = 'pendingShapeType'
 export const PENDING_SHAPE_PROPS_KEY = 'pendingShapeProps'
 export const LAST_ADDED_ELEMENT_ID_KEY = 'lastAddedElementId'
 export const PENCIL_MODE_KEY = 'pencilMode'
+export const PAN_MODE_KEY = 'panMode'
 
 // Default colors
 export const PENCIL_DEFAULT_COLOR = '#3A342C'

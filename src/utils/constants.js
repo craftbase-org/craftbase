@@ -1,13 +1,14 @@
-import CircleIcon from 'wireframeAssets/circle.svg?react'
-import RectangleIcon from 'wireframeAssets/rectangle.svg?react'
-import DiamondIcon from 'wireframeAssets/diamond.svg?react'
-import ShapesIcon from 'wireframeAssets/shapes.svg?react'
-import TextIcon from 'wireframeAssets/text.svg?react'
-import PencilIcon from 'wireframeAssets/pencil.svg?react'
-import PointerIcon from 'wireframeAssets/cursor.svg?react'
-import EraserIcon from 'wireframeAssets/eraser.svg?react'
+import CircleIcon from '../wireframeAssets/circle.svg?react'
+import RectangleIcon from '../wireframeAssets/rectangle.svg?react'
+import DiamondIcon from '../wireframeAssets/diamond.svg?react'
+import ShapesIcon from '../wireframeAssets/shapes.svg?react'
+import TextIcon from '../wireframeAssets/text.svg?react'
+import PencilIcon from '../wireframeAssets/pencil.svg?react'
+import PointerIcon from '../wireframeAssets/cursor.svg?react'
+import EraserIcon from '../wireframeAssets/eraser.svg?react'
 
-import RightArrowIcon from 'assets/right_arrow.svg?react'
+import RightArrowIcon from '../assets/right_arrow.svg?react'
+import PanIcon from '../assets/pan.svg?react'
 
 export const color_blue = '#0052CC'
 export const color_teal = '#008DA6'
@@ -30,7 +31,8 @@ export const properties = {
 }
 
 export const allColorShades = [
-    'rgba(0,0,0,0.0)',
+    '#FFFFFF',
+    '#000000',
     '#BF2600',
     '#DE350B',
     '#FF5630',
@@ -89,12 +91,11 @@ export const allColorShades = [
 
 export const essentialShades = [
     '#FFFFFF',
+    '#000000',
     '#FF5630',
     '#FFAB00',
     '#36B37E',
-    '#00B8D9',
     '#0065FF',
-    '#6554C0',
 ]
 
 export const staticPrimaryElementData = [
@@ -108,6 +109,15 @@ export const staticPrimaryElementData = [
                 hasDrawer: false,
                 noAction: true,
                 drawerData: [],
+            },
+            {
+                elementName: 'pan',
+                elementDisplayName: 'Pan',
+                elementIcon: PanIcon,
+                hasDrawer: false,
+                noAction: true,
+                drawerData: [],
+                mobileOnly: true,
             },
             {
                 elementName: 'shapes',

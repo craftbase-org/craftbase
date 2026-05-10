@@ -1,6 +1,6 @@
 import React from 'react'
-import Modal from 'components/common/modal'
-import Button from 'components/common/button'
+import Modal from '../common/modal'
+import Button from '../common/button'
 
 export default function PermissionErrorModal({ open, onClose }) {
     return (

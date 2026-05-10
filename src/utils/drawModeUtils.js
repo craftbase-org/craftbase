@@ -6,7 +6,8 @@ import {
     LAST_ADDED_ELEMENT_ID_KEY,
     RUBBER_MODE_KEY,
     PENCIL_MODE_KEY,
-} from 'constants/misc'
+    PAN_MODE_KEY,
+} from '../constants/misc'
 
 export function getArrowDrawMode() {
     return localStorage.getItem(ARROW_DRAW_MODE_KEY)
@@ -36,6 +37,11 @@ export function clearAllDrawModes() {
     localStorage.removeItem(LAST_ADDED_ELEMENT_ID_KEY)
     localStorage.removeItem(RUBBER_MODE_KEY)
     localStorage.removeItem(PENCIL_MODE_KEY)
+    localStorage.removeItem(PAN_MODE_KEY)
+}
+
+export function isPanMode() {
+    return localStorage.getItem(PAN_MODE_KEY) === 'true'
 }
 
 // Returns true when the user is in normal select/pan mode (no draw tool active).

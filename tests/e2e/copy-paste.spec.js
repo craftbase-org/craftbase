@@ -205,10 +205,12 @@ test.describe('Copy-paste', () => {
             circleBox.y + circleBox.height / 2
         )
 
-        // Background section's swatches use `title="<hex>"`; scope to the
-        // floating toolbar to avoid matching unrelated elements with that title.
+        // Each ColorPicker section in the floating toolbar wraps its picker
+        // in a div with data-section ("fill" | "stroke" | "textColor").
+        // Scope to data-section="fill" so we don't accidentally click the
+        // matching swatch in the Stroke or Text picker.
         const swatch = page.locator(
-            `[data-parent="floating-toolbar"][title="${NEW_FILL}"]`
+            `#floating-toolbar [data-section="fill"] [title="${NEW_FILL}"]`
         )
         await swatch.first().click()
 
