@@ -48,7 +48,7 @@ import {
     cloneElementData,
     resolveShapeFromPath,
 } from './utils/canvasUtils'
-import { isSelectPanMode } from './utils/drawModeUtils'
+import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
 import { createDiamondPath } from './factory/diamond'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
 import {
@@ -117,6 +117,12 @@ function addZUI(
     let lastTapTime = 0
     let lastTapX = 0
     let lastTapY = 0
+    // Single-finger pan-mode state: when the toolbar pan button is active,
+    // a one-finger touchstart begins panning the surface (instead of routing
+    // to a synthetic mousedown). Cleared on touchend.
+    let isSinglePanning = false
+    let panLastX = 0
+    let panLastY = 0
     let dragging = false
     let isResizeEvent = false
     let currentPath
@@ -1804,19 +1810,50 @@ function addZUI(
             touchStartX = lastTouch.clientX
             touchStartY = lastTouch.clientY
 
-            // Clear any previous selection before processing the new tap.
-            // On desktop this happens via focus/blur, but synthetic mouse events
-            // don't transfer browser focus on mobile, so we do it explicitly here
-            // — before mousedown so the new selection set inside mousedown survives.
-            window.dispatchEvent(new CustomEvent('clearSelector', {}))
+            // Pan-mode short-circuit: single-finger drag should translate the
+            // surface, not select/draw. Skip the synthetic mousedown pipeline
+            // entirely while pan mode is active.
+            if (isPanMode()) {
+                isSinglePanning = true
+                panLastX = lastTouch.clientX
+                panLastY = lastTouch.clientY
+                const root = document.getElementById('main-two-root')
+                if (root) root.style.cursor = 'grabbing'
+                return
+            }
+
+            // If the tap lands on an active selection handle, keep the selection
+            // attached so mousedown's hitTest can begin a resize/rotate. Without
+            // this, the unconditional clearSelector below detaches the controller
+            // before mousedown runs — visible on shapes whose bbox corners sit in
+            // empty space (e.g. diamond NE handle), where elementFromPoint returns
+            // bare canvas and re-selection never fires.
+            const handleHit =
+                selectionController.currentGroup &&
+                selectionController.hitTest(
+                    lastTouch.clientX,
+                    lastTouch.clientY
+                )
+
+            if (!handleHit) {
+                // Clear any previous selection before processing the new tap.
+                // On desktop this happens via focus/blur, but synthetic mouse events
+                // don't transfer browser focus on mobile, so we do it explicitly here
+                // — before mousedown so the new selection set inside mousedown survives.
+                window.dispatchEvent(new CustomEvent('clearSelector', {}))
+            }
 
             // Dispatch mousedown on the actual element under the finger so
             // element-level listeners (interactjs resize handles, click handlers) fire correctly.
-            const target =
-                document.elementFromPoint(
-                    lastTouch.clientX,
-                    lastTouch.clientY
-                ) || domElement
+            // For handle hits, target domElement directly — elementFromPoint may
+            // resolve to bare canvas (which would re-trigger clearSelector inside
+            // mousedown at the `two-0` branch).
+            const target = handleHit
+                ? domElement
+                : document.elementFromPoint(
+                      lastTouch.clientX,
+                      lastTouch.clientY
+                  ) || domElement
             target.dispatchEvent(
                 new MouseEvent('mousedown', {
                     bubbles: true,
@@ -1830,7 +1867,13 @@ function addZUI(
             )
         } else if (e.touches.length === 2) {
             // Second finger added — cancel any in-progress 1-finger interaction
-            if (lastTouch) {
+            if (isSinglePanning) {
+                // Single-finger pan never dispatched a mousedown, so there's
+                // nothing to mouseup; just clear pan state and let
+                // twoFingerStart take over for pinch+pan.
+                isSinglePanning = false
+                lastTouch = null
+            } else if (lastTouch) {
                 domElement.dispatchEvent(
                     new MouseEvent('mouseup', {
                         bubbles: true,
@@ -1851,6 +1894,25 @@ function addZUI(
 
         if (e.touches.length === 1) {
             lastTouch = e.touches[0]
+
+            // Pan-mode: translate the surface by per-frame finger delta.
+            if (isSinglePanning) {
+                const dx = lastTouch.clientX - panLastX
+                const dy = lastTouch.clientY - panLastY
+                panLastX = lastTouch.clientX
+                panLastY = lastTouch.clientY
+                if (dx !== 0 || dy !== 0) {
+                    zui.translateSurface(dx, dy)
+                    two.update()
+                    onCameraChangeRef?.current?.({
+                        scale: two.scene.scale,
+                        tx: two.scene.translation.x,
+                        ty: two.scene.translation.y,
+                    })
+                }
+                return
+            }
+
             domElement.dispatchEvent(
                 new MouseEvent('mousemove', {
                     bubbles: true,
@@ -1871,6 +1933,30 @@ function addZUI(
         if (e.touches.length === 0 && lastTouch) {
             const endX = lastTouch.clientX
             const endY = lastTouch.clientY
+
+            // Pan-mode end: persist viewport (matches two-finger persistence
+            // path below) and reset cursor. Skip the synthetic mouseup/click
+            // pipeline so taps in pan mode never trigger selection.
+            if (isSinglePanning) {
+                isSinglePanning = false
+                if (props.boardId) {
+                    try {
+                        localStorage.setItem(
+                            `${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`,
+                            JSON.stringify({
+                                tx: two.scene.translation.x,
+                                ty: two.scene.translation.y,
+                                scale: two.scene.scale,
+                                savedAt: Date.now(),
+                            })
+                        )
+                    } catch (_) {}
+                }
+                const root = document.getElementById('main-two-root')
+                if (root) root.style.cursor = 'grab'
+                lastTouch = null
+                return
+            }
 
             domElement.dispatchEvent(
                 new MouseEvent('mouseup', {

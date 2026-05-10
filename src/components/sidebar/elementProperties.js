@@ -342,6 +342,16 @@ const ElementPropertiesToolbar = () => {
         })
     )
 
+    const [expandedSection, setExpandedSection] = useState(null)
+
+    const toggleSection = (key) =>
+        setExpandedSection((prev) => (prev === key ? null : key))
+
+    // Collapse any open color picker when context changes (new selection, mode switch).
+    useEffect(() => {
+        setExpandedSection(null)
+    }, [setKey, selectedComponent])
+
     // Re-sync local UI state whenever the source of truth changes (selection,
     // mode, or any default). Property mutations bump a default, which flows
     // through this effect to refresh the readouts.
@@ -381,7 +391,7 @@ const ElementPropertiesToolbar = () => {
 
     return (
         <div
-            className="secondary-sidebar-content fixed bg-card-bg block text-left pb-4 rounded-card shadow-card border border-border-panel"
+            className="secondary-sidebar-content fixed bg-card-bg block text-left pb-4 rounded-card shadow-card border border-border-panel overflow-y-auto tablet:max-h-128"
             style={
                 isMobile
                     ? {
@@ -398,21 +408,25 @@ const ElementPropertiesToolbar = () => {
             </div>
 
             {sections.includes('fill') && (
-                <div className="pt-2 px-2">
+                <div className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]">
                     <ColorPicker
                         title="Fill"
                         currentColor={values.fill}
                         onChangeComplete={handle('fill')}
+                        isExpanded={expandedSection === 'fill'}
+                        onToggleExpand={() => toggleSection('fill')}
                     />
                 </div>
             )}
 
             {sections.includes('stroke') && (
-                <div className="pt-2 px-2">
+                <div className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]">
                     <ColorPicker
                         title="Stroke"
                         currentColor={values.stroke}
                         onChangeComplete={handle('stroke')}
+                        isExpanded={expandedSection === 'stroke'}
+                        onToggleExpand={() => toggleSection('stroke')}
                     />
                 </div>
             )}
@@ -432,11 +446,13 @@ const ElementPropertiesToolbar = () => {
             )}
 
             {sections.includes('textColor') && (
-                <div className="pt-2 px-2">
+                <div className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]">
                     <ColorPicker
                         title="Text"
                         currentColor={values.textColor}
                         onChangeComplete={handle('textColor')}
+                        isExpanded={expandedSection === 'textColor'}
+                        onToggleExpand={() => toggleSection('textColor')}
                     />
                 </div>
             )}

@@ -1,150 +1,259 @@
-import React, { Fragment, useState } from 'react'
+import React, { Fragment, useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
-import styled, { css } from 'styled-components'
 import { allColorShades, essentialShades } from '../../utils/constants'
-import Icon from '../../icons/icon'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const ColorPickerContainer = styled.div`
-    width: 200px;
-    height: auto;
-    background: transparent;
-    text-align: left;
-`
+const STORAGE_KEY = 'craftbase_saved_colors'
+const MAX_SAVED = 8
 
-const ColorSelector = styled(motion.button)`
-    border-radius: 50%;
-    ${(props) =>
-        props.colorpaint &&
-        css`
-            background: ${props.colorpaint};
-            border: ${props.colorpaint === `#FFFFFF`
-                ? `1px solid #000`
-                : `1px solid transparent`};
-        `}
-`
-
-const CurrentColorIndicator = styled.div`
-    border-radius: 50%;
-    ${(props) =>
-        props.colorpaint &&
-        css`
-            background: ${props.colorpaint};
-        `};
-`
-
-const ColorPicker = ({ title, onChangeComplete, currentColor }) => {
-    const [showAllColors, ToggleShowAllColors] = useState(false)
-
-    const renderColorBtns = () => {
-        const colorsArr = showAllColors ? allColorShades : essentialShades
-        const showColors = colorsArr.map((color, index) => {
-            return (
-                <Fragment key={index}>
-                    <AnimatePresence>
-                        <div
-                            className={`${
-                                currentColor === color
-                                    ? `inline-block bg-slate-300`
-                                    : `inline-block`
-                            }`}
-                        >
-                            <ColorSelector
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                title={
-                                    color == 'rgba(0,0,0,0.0)'
-                                        ? 'transparent'
-                                        : color
-                                }
-                                data-parent="floating-toolbar"
-                                className={`m-1 w-4 h-4`}
-                                colorpaint={color}
-                                currentColor={currentColor}
-                                onClick={() => {
-                                    onChangeComplete(color)
-                                }}
-                            />
-                        </div>
-                    </AnimatePresence>
-                </Fragment>
-            )
-        })
-        return showColors
+const loadSavedColors = () => {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY)
+        return stored ? JSON.parse(stored) : []
+    } catch {
+        return []
     }
+}
+
+const persistSavedColors = (colors) => {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(colors))
+    } catch {}
+}
+
+const ColorPicker = ({ title, onChangeComplete, currentColor, isExpanded, onToggleExpand }) => {
+    const [localExpanded, setLocalExpanded] = useState(false)
+    const [savedColors, setSavedColors] = useState(loadSavedColors)
+    const [removingColor, setRemovingColor] = useState(null)
+    const [hexInput, setHexInput] = useState(currentColor?.replace(/^#/, '') ?? '')
+
+    // Support both controlled (isExpanded prop) and uncontrolled (local state) modes.
+    const controlled = isExpanded !== undefined
+    const expanded = controlled ? isExpanded : localExpanded
+    const handleToggle = onToggleExpand ?? (() => setLocalExpanded((p) => !p))
+
+    useEffect(() => {
+        setHexInput(currentColor?.replace(/^#/, '') ?? '')
+    }, [currentColor])
+
+    useEffect(() => {
+        persistSavedColors(savedColors)
+    }, [savedColors])
+
+    const handleColorSelect = (color) => {
+        onChangeComplete(color)
+    }
+
+    const handleHexSubmit = () => {
+        const full = `#${hexInput.toUpperCase()}`
+        if (/^#[0-9A-Fa-f]{6}$/.test(full)) {
+            onChangeComplete(full)
+        }
+    }
+
+    const handleSaveColor = () => {
+        if (!currentColor || savedColors.includes(currentColor) || savedColors.length >= MAX_SAVED) return
+        setSavedColors((prev) => [...prev, currentColor])
+    }
+
+    const handleRemoveColor = (color) => {
+        setSavedColors((prev) => prev.filter((c) => c !== color))
+        setRemovingColor(null)
+    }
+
+    const hasColor = !!currentColor
+
+    const swatchStyle = (color) => ({
+        background: color,
+        border: color === '#FFFFFF' ? '1.5px solid #1A1612' : 'none',
+        outline: currentColor === color ? '2px solid #C48B0A' : 'none',
+        outlineOffset: '1.5px',
+    })
 
     return (
         <Fragment>
-            {title && (
-                <div className="p-0 text-left text-xs text-gray-500">
-                    {title}
-                </div>
-            )}
-            <ColorPickerContainer
-                id="color-picker-toolbar"
-                data-parent="floating-toolbar"
-                className={`p-0 `}
-            >
-                {/* <div className="flex justify-start items-center my-2">
-                    <div className="border-2 border-4 border-8 border-radius-50 border-gray-500">
-                        {' '}
-                        <CurrentColorIndicator
-                            title={
-                                currentColor == 'rgba(0,0,0,0.0)'
-                                    ? 'transparent'
-                                    : currentColor
-                            }
-                            data-parent="floating-toolbar"
-                            className={`m-1 w-4 h-4 `}
-                            colorpaint={currentColor}
-                            // onClick={() => {
-                            //   onChangeComplete(color);
-                            // }}
-                        />
-                    </div>
-                    <input
-                        className="shadow appearance-none border w-40 py-1 px-3 ml-2
-                         text-gray-700 text-sm leading-tight focus:outline-none focus:shadow-outline"
-                        // id="color-code-input"
-                        type="text"
-                        placeholder="Color"
-                        value={
-                            currentColor == 'rgba(0,0,0,0.0)'
-                                ? 'transparent'
-                                : currentColor
-                        }
-                        disabled
+            {/* Header: section label + badge pill */}
+            <div className="flex items-center justify-between mb-2">
+                {title && (
+                    <span className="text-[11px] text-[#8a7d6b] uppercase tracking-[0.06em] font-medium">
+                        {title}
+                    </span>
+                )}
+                <button
+                    onClick={handleToggle}
+                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                        expanded
+                            ? 'bg-[#FFF5E0] border-[1.5px] border-[#C48B0A] text-[#7a4a00]'
+                            : 'bg-[#F5F0E8] border border-[#C4B89A] text-[#5a4e40]'
+                    }`}
+                >
+                    <div
+                        className="w-3.5 h-3.5 rounded-[3px] flex-shrink-0"
+                        style={{
+                            background: hasColor ? currentColor : 'transparent',
+                            border: hasColor ? 'none' : '1.5px solid #1A1612',
+                        }}
                     />
-                </div> */}
+                    <span className="font-mono">{hasColor ? currentColor.toUpperCase() : 'None'}</span>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path
+                            d={expanded ? 'M7.5 6L5 3.5L2.5 6' : 'M2.5 4L5 6.5L7.5 4'}
+                            stroke={expanded ? '#C48B0A' : '#8a7d6b'}
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                </button>
+            </div>
 
-                <div className="mt-2 mb-1">
-                    <div className=" inline w-full">
-                        {renderColorBtns()}{' '}
-                        <button
-                            className={`mb-1 inline-block transition duration-300 ${
-                                showAllColors && `transform-rotate-45`
-                            }`}
-                            onClick={() => ToggleShowAllColors(!showAllColors)}
-                        >
-                            <Icon icon="ICON_ADD" width={18} height={18} />
-                        </button>
-                    </div>
-                </div>
-            </ColorPickerContainer>
+            {/* Expanded panel with full palette */}
+            <AnimatePresence>
+                {expanded && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden mb-2"
+                    >
+                        <div className="bg-[#F5F0E8] border border-[#DDD6C4] rounded-lg p-2.5 space-y-2">
+                            {/* Selected color preview */}
+                            <div className="flex items-center gap-1.5">
+                                <div
+                                    className="w-7 h-7 rounded-[6px] flex-shrink-0"
+                                    style={{
+                                        background: currentColor ?? 'transparent',
+                                        border: '2px solid #C48B0A',
+                                    }}
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-[10px] text-[#8a7d6b] mb-0.5">Selected</div>
+                                    <div className="text-[11px] font-semibold text-[#1A1612] font-mono truncate">
+                                        {currentColor?.toUpperCase() ?? '—'}
+                                    </div>
+                                </div>
+                                <button
+                                    className="bg-[#FFFCF5] border border-[#C4B89A] rounded-[5px] p-1 flex-shrink-0 hover:bg-[#EDE7D7] transition-colors"
+                                    onClick={() => currentColor && navigator.clipboard?.writeText(currentColor)}
+                                    title="Copy hex"
+                                >
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                        <rect x="1" y="3" width="8" height="8" rx="1.5" stroke="#8a7d6b" strokeWidth="1.2" />
+                                        <path d="M3 3V2a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1h-1" stroke="#8a7d6b" strokeWidth="1.2" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {/* Full color grid: all shades + saved custom colors */}
+                            <div className="flex flex-wrap gap-1">
+                                {[...allColorShades, ...savedColors].map((color, i) => (
+                                    <button
+                                        key={`${color}-${i}`}
+                                        onClick={() => handleColorSelect(color)}
+                                        onContextMenu={(e) => {
+                                            if (savedColors.includes(color)) {
+                                                e.preventDefault()
+                                                setRemovingColor(removingColor === color ? null : color)
+                                            }
+                                        }}
+                                        title={color}
+                                        className="relative w-[22px] h-[22px] rounded-[5px] flex-shrink-0 transition-transform hover:scale-110"
+                                        style={swatchStyle(color)}
+                                    >
+                                        <AnimatePresence>
+                                            {removingColor === color && (
+                                                <motion.span
+                                                    initial={{ opacity: 0, scale: 0.5 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    exit={{ opacity: 0, scale: 0.5 }}
+                                                    className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] leading-none"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        handleRemoveColor(color)
+                                                    }}
+                                                >
+                                                    ×
+                                                </motion.span>
+                                            )}
+                                        </AnimatePresence>
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={handleSaveColor}
+                                    title="Save current color"
+                                    className="w-[22px] h-[22px] rounded-[5px] flex-shrink-0 flex items-center justify-center bg-[#F5F0E8] border-dashed border-[1.5px] border-[#C4B89A] hover:border-[#C48B0A] transition-colors"
+                                >
+                                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                        <path d="M5 2V8M2 5H8" stroke="#8a7d6b" strokeWidth="1.5" strokeLinecap="round" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {/* Hex input */}
+                            <div className="flex items-center gap-1.5">
+                                <div
+                                    className="w-5 h-5 rounded-[4px] flex-shrink-0 border border-[#C4B89A]"
+                                    style={{ background: currentColor ?? 'transparent' }}
+                                />
+                                <div className="flex-1 flex items-center bg-[#FFFCF5] border border-[#C4B89A] rounded-[5px] px-2 py-1 gap-1">
+                                    <span className="text-[10px] text-[#8a7d6b] font-semibold">#</span>
+                                    <input
+                                        className="text-[11px] text-[#1A1612] font-mono font-medium bg-transparent outline-none w-full"
+                                        value={hexInput}
+                                        onChange={(e) =>
+                                            setHexInput(
+                                                e.target.value
+                                                    .replace(/[^0-9A-Fa-f]/g, '')
+                                                    .slice(0, 6)
+                                            )
+                                        }
+                                        onBlur={handleHexSubmit}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleHexSubmit()}
+                                        placeholder="3DB88A"
+                                        maxLength={6}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Essential shades row — always visible */}
+            <div className="flex items-center gap-1">
+                {essentialShades.map((color) => (
+                    <button
+                        key={color}
+                        onClick={() => handleColorSelect(color)}
+                        title={color}
+                        className="w-5 h-5 rounded-full flex-shrink-0 transition-transform hover:scale-110"
+                        style={{
+                            background: color,
+                            border: color === '#FFFFFF' ? '1.5px solid #1A1612' : 'none',
+                            outline: currentColor === color ? '2.5px solid #C48B0A' : 'none',
+                            outlineOffset: '1.5px',
+                        }}
+                    />
+                ))}
+                <button
+                    onClick={handleSaveColor}
+                    title="Save current color"
+                    className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center border-dashed border-[1.5px] border-[#C4B89A] bg-[#F5F0E8] hover:border-[#C48B0A] transition-colors"
+                >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M5 2V8M2 5H8" stroke="#8a7d6b" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                </button>
+            </div>
         </Fragment>
     )
 }
 
-// ColorPicker.defaultProps = {
-//     leftPos: 4,
-//     currentColor: '#fff',
-// }
-
 ColorPicker.propTypes = {
-    leftPos: PropTypes.number,
     currentColor: PropTypes.string,
     onChangeComplete: PropTypes.func,
+    title: PropTypes.string,
+    isExpanded: PropTypes.bool,
+    onToggleExpand: PropTypes.func,
 }
 
 export default ColorPicker

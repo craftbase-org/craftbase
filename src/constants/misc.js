@@ -17,6 +17,7 @@ export const PENDING_SHAPE_TYPE_KEY = 'pendingShapeType'
 export const PENDING_SHAPE_PROPS_KEY = 'pendingShapeProps'
 export const LAST_ADDED_ELEMENT_ID_KEY = 'lastAddedElementId'
 export const PENCIL_MODE_KEY = 'pencilMode'
+export const PAN_MODE_KEY = 'panMode'
 
 // Default colors
 export const PENCIL_DEFAULT_COLOR = '#3A342C'

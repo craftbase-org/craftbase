@@ -30,7 +30,9 @@ const ShapesToolbar = ({ addElement }) => {
     const [drawerAnchor, setDrawerAnchor] = useState(null)
     const drawerRef = useRef(null)
 
-    const allElements = isMobile ? allElementsRaw : flattenShapesForDesktop(allElementsRaw)
+    const allElements = (
+        isMobile ? allElementsRaw : flattenShapesForDesktop(allElementsRaw)
+    ).filter((el) => (isMobile ? true : !el.mobileOnly))
 
     useEffect(() => {
         setCurrentElementInBoard('pointer')
@@ -55,8 +57,54 @@ const ShapesToolbar = ({ addElement }) => {
         allElements.find((el) => el.elementName === openDrawer)?.drawerData ??
         []
 
+    const undoButton = (
+        <div
+            title="Undo"
+            className={`
+                ${btnSize} flex items-center justify-center rounded cursor-pointer
+                transition-all ease-in-out duration-200 text-ink-muted
+                ${historyLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/30 hover:text-ink'}
+            `}
+            onClick={() => {
+                if (historyLog.length > 0) {
+                    undoLastAction()
+                }
+            }}
+        >
+            <UndoIcon className={iconSize} aria-label="Undo" />
+        </div>
+    )
+    const redoButton = (
+        <div
+            title="Redo"
+            className={`
+                ${btnSize} flex items-center justify-center rounded cursor-pointer
+                transition-all ease-in-out duration-200 text-ink-muted
+                ${bucketLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/30 hover:text-ink'}
+            `}
+            onClick={() => {
+                if (bucketLog.length > 0) {
+                    redoLastAction()
+                }
+            }}
+        >
+            <RedoIcon className={iconSize} aria-label="Redo" />
+        </div>
+    )
+
     return (
         <div ref={drawerRef}>
+            {/* Mobile: undo/redo live in their own row above the primary toolbar
+                so the bottom row stays uncrowded. Desktop keeps them inline. */}
+            {isMobile && (
+                <div
+                    className="fixed bg-sidebar border border-border-panel shadow-card rounded-card flex items-center flex-row px-1 py-1 gap-0.5"
+                    style={{ bottom: '64px', left: '10px', zIndex: 10 }}
+                >
+                    {undoButton}
+                    {redoButton}
+                </div>
+            )}
             <div
                 className={`fixed bg-sidebar border border-border-panel shadow-card rounded-card flex items-center flex-row
                     ${isMobile ? 'px-1 py-1 gap-0.5' : 'top-2 left-1/2 px-2 py-1 gap-1'}`}
@@ -126,39 +174,13 @@ const ShapesToolbar = ({ addElement }) => {
                         </div>
                     )
                 })}
-                <div
-                    className={`bg-border-panel ${isMobile ? 'w-px h-4 mx-0.5' : 'w-px h-6 mx-1'}`}
-                />
-                <div
-                    title="Undo"
-                    className={`
-                        ${btnSize} flex items-center justify-center rounded cursor-pointer
-                        transition-all ease-in-out duration-200 text-ink-muted
-                        ${historyLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/30 hover:text-ink'}
-                    `}
-                    onClick={() => {
-                        if (historyLog.length > 0) {
-                            undoLastAction()
-                        }
-                    }}
-                >
-                    <UndoIcon className={iconSize} aria-label="Undo" />
-                </div>
-                <div
-                    title="Redo"
-                    className={`
-                        ${btnSize} flex items-center justify-center rounded cursor-pointer
-                        transition-all ease-in-out duration-200 text-ink-muted
-                        ${bucketLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/30 hover:text-ink'}
-                    `}
-                    onClick={() => {
-                        if (bucketLog.length > 0) {
-                            redoLastAction()
-                        }
-                    }}
-                >
-                    <RedoIcon className={iconSize} aria-label="Redo" />
-                </div>
+                {!isMobile && (
+                    <>
+                        <div className="bg-border-panel w-px h-6 mx-1" />
+                        {undoButton}
+                        {redoButton}
+                    </>
+                )}
             </div>
 
             {openDrawer && shapeDrawerElements.length > 0 && drawerAnchor && (

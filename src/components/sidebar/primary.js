@@ -23,6 +23,7 @@ const PrimarySidebar = () => {
         updateLastAddedElement,
         togglePointer,
         togglePencilMode,
+        togglePanMode,
         addToLocalComponentStore,
         enableTextDrawMode,
         setArrowDrawModeInBoard,
@@ -143,9 +144,15 @@ const PrimarySidebar = () => {
         if (label !== 'rubber') {
             setRubberModeInBoard(false)
         }
+        if (label !== 'pan') {
+            togglePanMode(false)
+        }
         switch (label) {
             case 'pointer':
                 togglePointer(true)
+                break
+            case 'pan':
+                togglePanMode(true)
                 break
             case 'pencil':
                 togglePencilMode(true)

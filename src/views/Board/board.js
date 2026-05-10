@@ -167,6 +167,8 @@ const BoardViewPage = (props) => {
         isTextDrawMode,
         setIsTextDrawMode,
         isRubberMode,
+        isPanMode,
+        togglePanMode: togglePanModeFromHook,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
@@ -372,6 +374,14 @@ const BoardViewPage = (props) => {
         } else {
             localStorage.removeItem(PENCIL_MODE_KEY)
         }
+    }
+
+    const togglePanMode = (value) => {
+        togglePanModeFromHook(value, {
+            cancelPendingElement,
+            setSelectedComponent,
+            toggleToolbar: setShowMobileToolbarPanel,
+        })
     }
 
     const setTwoJSInstanceInBoard = (two) => {
@@ -1026,6 +1036,8 @@ const BoardViewPage = (props) => {
         isTextDrawMode,
         isArrowSelected,
         isRubberMode,
+        isPanMode,
+        togglePanMode,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
