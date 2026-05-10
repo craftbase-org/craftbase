@@ -1,5 +1,5 @@
 import React from 'react'
-import Spinner from 'components/common/spinnerWithSize'
+import Spinner from './spinnerWithSize'
 
 const Button = (props) => {
     let baseClassNames =

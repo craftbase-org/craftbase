@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { useBoardContext } from 'views/Board/board'
-import zoomInIcon from 'assets/zoom-in.svg'
-import zoomOutIcon from 'assets/zoom-out.svg'
+import { useBoardContext } from '../views/Board/board'
+import zoomInIcon from '../assets/zoom-in.svg'
+import zoomOutIcon from '../assets/zoom-out.svg'
 
 const ZoomControls = () => {
-    const { zuiInBoard, twoJSInstance } = useBoardContext()
+    const { zuiInBoard, twoJSInstance, scaleToDisplay } = useBoardContext()
     const [scale, setScale] = useState(1)
 
     useEffect(() => {
@@ -47,7 +47,9 @@ const ZoomControls = () => {
                 <img src={zoomOutIcon} className="w-5 h-5" alt="Zoom out" />
             </button>
             <span className="text-xs font-medium w-10 text-center select-none">
-                {Math.round(scale * 100)}%
+                {scaleToDisplay
+                    ? scaleToDisplay(scale)
+                    : `${Math.round(scale * 100)}%`}
             </span>
             <button
                 onClick={() => zoom(0.2)}

@@ -2,14 +2,16 @@ import React, { useEffect, useState, useRef, Suspense } from 'react'
 import Two from 'two.js'
 
 import { ZUI } from 'two.js/extras/jsm/zui'
-import { useBoardContext } from 'views/Board/board'
-import { useMediaQueryUtils } from 'constants/exportHooks'
+import { useBoardContext } from './views/Board/board'
+import { useMediaQueryUtils } from './constants/exportHooks'
 
 import {
     GROUP_COMPONENT,
     componentTypes,
     RUBBER_MODE_KEY,
     VIEWPORT_KEY_PREFIX,
+    MOBILE_VIEWPORT_KEY_PREFIX,
+    VIEWPORT_TTL_MS,
     ARROW_DRAW_MODE_KEY,
     TEXT_DRAW_MODE_KEY,
     PENDING_SHAPE_TYPE_KEY,
@@ -25,34 +27,34 @@ import {
     LINE_HEIGHT_MULTIPLIER,
     PENCIL_DISTANCE_THROTTLE,
     DEFAULT_TEXT_SIZE,
-} from 'constants/misc'
-import Spinner from 'components/common/spinner'
+} from './constants/misc'
+import Spinner from './components/common/spinner'
 
 const elementModules = import.meta.glob('./components/elements/*.js')
 
-import Loader from 'components/utils/loader'
-import SelectionController from 'canvas/selectionController'
-import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
-import { generateUUID } from 'utils/misc'
+import Loader from './components/utils/loader'
+import SelectionController from './canvas/selectionController'
+import { updateX1Y1Vertices, updateX2Y2Vertices } from './utils/updateVertices'
+import { generateUUID } from './utils/misc'
 import {
     velocityToLinewidth,
     smoothLinewidth,
     simplifyWithLinewidth,
     chaikinSmooth,
-} from 'utils/pencilHelper'
+} from './utils/pencilHelper'
 import {
     setArrowEndpointsVisible,
     pollUntilElement,
     cloneElementData,
     resolveShapeFromPath,
-} from 'utils/canvasUtils'
-import { isSelectPanMode } from 'utils/drawModeUtils'
-import { createDiamondPath } from 'factory/diamond'
-import { useCanvasClipboard } from 'hooks/useCanvasClipboard'
+} from './utils/canvasUtils'
+import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
+import { createDiamondPath } from './factory/diamond'
+import { useCanvasClipboard } from './hooks/useCanvasClipboard'
 import {
     ElementRenderWrapper,
     GroupRenderWrapper,
-} from 'components/utils/elementRenderWrappers'
+} from './components/utils/elementRenderWrappers'
 
 /**
  * @typedef {Object} elementData
@@ -78,7 +80,7 @@ import {
 var isDrawing
 var defaultLinewidthValue = 1
 var defaultStrokeTypeValue = null
-var pencilStrokeColorValue = PENCIL_DEFAULT_COLOR
+var defaultStrokeColorValue = PENCIL_DEFAULT_COLOR
 
 function addZUI(
     props,
@@ -94,7 +96,8 @@ function addZUI(
     updateComponentBulkPropertiesInLocalStore,
     deleteComponentFromLocalStore,
     isPencilModeRef,
-    createTextAtSurfaceRef
+    createTextAtSurfaceRef,
+    onCameraChangeRef
 ) {
     let shape = null
     let lastSelectedShape = null
@@ -114,6 +117,12 @@ function addZUI(
     let lastTapTime = 0
     let lastTapX = 0
     let lastTapY = 0
+    // Single-finger pan-mode state: when the toolbar pan button is active,
+    // a one-finger touchstart begins panning the surface (instead of routing
+    // to a synthetic mousedown). Cleared on touchend.
+    let isSinglePanning = false
+    let panLastX = 0
+    let panLastY = 0
     let dragging = false
     let isResizeEvent = false
     let currentPath
@@ -256,14 +265,19 @@ function addZUI(
             two.update()
 
             const fontSize = twoText.size || DEFAULT_TEXT_SIZE
+            // Two.js renders text at `fontSize * sceneScale` screen pixels.
+            // Match the textarea/measureSpan to that so visuals stay in sync
+            // and the surface-unit math (measuredW / zoom) remains correct.
+            const sceneScale = two?.scene?.scale || 1
+            const cssFontSize = fontSize * sceneScale
             // Use a generous line-height so ascenders/descenders are
             // never clipped. A LINE_HEIGHT_MULTIPLIER× covers most font metrics.
-            const lineH = Math.ceil(fontSize * LINE_HEIGHT_MULTIPLIER)
+            const lineH = Math.ceil(cssFontSize * LINE_HEIGHT_MULTIPLIER)
             // Vertical padding inside the textarea prevents the top of
             // tall glyphs (H, d, l …) from being cut off by the element
-            // boundary. Half the difference between lineH and fontSize
+            // boundary. Half the difference between lineH and cssFontSize
             // approximates the ascender headroom the browser needs.
-            const vertPad = Math.ceil((lineH - fontSize) / 2) + 4
+            const vertPad = Math.ceil((lineH - cssFontSize) / 2) + 4
 
             const input = document.createElement('textarea')
             const randomId = Math.floor(Math.random() * 90 + 10)
@@ -274,7 +288,7 @@ function addZUI(
             input.style.background = 'transparent'
             input.style.padding = `${vertPad}px 8px`
             input.style.color = twoText.fill || '#3A342C'
-            input.style.fontSize = `${fontSize}px`
+            input.style.fontSize = `${cssFontSize}px`
             input.style.fontFamily = twoText.family || 'Caveat'
             input.style.fontWeight = twoText.weight || 'normal'
             input.style.lineHeight = `${lineH}px`
@@ -366,7 +380,7 @@ function addZUI(
             measureSpan.style.position = 'absolute'
             measureSpan.style.visibility = 'hidden'
             measureSpan.style.whiteSpace = 'pre'
-            measureSpan.style.fontSize = `${fontSize}px`
+            measureSpan.style.fontSize = `${cssFontSize}px`
             measureSpan.style.fontFamily = twoText.family || 'Caveat'
             measureSpan.style.fontWeight = twoText.weight || 'normal'
             measureSpan.style.lineHeight = `${lineH}px`
@@ -538,7 +552,8 @@ function addZUI(
                     twoText.size = meta.textFontSize || DEFAULT_TEXT_SIZE
                     twoText.alignment = 'center'
                     twoText.baseline = meta.textBaseLine || 'middle'
-                    twoText.family = meta.textFamily || 'Caveat'
+                    twoText.family =
+                        meta.textFontFamily || meta.textFamily || 'Caveat'
                     shape.add(twoText)
                     two.update()
                 }
@@ -891,7 +906,7 @@ function addZUI(
                     new Two.Anchor(startCoords.x, startCoords.y)
                 )
                 pencilPath.noFill()
-                pencilPath.stroke = pencilStrokeColorValue
+                pencilPath.stroke = defaultStrokeColorValue
                 pencilPath.linewidth = defaultLinewidthValue
                 pencilPath.cap = 'round'
                 pencilPath.join = 'round'
@@ -1600,7 +1615,7 @@ function addZUI(
                     x: 0,
                     y: 0,
                     linewidth: defaultLinewidthValue,
-                    stroke: pencilStrokeColorValue,
+                    stroke: defaultStrokeColorValue,
                     strokeType: defaultStrokeTypeValue,
                 }
 
@@ -1760,6 +1775,12 @@ function addZUI(
 
         two.update()
 
+        onCameraChangeRef?.current?.({
+            scale: two.scene.scale,
+            tx: two.scene.translation.x,
+            ty: two.scene.translation.y,
+        })
+
         if (props.boardId) {
             clearTimeout(viewportSaveTimer)
             viewportSaveTimer = setTimeout(() => {
@@ -1769,6 +1790,7 @@ function addZUI(
                         tx: two.scene.translation.x,
                         ty: two.scene.translation.y,
                         scale: two.scene.scale,
+                        savedAt: Date.now(),
                     })
                 )
             }, 300)
@@ -1788,19 +1810,50 @@ function addZUI(
             touchStartX = lastTouch.clientX
             touchStartY = lastTouch.clientY
 
-            // Clear any previous selection before processing the new tap.
-            // On desktop this happens via focus/blur, but synthetic mouse events
-            // don't transfer browser focus on mobile, so we do it explicitly here
-            // — before mousedown so the new selection set inside mousedown survives.
-            window.dispatchEvent(new CustomEvent('clearSelector', {}))
+            // Pan-mode short-circuit: single-finger drag should translate the
+            // surface, not select/draw. Skip the synthetic mousedown pipeline
+            // entirely while pan mode is active.
+            if (isPanMode()) {
+                isSinglePanning = true
+                panLastX = lastTouch.clientX
+                panLastY = lastTouch.clientY
+                const root = document.getElementById('main-two-root')
+                if (root) root.style.cursor = 'grabbing'
+                return
+            }
+
+            // If the tap lands on an active selection handle, keep the selection
+            // attached so mousedown's hitTest can begin a resize/rotate. Without
+            // this, the unconditional clearSelector below detaches the controller
+            // before mousedown runs — visible on shapes whose bbox corners sit in
+            // empty space (e.g. diamond NE handle), where elementFromPoint returns
+            // bare canvas and re-selection never fires.
+            const handleHit =
+                selectionController.currentGroup &&
+                selectionController.hitTest(
+                    lastTouch.clientX,
+                    lastTouch.clientY
+                )
+
+            if (!handleHit) {
+                // Clear any previous selection before processing the new tap.
+                // On desktop this happens via focus/blur, but synthetic mouse events
+                // don't transfer browser focus on mobile, so we do it explicitly here
+                // — before mousedown so the new selection set inside mousedown survives.
+                window.dispatchEvent(new CustomEvent('clearSelector', {}))
+            }
 
             // Dispatch mousedown on the actual element under the finger so
             // element-level listeners (interactjs resize handles, click handlers) fire correctly.
-            const target =
-                document.elementFromPoint(
-                    lastTouch.clientX,
-                    lastTouch.clientY
-                ) || domElement
+            // For handle hits, target domElement directly — elementFromPoint may
+            // resolve to bare canvas (which would re-trigger clearSelector inside
+            // mousedown at the `two-0` branch).
+            const target = handleHit
+                ? domElement
+                : document.elementFromPoint(
+                      lastTouch.clientX,
+                      lastTouch.clientY
+                  ) || domElement
             target.dispatchEvent(
                 new MouseEvent('mousedown', {
                     bubbles: true,
@@ -1814,7 +1867,13 @@ function addZUI(
             )
         } else if (e.touches.length === 2) {
             // Second finger added — cancel any in-progress 1-finger interaction
-            if (lastTouch) {
+            if (isSinglePanning) {
+                // Single-finger pan never dispatched a mousedown, so there's
+                // nothing to mouseup; just clear pan state and let
+                // twoFingerStart take over for pinch+pan.
+                isSinglePanning = false
+                lastTouch = null
+            } else if (lastTouch) {
                 domElement.dispatchEvent(
                     new MouseEvent('mouseup', {
                         bubbles: true,
@@ -1835,6 +1894,25 @@ function addZUI(
 
         if (e.touches.length === 1) {
             lastTouch = e.touches[0]
+
+            // Pan-mode: translate the surface by per-frame finger delta.
+            if (isSinglePanning) {
+                const dx = lastTouch.clientX - panLastX
+                const dy = lastTouch.clientY - panLastY
+                panLastX = lastTouch.clientX
+                panLastY = lastTouch.clientY
+                if (dx !== 0 || dy !== 0) {
+                    zui.translateSurface(dx, dy)
+                    two.update()
+                    onCameraChangeRef?.current?.({
+                        scale: two.scene.scale,
+                        tx: two.scene.translation.x,
+                        ty: two.scene.translation.y,
+                    })
+                }
+                return
+            }
+
             domElement.dispatchEvent(
                 new MouseEvent('mousemove', {
                     bubbles: true,
@@ -1855,6 +1933,30 @@ function addZUI(
         if (e.touches.length === 0 && lastTouch) {
             const endX = lastTouch.clientX
             const endY = lastTouch.clientY
+
+            // Pan-mode end: persist viewport (matches two-finger persistence
+            // path below) and reset cursor. Skip the synthetic mouseup/click
+            // pipeline so taps in pan mode never trigger selection.
+            if (isSinglePanning) {
+                isSinglePanning = false
+                if (props.boardId) {
+                    try {
+                        localStorage.setItem(
+                            `${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`,
+                            JSON.stringify({
+                                tx: two.scene.translation.x,
+                                ty: two.scene.translation.y,
+                                scale: two.scene.scale,
+                                savedAt: Date.now(),
+                            })
+                        )
+                    } catch (_) {}
+                }
+                const root = document.getElementById('main-two-root')
+                if (root) root.style.cursor = 'grab'
+                lastTouch = null
+                return
+            }
 
             domElement.dispatchEvent(
                 new MouseEvent('mouseup', {
@@ -1931,11 +2033,12 @@ function addZUI(
         if (e.touches.length < 2) {
             if (distance > 0 && props.boardId) {
                 localStorage.setItem(
-                    `craftbase_mobile_viewport_${props.boardId}`,
+                    `${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`,
                     JSON.stringify({
                         tx: two.scene.translation.x,
                         ty: two.scene.translation.y,
                         scale: two.scene.scale,
+                        savedAt: Date.now(),
                     })
                 )
             }
@@ -2001,6 +2104,12 @@ function addZUI(
         distance = newDist
 
         two.update()
+
+        onCameraChangeRef?.current?.({
+            scale: two.scene.scale,
+            tx: two.scene.translation.x,
+            ty: two.scene.translation.y,
+        })
     }
 
     return {
@@ -2056,6 +2165,13 @@ const Canvas = (props) => {
         createTextAtSurfaceRef.current = createTextAtSurface
     }, [createTextAtSurface])
 
+    // Latest onCameraChange callback. Read from inside addZUI's DOM event
+    // handlers via the ref to avoid the stale-closure trap (see CLAUDE.md).
+    const onCameraChangeRef = useRef(props.onCameraChange)
+    useEffect(() => {
+        onCameraChangeRef.current = props.onCameraChange
+    }, [props.onCameraChange])
+
     const { clipboardRef, lastMouseRef } = useCanvasClipboard({
         twoJSInstance,
         zuiInstanceRef,
@@ -2084,7 +2200,8 @@ const Canvas = (props) => {
             updateComponentBulkPropertiesInLocalStore,
             deleteComponentFromLocalStore,
             isPencilModeRef,
-            createTextAtSurfaceRef
+            createTextAtSurfaceRef,
+            onCameraChangeRef
         )
 
         setZuiInstance(zui_instance)
@@ -2096,12 +2213,16 @@ const Canvas = (props) => {
         // Use ZUI's own API so its internal zScale stays in sync with the
         // scene — setting two.scene.scale directly desynchronises ZUI and
         // causes the first pan gesture to jump back to the origin.
-        if (isMobile && props.boardId) {
-            const saved = localStorage.getItem(
-                `craftbase_mobile_viewport_${props.boardId}`
-            )
-            if (saved) {
-                const { tx, ty, scale } = JSON.parse(saved)
+        const restoreViewport = (storageKey) => {
+            const saved = localStorage.getItem(storageKey)
+            if (!saved) return
+            try {
+                const parsed = JSON.parse(saved)
+                const { tx, ty, scale, savedAt } = parsed
+                if (!savedAt || Date.now() - savedAt > VIEWPORT_TTL_MS) {
+                    localStorage.removeItem(storageKey)
+                    return
+                }
                 // zoomSet updates zui.zScale + surface.scale atomically.
                 // Centering at (0,0) with initial translation (0,0) means no
                 // translation side-effect from the zoom.
@@ -2110,20 +2231,24 @@ const Canvas = (props) => {
                 // (still 0,0) to the saved position.
                 zui_instance.zui.translateSurface(tx, ty)
                 two.update()
+            } catch (_) {
+                localStorage.removeItem(storageKey)
             }
         }
 
-        if (!isMobile && props.boardId) {
-            const saved = localStorage.getItem(
-                `${VIEWPORT_KEY_PREFIX}${props.boardId}`
-            )
-            if (saved) {
-                const { tx, ty, scale } = JSON.parse(saved)
-                zui_instance.zui.zoomSet(scale, 0, 0)
-                zui_instance.zui.translateSurface(tx, ty)
-                two.update()
-            }
+        if (isMobile && props.boardId) {
+            restoreViewport(`${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`)
         }
+
+        if (!isMobile && props.boardId) {
+            restoreViewport(`${VIEWPORT_KEY_PREFIX}${props.boardId}`)
+        }
+
+        onCameraChangeRef.current?.({
+            scale: two.scene.scale,
+            tx: two.scene.translation.x,
+            ty: two.scene.translation.y,
+        })
 
         const boardId = props.boardId
         const tabsOpen = localStorage.getItem(`tabs_open_${boardId}`)
@@ -2183,16 +2308,17 @@ const Canvas = (props) => {
     }, [props.isPencilMode])
 
     useEffect(() => {
-        defaultLinewidthValue = props.pencilDefaultLinewidth || 1
-    }, [props.pencilDefaultLinewidth])
+        defaultLinewidthValue = props.defaultLinewidth || 1
+    }, [props.defaultLinewidth])
 
     useEffect(() => {
-        defaultStrokeTypeValue = props.pencilDefaultStrokeType || null
-    }, [props.pencilDefaultStrokeType])
+        defaultStrokeTypeValue = props.defaultStrokeType || null
+    }, [props.defaultStrokeType])
 
     useEffect(() => {
-        pencilStrokeColorValue = props.pencilStrokeColor || PENCIL_DEFAULT_COLOR
-    }, [props.pencilStrokeColor])
+        defaultStrokeColorValue =
+            props.defaultStrokeColor || PENCIL_DEFAULT_COLOR
+    }, [props.defaultStrokeColor])
 
     // on group select use effect hook
     useEffect(() => {
@@ -2489,6 +2615,7 @@ const Canvas = (props) => {
     return (
         <>
             <div id="selector-rect"></div>
+            {props.renderBackground?.()}
             <div id="main-two-root"></div>
             {componentsToRender.map((Component, index) => (
                 <Suspense key={index} fallback={<Loader />}>

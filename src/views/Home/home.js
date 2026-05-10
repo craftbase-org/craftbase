@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import StickerSVG from 'assets/sticker.svg'
-import TwitterLogoSVG from 'assets/twitter_logo.svg'
-import GithubLogoSVG from 'assets/github_logo.svg'
-import RightArrowWhiteSVG from 'assets/right_arrow_white.svg'
-import CustomizeSVG from 'assets/customize.svg'
-import NoSignupSVG from 'assets/no_signup.svg'
-import BlueStarSVG from 'assets/blue_star.svg'
+import StickerSVG from '../../assets/sticker.svg'
+import TwitterLogoSVG from '../../assets/twitter_logo.svg'
+import GithubLogoSVG from '../../assets/github_logo.svg'
+import RightArrowWhiteSVG from '../../assets/right_arrow_white.svg'
+import CustomizeSVG from '../../assets/customize.svg'
+import NoSignupSVG from '../../assets/no_signup.svg'
+import BlueStarSVG from '../../assets/blue_star.svg'
 
-// import ImageContainer from 'components/ProgressiveImageLoader/loader'
-// import CraftbaseBoardScreenshotPNG from 'assets/craftbase_board_screenshot.png'
-// import CraftbaseBoardScreenshotBlurJPG from 'assets/blur_craftbase_screenshot.jpg'
-import WhiteboardingPNG from 'assets/whiteboarding.png'
-import Button from 'components/common/button'
+// import ImageContainer from '../../components/ProgressiveImageLoader/loader'
+// import CraftbaseBoardScreenshotPNG from '../../assets/craftbase_board_screenshot.png'
+// import CraftbaseBoardScreenshotBlurJPG from '../../assets/blur_craftbase_screenshot.jpg'
+import WhiteboardingPNG from '../../assets/whiteboarding.png'
+import Button from '../../components/common/button'
 
 const HomePage = (props) => {
     // create user mutation
@@ -240,8 +240,8 @@ const HomePage = (props) => {
 
                     <div className="mt-4">
                         Please contact{' '}
-                        <a href="mailto:meetzaveri96@gmail.com">
-                            meetzaveri96@gmail.com
+                        <a href="mailto:support@craftbase.org">
+                            support@craftbase.org
                         </a>
                     </div>
                 </div> */}

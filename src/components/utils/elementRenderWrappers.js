@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import Spinner from 'components/common/spinner'
+import Spinner from '../common/spinner'
 
 export const ElementRenderWrapper = (
     ElementToRender,

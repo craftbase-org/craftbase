@@ -17,6 +17,15 @@
     cursor: pointer;
 }
 
+/* While a draw mode (pencil/arrow/rubber) is active, the canvas-wide
+   crosshair cursor must not be overridden by per-shape rules. */
+.draw-mode-active .dragger-picker {
+    cursor: crosshair !important;
+}
+.draw-mode-active text {
+    cursor: crosshair !important;
+}
+
 .rounded-50-percent {
     border-radius: 50%;
 }

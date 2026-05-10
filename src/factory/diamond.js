@@ -1,6 +1,6 @@
 import Two from 'two.js'
 import Main from './main'
-import { strokeTypeToDashes } from 'utils/misc'
+import { strokeTypeToDashes } from '../utils/misc'
 
 const C = Two.Commands
 

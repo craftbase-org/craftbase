@@ -1,7 +1,7 @@
 import React, { Fragment, useState } from 'react'
 import PropTypes from 'prop-types'
 import styled, { css } from 'styled-components'
-import { allColorShades, essentialShades } from 'utils/constants'
+import { allColorShades, essentialShades } from '../../utils/constants'
 
 import { motion } from 'framer-motion'
 import ColorPicker from './colorPicker'

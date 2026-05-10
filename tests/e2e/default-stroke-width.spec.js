@@ -5,6 +5,7 @@ import {
     drawArrow,
     drawPencilStroke,
     setDefaultStrokeWidth,
+    clickToolbarButton,
     getCanvasBox,
 } from './helpers/index.js'
 
@@ -28,11 +29,12 @@ async function getLinewidth(handle) {
 test.describe('Default stroke width applies to drawn shapes', () => {
     test.beforeEach(async ({ page }) => {
         await setupLocalBoard(page)
-        // User picks Stroke Width = 4 in the Defaults panel before drawing.
-        await setDefaultStrokeWidth(page, DEFAULT_LABEL)
     })
 
     test('drawn rectangle uses default stroke width', async ({ page }) => {
+        // Idle (no draw mode active) shows the SHAPE set, so clicking the
+        // stroke-width swatch updates `defaultLinewidth`.
+        await setDefaultStrokeWidth(page, DEFAULT_LABEL)
         const box = await getCanvasBox(page)
         const cx = box.x + box.width * 0.65
         const cy = box.y + box.height * 0.65
@@ -48,6 +50,7 @@ test.describe('Default stroke width applies to drawn shapes', () => {
     })
 
     test('drawn circle uses default stroke width', async ({ page }) => {
+        await setDefaultStrokeWidth(page, DEFAULT_LABEL)
         const box = await getCanvasBox(page)
         const cx = box.x + box.width * 0.65
         const cy = box.y + box.height * 0.65
@@ -63,6 +66,10 @@ test.describe('Default stroke width applies to drawn shapes', () => {
     })
 
     test('drawn arrow uses default stroke width', async ({ page }) => {
+        // Arrows read the same `defaultLinewidth` as shapes (see
+        // primary.js:handleArrowElement), so setting it from the idle
+        // SHAPE set is sufficient.
+        await setDefaultStrokeWidth(page, DEFAULT_LABEL)
         const box = await getCanvasBox(page)
         const cx = box.x + box.width * 0.65
         const cy = box.y + box.height * 0.65
@@ -78,6 +85,12 @@ test.describe('Default stroke width applies to drawn shapes', () => {
     })
 
     test('drawn pencil stroke uses default stroke width', async ({ page }) => {
+        // Pencil shares the unified `defaultLinewidth` with shapes/arrows.
+        // Enter pencil mode so the toolbar is available, then click the
+        // stroke-width swatch — the next pencil stroke picks it up.
+        await clickToolbarButton(page, 'Pencil')
+        await setDefaultStrokeWidth(page, DEFAULT_LABEL)
+
         const box = await getCanvasBox(page)
         const cx = box.x + box.width * 0.65
         const cy = box.y + box.height * 0.65

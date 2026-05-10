@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react'
 import ErrorBoundary from './errorBoundary'
-import Spinner from 'components/common/spinner'
+import Spinner from '../../components/common/spinner'
 import './index.css'
 
 const HomePage = React.lazy(() => import('./home'))

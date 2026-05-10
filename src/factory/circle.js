@@ -1,6 +1,6 @@
 import Main from './main'
-import { color_blue } from 'utils/constants'
-import { strokeTypeToDashes } from 'utils/misc'
+import { color_blue } from '../utils/constants'
+import { strokeTypeToDashes } from '../utils/misc'
 
 export default class CircleFactory extends Main {
     createElement() {

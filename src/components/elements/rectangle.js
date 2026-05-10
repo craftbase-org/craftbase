@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react'
-import { useBoardContext } from 'views/Board/board'
+import { useBoardContext } from '../../views/Board/board'
 
-import ElementFactory from 'factory/rectangle'
-import { strokeTypeToDashes } from 'utils/misc'
+import ElementFactory from '../../factory/rectangle'
+import { strokeTypeToDashes } from '../../utils/misc'
 
 function Rectangle(props) {
     const { isPencilMode, isArrowDrawMode, isArrowSelected } = useBoardContext()

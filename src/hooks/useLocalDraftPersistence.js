@@ -5,7 +5,7 @@ import {
     BACKGROUND_BOARD_STORAGE_KEY,
     STORAGE_QUOTA_ERROR_NAME,
     GROUP_COMPONENT,
-} from 'constants/misc'
+} from '../constants/misc'
 
 export function useLocalDraftPersistence({
     isPersisted,

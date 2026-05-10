@@ -1,10 +1,10 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import routes from 'routes'
-import chatAltIcon from 'assets/chat-alt-white.svg'
-import EnvelopeIcon from 'assets/envelope_white.svg'
-import errorIcon from 'assets/error.svg'
-import { useMediaQueryUtils } from 'constants/exportHooks'
+import routes from '../../routes'
+import chatAltIcon from '../../assets/chat-alt-white.svg'
+import EnvelopeIcon from '../../assets/envelope_white.svg'
+import errorIcon from '../../assets/error.svg'
+import { useMediaQueryUtils } from '../../constants/exportHooks'
 
 const ChevronLeft = () => (
     <svg
@@ -106,10 +106,10 @@ const SupportPage = () => {
                         <div className="text-xs text-ink-muted">
                             Email the contact person at{' '}
                             <a
-                                href="mailto:meetzaveri96@gmail.com"
+                                href="mailto:support@craftbase.org"
                                 className="text-accent-dark font-semibold no-underline border-b border-accent-dark"
                             >
-                                meetzaveri96@gmail.com
+                                support@craftbase.org
                             </a>
                         </div>
                     </div>

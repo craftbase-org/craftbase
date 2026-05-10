@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
 import Two from 'two.js'
-import { strokeTypeToDashes, clearDashesOnTwoJSShape } from 'utils/misc'
-import { updateX1Y1Vertices, updateX2Y2Vertices } from 'utils/updateVertices'
-import { DRAFT_STORAGE_KEY } from 'constants/misc'
+import { strokeTypeToDashes, clearDashesOnTwoJSShape } from '../utils/misc'
+import { updateX1Y1Vertices, updateX2Y2Vertices } from '../utils/updateVertices'
+import { DRAFT_STORAGE_KEY } from '../constants/misc'
 
 // Applies a single property back to a Two.js shape during undo/redo.
 function applyPropertyToTwoJSGroup(group, name, value) {
@@ -27,9 +27,35 @@ function applyPropertyToTwoJSGroup(group, name, value) {
             }
             break
         case 'metadata':
-            if (value && typeof value === 'object') {
+            if (
+                value &&
+                typeof value === 'object' &&
+                !Array.isArray(value)
+            ) {
+                // The actual text node is either `shape` itself (newText: a
+                // Two.js text is shape) or a sibling inside the group
+                // (rectangle-with-text: text node sits next to the rect).
+                const textNode =
+                    typeof shape?.value === 'string'
+                        ? shape
+                        : group.children?.find(
+                              (c) => typeof c?.value === 'string'
+                          )
                 Object.entries(value).forEach(([k, v]) => {
-                    shape[k] = v
+                    if (k === 'opacity') {
+                        // Opacity lives on the leaf shape (children[0]) by
+                        // codebase convention; matches applyGroupProperty.
+                        shape.opacity = v
+                    } else if (k === 'textFontSize' && textNode) {
+                        textNode.size = v
+                    } else if (k === 'textFontFamily' && textNode) {
+                        textNode.family = v
+                    } else if (k === 'textFill' && textNode) {
+                        textNode.fill = v
+                    }
+                    // Other metadata keys (textContent, textBaseLine, hasText)
+                    // have no direct Two.js field mapping; skip rather than
+                    // pollute random properties on the shape.
                 })
             }
             break
@@ -53,6 +79,7 @@ export function useComponentHistory({
     setDefaultStrokeType,
     setToolbarRefreshKey,
     selectedComponent,
+    selectedGroupRef,
     stripTypename,
 } = {}) {
     const [historyLog, setHistoryLog] = useState([])
@@ -208,7 +235,7 @@ export function useComponentHistory({
             }
         }
         if (props.linewidth !== undefined || props.strokeType !== undefined) {
-            setToolbarRefreshKey((k) => k + 1)
+            setToolbarRefreshKey?.((k) => k + 1)
         }
 
         if (isPersistedRef.current) {
@@ -255,6 +282,157 @@ export function useComponentHistory({
                 if (sceneGroup) two?.remove([sceneGroup])
                 if (isPersistedRef.current) {
                     deleteComponent({ variables: { id: e.id } })
+                }
+            } else if (e.action === 'UPDATE_BULK') {
+                // Used by group bulk-apply: a single BATCH carries one
+                // UPDATE_BULK per group child, so one undo press rolls them
+                // all back together.
+                const propsToApply =
+                    direction === 'undo' ? e.prevProps : e.bulkObj
+                if (!propsToApply) return
+                updatedStore[e.id] = {
+                    ...updatedStore[e.id],
+                    ...propsToApply,
+                }
+                const sceneGroup = two?.scene.children.find(
+                    (c) => c?.elementData?.id === e.id
+                )
+                if (sceneGroup) {
+                    // Position sync — group ungroup batches include x/y so
+                    // the original scene shapes need to translate back. Mirror
+                    // applyBulkProps so undo of an ungroup-after-drag visibly
+                    // moves the shapes, not just the store.
+                    if (propsToApply.x !== undefined)
+                        sceneGroup.translation.x = propsToApply.x
+                    if (propsToApply.y !== undefined)
+                        sceneGroup.translation.y = propsToApply.y
+                    Object.entries(propsToApply).forEach(([name, val]) => {
+                        applyPropertyToTwoJSGroup(sceneGroup, name, val)
+                    })
+                    // ArrowLine vertex handling (rare in group bulk-apply, but
+                    // covers blur batches that carry x1/y1/x2/y2).
+                    const hasArrowVertices =
+                        propsToApply.x1 !== undefined ||
+                        propsToApply.y1 !== undefined ||
+                        propsToApply.x2 !== undefined ||
+                        propsToApply.y2 !== undefined
+                    if (hasArrowVertices) {
+                        const line = sceneGroup.children?.[0]
+                        const pointCircle1Group = sceneGroup.children?.[1]
+                        const pointCircle2Group = sceneGroup.children?.[2]
+                        if (line && pointCircle1Group && pointCircle2Group) {
+                            const x1 = propsToApply.x1 ?? line.vertices[0].x
+                            const y1 = propsToApply.y1 ?? line.vertices[0].y
+                            const x2 = propsToApply.x2 ?? line.vertices[1].x
+                            const y2 = propsToApply.y2 ?? line.vertices[1].y
+                            updateX1Y1Vertices(
+                                Two,
+                                line,
+                                x1,
+                                y1,
+                                pointCircle1Group,
+                                two
+                            )
+                            updateX2Y2Vertices(
+                                Two,
+                                line,
+                                x2,
+                                y2,
+                                pointCircle2Group,
+                                two
+                            )
+                        }
+                    }
+                    // Pencil: when metadata changes, rebuild vertex anchors
+                    // from the new metadata so the path actually re-renders
+                    // in its previous shape (applyPropertyToTwoJSGroup's
+                    // metadata branch only sets shape[k] = v, which doesn't
+                    // touch pencil's path vertices).
+                    if (
+                        sceneGroup.elementData?.componentType === 'pencil' &&
+                        Array.isArray(propsToApply.metadata)
+                    ) {
+                        const path = sceneGroup.children?.[0]
+                        if (path?.vertices) {
+                            const baseX =
+                                propsToApply.x ?? sceneGroup.translation.x
+                            const baseY =
+                                propsToApply.y ?? sceneGroup.translation.y
+                            path.vertices = []
+                            propsToApply.metadata.forEach((point) => {
+                                path.vertices.push(
+                                    new Two.Anchor(
+                                        point.x - baseX,
+                                        point.y - baseY
+                                    )
+                                )
+                            })
+                        }
+                    }
+                    // Keep the scene element's snapshot in sync so the
+                    // toolbar reads the right values if the user re-selects.
+                    if (sceneGroup.elementData) {
+                        Object.entries(propsToApply).forEach(([k, v]) => {
+                            sceneGroup.elementData[k] = v
+                        })
+                    }
+                    // If width/height changed, request the selector to resync.
+                    if (
+                        propsToApply.width !== undefined ||
+                        propsToApply.height !== undefined
+                    ) {
+                        window.dispatchEvent(
+                            new CustomEvent('undoSelectorSync', {
+                                detail: { elementId: e.id },
+                            })
+                        )
+                    }
+                }
+                // If a group is currently focused and contains this child,
+                // also mutate the visible coreObj so undo/redo reflects on
+                // screen without waiting for the user to ungroup.
+                const activeGroup = selectedGroupRef?.current
+                const groupChildren = activeGroup?.elementData?.children
+                if (Array.isArray(groupChildren)) {
+                    const inGroup = groupChildren.some((c) => c?.id === e.id)
+                    if (inGroup) {
+                        const coreObj = activeGroup.children?.find(
+                            (c) => c?.elementData?.id === e.id
+                        )
+                        if (coreObj) {
+                            // For opacity, the leaf shape carries the value;
+                            // outer coreObj.opacity must be 1 so the leaf
+                            // alone controls display (mirrors the apply path).
+                            const isOpacityChange =
+                                'metadata' in propsToApply &&
+                                propsToApply.metadata &&
+                                typeof propsToApply.metadata === 'object' &&
+                                'opacity' in propsToApply.metadata
+                            if (isOpacityChange) coreObj.opacity = 1
+                            Object.entries(propsToApply).forEach(
+                                ([name, val]) => {
+                                    applyPropertyToTwoJSGroup(coreObj, name, val)
+                                }
+                            )
+                        }
+                        // Also mirror onto the child entry inside
+                        // group.elementData.children so blur restoration
+                        // doesn't re-apply stale data.
+                        groupChildren.forEach((c) => {
+                            if (c?.id === e.id) {
+                                Object.entries(propsToApply).forEach(
+                                    ([k, v]) => {
+                                        c[k] = v
+                                    }
+                                )
+                            }
+                        })
+                    }
+                }
+                if (isPersistedRef.current) {
+                    updateComponentInfo({
+                        variables: { id: e.id, updateObj: propsToApply },
+                    })
                 }
             }
         })

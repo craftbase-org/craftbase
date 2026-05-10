@@ -1,5 +1,5 @@
-import { SHAPE_DEFAULT_STROKE } from 'constants/misc'
-import { generateUUID } from 'utils/misc'
+import { SHAPE_DEFAULT_STROKE } from '../constants/misc'
+import { generateUUID } from './misc'
 
 // Show or hide the endpoint circles on an arrowLine group.
 // children[1] and children[2] are the endpoint handle groups.

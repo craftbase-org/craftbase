@@ -24,8 +24,7 @@ import {
 import Canvas from '../../newCanvas'
 import ZoomControls from 'components/ZoomControls'
 import Sidebar from 'components/sidebar/primary'
-import Toolbar from 'components/floatingToolbar'
-import PencilToolbar from 'components/pencilToolbar'
+import ElementPropertiesToolbar from 'components/sidebar/elementProperties'
 import controlsIcon from 'assets/controls.svg'
 import Spinner from 'components/common/spinnerWithSize'
 import PermissionErrorModal from 'components/modals/PermissionErrorModal'
@@ -44,12 +43,17 @@ import {
     LAST_ADDED_ELEMENT_ID_KEY,
     PENCIL_MODE_KEY,
     BACKGROUND_BOARD_STORAGE_KEY,
+    VIEWPORT_KEY_PREFIX,
+    MOBILE_VIEWPORT_KEY_PREFIX,
+    VIEWPORT_TTL_MS,
 } from 'constants/misc'
 import { useDrawingModes } from 'hooks/useDrawingModes'
-import { usePencilDefaults } from 'hooks/usePencilDefaults'
+import { useElementDefaults } from 'hooks/useElementDefaults'
 import { useMobileToolbarPanels } from 'hooks/useMobileToolbarPanels'
 import { useLocalDraftPersistence } from 'hooks/useLocalDraftPersistence'
 import { useComponentHistory } from 'hooks/useComponentHistory'
+import { createApplyProperty } from 'utils/applyProperty'
+import { createApplyGroupProperty } from 'utils/applyGroupProperty'
 
 export const BoardContext = createContext()
 
@@ -144,8 +148,11 @@ const BoardViewPage = (props) => {
     const [twoJSInstance, setTwoJSInstance] = useState(null)
     const [zuiInBoard, setZuiInBoard] = useState(null)
     const [selectedComponent, setSelectedComponent] = useState(null)
+    const [selectedGroup, setSelectedGroup] = useState(null)
+    // Mirror of selectedGroup as a ref — useComponentHistory's applyBatch needs
+    // to read the currently-focused group at undo/redo time without re-running.
+    const selectedGroupRef = useRef(null)
     const [currentElement, setCurrentElement] = useState(null)
-    const [toolbarRefreshKey, setToolbarRefreshKey] = useState(0)
     const [showPermissionErrorModal, setShowPermissionErrorModal] =
         useState(false)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
@@ -164,36 +171,41 @@ const BoardViewPage = (props) => {
         setIsArrowDrawMode,
         isTextDrawMode,
         setIsTextDrawMode,
+        isRubberMode,
+        isPanMode,
+        togglePanMode: togglePanModeFromHook,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
         clearDrawModesFromStorage,
     } = useDrawingModes()
 
-    const {
-        showToolbar,
-        toggleToolbar,
-        showMobileToolbarPanel,
-        setShowMobileToolbarPanel,
-        showMobilePencilPanel,
-        setShowMobilePencilPanel,
-    } = useMobileToolbarPanels({ isPencilMode, isMobile, selectedComponent })
+    const { showMobileToolbarPanel, setShowMobileToolbarPanel } =
+        useMobileToolbarPanels({ isMobile, selectedComponent })
 
     const {
+        // values
+        defaultFill,
+        defaultStrokeColor,
         defaultLinewidth,
-        setDefaultLinewidth,
         defaultStrokeType,
+        defaultOpacity,
+        defaultTextColor,
+        defaultTextSize,
+        defaultTextFontFamily,
+        // raw setters (used by createApplyProperty + history)
+        setDefaultFill,
+        setDefaultStrokeColor,
+        setDefaultLinewidth,
         setDefaultStrokeType,
-        pencilDefaultLinewidth,
-        setPencilDefaultLinewidth,
-        pencilDefaultStrokeType,
-        setPencilDefaultStrokeType,
-        pencilStrokeColor,
-        setPencilStrokeColor,
+        setDefaultOpacity,
+        setDefaultTextColor,
+        setDefaultTextSize,
+        setDefaultTextFontFamily,
+        // board-facing setters (kept for any external callers)
         setDefaultLinewidthInBoard,
         setDefaultStrokeTypeInBoard,
-        setPencilStrokeColorInBoard,
-    } = usePencilDefaults({ toggleToolbar, setSelectedComponent })
+    } = useElementDefaults()
 
     const onStorageLimitRef = useRef(null)
 
@@ -237,8 +249,8 @@ const BoardViewPage = (props) => {
         setShowPermissionErrorModal,
         setDefaultLinewidth,
         setDefaultStrokeType,
-        setToolbarRefreshKey,
         selectedComponent,
+        selectedGroupRef,
         stripTypename,
     })
 
@@ -247,6 +259,35 @@ const BoardViewPage = (props) => {
     // first mousedown. These keys are only meaningful within a single page session.
     useEffect(() => {
         clearDrawModesFromStorage()
+    }, [])
+
+    // Sweep viewport entries older than VIEWPORT_TTL_MS or missing savedAt.
+    // Each new local draft writes its own craftbase_viewport_<id> key; without
+    // this sweep, localStorage accumulates dead entries indefinitely.
+    useEffect(() => {
+        try {
+            const now = Date.now()
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i)
+                if (
+                    !key ||
+                    (!key.startsWith(VIEWPORT_KEY_PREFIX) &&
+                        !key.startsWith(MOBILE_VIEWPORT_KEY_PREFIX))
+                )
+                    continue
+                try {
+                    const parsed = JSON.parse(localStorage.getItem(key))
+                    if (
+                        !parsed?.savedAt ||
+                        now - parsed.savedAt > VIEWPORT_TTL_MS
+                    ) {
+                        localStorage.removeItem(key)
+                    }
+                } catch (_) {
+                    localStorage.removeItem(key)
+                }
+            }
+        } catch (_) {}
     }, [])
 
     // Reset component store whenever the board changes (persisted mode only).
@@ -324,16 +365,16 @@ const BoardViewPage = (props) => {
         if (pointerVal) {
             cancelPendingElement()
             setSelectedComponent(null)
-            toggleToolbar(false)
+            setRubberModeInBoard(false)
             document.getElementById('main-two-root').style.cursor = 'default'
         }
     }
 
     const togglePencilMode = (value) => {
-        toggleToolbar(false)
         setPencilMode(value)
         if (value) {
             cancelPendingElement()
+            setRubberModeInBoard(false)
             localStorage.setItem(PENCIL_MODE_KEY, 'TRUE')
             document.getElementById('main-two-root').style.cursor = 'crosshair'
         } else {
@@ -341,9 +382,12 @@ const BoardViewPage = (props) => {
         }
     }
 
-    function closeToolbar() {
-        toggleToolbar(false)
-        setSelectedComponent(null)
+    const togglePanMode = (value) => {
+        togglePanModeFromHook(value, {
+            cancelPendingElement,
+            setSelectedComponent,
+            toggleToolbar: setShowMobileToolbarPanel,
+        })
     }
 
     const setTwoJSInstanceInBoard = (two) => {
@@ -357,13 +401,7 @@ const BoardViewPage = (props) => {
     }
 
     const setSelectedComponentInBoard = (shape) => {
-        if (shape === null) {
-            setSelectedComponent(null)
-            toggleToolbar(false)
-        } else {
-            setSelectedComponent(shape)
-            toggleToolbar(true)
-        }
+        setSelectedComponent(shape ?? null)
     }
 
     // Creates a board in the background on first interaction (non-blocking).
@@ -456,13 +494,23 @@ const BoardViewPage = (props) => {
         })
         if (!typeItem) return null
         const userId = localStorage.getItem('userId')
+        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
+        const fontSizePx =
+            sizesMap[defaultTextSize] ?? typeItem.metadata?.fontSize
         return {
             id,
             componentType: 'newText',
             linewidth: defaultLinewidth,
             strokeType: defaultStrokeType,
             children: {},
-            metadata: typeItem.metadata || {},
+            metadata: {
+                ...(typeItem.metadata || {}),
+                ...(fontSizePx !== undefined && { fontSize: fontSizePx }),
+                ...(defaultTextFontFamily && {
+                    textFontFamily: defaultTextFontFamily,
+                }),
+                opacity: defaultOpacity ?? 1,
+            },
             x: parseInt(x),
             y: parseInt(y),
             x2: 0,
@@ -470,7 +518,7 @@ const BoardViewPage = (props) => {
             width: typeItem.width,
             height: typeItem.height,
             fill: typeItem.fill,
-            textColor: typeItem.textColor,
+            textColor: defaultTextColor ?? typeItem.textColor,
             updatedBy: userId,
         }
     }
@@ -758,6 +806,11 @@ const BoardViewPage = (props) => {
                 deleteBulkComponents({ variables: { _in: ids } })
             }
         }
+        // Tear down any active selection before scene clear so the
+        // selectionController doesn't hold stale group/shape refs that
+        // suppress the next selection's UI.
+        window.dispatchEvent(new Event('clearSelector'))
+        setSelectedComponent(null)
         twoJSInstanceRef.current?.clear()
         twoJSInstanceRef.current?.update()
         setComponentStore({})
@@ -769,20 +822,24 @@ const BoardViewPage = (props) => {
         (selectedComponent?.shape?.type === 'arrowLine' ||
             selectedComponent?.group?.data?.elementData?.isLineCircle === true)
 
-    const isTextSelected =
-        selectedComponent !== null &&
-        selectedComponent?.shape?.type === 'newText'
-
-    const isRectangleWithText =
-        selectedComponent !== null &&
-        selectedComponent?.shape?.type === 'rectangle' &&
-        typeof selectedComponent?.text?.data?.value === 'string'
-
-    const currentFontFamily = isTextSelected
-        ? selectedComponent?.shape?.data?.family || 'Caveat'
-        : isRectangleWithText
-          ? selectedComponent?.text?.data?.family || 'Caveat'
-          : undefined
+    // Mirror text-property changes to a live editing textarea so the overlay
+    // visually matches what Two.js will render on blur. No-op when no
+    // textarea is open. fontSize is in surface units; we scale to screen
+    // pixels using the current scene zoom.
+    const syncOpenTextarea = ({ fontSize, fontFamily }) => {
+        const ta = document.querySelector('.temp-input-area')
+        if (!ta) return
+        const sceneScale = twoJSInstance?.scene?.scale || 1
+        if (typeof fontSize === 'number') {
+            const cssFontSize = fontSize * sceneScale
+            const lineH = Math.ceil(cssFontSize * 1.6)
+            ta.style.fontSize = `${cssFontSize}px`
+            ta.style.lineHeight = `${lineH}px`
+        }
+        if (fontFamily) {
+            ta.style.fontFamily = fontFamily
+        }
+    }
 
     const handleTextSizeChange = (newLabel) => {
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
@@ -802,39 +859,24 @@ const BoardViewPage = (props) => {
             },
         })
         twoJSInstance?.update()
+        syncOpenTextarea({ fontSize: textSize })
     }
 
-    const handleRectangleTextSizeChange = (newLabel) => {
-        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
-        const textSize = sizesMap[newLabel]
-        const twoText = selectedComponent?.text?.data
-        if (!twoText) return
-        twoText.size = textSize
-        twoJSInstance?.update()
-
-        const componentId = selectedComponent?.group?.data?.elementData?.id
-        // stateRefForComponentStore is always current; group.elementData.metadata
-        // is only set at mount and is stale after blur updates the store.
-        const existingMetadata =
-            stateRefForComponentStore.current[componentId]?.metadata ?? {}
-        const updatedMetadata = { ...existingMetadata, textFontSize: textSize }
-        if (selectedComponent?.group?.data?.elementData) {
-            selectedComponent.group.data.elementData.metadata = updatedMetadata
-        }
-
-        // After Two.js renders the new font size, expand the rectangle if it
-        // is now smaller than the text's bounding box.
+    // Schedule a post-render measurement of the text's bounding box and grow
+    // the parent rectangle if needed. Called after any property change that
+    // affects text dimensions (size, family, etc.).
+    const scheduleRectFitToText = (twoText, componentId, updatedMetadata) => {
         // Capture whether text editing is active NOW so the RAF can detect
-        // if blur fires between the size change and the next frame.
-        const textAreaAtSizeChange = document.querySelector('.temp-input-area')
+        // if blur fires between the property change and the next frame.
+        const textAreaAtChange = document.querySelector('.temp-input-area')
         requestAnimationFrame(() => {
-            // If text editing was active when the size changed but the textarea
-            // is now gone, blur already committed the correct metadata
-            // (textContent + textFill). Overwriting with the stale snapshot
-            // captured here would wipe that out.
+            // If text editing was active when the property changed but the
+            // textarea is now gone, blur already committed the correct
+            // metadata (textContent + textFill). Overwriting with the stale
+            // snapshot captured here would wipe that out.
             if (
-                textAreaAtSizeChange &&
-                !document.body.contains(textAreaAtSizeChange)
+                textAreaAtChange &&
+                !document.body.contains(textAreaAtChange)
             )
                 return
 
@@ -873,6 +915,28 @@ const BoardViewPage = (props) => {
         })
     }
 
+    const handleRectangleTextSizeChange = (newLabel) => {
+        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
+        const textSize = sizesMap[newLabel]
+        const twoText = selectedComponent?.text?.data
+        if (!twoText) return
+        twoText.size = textSize
+        twoJSInstance?.update()
+
+        const componentId = selectedComponent?.group?.data?.elementData?.id
+        // stateRefForComponentStore is always current; group.elementData.metadata
+        // is only set at mount and is stale after blur updates the store.
+        const existingMetadata =
+            stateRefForComponentStore.current[componentId]?.metadata ?? {}
+        const updatedMetadata = { ...existingMetadata, textFontSize: textSize }
+        if (selectedComponent?.group?.data?.elementData) {
+            selectedComponent.group.data.elementData.metadata = updatedMetadata
+        }
+
+        scheduleRectFitToText(twoText, componentId, updatedMetadata)
+        syncOpenTextarea({ fontSize: textSize })
+    }
+
     const handleTextFontFamilyChange = (fontFamily) => {
         const twoText = selectedComponent?.shape?.data
         if (!twoText) return
@@ -888,12 +952,16 @@ const BoardViewPage = (props) => {
             },
         })
         twoJSInstance?.update()
+        syncOpenTextarea({ fontFamily })
+        // Make selection universal: future new elements pick up this family.
+        setDefaultTextFontFamily(fontFamily)
     }
 
     const handleRectangleTextFontFamilyChange = (fontFamily) => {
         const twoText = selectedComponent?.text?.data
         if (!twoText) return
         twoText.family = fontFamily
+        twoJSInstance?.update()
         const componentId = selectedComponent?.group?.data?.elementData?.id
         const existingMetadata =
             stateRefForComponentStore.current[componentId]?.metadata ?? {}
@@ -904,10 +972,12 @@ const BoardViewPage = (props) => {
         if (selectedComponent?.group?.data?.elementData) {
             selectedComponent.group.data.elementData.metadata = updatedMetadata
         }
-        updateComponentBulkPropertiesInLocalStore(componentId, {
-            metadata: updatedMetadata,
-        })
-        twoJSInstance?.update()
+        // Re-fit the rectangle to the new text bbox; some families (e.g.
+        // Fraunces) render wider than Caveat at the same size.
+        scheduleRectFitToText(twoText, componentId, updatedMetadata)
+        syncOpenTextarea({ fontFamily })
+        // Make selection universal: future new elements pick up this family.
+        setDefaultTextFontFamily(fontFamily)
     }
 
     const cancelPendingElement = () => {
@@ -927,6 +997,56 @@ const BoardViewPage = (props) => {
         window.dispatchEvent(new CustomEvent('clearSelector', {}))
     }
 
+    // Track which group (if any) is currently focused on the canvas. groupobject
+    // dispatches groupFocused/groupBlurred on the window — this mirrors them
+    // into React state so the sidebar can react. Independent of newCanvas.js's
+    // own activeGroupRef listeners, which serve event-handler land.
+    useEffect(() => {
+        const onFocus = (e) => {
+            const g = e?.detail?.group ?? null
+            selectedGroupRef.current = g
+            setSelectedGroup(g)
+        }
+        const onBlur = () => {
+            selectedGroupRef.current = null
+            setSelectedGroup(null)
+        }
+        window.addEventListener('groupFocused', onFocus)
+        window.addEventListener('groupBlurred', onBlur)
+        return () => {
+            window.removeEventListener('groupFocused', onFocus)
+            window.removeEventListener('groupBlurred', onBlur)
+        }
+    }, [])
+
+    const applyGroupProperty = createApplyGroupProperty({
+        selectedGroup,
+        twoJSInstance,
+        updateComponentBulkPropertiesInLocalStore,
+        stateRefForComponentStore,
+        recordBatchToHistoryLog,
+    })
+
+    const applyProperty = createApplyProperty({
+        selectedComponent,
+        twoJSInstance,
+        updateComponentBulkPropertiesInLocalStore,
+        updateBulkPropsForRectangleWithText: (id, obj) =>
+            updateBulkPropsForRectangleWithText(id, obj),
+        handleTextSizeChange,
+        handleRectangleTextSizeChange,
+        handleTextFontFamilyChange,
+        handleRectangleTextFontFamilyChange,
+        setDefaultFill,
+        setDefaultStrokeColor,
+        setDefaultLinewidth,
+        setDefaultStrokeType,
+        setDefaultOpacity,
+        setDefaultTextColor,
+        setDefaultTextSize,
+        setDefaultTextFontFamily,
+    })
+
     const updateBulkPropsForRectangleWithText = (id, obj) => {
         let finalObj = { ...obj }
         if (obj.textColor !== undefined) {
@@ -942,6 +1062,7 @@ const BoardViewPage = (props) => {
     }
 
     const contextValueForSidebar = {
+        scaleToDisplay: props.scaleToDisplay,
         boardId,
         isPersisted,
         persistBoard,
@@ -950,6 +1071,9 @@ const BoardViewPage = (props) => {
         isArrowDrawMode,
         isTextDrawMode,
         isArrowSelected,
+        isRubberMode,
+        isPanMode,
+        togglePanMode,
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setRubberModeInBoard,
@@ -962,19 +1086,36 @@ const BoardViewPage = (props) => {
         createTextAtSurface,
         updateComponentVerticesInLocalStore,
         updateComponentBulkPropertiesInLocalStore,
+        // Exposed so groupobject's blur path can snapshot prevProps for a
+        // single batched history entry instead of one per child.
+        stateRefForComponentStore,
         deleteComponentFromLocalStore,
         deleteBulkComponentsFromLocalStore,
         twoJSInstance,
         setTwoJSInstanceInBoard,
         setZuiInstanceInBoard,
         zuiInBoard,
+        selectedComponent,
         setSelectedComponentInBoard,
+        applyProperty,
+        selectedGroup,
+        applyGroupProperty,
+        // Defaults — read by ElementPropertiesToolbar, also still exposed
+        // individually so legacy primary.js / Canvas reads keep working.
+        defaultFill,
+        defaultStrokeColor,
         defaultLinewidth,
-        setDefaultLinewidthInBoard,
         defaultStrokeType,
+        defaultOpacity,
+        defaultTextColor,
+        defaultTextSize,
+        defaultTextFontFamily,
+        // Legacy named setters kept for primary sidebar / shape factory paths.
+        setDefaultLinewidthInBoard,
         setDefaultStrokeTypeInBoard,
-        pencilStrokeColor,
-        setPencilStrokeColorInBoard,
+        // Mobile panel
+        showMobileToolbarPanel,
+        setShowMobileToolbarPanel,
         currentElement,
         setCurrentElementInBoard,
         onCreateBoard,
@@ -994,7 +1135,7 @@ const BoardViewPage = (props) => {
             <BoardContext.Provider value={contextValueForSidebar}>
                 <div>
                     <Sidebar />
-                    {selectedComponent && showToolbar && isMobile && (
+                    {!isRubberMode && isMobile && (
                         <button
                             title="Element properties"
                             onClick={() =>
@@ -1006,8 +1147,11 @@ const BoardViewPage = (props) => {
                                 right: '10px',
                                 zIndex: 20,
                             }}
-                            className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150
-                                ${showMobileToolbarPanel ? 'bg-accent' : 'bg-card-bg'}`}
+                            className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150 ${
+                                showMobileToolbarPanel
+                                    ? 'bg-accent'
+                                    : 'bg-accent-dark'
+                            }`}
                         >
                             <img
                                 src={controlsIcon}
@@ -1016,101 +1160,7 @@ const BoardViewPage = (props) => {
                             />
                         </button>
                     )}
-                    {selectedComponent &&
-                        showToolbar &&
-                        (!isMobile || showMobileToolbarPanel) && (
-                            <Toolbar
-                                hideColorText={
-                                    !isTextSelected && !isRectangleWithText
-                                }
-                                hideColorIcon={true}
-                                hideColorBackground={
-                                    isArrowSelected || isTextSelected
-                                }
-                                hideBorderSection={isTextSelected}
-                                showTextSizeSection={
-                                    isTextSelected || isRectangleWithText
-                                }
-                                currentFontSize={
-                                    isTextSelected
-                                        ? selectedComponent?.shape?.data?.size
-                                        : isRectangleWithText
-                                          ? selectedComponent?.text?.data?.size
-                                          : undefined
-                                }
-                                onTextSizeChange={
-                                    isTextSelected
-                                        ? handleTextSizeChange
-                                        : isRectangleWithText
-                                          ? handleRectangleTextSizeChange
-                                          : undefined
-                                }
-                                toggle={showToolbar}
-                                componentState={selectedComponent}
-                                closeToolbar={closeToolbar}
-                                refreshKey={toolbarRefreshKey}
-                                isMobile={isMobile}
-                                updateComponentBulkProperties={
-                                    isRectangleWithText
-                                        ? updateBulkPropsForRectangleWithText
-                                        : updateComponentBulkPropertiesInLocalStore
-                                }
-                                showFontFamilySection={
-                                    isTextSelected || isRectangleWithText
-                                }
-                                currentFontFamily={currentFontFamily}
-                                onFontFamilyChange={
-                                    isTextSelected
-                                        ? handleTextFontFamilyChange
-                                        : isRectangleWithText
-                                          ? handleRectangleTextFontFamilyChange
-                                          : undefined
-                                }
-                                postToolbarUpdate={() => {
-                                    twoJSInstance.update()
-                                }}
-                            />
-                        )}
-                    {isPencilMode && isMobile && (
-                        <button
-                            title="Pencil properties"
-                            onClick={() =>
-                                setShowMobilePencilPanel((prev) => !prev)
-                            }
-                            style={{
-                                position: 'fixed',
-                                bottom: '16px',
-                                right: '10px',
-                                zIndex: 20,
-                            }}
-                            className={`w-10 h-10 rounded-lg shadow-card flex items-center justify-center transition-colors duration-150
-                                ${showMobilePencilPanel ? 'bg-accent' : 'bg-card-bg'}`}
-                        >
-                            <img
-                                src={controlsIcon}
-                                className="w-5 h-5"
-                                alt="Pencil properties"
-                            />
-                        </button>
-                    )}
-                    {isPencilMode && (!isMobile || showMobilePencilPanel) && (
-                        <PencilToolbar
-                            pencilStrokeColor={pencilStrokeColor}
-                            defaultLinewidth={pencilDefaultLinewidth}
-                            defaultStrokeType={pencilDefaultStrokeType}
-                            onColorChange={(color) =>
-                                setPencilStrokeColor(color)
-                            }
-                            onLinewidthChange={(value) =>
-                                setPencilDefaultLinewidth(value)
-                            }
-                            onStrokeTypeChange={(type) =>
-                                setPencilDefaultStrokeType(
-                                    type === 'solid' ? null : type
-                                )
-                            }
-                        />
-                    )}
+                    <ElementPropertiesToolbar />
                     <Canvas
                         pointerToggle={pointerToggle}
                         isPencilMode={isPencilMode}
@@ -1121,9 +1171,9 @@ const BoardViewPage = (props) => {
                         componentStore={componentStore}
                         defaultLinewidth={defaultLinewidth}
                         defaultStrokeType={defaultStrokeType}
-                        pencilDefaultLinewidth={pencilDefaultLinewidth}
-                        pencilDefaultStrokeType={pencilDefaultStrokeType}
-                        pencilStrokeColor={pencilStrokeColor}
+                        defaultStrokeColor={defaultStrokeColor}
+                        onCameraChange={props.onCameraChange}
+                        renderBackground={props.renderBackground}
                     />
                     {!isMobile && <ZoomControls />}
                 </div>

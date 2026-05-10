@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react'
-import { useBoardContext } from 'views/Board/board'
+import { useBoardContext } from '../../views/Board/board'
 
-import CircleFactory from 'factory/circle'
-import { strokeTypeToDashes } from 'utils/misc'
+import CircleFactory from '../../factory/circle'
+import { strokeTypeToDashes } from '../../utils/misc'
 
 function Circle(props) {
     const { isPencilMode, isArrowDrawMode, isArrowSelected } = useBoardContext()
