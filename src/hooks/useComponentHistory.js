@@ -27,9 +27,35 @@ function applyPropertyToTwoJSGroup(group, name, value) {
             }
             break
         case 'metadata':
-            if (value && typeof value === 'object') {
+            if (
+                value &&
+                typeof value === 'object' &&
+                !Array.isArray(value)
+            ) {
+                // The actual text node is either `shape` itself (newText: a
+                // Two.js text is shape) or a sibling inside the group
+                // (rectangle-with-text: text node sits next to the rect).
+                const textNode =
+                    typeof shape?.value === 'string'
+                        ? shape
+                        : group.children?.find(
+                              (c) => typeof c?.value === 'string'
+                          )
                 Object.entries(value).forEach(([k, v]) => {
-                    shape[k] = v
+                    if (k === 'opacity') {
+                        // Opacity lives on the leaf shape (children[0]) by
+                        // codebase convention; matches applyGroupProperty.
+                        shape.opacity = v
+                    } else if (k === 'textFontSize' && textNode) {
+                        textNode.size = v
+                    } else if (k === 'textFontFamily' && textNode) {
+                        textNode.family = v
+                    } else if (k === 'textFill' && textNode) {
+                        textNode.fill = v
+                    }
+                    // Other metadata keys (textContent, textBaseLine, hasText)
+                    // have no direct Two.js field mapping; skip rather than
+                    // pollute random properties on the shape.
                 })
             }
             break

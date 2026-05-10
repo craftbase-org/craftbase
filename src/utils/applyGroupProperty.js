@@ -115,6 +115,9 @@ export function createApplyGroupProperty(deps) {
         // Collected per-child {id, prevProps, bulkObj} entries — emitted as a
         // single BATCH at the end so one undo press rolls everything back.
         const batchEntries = []
+        // Rectangle-with-text children whose wrapping rect may need to grow
+        // after text size/family change. Measured + applied in a RAF below.
+        const rectsToGrow = []
         const snapshotPrev = (id, keys) => {
             const current = stateRefForComponentStore?.current?.[id] || {}
             const prev = {}
@@ -277,6 +280,14 @@ export function createApplyGroupProperty(deps) {
                     sceneEl.elementData.metadata = updatedMeta
                 child.metadata = updatedMeta
                 recordChild(id, { metadata: updatedMeta })
+
+                // For rectangle-with-text, queue a post-render bbox check so
+                // the wrapping rectangle grows if the new font no longer
+                // fits. Mirrors scheduleRectFitToText (board.js) but works
+                // off scene/coreObj refs instead of selectedComponent.
+                if (type === 'rectangle' && (sceneText || coreText)) {
+                    rectsToGrow.push({ id, sceneEl, coreObj })
+                }
                 return
             }
         })
@@ -287,5 +298,83 @@ export function createApplyGroupProperty(deps) {
         }
 
         twoJSInstance?.update()
+
+        // Grow wrapping rectangles in a single RAF after Two.js has rendered
+        // the new text size/family. Records width/height changes as a second
+        // BATCH — undo of a textSize-with-grow takes two presses (grow, then
+        // size) but the size change itself is still a single press.
+        if (rectsToGrow.length > 0) {
+            // Two RAFs: first lets Two.js commit the new font-size to the SVG;
+            // second lets the browser flush layout so getBBox reflects the new
+            // text dimensions instead of the pre-change cached value.
+            requestAnimationFrame(() => {
+                twoJSInstance?.update()
+                requestAnimationFrame(() => runGrowPass())
+            })
+        }
+        function runGrowPass() {
+                const PAD = 20
+                const growEntries = []
+                rectsToGrow.forEach(({ id, sceneEl, coreObj }) => {
+                    const sceneText = sceneEl
+                        ? findTextNodeInside(sceneEl)
+                        : null
+                    const coreText = coreObj
+                        ? findTextNodeInside(coreObj)
+                        : null
+                    // Prefer coreText for measurement: the scene element's
+                    // outer group is at opacity=0 while a group is focused,
+                    // and Two.js's render path leaves sceneText's _flagSize
+                    // unprocessed in that state — its DOM font-size attribute
+                    // stays stale. coreText is on the visible group and gets
+                    // rendered correctly, so its bbox reflects the new size.
+                    const measureNode = coreText || sceneText
+                    const bbox =
+                        measureNode?._renderer?.elem?.getBBox?.()
+                    if (!bbox || bbox.width <= 0) return
+
+                    const sceneRect = sceneEl?.children?.[0]
+                    const coreRect = coreObj?.children?.[0]
+                    const currentW = sceneRect?.width ?? coreRect?.width
+                    const currentH = sceneRect?.height ?? coreRect?.height
+                    if (!currentW || !currentH) return
+
+                    const minW = bbox.width + PAD
+                    const minH = bbox.height + PAD
+                    const newW = Math.max(currentW, minW)
+                    const newH = Math.max(currentH, minH)
+                    if (newW === currentW && newH === currentH) return
+
+                    if (sceneRect) {
+                        sceneRect.width = newW
+                        sceneRect.height = newH
+                    }
+                    if (coreRect) {
+                        coreRect.width = newW
+                        coreRect.height = newH
+                    }
+                    const roundedW = Math.round(newW)
+                    const roundedH = Math.round(newH)
+                    const prevW =
+                        stateRefForComponentStore?.current?.[id]?.width
+                    const prevH =
+                        stateRefForComponentStore?.current?.[id]?.height
+                    updateComponentBulkPropertiesInLocalStore(
+                        id,
+                        { width: roundedW, height: roundedH },
+                        true
+                    )
+                    growEntries.push({
+                        action: 'UPDATE_BULK',
+                        id,
+                        prevProps: { width: prevW, height: prevH },
+                        bulkObj: { width: roundedW, height: roundedH },
+                    })
+                })
+                if (growEntries.length > 0) {
+                    recordBatchToHistoryLog?.(growEntries)
+                    twoJSInstance?.update()
+                }
+        }
     }
 }
