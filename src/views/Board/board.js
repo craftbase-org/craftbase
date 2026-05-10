@@ -1086,6 +1086,9 @@ const BoardViewPage = (props) => {
         createTextAtSurface,
         updateComponentVerticesInLocalStore,
         updateComponentBulkPropertiesInLocalStore,
+        // Exposed so groupobject's blur path can snapshot prevProps for a
+        // single batched history entry instead of one per child.
+        stateRefForComponentStore,
         deleteComponentFromLocalStore,
         deleteBulkComponentsFromLocalStore,
         twoJSInstance,

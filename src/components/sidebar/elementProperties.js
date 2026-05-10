@@ -5,6 +5,7 @@ import { useMediaQueryUtils } from '../../constants/exportHooks'
 import ColorPicker from '../utils/colorPicker'
 import OpacitySlider from '../utils/opacitySlider'
 import { TEXT_SIZES_ARRAY } from '../../utils/constants'
+import { MIXED, inspectGroupValues } from '../../utils/groupInspect'
 
 const STROKE_TYPES = [
     { label: '—', value: 'solid' },
@@ -108,9 +109,27 @@ function resolveSetKey({
 function readEffectiveValues({
     setKey,
     selectedComponent,
+    selectedGroup,
     isMobile,
     defaults,
 }) {
+    // Group mode: walk the group's children and report common values, falling
+    // back to defaults when no child carries the property and to MIXED when
+    // children disagree.
+    if (setKey === 'GROUP' && selectedGroup) {
+        const inspected = inspectGroupValues(selectedGroup, defaults)
+        // textSize is stored numeric in metadata; map to the toolbar label.
+        let textSizeOut = inspected.textSize
+        if (textSizeOut !== MIXED) {
+            const match = TEXT_SIZES_ARRAY.find((s) =>
+                isMobile
+                    ? s.mobileValue === textSizeOut
+                    : s.value === textSizeOut
+            )
+            textSizeOut = match?.label ?? defaults.defaultTextSize
+        }
+        return { ...inspected, textSize: textSizeOut }
+    }
     if (!selectedComponent) {
         // Pure default mode — pencil/arrow/shape all share the same defaults.
         return {
@@ -301,6 +320,7 @@ const FontFamilyRow = ({ value, onChange }) => {
 
 const ElementPropertiesToolbar = () => {
     const ctx = useBoardContext()
+
     const {
         isPencilMode,
         isArrowDrawMode,
@@ -358,6 +378,7 @@ const ElementPropertiesToolbar = () => {
         readEffectiveValues({
             setKey: setKey || 'SHAPE',
             selectedComponent,
+            selectedGroup,
             isMobile,
             defaults,
         })
@@ -382,6 +403,7 @@ const ElementPropertiesToolbar = () => {
             readEffectiveValues({
                 setKey,
                 selectedComponent,
+                selectedGroup,
                 isMobile,
                 defaults,
             })
@@ -390,6 +412,7 @@ const ElementPropertiesToolbar = () => {
     }, [
         setKey,
         selectedComponent,
+        selectedGroup,
         isMobile,
         defaultFill,
         defaultStrokeColor,

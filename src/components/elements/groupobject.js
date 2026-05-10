@@ -19,6 +19,7 @@ function GroupedObjectWrapper(props) {
         updateComponentBulkPropertiesInLocalStore,
         deleteBulkComponentsFromLocalStore,
         recordBatchToHistoryLog,
+        stateRefForComponentStore,
         isPencilMode,
         isArrowDrawMode,
         isArrowSelected,
@@ -53,6 +54,23 @@ function GroupedObjectWrapper(props) {
             let childrenIdsOfTheGroup = props.children.map((item) => item.id)
 
             let foundOriginalCount = 0
+            // Collect per-child UPDATE_BULK entries — emit one BATCH at the
+            // end so undo of an ungroup is a single press, and skip children
+            // whose x/y/metadata didn't actually change (the common case
+            // when the user only changed properties without dragging).
+            const blurBatchEntries = []
+
+            // Whether the group itself was moved. If not, the original scene
+            // shapes are already at their correct position and we must NOT
+            // run the restoration formula — `parseInt(group.translation) +
+            // parseInt(relative)` rounds twice and drifts ±1px on negative
+            // coords, which would synthesize a fake position change and
+            // pollute history with a no-op BATCH.
+            const initialGroupX = parseInt(props.x) || 0
+            const initialGroupY = parseInt(props.y) || 0
+            const groupMoved =
+                Math.abs(groupInstance.translation.x - initialGroupX) > 0.5 ||
+                Math.abs(groupInstance.translation.y - initialGroupY) > 0.5
 
             // two.scene.children means all the elements you see in canvas drawing area
             two.scene.children.forEach((element) => {
@@ -60,6 +78,13 @@ function GroupedObjectWrapper(props) {
                 if (childrenIdsOfTheGroup.includes(element.elementData.id)) {
                     foundOriginalCount++
                     element.opacity = 1
+
+                    if (!groupMoved) {
+                        // No drag → original translation is correct, metadata
+                        // is correct, nothing to record. Just unhide.
+                        return
+                    }
+
                     let findRelativeDataForChild = {}
                     props.children.forEach((item) => {
                         if (item.id === element?.elementData?.id) {
@@ -122,19 +147,57 @@ function GroupedObjectWrapper(props) {
                         })
                     }
 
-                    let updateObj = {
+                    const childId = element?.elementData?.id
+                    const current =
+                        stateRefForComponentStore?.current?.[childId] || {}
+                    const updateObj = {
                         metadata: newMetadata,
                         x: element.translation.x,
                         y: element.translation.y,
                         updatedBy: userId,
                     }
+
+                    // Detect a true positional change. metadata identity is
+                    // sufficient for non-pencil shapes; pencil rebuilds the
+                    // array so we compare against current.metadata.
+                    const positionChanged =
+                        current.x !== updateObj.x ||
+                        current.y !== updateObj.y
+                    const metadataChanged =
+                        newMetadata !== current.metadata
+
+                    if (!positionChanged && !metadataChanged) {
+                        // No-op restoration (user only changed properties via
+                        // the group toolbar, didn't drag). Don't pollute
+                        // history with redundant entries.
+                        two.update()
+                        return
+                    }
+
+                    const prevProps = {
+                        metadata: current.metadata,
+                        x: current.x,
+                        y: current.y,
+                        updatedBy: current.updatedBy,
+                    }
                     updateComponentBulkPropertiesInLocalStore(
-                        element?.elementData?.id,
-                        updateObj
+                        childId,
+                        updateObj,
+                        true // skipHistory — captured into batch below
                     )
+                    blurBatchEntries.push({
+                        action: 'UPDATE_BULK',
+                        id: childId,
+                        prevProps,
+                        bulkObj: updateObj,
+                    })
                     two.update()
                 }
             })
+
+            if (blurBatchEntries.length > 0) {
+                recordBatchToHistoryLog(blurBatchEntries)
+            }
 
             // Pasted group: children were never added as individual scene elements,
             // so nothing was found above. Add each child to the component store at

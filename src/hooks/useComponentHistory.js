@@ -272,15 +272,94 @@ export function useComponentHistory({
                     (c) => c?.elementData?.id === e.id
                 )
                 if (sceneGroup) {
+                    // Position sync — group ungroup batches include x/y so
+                    // the original scene shapes need to translate back. Mirror
+                    // applyBulkProps so undo of an ungroup-after-drag visibly
+                    // moves the shapes, not just the store.
+                    if (propsToApply.x !== undefined)
+                        sceneGroup.translation.x = propsToApply.x
+                    if (propsToApply.y !== undefined)
+                        sceneGroup.translation.y = propsToApply.y
                     Object.entries(propsToApply).forEach(([name, val]) => {
                         applyPropertyToTwoJSGroup(sceneGroup, name, val)
                     })
+                    // ArrowLine vertex handling (rare in group bulk-apply, but
+                    // covers blur batches that carry x1/y1/x2/y2).
+                    const hasArrowVertices =
+                        propsToApply.x1 !== undefined ||
+                        propsToApply.y1 !== undefined ||
+                        propsToApply.x2 !== undefined ||
+                        propsToApply.y2 !== undefined
+                    if (hasArrowVertices) {
+                        const line = sceneGroup.children?.[0]
+                        const pointCircle1Group = sceneGroup.children?.[1]
+                        const pointCircle2Group = sceneGroup.children?.[2]
+                        if (line && pointCircle1Group && pointCircle2Group) {
+                            const x1 = propsToApply.x1 ?? line.vertices[0].x
+                            const y1 = propsToApply.y1 ?? line.vertices[0].y
+                            const x2 = propsToApply.x2 ?? line.vertices[1].x
+                            const y2 = propsToApply.y2 ?? line.vertices[1].y
+                            updateX1Y1Vertices(
+                                Two,
+                                line,
+                                x1,
+                                y1,
+                                pointCircle1Group,
+                                two
+                            )
+                            updateX2Y2Vertices(
+                                Two,
+                                line,
+                                x2,
+                                y2,
+                                pointCircle2Group,
+                                two
+                            )
+                        }
+                    }
+                    // Pencil: when metadata changes, rebuild vertex anchors
+                    // from the new metadata so the path actually re-renders
+                    // in its previous shape (applyPropertyToTwoJSGroup's
+                    // metadata branch only sets shape[k] = v, which doesn't
+                    // touch pencil's path vertices).
+                    if (
+                        sceneGroup.elementData?.componentType === 'pencil' &&
+                        Array.isArray(propsToApply.metadata)
+                    ) {
+                        const path = sceneGroup.children?.[0]
+                        if (path?.vertices) {
+                            const baseX =
+                                propsToApply.x ?? sceneGroup.translation.x
+                            const baseY =
+                                propsToApply.y ?? sceneGroup.translation.y
+                            path.vertices = []
+                            propsToApply.metadata.forEach((point) => {
+                                path.vertices.push(
+                                    new Two.Anchor(
+                                        point.x - baseX,
+                                        point.y - baseY
+                                    )
+                                )
+                            })
+                        }
+                    }
                     // Keep the scene element's snapshot in sync so the
                     // toolbar reads the right values if the user re-selects.
                     if (sceneGroup.elementData) {
                         Object.entries(propsToApply).forEach(([k, v]) => {
                             sceneGroup.elementData[k] = v
                         })
+                    }
+                    // If width/height changed, request the selector to resync.
+                    if (
+                        propsToApply.width !== undefined ||
+                        propsToApply.height !== undefined
+                    ) {
+                        window.dispatchEvent(
+                            new CustomEvent('undoSelectorSync', {
+                                detail: { elementId: e.id },
+                            })
+                        )
                     }
                 }
                 // If a group is currently focused and contains this child,

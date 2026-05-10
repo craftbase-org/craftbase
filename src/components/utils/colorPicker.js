@@ -2,6 +2,7 @@ import React, { Fragment, useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { allColorShades, essentialShades } from '../../utils/constants'
 import { motion, AnimatePresence } from 'framer-motion'
+import { MIXED } from '../../utils/groupInspect'
 
 const STORAGE_KEY = 'craftbase_saved_colors'
 const MAX_SAVED = 8
@@ -31,8 +32,9 @@ const ColorPicker = ({
     const [localExpanded, setLocalExpanded] = useState(false)
     const [savedColors, setSavedColors] = useState(loadSavedColors)
     const [removingColor, setRemovingColor] = useState(null)
+    const isMixed = currentColor === MIXED
     const [hexInput, setHexInput] = useState(
-        currentColor?.replace(/^#/, '') ?? ''
+        isMixed ? '' : (currentColor?.replace(/^#/, '') ?? '')
     )
 
     // Support both controlled (isExpanded prop) and uncontrolled (local state) modes.
@@ -41,6 +43,10 @@ const ColorPicker = ({
     const handleToggle = onToggleExpand ?? (() => setLocalExpanded((p) => !p))
 
     useEffect(() => {
+        if (currentColor === MIXED) {
+            setHexInput('')
+            return
+        }
         setHexInput(currentColor?.replace(/^#/, '') ?? '')
     }, [currentColor])
 
@@ -74,7 +80,10 @@ const ColorPicker = ({
         setRemovingColor(null)
     }
 
-    const hasColor = !!currentColor
+    const hasColor = !!currentColor && !isMixed
+    // Diagonal-stripe pattern reused for the "Mixed" indicator swatches.
+    const mixedSwatchBg =
+        'repeating-linear-gradient(45deg, #C4B89A 0 4px, #F5F0E8 4px 8px)'
 
     const swatchStyle = (color) => ({
         background: color,
@@ -103,12 +112,23 @@ const ColorPicker = ({
                     <div
                         className="w-3.5 h-3.5 rounded-[3px] flex-shrink-0"
                         style={{
-                            background: hasColor ? currentColor : 'transparent',
-                            border: hasColor ? 'none' : '1.5px solid #1A1612',
+                            background: isMixed
+                                ? mixedSwatchBg
+                                : hasColor
+                                    ? currentColor
+                                    : 'transparent',
+                            border:
+                                hasColor || isMixed
+                                    ? 'none'
+                                    : '1.5px solid #1A1612',
                         }}
                     />
                     <span className="font-mono">
-                        {hasColor ? currentColor.toUpperCase() : 'None'}
+                        {isMixed
+                            ? 'Mixed'
+                            : hasColor
+                                ? currentColor.toUpperCase()
+                                : 'None'}
                     </span>
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                         <path
@@ -140,8 +160,9 @@ const ColorPicker = ({
                                 <div
                                     className="w-7 h-7 rounded-[6px] flex-shrink-0"
                                     style={{
-                                        background:
-                                            currentColor ?? 'transparent',
+                                        background: isMixed
+                                            ? mixedSwatchBg
+                                            : (currentColor ?? 'transparent'),
                                         border: '2px solid #C48B0A',
                                     }}
                                 />
@@ -150,7 +171,9 @@ const ColorPicker = ({
                                         Selected
                                     </div>
                                     <div className="text-[11px] font-semibold text-[#1A1612] font-mono truncate">
-                                        {currentColor?.toUpperCase() ?? '—'}
+                                        {isMixed
+                                            ? 'Mixed'
+                                            : (currentColor?.toUpperCase() ?? '—')}
                                     </div>
                                 </div>
                                 <button
