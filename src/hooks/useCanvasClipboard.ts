@@ -1,7 +1,57 @@
 import { useEffect, useRef } from 'react'
+import type { MutableRefObject } from 'react'
 import { GROUP_COMPONENT } from '../constants/misc'
 import { generateUUID } from '../utils/misc'
 import { cloneElementData } from '../utils/canvasUtils'
+import type { ComponentRecord } from '../types/board'
+
+// Two.js scene objects are typed loosely here; canvas-side typing converges
+// in Stages 7–9.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TwoLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ZuiInstanceLike = any
+
+interface SingleClipboardPayload {
+    kind: 'single'
+    origin: { x: number; y: number }
+    items: ComponentRecord[]
+}
+
+interface GroupClipboardPayload {
+    kind: 'group'
+    origin: { x: number; y: number }
+    width?: number
+    height?: number
+    items: ComponentRecord[]
+}
+
+type ClipboardPayload = SingleClipboardPayload | GroupClipboardPayload
+
+interface MousePosition {
+    clientX: number
+    clientY: number
+    hasMoved: boolean
+}
+
+export interface CanvasClipboardOptions {
+    twoJSInstance: TwoLike | null
+    zuiInstanceRef: MutableRefObject<ZuiInstanceLike | null>
+    boardId: string
+    addToLocalComponentStore: (
+        id: string,
+        componentType: string,
+        record: ComponentRecord
+    ) => void
+    renderGroupRef: MutableRefObject<
+        ((groups: ComponentRecord[]) => void) | null
+    >
+}
+
+export interface CanvasClipboardApi {
+    clipboardRef: MutableRefObject<ClipboardPayload | null>
+    lastMouseRef: MutableRefObject<MousePosition>
+}
 
 export function useCanvasClipboard({
     twoJSInstance,
@@ -9,13 +59,17 @@ export function useCanvasClipboard({
     boardId,
     addToLocalComponentStore,
     renderGroupRef,
-} = {}) {
-    const clipboardRef = useRef(null)
-    const lastMouseRef = useRef({ clientX: 0, clientY: 0, hasMoved: false })
+}: CanvasClipboardOptions): CanvasClipboardApi {
+    const clipboardRef = useRef<ClipboardPayload | null>(null)
+    const lastMouseRef = useRef<MousePosition>({
+        clientX: 0,
+        clientY: 0,
+        hasMoved: false,
+    })
 
     // Track cursor position so paste can land at mouse location
     useEffect(() => {
-        const onMove = (e) => {
+        const onMove = (e: MouseEvent): void => {
             lastMouseRef.current = {
                 clientX: e.clientX,
                 clientY: e.clientY,
@@ -23,12 +77,12 @@ export function useCanvasClipboard({
             }
         }
         window.addEventListener('mousemove', onMove)
-        return () => window.removeEventListener('mousemove', onMove)
+        return (): void => window.removeEventListener('mousemove', onMove)
     }, [])
 
     // Copy handler (Ctrl+C / Cmd+C)
     useEffect(() => {
-        const onCopyEvent = (evt) => {
+        const onCopyEvent = (evt: KeyboardEvent): void => {
             if (evt.key !== 'c' || !(evt.ctrlKey || evt.metaKey)) return
             const tag = document.activeElement?.tagName
             if (tag === 'INPUT' || tag === 'TEXTAREA') return
@@ -43,9 +97,11 @@ export function useCanvasClipboard({
             const originY = liveGroup.translation.y
             const elementData = liveGroup.elementData
 
-            let payload
+            let payload: ClipboardPayload
             if (elementData.componentType === GROUP_COMPONENT) {
-                const children = Array.isArray(elementData.children)
+                const children: ComponentRecord[] = Array.isArray(
+                    elementData.children
+                )
                     ? elementData.children
                     : []
                 payload = {
@@ -56,24 +112,23 @@ export function useCanvasClipboard({
                     items: children.map((child) => ({ ...child })),
                 }
             } else {
-                const item = {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const item: any = {
                     ...elementData,
                     x: originX,
                     y: originY,
                     relativeX: 0,
                     relativeY: 0,
                 }
-                // For arrowLine, read live vertex coords (elementData can be stale).
                 if (elementData.componentType === 'arrowLine') {
                     const line = liveGroup.children?.[0]
                     if (line?.vertices?.length >= 2) {
-                        item.x1 = parseInt(line.vertices[0].x)
-                        item.y1 = parseInt(line.vertices[0].y)
-                        item.x2 = parseInt(line.vertices[1].x)
-                        item.y2 = parseInt(line.vertices[1].y)
+                        item.x1 = parseInt(String(line.vertices[0].x))
+                        item.y1 = parseInt(String(line.vertices[0].y))
+                        item.x2 = parseInt(String(line.vertices[1].x))
+                        item.y2 = parseInt(String(line.vertices[1].y))
                     }
                 }
-                // For newText, read live Two.js text values so edits after mount are captured.
                 if (elementData.componentType === 'newText') {
                     const twoText = liveGroup.children?.[0]
                     if (twoText && typeof twoText.value === 'string') {
@@ -81,8 +136,11 @@ export function useCanvasClipboard({
                         item.metadata = {
                             ...item.metadata,
                             content: twoText.value,
-                            fontSize: twoText.size || item.metadata?.fontSize,
-                            textFontFamily: twoText.family || item.metadata?.textFontFamily,
+                            fontSize:
+                                twoText.size || item.metadata?.fontSize,
+                            textFontFamily:
+                                twoText.family ||
+                                item.metadata?.textFontFamily,
                         }
                     }
                 }
@@ -95,12 +153,12 @@ export function useCanvasClipboard({
             clipboardRef.current = payload
         }
         window.addEventListener('keydown', onCopyEvent)
-        return () => window.removeEventListener('keydown', onCopyEvent)
-    }, [twoJSInstance])
+        return (): void => window.removeEventListener('keydown', onCopyEvent)
+    }, [twoJSInstance, zuiInstanceRef])
 
     // Paste handler (Ctrl+V / Cmd+V)
     useEffect(() => {
-        const onPasteEvent = (evt) => {
+        const onPasteEvent = (evt: KeyboardEvent): void => {
             if (evt.key !== 'v' || !(evt.ctrlKey || evt.metaKey)) return
             const tag = document.activeElement?.tagName
             if (tag === 'INPUT' || tag === 'TEXTAREA') return
@@ -116,7 +174,9 @@ export function useCanvasClipboard({
             let clientX = lastMouseRef.current.clientX
             let clientY = lastMouseRef.current.clientY
             if (!lastMouseRef.current.hasMoved) {
-                const rect = document.getElementById('main-two-root')?.getBoundingClientRect()
+                const rect = document
+                    .getElementById('main-two-root')
+                    ?.getBoundingClientRect()
                 if (rect) {
                     clientX = rect.left + rect.width / 2
                     clientY = rect.top + rect.height / 2
@@ -128,37 +188,66 @@ export function useCanvasClipboard({
 
             if (clipboard.kind === 'single') {
                 const src = clipboard.items[0]
-                const newItem = cloneElementData(src, boardId, px, py)
+                if (!src) return
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const newItem: any = cloneElementData(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    src as any,
+                    boardId,
+                    px,
+                    py
+                )
                 if (src.componentType === 'arrowLine') {
-                    const dx = (src.x2 ?? 0) - (src.x1 ?? 0)
-                    const dy = (src.y2 ?? 0) - (src.y1 ?? 0)
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const s = src as any
+                    const dx = (s.x2 ?? 0) - (s.x1 ?? 0)
+                    const dy = (s.y2 ?? 0) - (s.y1 ?? 0)
                     newItem.x1 = 0
                     newItem.y1 = 0
                     newItem.x2 = dx
                     newItem.y2 = dy
                 }
-                if (src.componentType === 'pencil' && Array.isArray(src.metadata)) {
+                if (
+                    src.componentType === 'pencil' &&
+                    Array.isArray(src.metadata)
+                ) {
                     const dx = px - src.x
                     const dy = py - src.y
-                    newItem.metadata = src.metadata.map((pt) => {
-                        const lwProp = pt.lw !== undefined ? { lw: pt.lw } : {}
+                    newItem.metadata = (
+                        src.metadata as Array<{ x: number; y: number; lw?: number }>
+                    ).map((pt) => {
+                        const lwProp =
+                            pt.lw !== undefined ? { lw: pt.lw } : {}
                         return { x: pt.x + dx, y: pt.y + dy, ...lwProp }
                     })
                 }
-                addToLocalComponentStore(newItem.id, newItem.componentType, newItem)
+                addToLocalComponentStore(
+                    newItem.id,
+                    newItem.componentType,
+                    newItem
+                )
                 return
             }
 
             if (clipboard.kind === 'group') {
                 const newChildren = clipboard.items.map((child) => {
-                    const rX = child.relativeX ?? 0
-                    const rY = child.relativeY ?? 0
-                    const cloned = cloneElementData(child, boardId, rX, rY)
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const c = child as any
+                    const rX = c.relativeX ?? 0
+                    const rY = c.relativeY ?? 0
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const cloned: any = cloneElementData(
+                        c,
+                        boardId,
+                        rX,
+                        rY
+                    )
                     cloned.relativeX = rX
                     cloned.relativeY = rY
                     return cloned
                 })
-                const newGroup = {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const newGroup: any = {
                     id: generateUUID(),
                     boardId,
                     componentType: GROUP_COMPONENT,
@@ -174,7 +263,8 @@ export function useCanvasClipboard({
             }
         }
         window.addEventListener('keydown', onPasteEvent)
-        return () => window.removeEventListener('keydown', onPasteEvent)
+        return (): void => window.removeEventListener('keydown', onPasteEvent)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [boardId, addToLocalComponentStore])
 
     return { clipboardRef, lastMouseRef }

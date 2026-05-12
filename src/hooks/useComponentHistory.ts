@@ -1,11 +1,114 @@
 import { useState, useRef } from 'react'
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import Two from 'two.js'
 import { strokeTypeToDashes, clearDashesOnTwoJSShape } from '../utils/misc'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from '../utils/updateVertices'
 import { DRAFT_STORAGE_KEY } from '../constants/misc'
+import type { ComponentRecord, ComponentStore } from '../types/board'
+
+// Two.js scene-group shapes are typed loosely until the canvas internals
+// converge (Stages 7–9). Bulk-prop bags are also row-shaped; we accept
+// `Partial<ComponentRecord>` plus an `[key: string]: unknown` escape hatch
+// for the few fields (relativeX/Y, etc.) that don't live on the DB row type.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ShapeLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TwoLike = any
+type BulkProps = Partial<ComponentRecord> & Record<string, unknown>
+
+// ---- history entry discriminated union ----
+
+interface AddEntry {
+    action: 'ADD'
+    id: string
+    componentInfo: ComponentRecord
+    timestamp?: number
+}
+
+interface DeleteEntry {
+    action: 'DELETE'
+    id: string
+    prevState: ComponentRecord
+    timestamp?: number
+}
+
+interface UpdateVerticesEntry {
+    action: 'UPDATE_VERTICES'
+    id: string
+    prevX: number
+    prevY: number
+    nextX?: number
+    nextY?: number
+    timestamp?: number
+}
+
+interface UpdateBulkEntry {
+    action: 'UPDATE_BULK'
+    id: string
+    prevProps: BulkProps
+    bulkObj?: BulkProps
+    nextProps?: BulkProps
+    syncDefaults?: boolean
+    timestamp?: number
+}
+
+interface BatchEntry {
+    action: 'BATCH'
+    entries: HistoryEntry[]
+    timestamp?: number
+}
+
+export type HistoryEntry =
+    | AddEntry
+    | DeleteEntry
+    | UpdateVerticesEntry
+    | UpdateBulkEntry
+    | BatchEntry
+
+// ---- hook options ----
+
+// Apollo mutate signatures vary by typing source; keep them loose at the
+// boundary. board.tsx (Stage 10) will wire in real Apollo types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ApolloMutate = (options?: any) => any
+
+export interface ComponentHistoryOptions {
+    twoJSInstanceRef: MutableRefObject<TwoLike | null>
+    stateRefForComponentStore: MutableRefObject<ComponentStore>
+    isPersistedRef: MutableRefObject<boolean>
+    boardId: string
+    isPersisted: boolean
+    insertComponent: ApolloMutate
+    deleteComponent: ApolloMutate
+    updateComponentInfo: ApolloMutate
+    setComponentStore: Dispatch<SetStateAction<ComponentStore>>
+    setShowPermissionErrorModal: Dispatch<SetStateAction<boolean>>
+    setDefaultLinewidth: (val: number) => void
+    setDefaultStrokeType: (val: string | null) => void
+    setToolbarRefreshKey?: Dispatch<SetStateAction<number>>
+    selectedComponent: ShapeLike | null
+    selectedGroupRef: MutableRefObject<ShapeLike | null>
+    stripTypename: (input: unknown) => unknown
+}
+
+export interface ComponentHistoryApi {
+    historyLog: HistoryEntry[]
+    historyLogRef: MutableRefObject<HistoryEntry[]>
+    bucketLog: HistoryEntry[]
+    bucketLogRef: MutableRefObject<HistoryEntry[]>
+    recordToHistoryLog: (entry: HistoryEntry) => void
+    recordBatchToHistoryLog: (entries: HistoryEntry[]) => void
+    undoLastAction: () => void
+    redoLastAction: () => void
+    clearHistory: (isPersisted: boolean, localDraftKey?: string) => void
+}
 
 // Applies a single property back to a Two.js shape during undo/redo.
-function applyPropertyToTwoJSGroup(group, name, value) {
+function applyPropertyToTwoJSGroup(
+    group: ShapeLike,
+    name: string,
+    value: unknown
+): void {
     const shape = group.children?.[0]
     if (!shape) return
 
@@ -21,7 +124,7 @@ function applyPropertyToTwoJSGroup(group, name, value) {
             shape[name] = value
             break
         case 'strokeType':
-            shape.dashes = strokeTypeToDashes(value)
+            shape.dashes = strokeTypeToDashes(value as string | null)
             if (!value || value === 'solid') {
                 clearDashesOnTwoJSShape(shape)
             }
@@ -35,28 +138,30 @@ function applyPropertyToTwoJSGroup(group, name, value) {
                 // The actual text node is either `shape` itself (newText: a
                 // Two.js text is shape) or a sibling inside the group
                 // (rectangle-with-text: text node sits next to the rect).
-                const textNode =
+                const textNode: ShapeLike =
                     typeof shape?.value === 'string'
                         ? shape
                         : group.children?.find(
-                              (c) => typeof c?.value === 'string'
+                              (c: ShapeLike) => typeof c?.value === 'string'
                           )
-                Object.entries(value).forEach(([k, v]) => {
-                    if (k === 'opacity') {
-                        // Opacity lives on the leaf shape (children[0]) by
-                        // codebase convention; matches applyGroupProperty.
-                        shape.opacity = v
-                    } else if (k === 'textFontSize' && textNode) {
-                        textNode.size = v
-                    } else if (k === 'textFontFamily' && textNode) {
-                        textNode.family = v
-                    } else if (k === 'textFill' && textNode) {
-                        textNode.fill = v
+                Object.entries(value as Record<string, unknown>).forEach(
+                    ([k, v]) => {
+                        if (k === 'opacity') {
+                            // Opacity lives on the leaf shape (children[0]) by
+                            // codebase convention; matches applyGroupProperty.
+                            shape.opacity = v
+                        } else if (k === 'textFontSize' && textNode) {
+                            textNode.size = v
+                        } else if (k === 'textFontFamily' && textNode) {
+                            textNode.family = v
+                        } else if (k === 'textFill' && textNode) {
+                            textNode.fill = v
+                        }
+                        // Other metadata keys (textContent, textBaseLine,
+                        // hasText) have no direct Two.js field mapping; skip
+                        // rather than pollute random properties on the shape.
                     }
-                    // Other metadata keys (textContent, textBaseLine, hasText)
-                    // have no direct Two.js field mapping; skip rather than
-                    // pollute random properties on the shape.
-                })
+                )
             }
             break
         default:
@@ -69,7 +174,6 @@ export function useComponentHistory({
     stateRefForComponentStore,
     isPersistedRef,
     boardId,
-    isPersisted,
     insertComponent,
     deleteComponent,
     updateComponentInfo,
@@ -81,27 +185,27 @@ export function useComponentHistory({
     selectedComponent,
     selectedGroupRef,
     stripTypename,
-} = {}) {
-    const [historyLog, setHistoryLog] = useState([])
-    const historyLogRef = useRef([])
-    const [bucketLog, setBucketLog] = useState([])
-    const bucketLogRef = useRef([])
+}: ComponentHistoryOptions): ComponentHistoryApi {
+    const [historyLog, setHistoryLog] = useState<HistoryEntry[]>([])
+    const historyLogRef = useRef<HistoryEntry[]>([])
+    const [bucketLog, setBucketLog] = useState<HistoryEntry[]>([])
+    const bucketLogRef = useRef<HistoryEntry[]>([])
 
-    const writeHistory = (next) => {
+    const writeHistory = (next: HistoryEntry[]): void => {
         historyLogRef.current = next
         setHistoryLog(next)
     }
-    const writeBucket = (next) => {
+    const writeBucket = (next: HistoryEntry[]): void => {
         bucketLogRef.current = next
         setBucketLog(next)
     }
 
     // ---- per-action apply helpers (shared by undo and redo dispatchers) ----
 
-    const applyRemove = (id) => {
+    const applyRemove = (id: string): void => {
         const two = twoJSInstanceRef.current
         const group = two?.scene.children.find(
-            (c) => c?.elementData?.id === id
+            (c: ShapeLike) => c?.elementData?.id === id
         )
         if (group) {
             two.remove([group])
@@ -124,7 +228,11 @@ export function useComponentHistory({
         requestAnimationFrame(() => two?.update())
     }
 
-    const applyInsert = (id, componentInfo, onPermissionError) => {
+    const applyInsert = (
+        id: string,
+        componentInfo: ComponentRecord,
+        onPermissionError?: () => void
+    ): void => {
         const two = twoJSInstanceRef.current
         const restoredState = { ...componentInfo, boardId }
         const updatedStore = {
@@ -136,9 +244,11 @@ export function useComponentHistory({
         if (isPersistedRef.current) {
             insertComponent({
                 variables: { object: stripTypename(restoredState) },
-            }).catch((error) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            }).catch((error: any) => {
                 const isPermissionError = error.graphQLErrors?.some(
-                    (e) => e.extensions?.code === 'permission-error'
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (e: any) => e.extensions?.code === 'permission-error'
                 )
                 if (isPermissionError) {
                     onPermissionError?.()
@@ -149,15 +259,18 @@ export function useComponentHistory({
         requestAnimationFrame(() => two?.update())
     }
 
-    const applyVertices = (id, x, y) => {
+    const applyVertices = (id: string, x: number, y: number): void => {
         const two = twoJSInstanceRef.current
         const updatedStore = { ...stateRefForComponentStore.current }
-        updatedStore[id] = { ...updatedStore[id], x, y }
+        const current = updatedStore[id]
+        if (current) {
+            updatedStore[id] = { ...current, x, y }
+        }
         stateRefForComponentStore.current = updatedStore
         setComponentStore(updatedStore)
 
         const group = two?.scene.children.find(
-            (c) => c?.elementData?.id === id
+            (c: ShapeLike) => c?.elementData?.id === id
         )
         if (group) {
             group.translation.x = x
@@ -172,15 +285,22 @@ export function useComponentHistory({
         requestAnimationFrame(() => two?.update())
     }
 
-    const applyBulkProps = (id, props, syncDefaults) => {
+    const applyBulkProps = (
+        id: string,
+        props: BulkProps,
+        syncDefaults?: boolean
+    ): void => {
         const two = twoJSInstanceRef.current
         const updatedStore = { ...stateRefForComponentStore.current }
-        updatedStore[id] = { ...updatedStore[id], ...props }
+        const current = updatedStore[id]
+        if (current) {
+            updatedStore[id] = { ...current, ...props } as ComponentRecord
+        }
         stateRefForComponentStore.current = updatedStore
         setComponentStore(updatedStore)
 
         const group = two?.scene.children.find(
-            (c) => c?.elementData?.id === id
+            (c: ShapeLike) => c?.elementData?.id === id
         )
         if (group) {
             if (props.x !== undefined) group.translation.x = props.x
@@ -220,8 +340,9 @@ export function useComponentHistory({
         }
 
         if (syncDefaults) {
-            if (props.linewidth !== undefined)
+            if (props.linewidth !== undefined && props.linewidth !== null) {
                 setDefaultLinewidth(props.linewidth)
+            }
             if (props.strokeType !== undefined) {
                 setDefaultStrokeType(
                     props.strokeType === 'solid' ? null : props.strokeType
@@ -246,7 +367,10 @@ export function useComponentHistory({
         requestAnimationFrame(() => two?.update())
     }
 
-    const applyBatch = (entries, direction) => {
+    const applyBatch = (
+        entries: HistoryEntry[],
+        direction: 'undo' | 'redo'
+    ): void => {
         // direction: 'undo' (DELETE→insert, ADD→remove) or 'redo' (DELETE→remove, ADD→insert)
         const two = twoJSInstanceRef.current
         const updatedStore = { ...stateRefForComponentStore.current }
@@ -261,47 +385,59 @@ export function useComponentHistory({
 
             if (isInsert) {
                 const source =
-                    direction === 'undo' ? e.prevState : e.componentInfo
+                    direction === 'undo' && e.action === 'DELETE'
+                        ? e.prevState
+                        : e.action === 'ADD'
+                          ? e.componentInfo
+                          : undefined
+                if (!source) return
                 const restoredState = { ...source, boardId }
-                updatedStore[e.id] = restoredState
+                updatedStore[e.action === 'DELETE' ? e.id : e.id] =
+                    restoredState
                 if (isPersistedRef.current) {
                     insertComponent({
                         variables: { object: stripTypename(restoredState) },
                     })
                 }
             } else if (isRemove) {
-                delete updatedStore[e.id]
+                const id =
+                    e.action === 'ADD' || e.action === 'DELETE'
+                        ? e.id
+                        : undefined
+                if (!id) return
+                delete updatedStore[id]
                 window.dispatchEvent(
                     new CustomEvent('elementRemoved', {
-                        detail: { id: e.id },
+                        detail: { id },
                     })
                 )
                 const sceneGroup = two?.scene.children.find(
-                    (c) => c?.elementData?.id === e.id
+                    (c: ShapeLike) => c?.elementData?.id === id
                 )
                 if (sceneGroup) two?.remove([sceneGroup])
                 if (isPersistedRef.current) {
-                    deleteComponent({ variables: { id: e.id } })
+                    deleteComponent({ variables: { id } })
                 }
             } else if (e.action === 'UPDATE_BULK') {
                 // Used by group bulk-apply: a single BATCH carries one
                 // UPDATE_BULK per group child, so one undo press rolls them
                 // all back together.
-                const propsToApply =
+                const propsToApply: BulkProps | undefined =
                     direction === 'undo' ? e.prevProps : e.bulkObj
                 if (!propsToApply) return
-                updatedStore[e.id] = {
-                    ...updatedStore[e.id],
-                    ...propsToApply,
+                const existing = updatedStore[e.id]
+                if (existing) {
+                    updatedStore[e.id] = {
+                        ...existing,
+                        ...propsToApply,
+                    } as ComponentRecord
                 }
                 const sceneGroup = two?.scene.children.find(
-                    (c) => c?.elementData?.id === e.id
+                    (c: ShapeLike) => c?.elementData?.id === e.id
                 )
                 if (sceneGroup) {
                     // Position sync — group ungroup batches include x/y so
-                    // the original scene shapes need to translate back. Mirror
-                    // applyBulkProps so undo of an ungroup-after-drag visibly
-                    // moves the shapes, not just the store.
+                    // the original scene shapes need to translate back.
                     if (propsToApply.x !== undefined)
                         sceneGroup.translation.x = propsToApply.x
                     if (propsToApply.y !== undefined)
@@ -309,8 +445,7 @@ export function useComponentHistory({
                     Object.entries(propsToApply).forEach(([name, val]) => {
                         applyPropertyToTwoJSGroup(sceneGroup, name, val)
                     })
-                    // ArrowLine vertex handling (rare in group bulk-apply, but
-                    // covers blur batches that carry x1/y1/x2/y2).
+                    // ArrowLine vertex handling
                     const hasArrowVertices =
                         propsToApply.x1 !== undefined ||
                         propsToApply.y1 !== undefined ||
@@ -343,11 +478,7 @@ export function useComponentHistory({
                             )
                         }
                     }
-                    // Pencil: when metadata changes, rebuild vertex anchors
-                    // from the new metadata so the path actually re-renders
-                    // in its previous shape (applyPropertyToTwoJSGroup's
-                    // metadata branch only sets shape[k] = v, which doesn't
-                    // touch pencil's path vertices).
+                    // Pencil metadata reconstruction
                     if (
                         sceneGroup.elementData?.componentType === 'pencil' &&
                         Array.isArray(propsToApply.metadata)
@@ -359,9 +490,15 @@ export function useComponentHistory({
                             const baseY =
                                 propsToApply.y ?? sceneGroup.translation.y
                             path.vertices = []
-                            propsToApply.metadata.forEach((point) => {
+                            ;(
+                                propsToApply.metadata as Array<{
+                                    x: number
+                                    y: number
+                                }>
+                            ).forEach((point) => {
                                 path.vertices.push(
-                                    new Two.Anchor(
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    new (Two as any).Anchor(
                                         point.x - baseX,
                                         point.y - baseY
                                     )
@@ -369,14 +506,12 @@ export function useComponentHistory({
                             })
                         }
                     }
-                    // Keep the scene element's snapshot in sync so the
-                    // toolbar reads the right values if the user re-selects.
+                    // Keep elementData snapshot in sync
                     if (sceneGroup.elementData) {
                         Object.entries(propsToApply).forEach(([k, v]) => {
                             sceneGroup.elementData[k] = v
                         })
                     }
-                    // If width/height changed, request the selector to resync.
                     if (
                         propsToApply.width !== undefined ||
                         propsToApply.height !== undefined
@@ -394,31 +529,36 @@ export function useComponentHistory({
                 const activeGroup = selectedGroupRef?.current
                 const groupChildren = activeGroup?.elementData?.children
                 if (Array.isArray(groupChildren)) {
-                    const inGroup = groupChildren.some((c) => c?.id === e.id)
+                    const inGroup = groupChildren.some(
+                        (c: ShapeLike) => c?.id === e.id
+                    )
                     if (inGroup) {
                         const coreObj = activeGroup.children?.find(
-                            (c) => c?.elementData?.id === e.id
+                            (c: ShapeLike) => c?.elementData?.id === e.id
                         )
                         if (coreObj) {
-                            // For opacity, the leaf shape carries the value;
-                            // outer coreObj.opacity must be 1 so the leaf
-                            // alone controls display (mirrors the apply path).
                             const isOpacityChange =
                                 'metadata' in propsToApply &&
                                 propsToApply.metadata &&
                                 typeof propsToApply.metadata === 'object' &&
-                                'opacity' in propsToApply.metadata
+                                'opacity' in
+                                    (propsToApply.metadata as Record<
+                                        string,
+                                        unknown
+                                    >)
                             if (isOpacityChange) coreObj.opacity = 1
                             Object.entries(propsToApply).forEach(
                                 ([name, val]) => {
-                                    applyPropertyToTwoJSGroup(coreObj, name, val)
+                                    applyPropertyToTwoJSGroup(
+                                        coreObj,
+                                        name,
+                                        val
+                                    )
                                 }
                             )
                         }
-                        // Also mirror onto the child entry inside
-                        // group.elementData.children so blur restoration
-                        // doesn't re-apply stale data.
-                        groupChildren.forEach((c) => {
+                        // Mirror onto the child entry inside elementData.children
+                        groupChildren.forEach((c: ShapeLike) => {
                             if (c?.id === e.id) {
                                 Object.entries(propsToApply).forEach(
                                     ([k, v]) => {
@@ -444,8 +584,8 @@ export function useComponentHistory({
 
     // ---- public recorders ----
 
-    const recordToHistoryLog = (entry) => {
-        const updatedLog = [
+    const recordToHistoryLog = (entry: HistoryEntry): void => {
+        const updatedLog: HistoryEntry[] = [
             ...historyLogRef.current,
             { ...entry, timestamp: Date.now() },
         ]
@@ -454,8 +594,8 @@ export function useComponentHistory({
         writeBucket([])
     }
 
-    const recordBatchToHistoryLog = (entries) => {
-        const updatedLog = [
+    const recordBatchToHistoryLog = (entries: HistoryEntry[]): void => {
+        const updatedLog: HistoryEntry[] = [
             ...historyLogRef.current,
             { action: 'BATCH', entries, timestamp: Date.now() },
         ]
@@ -464,90 +604,109 @@ export function useComponentHistory({
     }
 
     // Capture the post-action ("next") state needed to redo this entry.
-    // Only UPDATE_VERTICES and UPDATE_BULK need extra capture — for ADD/DELETE/BATCH
-    // the original entry already contains everything redo needs.
-    const captureNextState = (entry) => {
-        const { action, id } = entry
-        const current = stateRefForComponentStore.current[id]
-        if (action === 'UPDATE_VERTICES') {
+    // Only UPDATE_VERTICES and UPDATE_BULK need extra capture — for
+    // ADD/DELETE/BATCH the original entry already contains everything redo needs.
+    const captureNextState = (entry: HistoryEntry): HistoryEntry => {
+        if (entry.action === 'UPDATE_VERTICES') {
+            const current = stateRefForComponentStore.current[entry.id]
             return {
                 ...entry,
                 nextX: current?.x,
                 nextY: current?.y,
             }
         }
-        if (action === 'UPDATE_BULK') {
-            const nextProps = {}
+        if (entry.action === 'UPDATE_BULK') {
+            const current = stateRefForComponentStore.current[entry.id]
+            const nextProps: BulkProps = {}
             Object.keys(entry.prevProps || {}).forEach((k) => {
-                nextProps[k] = current?.[k]
+                ;(nextProps as Record<string, unknown>)[k] = (
+                    current as unknown as Record<string, unknown> | undefined
+                )?.[k]
             })
             return { ...entry, nextProps }
         }
         return entry
     }
 
-    const undoLastAction = () => {
+    const undoLastAction = (): void => {
         if (historyLogRef.current.length === 0) return
 
         const updatedLog = [...historyLogRef.current]
         const lastEntry = updatedLog.pop()
+        if (!lastEntry) return
         writeHistory(updatedLog)
 
         const enrichedForRedo = captureNextState(lastEntry)
 
-        const { action, id } = lastEntry
-
-        if (action === 'ADD') {
-            applyRemove(id)
-        } else if (action === 'DELETE') {
-            applyInsert(id, lastEntry.prevState, () => undoLastAction())
-        } else if (action === 'BATCH') {
+        if (lastEntry.action === 'ADD') {
+            applyRemove(lastEntry.id)
+        } else if (lastEntry.action === 'DELETE') {
+            applyInsert(lastEntry.id, lastEntry.prevState, () =>
+                undoLastAction()
+            )
+        } else if (lastEntry.action === 'BATCH') {
             applyBatch(lastEntry.entries, 'undo')
-        } else if (action === 'UPDATE_VERTICES') {
-            applyVertices(id, lastEntry.prevX, lastEntry.prevY)
-        } else if (action === 'UPDATE_BULK') {
-            applyBulkProps(id, lastEntry.prevProps, lastEntry.syncDefaults)
+        } else if (lastEntry.action === 'UPDATE_VERTICES') {
+            applyVertices(lastEntry.id, lastEntry.prevX, lastEntry.prevY)
+        } else if (lastEntry.action === 'UPDATE_BULK') {
+            applyBulkProps(
+                lastEntry.id,
+                lastEntry.prevProps,
+                lastEntry.syncDefaults
+            )
         }
 
         const updatedBucket = [...bucketLogRef.current, enrichedForRedo]
         writeBucket(updatedBucket)
     }
 
-    const redoLastAction = () => {
+    const redoLastAction = (): void => {
         if (bucketLogRef.current.length === 0) return
 
         const updatedBucket = [...bucketLogRef.current]
         const entry = updatedBucket.pop()
+        if (!entry) return
         writeBucket(updatedBucket)
 
-        const { action, id } = entry
-
-        if (action === 'ADD') {
-            applyInsert(id, entry.componentInfo)
-        } else if (action === 'DELETE') {
-            applyRemove(id)
-        } else if (action === 'BATCH') {
+        if (entry.action === 'ADD') {
+            applyInsert(entry.id, entry.componentInfo)
+        } else if (entry.action === 'DELETE') {
+            applyRemove(entry.id)
+        } else if (entry.action === 'BATCH') {
             applyBatch(entry.entries, 'redo')
-        } else if (action === 'UPDATE_VERTICES') {
-            applyVertices(id, entry.nextX, entry.nextY)
-        } else if (action === 'UPDATE_BULK') {
-            applyBulkProps(id, entry.nextProps, entry.syncDefaults)
+        } else if (entry.action === 'UPDATE_VERTICES') {
+            applyVertices(
+                entry.id,
+                entry.nextX ?? entry.prevX,
+                entry.nextY ?? entry.prevY
+            )
+        } else if (entry.action === 'UPDATE_BULK') {
+            applyBulkProps(
+                entry.id,
+                entry.nextProps ?? entry.prevProps,
+                entry.syncDefaults
+            )
         }
 
-        // Push the original-shape entry back into historyLog without going through
-        // recordToHistoryLog — that would clear bucketLog and break consecutive redos.
-        const cleanEntry = { ...entry }
+        // Push the original-shape entry back into historyLog without going
+        // through recordToHistoryLog — that would clear bucketLog and break
+        // consecutive redos.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cleanEntry: any = { ...entry }
         delete cleanEntry.nextX
         delete cleanEntry.nextY
         delete cleanEntry.nextProps
-        const updatedLog = [...historyLogRef.current, cleanEntry]
+        const updatedLog = [...historyLogRef.current, cleanEntry as HistoryEntry]
         writeHistory(updatedLog)
     }
 
-    const clearHistory = (isPersisted, localDraftKey) => {
+    const clearHistory = (
+        isPersistedArg: boolean,
+        localDraftKey?: string
+    ): void => {
         writeHistory([])
         writeBucket([])
-        if (!isPersisted) {
+        if (!isPersistedArg) {
             localStorage.removeItem(localDraftKey || DRAFT_STORAGE_KEY)
         }
     }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import {
     DRAFT_STORAGE_KEY,
     DRAFT_EXPIRY_MS,
@@ -6,6 +7,32 @@ import {
     STORAGE_QUOTA_ERROR_NAME,
     GROUP_COMPONENT,
 } from '../constants/misc'
+import type { ComponentStore } from '../types/board'
+
+export interface LocalDraftPersistenceOptions {
+    isPersisted: boolean
+    localBoardId: string
+    componentStore: ComponentStore
+    setComponentStore: Dispatch<SetStateAction<ComponentStore>>
+    backgroundBoardIdRef: MutableRefObject<string | null>
+    setBackgroundBoardId: Dispatch<SetStateAction<string | null>>
+    onStorageLimitRef?: MutableRefObject<(() => void) | null>
+}
+
+export interface LocalDraftPersistenceApi {
+    showStorageLimitModal: boolean
+    setShowStorageLimitModal: Dispatch<SetStateAction<boolean>>
+    storageLimitBoardUrl: string | null
+    setStorageLimitBoardUrl: Dispatch<SetStateAction<string | null>>
+    handleStartNewCanvas: () => void
+    handleContinueOnSavedBoard: () => void
+}
+
+interface PersistedDraft {
+    boardId?: string
+    components?: ComponentStore
+    timestamp?: number
+}
 
 export function useLocalDraftPersistence({
     isPersisted,
@@ -15,10 +42,12 @@ export function useLocalDraftPersistence({
     backgroundBoardIdRef,
     setBackgroundBoardId,
     onStorageLimitRef,
-} = {}) {
+}: LocalDraftPersistenceOptions): LocalDraftPersistenceApi {
     const [showStorageLimitModal, setShowStorageLimitModal] = useState(false)
-    const [storageLimitBoardUrl, setStorageLimitBoardUrl] = useState(null)
-    const draftSaveTimerRef = useRef(null)
+    const [storageLimitBoardUrl, setStorageLimitBoardUrl] = useState<
+        string | null
+    >(null)
+    const draftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     // Restore draft and background board ID from localStorage on mount (local mode only)
     useEffect(() => {
@@ -33,24 +62,25 @@ export function useLocalDraftPersistence({
         try {
             const draft = localStorage.getItem(DRAFT_STORAGE_KEY)
             if (draft) {
-                const parsed = JSON.parse(draft)
-                const age = Date.now() - (parsed.timestamp || 0)
+                const parsed = JSON.parse(draft) as PersistedDraft
+                const age = Date.now() - (parsed.timestamp ?? 0)
                 if (age < DRAFT_EXPIRY_MS && parsed.components) {
                     const safeComponents = Object.fromEntries(
                         Object.entries(parsed.components).filter(
                             ([, v]) => v?.componentType !== GROUP_COMPONENT
                         )
-                    )
+                    ) as ComponentStore
                     setComponentStore(safeComponents)
                 } else {
                     localStorage.removeItem(DRAFT_STORAGE_KEY)
                     localStorage.removeItem(BACKGROUND_BOARD_STORAGE_KEY)
                 }
             }
-        } catch (e) {
+        } catch {
             localStorage.removeItem(DRAFT_STORAGE_KEY)
             localStorage.removeItem(BACKGROUND_BOARD_STORAGE_KEY)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     // Save draft to localStorage on changes (debounced, local mode only)
@@ -67,7 +97,7 @@ export function useLocalDraftPersistence({
                     Object.entries(componentStore).filter(
                         ([, v]) => v?.componentType !== GROUP_COMPONENT
                     )
-                )
+                ) as ComponentStore
                 localStorage.setItem(
                     DRAFT_STORAGE_KEY,
                     JSON.stringify({
@@ -77,27 +107,30 @@ export function useLocalDraftPersistence({
                     })
                 )
             } catch (e) {
-                if (e instanceof DOMException && e.name === STORAGE_QUOTA_ERROR_NAME) {
+                if (
+                    e instanceof DOMException &&
+                    e.name === STORAGE_QUOTA_ERROR_NAME
+                ) {
                     onStorageLimitRef?.current?.()
                 }
             }
         }, 500)
 
-        return () => {
+        return (): void => {
             if (draftSaveTimerRef.current) {
                 clearTimeout(draftSaveTimerRef.current)
             }
         }
     }, [componentStore, isPersisted])
 
-    const handleStartNewCanvas = () => {
+    const handleStartNewCanvas = (): void => {
         localStorage.removeItem(DRAFT_STORAGE_KEY)
         setShowStorageLimitModal(false)
         setStorageLimitBoardUrl(null)
         window.location.href = '/'
     }
 
-    const handleContinueOnSavedBoard = () => {
+    const handleContinueOnSavedBoard = (): void => {
         setShowStorageLimitModal(false)
         if (storageLimitBoardUrl) {
             window.location.href = storageLimitBoardUrl

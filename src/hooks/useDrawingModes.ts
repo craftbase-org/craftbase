@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import {
     RUBBER_MODE_KEY,
     ARROW_DRAW_MODE_KEY,
@@ -10,27 +11,70 @@ import {
     PAN_MODE_KEY,
 } from '../constants/misc'
 
-export function useDrawingModes() {
+// Toggle helpers accept an optional options bag that lets the caller plug
+// in the surrounding board state (selection clear, pending-element cancel,
+// toolbar visibility). Each callback is optional — the hook only fires
+// what's provided.
+export interface DrawingModeToggleOptions {
+    cancelPendingElement?: () => void
+    setSelectedComponent?: (component: unknown) => void
+    toggleToolbar?: (open: boolean) => void
+}
+
+export interface DrawingModesApi {
+    pointerToggle: boolean
+    setPointerToggle: Dispatch<SetStateAction<boolean>>
+    isPencilMode: boolean
+    setPencilMode: Dispatch<SetStateAction<boolean>>
+    isArrowDrawMode: boolean
+    setIsArrowDrawMode: Dispatch<SetStateAction<boolean>>
+    isTextDrawMode: boolean
+    setIsTextDrawMode: Dispatch<SetStateAction<boolean>>
+    isRubberMode: boolean
+    isPanMode: boolean
+    setPanMode: Dispatch<SetStateAction<boolean>>
+    togglePointer: (
+        pointerVal: boolean,
+        options?: DrawingModeToggleOptions
+    ) => void
+    togglePencilMode: (
+        value: boolean,
+        options?: Pick<
+            DrawingModeToggleOptions,
+            'cancelPendingElement' | 'toggleToolbar'
+        >
+    ) => void
+    togglePanMode: (
+        value: boolean,
+        options?: DrawingModeToggleOptions
+    ) => void
+    setRubberModeInBoard: (val: boolean) => void
+    setArrowDrawModeInBoard: (val: boolean) => void
+    setTextDrawModeInBoard: (val: boolean) => void
+    clearDrawModesFromStorage: () => void
+}
+
+export function useDrawingModes(): DrawingModesApi {
     const [pointerToggle, setPointerToggle] = useState(false)
     const [isPencilMode, setPencilMode] = useState(false)
     const [isArrowDrawMode, setIsArrowDrawMode] = useState(false)
     const [isTextDrawMode, setIsTextDrawMode] = useState(false)
-    const [isRubberMode, setIsRubberMode] = useState(() => {
+    const [isRubberMode, setIsRubberMode] = useState<boolean>(() => {
         try {
             return localStorage.getItem(RUBBER_MODE_KEY) === 'true'
-        } catch (_) {
+        } catch {
             return false
         }
     })
-    const [isPanMode, setPanMode] = useState(() => {
+    const [isPanMode, setPanMode] = useState<boolean>(() => {
         try {
             return localStorage.getItem(PAN_MODE_KEY) === 'true'
-        } catch (_) {
+        } catch {
             return false
         }
     })
 
-    const togglePointer = (
+    const togglePointer: DrawingModesApi['togglePointer'] = (
         pointerVal,
         { cancelPendingElement, setSelectedComponent, toggleToolbar } = {}
     ) => {
@@ -45,12 +89,18 @@ export function useDrawingModes() {
             try {
                 localStorage.removeItem(RUBBER_MODE_KEY)
                 localStorage.removeItem(PAN_MODE_KEY)
-            } catch (_) {}
-            document.getElementById('main-two-root').style.cursor = 'default'
+            } catch {
+                /* noop */
+            }
+            const el = document.getElementById('main-two-root')
+            if (el) el.style.cursor = 'default'
         }
     }
 
-    const togglePencilMode = (value, { cancelPendingElement, toggleToolbar } = {}) => {
+    const togglePencilMode: DrawingModesApi['togglePencilMode'] = (
+        value,
+        { cancelPendingElement, toggleToolbar } = {}
+    ) => {
         toggleToolbar?.(false)
         setPencilMode(value)
         if (value) {
@@ -60,15 +110,18 @@ export function useDrawingModes() {
             try {
                 localStorage.removeItem(RUBBER_MODE_KEY)
                 localStorage.removeItem(PAN_MODE_KEY)
-            } catch (_) {}
+            } catch {
+                /* noop */
+            }
             localStorage.setItem(PENCIL_MODE_KEY, 'TRUE')
-            document.getElementById('main-two-root').style.cursor = 'crosshair'
+            const el = document.getElementById('main-two-root')
+            if (el) el.style.cursor = 'crosshair'
         } else {
             localStorage.removeItem(PENCIL_MODE_KEY)
         }
     }
 
-    const togglePanMode = (
+    const togglePanMode: DrawingModesApi['togglePanMode'] = (
         value,
         { cancelPendingElement, setSelectedComponent, toggleToolbar } = {}
     ) => {
@@ -88,37 +141,49 @@ export function useDrawingModes() {
                 localStorage.removeItem(TEXT_DRAW_MODE_KEY)
                 localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)
                 localStorage.removeItem(PENDING_SHAPE_PROPS_KEY)
-            } catch (_) {}
+            } catch {
+                /* noop */
+            }
             if (root) root.style.cursor = 'grab'
             // Clear any active selection so single-finger drag pans cleanly.
             try {
                 window.dispatchEvent(new CustomEvent('clearSelector', {}))
-            } catch (_) {}
+            } catch {
+                /* noop */
+            }
         } else {
             try {
                 localStorage.removeItem(PAN_MODE_KEY)
-            } catch (_) {}
+            } catch {
+                /* noop */
+            }
             if (root) root.style.cursor = 'default'
         }
     }
 
-    const setRubberModeInBoard = (val) => {
+    const setRubberModeInBoard = (val: boolean): void => {
         setIsRubberMode(!!val)
         if (val) {
             setPanMode(false)
             try {
                 localStorage.removeItem(PAN_MODE_KEY)
-            } catch (_) {}
+            } catch {
+                /* noop */
+            }
             localStorage.setItem(RUBBER_MODE_KEY, 'true')
-            document.getElementById('main-two-root').style.cursor = 'crosshair'
+            const el = document.getElementById('main-two-root')
+            if (el) el.style.cursor = 'crosshair'
         } else {
             localStorage.removeItem(RUBBER_MODE_KEY)
-            document.getElementById('main-two-root').style.cursor = 'default'
+            const el = document.getElementById('main-two-root')
+            if (el) el.style.cursor = 'default'
         }
     }
 
-    const setArrowDrawModeInBoard = (val) => setIsArrowDrawMode(val)
-    const setTextDrawModeInBoard = (val) => setIsTextDrawMode(val)
+    const setArrowDrawModeInBoard = (val: boolean): void =>
+        setIsArrowDrawMode(val)
+    const setTextDrawModeInBoard = (val: boolean): void =>
+        setIsTextDrawMode(val)
 
     // Reflect any active draw mode as a class on #main-two-root so CSS can
     // force the crosshair cursor on inner SVG nodes (.dragger-picker, text)
@@ -130,7 +195,7 @@ export function useDrawingModes() {
         root.classList.toggle('draw-mode-active', active)
     }, [isPencilMode, isArrowDrawMode, isRubberMode])
 
-    const clearDrawModesFromStorage = () => {
+    const clearDrawModesFromStorage = (): void => {
         localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)
         localStorage.removeItem(PENDING_SHAPE_PROPS_KEY)
         localStorage.removeItem(ARROW_DRAW_MODE_KEY)

@@ -1,32 +1,67 @@
 import { useEffect, useRef, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 
 const STORAGE_KEY = 'craftbase:elementDefaults'
 
-const INITIAL_DEFAULTS = {
+export type TextSizeLabel = 'S' | 'M' | 'L' | 'XL'
+
+export interface ElementDefaultsState {
     // Shape defaults — also used by pencil and arrow (single unified set).
+    defaultFill: string
+    defaultStrokeColor: string
+    defaultLinewidth: number
+    defaultStrokeType: string | null
+    defaultOpacity: number
+    // Text defaults
+    defaultTextColor: string
+    defaultTextSize: TextSizeLabel
+    defaultTextFontFamily: string
+}
+
+const INITIAL_DEFAULTS: ElementDefaultsState = {
     defaultFill: '#FFFFFF',
     defaultStrokeColor: '#3A342C',
     defaultLinewidth: 2,
     defaultStrokeType: null,
     defaultOpacity: 1,
-    // Text defaults
     defaultTextColor: '#1A1612',
     defaultTextSize: 'M',
     defaultTextFontFamily: 'Caveat',
 }
 
-function loadFromStorage() {
+function loadFromStorage(): ElementDefaultsState {
     try {
         const raw = localStorage.getItem(STORAGE_KEY)
         if (!raw) return INITIAL_DEFAULTS
-        const parsed = JSON.parse(raw)
+        const parsed = JSON.parse(raw) as Partial<ElementDefaultsState>
         return { ...INITIAL_DEFAULTS, ...parsed }
-    } catch (_) {
+    } catch {
         return INITIAL_DEFAULTS
     }
 }
 
-export function useElementDefaults() {
+export interface ElementDefaultsApi extends ElementDefaultsState {
+    // raw setters (used by undo/history to restore prior defaults silently)
+    setDefaultFill: Dispatch<SetStateAction<string>>
+    setDefaultStrokeColor: Dispatch<SetStateAction<string>>
+    setDefaultLinewidth: Dispatch<SetStateAction<number>>
+    setDefaultStrokeType: Dispatch<SetStateAction<string | null>>
+    setDefaultOpacity: Dispatch<SetStateAction<number>>
+    setDefaultTextColor: Dispatch<SetStateAction<string>>
+    setDefaultTextSize: Dispatch<SetStateAction<TextSizeLabel>>
+    setDefaultTextFontFamily: Dispatch<SetStateAction<string>>
+    // board-facing setters (currently identical to raw; kept for API symmetry)
+    setDefaultFillInBoard: (val: string) => void
+    setDefaultStrokeColorInBoard: (val: string) => void
+    setDefaultLinewidthInBoard: (val: number) => void
+    setDefaultStrokeTypeInBoard: (val: string | null) => void
+    setDefaultOpacityInBoard: (val: number) => void
+    setDefaultTextColorInBoard: (val: string) => void
+    setDefaultTextSizeInBoard: (val: TextSizeLabel) => void
+    setDefaultTextFontFamilyInBoard: (val: string) => void
+}
+
+export function useElementDefaults(): ElementDefaultsApi {
     const initial = loadFromStorage()
 
     const [defaultFill, setDefaultFill] = useState(initial.defaultFill)
@@ -36,7 +71,7 @@ export function useElementDefaults() {
     const [defaultLinewidth, setDefaultLinewidth] = useState(
         initial.defaultLinewidth
     )
-    const [defaultStrokeType, setDefaultStrokeType] = useState(
+    const [defaultStrokeType, setDefaultStrokeType] = useState<string | null>(
         initial.defaultStrokeType
     )
     const [defaultOpacity, setDefaultOpacity] = useState(initial.defaultOpacity)
@@ -44,7 +79,7 @@ export function useElementDefaults() {
     const [defaultTextColor, setDefaultTextColor] = useState(
         initial.defaultTextColor
     )
-    const [defaultTextSize, setDefaultTextSize] = useState(
+    const [defaultTextSize, setDefaultTextSize] = useState<TextSizeLabel>(
         initial.defaultTextSize
     )
     const [defaultTextFontFamily, setDefaultTextFontFamily] = useState(
@@ -71,7 +106,9 @@ export function useElementDefaults() {
                     defaultTextFontFamily,
                 })
             )
-        } catch (_) {}
+        } catch {
+            /* noop */
+        }
     }, [
         defaultFill,
         defaultStrokeColor,
@@ -84,18 +121,23 @@ export function useElementDefaults() {
     ])
 
     // Pure setters — these never deselect or close anything.
-    const setDefaultLinewidthInBoard = (val) => setDefaultLinewidth(val)
-    const setDefaultStrokeTypeInBoard = (val) => setDefaultStrokeType(val)
-    const setDefaultFillInBoard = (val) => setDefaultFill(val)
-    const setDefaultStrokeColorInBoard = (val) => setDefaultStrokeColor(val)
-    const setDefaultOpacityInBoard = (val) => setDefaultOpacity(val)
-    const setDefaultTextColorInBoard = (val) => setDefaultTextColor(val)
-    const setDefaultTextSizeInBoard = (val) => setDefaultTextSize(val)
-    const setDefaultTextFontFamilyInBoard = (val) =>
+    const setDefaultLinewidthInBoard = (val: number): void =>
+        setDefaultLinewidth(val)
+    const setDefaultStrokeTypeInBoard = (val: string | null): void =>
+        setDefaultStrokeType(val)
+    const setDefaultFillInBoard = (val: string): void => setDefaultFill(val)
+    const setDefaultStrokeColorInBoard = (val: string): void =>
+        setDefaultStrokeColor(val)
+    const setDefaultOpacityInBoard = (val: number): void =>
+        setDefaultOpacity(val)
+    const setDefaultTextColorInBoard = (val: string): void =>
+        setDefaultTextColor(val)
+    const setDefaultTextSizeInBoard = (val: TextSizeLabel): void =>
+        setDefaultTextSize(val)
+    const setDefaultTextFontFamilyInBoard = (val: string): void =>
         setDefaultTextFontFamily(val)
 
     return {
-        // values
         defaultFill,
         defaultStrokeColor,
         defaultLinewidth,
@@ -104,7 +146,6 @@ export function useElementDefaults() {
         defaultTextColor,
         defaultTextSize,
         defaultTextFontFamily,
-        // raw setters (used by undo/history to restore prior defaults silently)
         setDefaultFill,
         setDefaultStrokeColor,
         setDefaultLinewidth,
@@ -113,7 +154,6 @@ export function useElementDefaults() {
         setDefaultTextColor,
         setDefaultTextSize,
         setDefaultTextFontFamily,
-        // board-facing setters (currently identical to raw, kept for API symmetry)
         setDefaultFillInBoard,
         setDefaultStrokeColorInBoard,
         setDefaultLinewidthInBoard,
