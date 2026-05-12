@@ -17,3 +17,19 @@ export { useCanvasClipboard } from './hooks/useCanvasClipboard'
 // bootstrap mutation or username generator.
 export { INSERT_USER_ONE } from './schema/mutations'
 export { generateRandomUsernames } from './utils/misc'
+
+// Public type surface. Re-export from the canonical types module so consumers
+// can `import type { BoardProps, BoardContextValue, ComponentRecord } from 'craftbase'`.
+export type {
+    BoardProps,
+    BoardContextValue,
+    ComponentRecord,
+    ComponentStore,
+    ComponentMetadata,
+    CameraChangeEvent,
+    SelectedComponent,
+    SelectedGroup,
+    CurrentElement,
+    HistoryEntry,
+    RandomUsername,
+} from './types/board'

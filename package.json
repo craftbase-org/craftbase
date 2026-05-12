@@ -2,10 +2,14 @@
     "name": "craftbase",
     "version": "0.7.2",
     "private": true,
-    "main": "src/lib.js",
-    "module": "src/lib.js",
+    "main": "src/lib.ts",
+    "module": "src/lib.ts",
+    "types": "src/lib.ts",
     "exports": {
-        ".": "./src/lib.js",
+        ".": {
+            "types": "./src/lib.ts",
+            "default": "./src/lib.ts"
+        },
         "./package.json": "./package.json"
     },
     "peerDependencies": {
