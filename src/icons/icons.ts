@@ -1,4 +1,9 @@
-export default {
+export interface IconData {
+    viewBox: string
+    data: string
+}
+
+const Icons: Record<string, IconData> = {
     SIDEBAR_ICON_ELEMENTS: {
         viewBox: '0 0 16 16',
         data: '<g xmlns="http://www.w3.org/2000/svg" transform="translate(-409.72 -736.157)" fill="#000000" class="color000 svgShape"><path fill="#ffffff" stroke="#0052cc" d="m 422.22422,744.10868 2.49631,1.69392 -7.00001,4.74999 -7.00001,-4.74999 2.40424,-1.63145" class="colorfff svgShape colorStroke249fe6 svgStroke" stroke-width="1.037"/><rect width="8.459" height="8.459" x="-412.948" y="909.301" fill="#deebff" transform="scale(1.17023 .79408) rotate(-45)" class="colorc2e4f8 svgShape"/><rect width="8.459" height="8.459" x="-412.948" y="909.301" fill="none" stroke="#0052cc" stroke-width="1.037" transform="scale(1.17023 .79408) rotate(-45)" class="colorStroke249fe6 svgStroke"/></g>',
@@ -73,3 +78,5 @@ export default {
         data: '<svg role="img" xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" viewBox="0 0 24 24" aria-labelledby="refreshIconTitle" stroke="#000" stroke-width="1" stroke-linecap="square" stroke-linejoin="miter" fill="none" color="#2329D6" style="cursor:grab !important;"> <title id="refreshIconTitle">Refresh</title> <polyline points="22 12 19 15 16 12"/> <path d="M11,20 C6.581722,20 3,16.418278 3,12 C3,7.581722 6.581722,4 11,4 C15.418278,4 19,7.581722 19,12 L19,14" style="cursor:grab !important;"/> </svg>',
     },
 }
+
+export default Icons

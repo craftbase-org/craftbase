@@ -1,6 +1,6 @@
 import React from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import styled from 'styled-components'
-// import "wicg-inert";
 
 import Portal from './portal'
 
@@ -52,20 +52,30 @@ const Content = styled.div`
     border-radius: 2px;
 `
 
-export default function Modal(props) {
+export interface ModalProps {
+    open: boolean
+    onClose: () => void
+    locked?: boolean
+    children?: ReactNode
+}
+
+export default function Modal(props: ModalProps): ReactElement {
     const [active, setActive] = React.useState(false)
     const { open, onClose, locked } = props
-    const backdrop = React.useRef(null)
+    const backdrop = React.useRef<HTMLDivElement>(null)
 
     React.useEffect(() => {
         const { current } = backdrop
 
-        const transitionEnd = () => setActive(open)
+        const transitionEnd = (): void => setActive(open)
 
-        const keyHandler = (e) =>
-            !locked && [27].indexOf(e.which) >= 0 && onClose()
+        const keyHandler = (e: KeyboardEvent): void => {
+            if (!locked && e.which === 27) onClose()
+        }
 
-        const clickHandler = (e) => !locked && e.target === current && onClose()
+        const clickHandler = (e: MouseEvent): void => {
+            if (!locked && e.target === current) onClose()
+        }
 
         if (current) {
             current.addEventListener('transitionend', transitionEnd)
@@ -75,19 +85,16 @@ export default function Modal(props) {
 
         if (open) {
             window.setTimeout(() => {
-                document.activeElement.blur()
+                ;(document.activeElement as HTMLElement | null)?.blur()
                 setActive(open)
-                // document.querySelector("#root").setAttribute("inert", "true");
             }, 10)
         }
 
-        return () => {
+        return (): void => {
             if (current) {
                 current.removeEventListener('transitionend', transitionEnd)
                 current.removeEventListener('click', clickHandler)
             }
-
-            // document.querySelector("#root").removeAttribute("inert");
             window.removeEventListener('keyup', keyHandler)
         }
     }, [open, locked, onClose])
@@ -98,7 +105,7 @@ export default function Modal(props) {
                 <Portal className="modal-portal">
                     <Backdrop
                         ref={backdrop}
-                        className={active && open && 'active'}
+                        className={active && open ? 'active' : ''}
                     >
                         <Content className="modal-content">
                             {props.children}
