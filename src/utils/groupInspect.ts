@@ -9,9 +9,68 @@
 
 export const MIXED = '__MIXED__'
 
-// Mirrors the acceptance map in applyGroupProperty.js. Kept in sync manually
+type ComponentType =
+    | 'rectangle'
+    | 'circle'
+    | 'diamond'
+    | 'frame'
+    | 'newText'
+    | 'arrowLine'
+    | 'pencil'
+    | 'divider'
+
+type InspectableProperty =
+    | 'fill'
+    | 'stroke'
+    | 'linewidth'
+    | 'strokeType'
+    | 'opacity'
+    | 'textColor'
+    | 'textSize'
+    | 'textFontFamily'
+
+interface ChildMetadata {
+    opacity?: number
+    textFill?: string
+    textFontSize?: number
+    textFontFamily?: string
+    [key: string]: unknown
+}
+
+// Loose: child entries come from componentStore rows whose precise type is
+// being tightened across Stages 3–10. Index access via `[key]` covers the
+// fields read in readChildValue without locking the row shape down here.
+interface ChildEntry {
+    componentType?: ComponentType | string
+    fill?: string
+    stroke?: string
+    linewidth?: number
+    strokeType?: string | null
+    textColor?: string
+    metadata?: ChildMetadata | unknown[] | null
+    [key: string]: unknown
+}
+
+interface SelectedGroupLike {
+    elementData?: {
+        children?: ChildEntry[]
+    }
+}
+
+interface DefaultsForInspect {
+    defaultFill: string
+    defaultStrokeColor: string
+    defaultLinewidth: number
+    defaultStrokeType: string | null
+    defaultOpacity: number
+    defaultTextColor: string
+    defaultTextSize: string | number
+    defaultTextFontFamily: string
+}
+
+// Mirrors the acceptance map in applyGroupProperty.ts. Kept in sync manually
 // — this is small and changes rarely.
-const ACCEPTS = {
+const ACCEPTS: Record<InspectableProperty, Set<string>> = {
     fill: new Set(['rectangle', 'circle', 'diamond', 'frame', 'newText']),
     stroke: new Set([
         'rectangle',
@@ -51,13 +110,12 @@ const ACCEPTS = {
     textFontFamily: new Set(['newText', 'rectangle']),
 }
 
-// Pull the per-property value out of a child entry. Returns undefined if the
-// child doesn't carry the property at all.
-function readChildValue(child, key) {
+function readChildValue(child: ChildEntry, key: InspectableProperty): unknown {
     if (!child) return undefined
-    const meta = child.metadata && !Array.isArray(child.metadata)
-        ? child.metadata
-        : null
+    const meta =
+        child.metadata && !Array.isArray(child.metadata)
+            ? (child.metadata as ChildMetadata)
+            : null
     switch (key) {
         case 'fill':
             return child.fill
@@ -71,7 +129,6 @@ function readChildValue(child, key) {
             return meta?.opacity ?? 1
         case 'textColor':
             if (child.componentType === 'newText') return child.textColor
-            // rectangle-with-text stores text fill in metadata.textFill
             return meta?.textFill
         case 'textSize':
             return meta?.textFontSize
@@ -82,9 +139,7 @@ function readChildValue(child, key) {
     }
 }
 
-// Return a stable string key for value comparison so e.g. opacity 0.5 matches
-// across re-renders even if React serializes differently.
-function valueKey(v) {
+function valueKey(v: unknown): string {
     if (v === undefined) return 'undefined'
     if (v === null) return 'null'
     if (typeof v === 'number') return `n:${v}`
@@ -92,18 +147,22 @@ function valueKey(v) {
     return JSON.stringify(v)
 }
 
-export function inspectGroup(selectedGroup, propertyKey) {
+export function inspectGroup(
+    selectedGroup: SelectedGroupLike | null | undefined,
+    propertyKey: InspectableProperty
+): unknown {
     const children = selectedGroup?.elementData?.children
     if (!Array.isArray(children) || children.length === 0) return null
     const acceptSet = ACCEPTS[propertyKey]
     if (!acceptSet) return null
 
-    let firstValue
-    let firstKey
+    let firstValue: unknown
+    let firstKey: string | undefined
     let any = false
     for (let i = 0; i < children.length; i++) {
         const c = children[i]
-        if (!acceptSet.has(c?.componentType)) continue
+        if (!c) continue
+        if (!acceptSet.has(String(c.componentType))) continue
         const v = readChildValue(c, propertyKey)
         const k = valueKey(v)
         if (!any) {
@@ -118,10 +177,20 @@ export function inspectGroup(selectedGroup, propertyKey) {
     return firstValue
 }
 
-// Build a values object compatible with readEffectiveValues' return shape.
-// Properties that come back as null fall through to the supplied defaults.
-export function inspectGroupValues(selectedGroup, defaults) {
-    const get = (key, fallback) => {
+export function inspectGroupValues(
+    selectedGroup: SelectedGroupLike | null | undefined,
+    defaults: DefaultsForInspect
+): {
+    fill: unknown
+    stroke: unknown
+    linewidth: unknown
+    strokeType: unknown
+    opacity: unknown
+    textColor: unknown
+    textSize: unknown
+    textFontFamily: unknown
+} {
+    const get = (key: InspectableProperty, fallback: unknown): unknown => {
         const v = inspectGroup(selectedGroup, key)
         if (v === null || v === undefined) return fallback
         return v
@@ -133,12 +202,7 @@ export function inspectGroupValues(selectedGroup, defaults) {
         strokeType: get('strokeType', defaults.defaultStrokeType ?? 'solid'),
         opacity: get('opacity', defaults.defaultOpacity ?? 1),
         textColor: get('textColor', defaults.defaultTextColor),
-        // textSize is stored as a numeric font size in metadata. The toolbar
-        // works in labels (S/M/L/XL) — caller maps numeric → label.
         textSize: get('textSize', defaults.defaultTextSize),
-        textFontFamily: get(
-            'textFontFamily',
-            defaults.defaultTextFontFamily
-        ),
+        textFontFamily: get('textFontFamily', defaults.defaultTextFontFamily),
     }
 }

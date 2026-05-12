@@ -1,5 +1,52 @@
 import { strokeTypeToDashes, clearDashesOnTwoJSShape } from './misc'
 
+// Scene-bound selectedComponent shape: `.shape.data`, `.text.data`, and
+// `.group.data.elementData` are scaffolded by newCanvas / element renderers
+// (Stages 7–9). Loose-but-bounded here so applyProperty can compile without
+// dragging in the still-JS canvas types.
+//
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TwoLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SelectedComponentLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ComponentRow = Record<string, any>
+
+type PropertyKey =
+    | 'fill'
+    | 'stroke'
+    | 'linewidth'
+    | 'strokeType'
+    | 'opacity'
+    | 'textColor'
+    | 'textSize'
+    | 'textFontFamily'
+
+export interface ApplyPropertyDeps {
+    selectedComponent: SelectedComponentLike | null
+    twoJSInstance: TwoLike | null
+    updateComponentBulkPropertiesInLocalStore: (
+        id: string,
+        bulkObj: Partial<ComponentRow>
+    ) => void
+    updateBulkPropsForRectangleWithText?: (
+        id: string,
+        bulkObj: Partial<ComponentRow>
+    ) => void
+    handleTextSizeChange?: (value: unknown) => void
+    handleRectangleTextSizeChange?: (value: unknown) => void
+    handleTextFontFamilyChange?: (value: unknown) => void
+    handleRectangleTextFontFamilyChange?: (value: unknown) => void
+    setDefaultFill: (value: string) => void
+    setDefaultStrokeColor: (value: string) => void
+    setDefaultLinewidth: (value: number) => void
+    setDefaultStrokeType: (value: string | null) => void
+    setDefaultOpacity: (value: number) => void
+    setDefaultTextColor: (value: string) => void
+    setDefaultTextSize: (value: string) => void
+    setDefaultTextFontFamily: (value: string) => void
+}
+
 // Applies a property change to the relevant default and (if present) the
 // currently-selected element. This is the single mutation path used by the
 // unified element-properties toolbar.
@@ -11,21 +58,21 @@ import { strokeTypeToDashes, clearDashesOnTwoJSShape } from './misc'
 // strokeType values are the UI labels: 'solid' | 'dashed' | 'dotted'.
 // Defaults store null for 'solid' (matches what primary.js feeds into new
 // shapes); DB rows store the literal 'solid'/'dashed'/'dotted' string.
-export function createApplyProperty(deps) {
-    return function applyProperty(propertyKey, value) {
+export function createApplyProperty(deps: ApplyPropertyDeps) {
+    return function applyProperty(
+        propertyKey: PropertyKey | string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        value: any
+    ): void {
         const {
-            // live state
             selectedComponent,
             twoJSInstance,
-            // bulk store + history (undo records here)
             updateComponentBulkPropertiesInLocalStore,
             updateBulkPropsForRectangleWithText,
-            // text-specific handlers (own resize-on-grow logic etc.)
             handleTextSizeChange,
             handleRectangleTextSizeChange,
             handleTextFontFamilyChange,
             handleRectangleTextFontFamilyChange,
-            // default setters (single unified set — shapes, arrows, pencil, text)
             setDefaultFill,
             setDefaultStrokeColor,
             setDefaultLinewidth,

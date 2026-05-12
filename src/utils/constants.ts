@@ -1,3 +1,4 @@
+import type { FunctionComponent, SVGProps } from 'react'
 import CircleIcon from '../wireframeAssets/circle.svg?react'
 import RectangleIcon from '../wireframeAssets/rectangle.svg?react'
 import DiamondIcon from '../wireframeAssets/diamond.svg?react'
@@ -9,6 +10,8 @@ import EraserIcon from '../wireframeAssets/eraser.svg?react'
 
 import RightArrowIcon from '../assets/right_arrow.svg?react'
 import PanIcon from '../assets/pan.svg?react'
+
+type SvgComponent = FunctionComponent<SVGProps<SVGSVGElement>>
 
 export const color_blue = '#0052CC'
 export const color_teal = '#008DA6'
@@ -28,9 +31,9 @@ export const properties = {
     borderStyle: 'border_style',
     underline: 'underline',
     opacity: 'opacity',
-}
+} as const
 
-export const allColorShades = [
+export const allColorShades: string[] = [
     '#FFFFFF',
     '#000000',
     '#BF2600',
@@ -89,7 +92,7 @@ export const allColorShades = [
     '#97A0AF',
 ]
 
-export const essentialShades = [
+export const essentialShades: string[] = [
     '#FFFFFF',
     '#000000',
     '#FF5630',
@@ -98,7 +101,28 @@ export const essentialShades = [
     '#0065FF',
 ]
 
-export const staticPrimaryElementData = [
+export interface DrawerElement {
+    elementName: string
+    elementDisplayName: string
+    elementIcon: SvgComponent
+}
+
+export interface PrimaryElement {
+    elementName: string
+    elementDisplayName: string
+    elementIcon: SvgComponent
+    hasDrawer: boolean
+    noAction: boolean
+    drawerData: DrawerElement[]
+    mobileOnly?: boolean
+}
+
+export interface PrimarySection {
+    sectionName: string
+    elements: PrimaryElement[]
+}
+
+export const staticPrimaryElementData: PrimarySection[] = [
     {
         sectionName: 'Basic',
         elements: [
@@ -159,7 +183,6 @@ export const staticPrimaryElementData = [
                 noAction: false,
                 drawerData: [],
             },
-
             {
                 elementName: 'text',
                 elementDisplayName: 'Text',
@@ -180,7 +203,13 @@ export const staticPrimaryElementData = [
     },
 ]
 
-export const TEXT_SIZES_ARRAY = [
+export interface TextSizeEntry {
+    label: 'S' | 'M' | 'L' | 'XL'
+    value: number
+    mobileValue: number
+}
+
+export const TEXT_SIZES_ARRAY: TextSizeEntry[] = [
     { label: 'S', value: 24, mobileValue: 12 },
     { label: 'M', value: 36, mobileValue: 18 },
     { label: 'L', value: 60, mobileValue: 28 },
@@ -192,11 +221,11 @@ export const TEXT_SIZES_OBJECT = {
     M: 36,
     L: 60,
     XL: 72,
-}
+} as const
 
 export const MOBILE_TEXT_SIZES_OBJECT = {
     S: 12,
     M: 18,
     L: 28,
     XL: 36,
-}
+} as const

@@ -8,21 +8,25 @@
 const SLOW_VELOCITY = 0.1
 const FAST_VELOCITY = 1.5
 
+export interface PencilPoint {
+    x: number
+    y: number
+    lw?: number
+}
+
 /**
  * Maps drawing velocity (px/ms) to a linewidth.
  * Slow = thick (baseWidth * 2), fast = thin (baseWidth * 0.5).
  */
-export function velocityToLinewidth(velocity, baseWidth) {
+export function velocityToLinewidth(velocity: number, baseWidth: number): number {
     const maxWidth = baseWidth * 2.5
     const minWidth = baseWidth * 0.5
 
-    // Clamp velocity to range
     const clampedVelocity = Math.max(
         SLOW_VELOCITY,
         Math.min(FAST_VELOCITY, velocity)
     )
 
-    // Linear interpolation: slow -> maxWidth, fast -> minWidth
     const t =
         (clampedVelocity - SLOW_VELOCITY) / (FAST_VELOCITY - SLOW_VELOCITY)
     return maxWidth - t * (maxWidth - minWidth)
@@ -31,14 +35,22 @@ export function velocityToLinewidth(velocity, baseWidth) {
 /**
  * Exponential moving average to smooth linewidth transitions.
  */
-export function smoothLinewidth(prevWidth, targetWidth, factor = 0.3) {
+export function smoothLinewidth(
+    prevWidth: number,
+    targetWidth: number,
+    factor = 0.3
+): number {
     return prevWidth + factor * (targetWidth - prevWidth)
 }
 
 /**
  * Perpendicular distance from a point to a line segment (for RDP algorithm).
  */
-function perpendicularDistance(point, lineStart, lineEnd) {
+function perpendicularDistance(
+    point: PencilPoint,
+    lineStart: PencilPoint,
+    lineEnd: PencilPoint
+): number {
     const dx = lineEnd.x - lineStart.x
     const dy = lineEnd.y - lineStart.y
 
@@ -61,7 +73,10 @@ function perpendicularDistance(point, lineStart, lineEnd) {
 /**
  * Ramer-Douglas-Peucker simplification that preserves {x, y, lw} tuples.
  */
-export function simplifyWithLinewidth(points, epsilon) {
+export function simplifyWithLinewidth(
+    points: PencilPoint[],
+    epsilon: number
+): PencilPoint[] {
     if (points.length <= 2) return points
 
     let maxDist = 0
@@ -69,9 +84,9 @@ export function simplifyWithLinewidth(points, epsilon) {
 
     for (let i = 1; i < points.length - 1; i++) {
         const dist = perpendicularDistance(
-            points[i],
-            points[0],
-            points[points.length - 1]
+            points[i]!,
+            points[0]!,
+            points[points.length - 1]!
         )
         if (dist > maxDist) {
             maxDist = dist
@@ -88,7 +103,7 @@ export function simplifyWithLinewidth(points, epsilon) {
         return left.slice(0, -1).concat(right)
     }
 
-    return [points[0], points[points.length - 1]]
+    return [points[0]!, points[points.length - 1]!]
 }
 
 /**
@@ -97,29 +112,29 @@ export function simplifyWithLinewidth(points, epsilon) {
  *
  * Returns array of point arrays, each representing one path segment.
  */
-export function mergeSegmentsByLinewidth(points, lwTolerance = 0.3) {
+export function mergeSegmentsByLinewidth(
+    points: PencilPoint[],
+    lwTolerance = 0.3
+): PencilPoint[][] {
     if (points.length <= 1) return [points]
 
-    const segments = []
-    let currentSegment = [points[0]]
+    const segments: PencilPoint[][] = []
+    let currentSegment: PencilPoint[] = [points[0]!]
 
     for (let i = 1; i < points.length; i++) {
-        const prevLw = currentSegment[currentSegment.length - 1].lw || 1
-        const currLw = points[i].lw || 1
+        const prevLw = currentSegment[currentSegment.length - 1]!.lw ?? 1
+        const currLw = points[i]!.lw ?? 1
 
         if (
             Math.abs(currLw - prevLw) / Math.max(prevLw, currLw) <=
             lwTolerance
         ) {
-            // Similar enough linewidth, keep in same segment
-            currentSegment.push(points[i])
+            currentSegment.push(points[i]!)
         } else {
-            // Linewidth difference too large, start new segment
-            // Share overlap point to prevent gaps
             segments.push(currentSegment)
             currentSegment = [
-                currentSegment[currentSegment.length - 1],
-                points[i],
+                currentSegment[currentSegment.length - 1]!,
+                points[i]!,
             ]
         }
     }
@@ -137,14 +152,17 @@ export function mergeSegmentsByLinewidth(points, lwTolerance = 0.3) {
  * exact. Result stays inside the original polygon — no overshoot — and gentle
  * curves round out while sharp corners only get a small bevel.
  */
-export function chaikinSmooth(points, iterations = 1) {
+export function chaikinSmooth(
+    points: PencilPoint[],
+    iterations = 1
+): PencilPoint[] {
     if (points.length < 3 || iterations < 1) return points
     let result = points
     for (let iter = 0; iter < iterations; iter++) {
-        const next = [result[0]]
+        const next: PencilPoint[] = [result[0]!]
         for (let i = 0; i < result.length - 1; i++) {
-            const p = result[i]
-            const q = result[i + 1]
+            const p = result[i]!
+            const q = result[i + 1]!
             next.push({
                 x: 0.75 * p.x + 0.25 * q.x,
                 y: 0.75 * p.y + 0.25 * q.y,
@@ -156,7 +174,7 @@ export function chaikinSmooth(points, iterations = 1) {
                 lw: q.lw,
             })
         }
-        next.push(result[result.length - 1])
+        next.push(result[result.length - 1]!)
         result = next
     }
     return result
@@ -165,8 +183,8 @@ export function chaikinSmooth(points, iterations = 1) {
 /**
  * Computes the average linewidth for a segment of points.
  */
-export function averageLinewidth(points) {
+export function averageLinewidth(points: PencilPoint[]): number {
     if (points.length === 0) return 1
-    const sum = points.reduce((acc, p) => acc + (p.lw || 1), 0)
+    const sum = points.reduce((acc, p) => acc + (p.lw ?? 1), 0)
     return sum / points.length
 }

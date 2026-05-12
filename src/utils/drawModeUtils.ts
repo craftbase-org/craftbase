@@ -9,27 +9,27 @@ import {
     PAN_MODE_KEY,
 } from '../constants/misc'
 
-export function getArrowDrawMode() {
+export function getArrowDrawMode(): string | null {
     return localStorage.getItem(ARROW_DRAW_MODE_KEY)
 }
 
-export function getTextDrawMode() {
+export function getTextDrawMode(): string | null {
     return localStorage.getItem(TEXT_DRAW_MODE_KEY)
 }
 
-export function getPendingShapeType() {
+export function getPendingShapeType(): string | null {
     return localStorage.getItem(PENDING_SHAPE_TYPE_KEY)
 }
 
-export function getPendingShapeProps() {
+export function getPendingShapeProps(): string | null {
     return localStorage.getItem(PENDING_SHAPE_PROPS_KEY)
 }
 
-export function getLastAddedElementId() {
+export function getLastAddedElementId(): string | null {
     return localStorage.getItem(LAST_ADDED_ELEMENT_ID_KEY)
 }
 
-export function clearAllDrawModes() {
+export function clearAllDrawModes(): void {
     localStorage.removeItem(ARROW_DRAW_MODE_KEY)
     localStorage.removeItem(TEXT_DRAW_MODE_KEY)
     localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)
@@ -40,12 +40,12 @@ export function clearAllDrawModes() {
     localStorage.removeItem(PAN_MODE_KEY)
 }
 
-export function isPanMode() {
+export function isPanMode(): boolean {
     return localStorage.getItem(PAN_MODE_KEY) === 'true'
 }
 
 // Returns true when the user is in normal select/pan mode (no draw tool active).
-export function isSelectPanMode(isPencilMode) {
+export function isSelectPanMode(isPencilMode: boolean): boolean {
     return (
         !isPencilMode &&
         getArrowDrawMode() !== 'true' &&

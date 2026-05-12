@@ -1,7 +1,13 @@
-import React from 'react'
 import { useMediaQuery } from 'react-responsive'
 
-export const useMediaQueryUtils = () => {
+export interface MediaQueryFlags {
+    isDesktop: boolean
+    isTablet: boolean
+    isMobile: boolean
+    isLaptop: boolean
+}
+
+export const useMediaQueryUtils = (): MediaQueryFlags => {
     const isDesktop = useMediaQuery({ minWidth: 1280, maxWidth: 1535 })
     const isLaptop = useMediaQuery({ minWidth: 1024, maxWidth: 1279 })
     const isTablet = useMediaQuery({ minWidth: 768, maxWidth: 1023 })

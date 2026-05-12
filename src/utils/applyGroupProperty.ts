@@ -1,3 +1,4 @@
+import type { MutableRefObject } from 'react'
 import { strokeTypeToDashes, clearDashesOnTwoJSShape } from './misc'
 
 // Bulk-apply a property to every child of the currently-focused group whose
@@ -20,7 +21,47 @@ import { strokeTypeToDashes, clearDashesOnTwoJSShape } from './misc'
 //      Requires groupobject.js to stamp `coreObject.elementData = item`.
 //   3. The componentStore row via updateComponentBulkPropertiesInLocalStore.
 
-const ACCEPTS = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TwoLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ShapeLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SelectedGroupLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ChildEntry = Record<string, any>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ComponentRow = Record<string, any>
+
+type GroupPropertyKey =
+    | 'fill'
+    | 'stroke'
+    | 'linewidth'
+    | 'strokeType'
+    | 'opacity'
+    | 'textColor'
+    | 'textSize'
+    | 'textFontFamily'
+
+interface HistoryBatchEntry {
+    action: 'UPDATE_BULK'
+    id: string
+    prevProps: Partial<ComponentRow>
+    bulkObj: Partial<ComponentRow>
+}
+
+export interface ApplyGroupPropertyDeps {
+    selectedGroup: SelectedGroupLike | null
+    twoJSInstance: TwoLike | null
+    updateComponentBulkPropertiesInLocalStore: (
+        id: string,
+        bulkObj: Partial<ComponentRow>,
+        skipDbWrite?: boolean
+    ) => void
+    stateRefForComponentStore?: MutableRefObject<Record<string, ComponentRow>>
+    recordBatchToHistoryLog?: (entries: HistoryBatchEntry[]) => void
+}
+
+const ACCEPTS: Record<GroupPropertyKey, Set<string>> = {
     fill: new Set(['rectangle', 'circle', 'diamond', 'frame', 'newText']),
     stroke: new Set([
         'rectangle',
@@ -62,11 +103,16 @@ const ACCEPTS = {
     textFontFamily: new Set(['newText', 'rectangle']),
 }
 
-function findSceneElement(two, id) {
-    return two?.scene?.children?.find((c) => c?.elementData?.id === id)
+function findSceneElement(two: TwoLike, id: string): ShapeLike | undefined {
+    return two?.scene?.children?.find(
+        (c: ShapeLike) => c?.elementData?.id === id
+    )
 }
 
-function findVisibleCoreObject(group, id) {
+function findVisibleCoreObject(
+    group: SelectedGroupLike,
+    id: string
+): ShapeLike | null {
     if (!group?.children) return null
     for (let i = 0; i < group.children.length; i++) {
         const c = group.children[i]
@@ -75,7 +121,7 @@ function findVisibleCoreObject(group, id) {
     return null
 }
 
-function findTextNodeInside(coreObject) {
+function findTextNodeInside(coreObject: ShapeLike): ShapeLike | null {
     if (!coreObject?.children) return null
     for (let i = 0; i < coreObject.children.length; i++) {
         const c = coreObject.children[i]
@@ -84,7 +130,12 @@ function findTextNodeInside(coreObject) {
     return null
 }
 
-function applyToTwoShape(shape, propertyKey, value) {
+function applyToTwoShape(
+    shape: ShapeLike,
+    propertyKey: GroupPropertyKey,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    value: any
+): void {
     if (!shape) return
     if (propertyKey === 'fill') shape.fill = value
     else if (propertyKey === 'stroke') shape.stroke = value
@@ -96,8 +147,12 @@ function applyToTwoShape(shape, propertyKey, value) {
     }
 }
 
-export function createApplyGroupProperty(deps) {
-    return function applyGroupProperty(propertyKey, value) {
+export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
+    return function applyGroupProperty(
+        propertyKey: GroupPropertyKey | string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        value: any
+    ): void {
         const {
             selectedGroup,
             twoJSInstance,
@@ -106,27 +161,35 @@ export function createApplyGroupProperty(deps) {
             recordBatchToHistoryLog,
         } = deps
 
-        const children = selectedGroup?.elementData?.children
+        const children: ChildEntry[] | undefined =
+            selectedGroup?.elementData?.children
         if (!Array.isArray(children) || children.length === 0) return
 
-        const acceptSet = ACCEPTS[propertyKey]
+        const acceptSet = ACCEPTS[propertyKey as GroupPropertyKey]
         if (!acceptSet) return
 
-        // Collected per-child {id, prevProps, bulkObj} entries — emitted as a
-        // single BATCH at the end so one undo press rolls everything back.
-        const batchEntries = []
-        // Rectangle-with-text children whose wrapping rect may need to grow
-        // after text size/family change. Measured + applied in a RAF below.
-        const rectsToGrow = []
-        const snapshotPrev = (id, keys) => {
-            const current = stateRefForComponentStore?.current?.[id] || {}
-            const prev = {}
+        const batchEntries: HistoryBatchEntry[] = []
+        const rectsToGrow: Array<{
+            id: string
+            sceneEl: ShapeLike | undefined
+            coreObj: ShapeLike | null
+        }> = []
+
+        const snapshotPrev = (
+            id: string,
+            keys: string[]
+        ): Partial<ComponentRow> => {
+            const current = stateRefForComponentStore?.current?.[id] ?? {}
+            const prev: Partial<ComponentRow> = {}
             keys.forEach((k) => {
                 if (current[k] !== undefined) prev[k] = current[k]
             })
             return prev
         }
-        const recordChild = (id, bulkObj) => {
+        const recordChild = (
+            id: string,
+            bulkObj: Partial<ComponentRow>
+        ): void => {
             const prevProps = snapshotPrev(id, Object.keys(bulkObj))
             batchEntries.push({
                 action: 'UPDATE_BULK',
@@ -146,7 +209,6 @@ export function createApplyGroupProperty(deps) {
             const sceneEl = findSceneElement(twoJSInstance, id)
             const coreObj = findVisibleCoreObject(selectedGroup, id)
 
-            // Non-text properties — apply to scene + visible shapes + store.
             if (
                 propertyKey === 'fill' ||
                 propertyKey === 'stroke' ||
@@ -154,7 +216,8 @@ export function createApplyGroupProperty(deps) {
             ) {
                 applyToTwoShape(sceneEl, propertyKey, value)
                 applyToTwoShape(coreObj, propertyKey, value)
-                if (sceneEl?.elementData) sceneEl.elementData[propertyKey] = value
+                if (sceneEl?.elementData)
+                    sceneEl.elementData[propertyKey] = value
                 child[propertyKey] = value
                 recordChild(id, { [propertyKey]: value })
                 return
@@ -164,25 +227,17 @@ export function createApplyGroupProperty(deps) {
                 const dbValue = value === 'solid' ? 'solid' : value
                 applyToTwoShape(sceneEl, 'strokeType', value)
                 applyToTwoShape(coreObj, 'strokeType', value)
-                if (sceneEl?.elementData) sceneEl.elementData.strokeType = dbValue
+                if (sceneEl?.elementData)
+                    sceneEl.elementData.strokeType = dbValue
                 child.strokeType = dbValue
                 recordChild(id, { strokeType: dbValue })
                 return
             }
 
             if (propertyKey === 'opacity') {
-                // Convention across the codebase: opacity lives on the inner
-                // leaf shape (group.children[0]). The outer group's opacity
-                // is reserved for visibility — newCanvas group-create sets it
-                // to 0 to hide; groupobject blur (line 62) forces it back to 1.
-                // Mutating the outer group is therefore lossy: the blur
-                // overwrites it. We must mutate the leaf instead.
                 const sceneLeaf = sceneEl?.children?.[0]
                 if (sceneLeaf) sceneLeaf.opacity = value
                 if (coreObj) {
-                    // groupobject set coreObj.opacity to the original value
-                    // when building the visible group; reset to 1 so the leaf
-                    // alone controls the display.
                     coreObj.opacity = 1
                     const coreLeaf = coreObj?.children?.[0]
                     if (coreLeaf) coreLeaf.opacity = value
@@ -193,17 +248,15 @@ export function createApplyGroupProperty(deps) {
                         ? existingMeta
                         : {}
                 const updatedMeta = { ...safeMeta, opacity: value }
-                if (sceneEl?.elementData) sceneEl.elementData.metadata = updatedMeta
+                if (sceneEl?.elementData)
+                    sceneEl.elementData.metadata = updatedMeta
                 child.metadata = updatedMeta
                 recordChild(id, { metadata: updatedMeta })
                 return
             }
 
-            // Text properties.
             if (propertyKey === 'textColor') {
                 if (type === 'newText') {
-                    // The text node lives inside an outer Group; set fill on
-                    // the inner text node, not the Group wrapper.
                     const sceneText = sceneEl
                         ? findTextNodeInside(sceneEl)
                         : null
@@ -217,14 +270,17 @@ export function createApplyGroupProperty(deps) {
                     child.textColor = value
                     recordChild(id, { textColor: value })
                 } else if (type === 'rectangle') {
-                    // Rectangle-with-text: only relevant if it actually has text.
                     const sceneText = sceneEl
                         ? findTextNodeInside(sceneEl)
                         : null
                     const coreText = coreObj
                         ? findTextNodeInside(coreObj)
                         : null
-                    if (!sceneText && !coreText && !child?.metadata?.hasText) {
+                    if (
+                        !sceneText &&
+                        !coreText &&
+                        !child?.metadata?.hasText
+                    ) {
                         return
                     }
                     if (sceneText) sceneText.fill = value
@@ -246,9 +302,6 @@ export function createApplyGroupProperty(deps) {
                 return
             }
 
-            // Both newText and rectangle-with-text wrap a Two.js text node
-            // inside an outer Group. Find the actual text node in each, since
-            // setting .size/.family on the Group is a no-op.
             if (
                 propertyKey === 'textSize' ||
                 propertyKey === 'textFontFamily'
@@ -264,7 +317,9 @@ export function createApplyGroupProperty(deps) {
                     return
                 }
                 const metaKey =
-                    propertyKey === 'textSize' ? 'textFontSize' : 'textFontFamily'
+                    propertyKey === 'textSize'
+                        ? 'textFontSize'
+                        : 'textFontFamily'
                 const twoKey = propertyKey === 'textSize' ? 'size' : 'family'
                 if (sceneText) sceneText[twoKey] = value
                 if (coreText) coreText[twoKey] = value
@@ -272,19 +327,15 @@ export function createApplyGroupProperty(deps) {
                     sceneEl?.elementData?.metadata &&
                     !Array.isArray(sceneEl.elementData.metadata)
                         ? sceneEl.elementData.metadata
-                        : (child?.metadata && !Array.isArray(child.metadata)
-                              ? child.metadata
-                              : {})
+                        : child?.metadata && !Array.isArray(child.metadata)
+                          ? child.metadata
+                          : {}
                 const updatedMeta = { ...existingMeta, [metaKey]: value }
                 if (sceneEl?.elementData)
                     sceneEl.elementData.metadata = updatedMeta
                 child.metadata = updatedMeta
                 recordChild(id, { metadata: updatedMeta })
 
-                // For rectangle-with-text, queue a post-render bbox check so
-                // the wrapping rectangle grows if the new font no longer
-                // fits. Mirrors scheduleRectFitToText (board.js) but works
-                // off scene/coreObj refs instead of selectedComponent.
                 if (type === 'rectangle' && (sceneText || coreText)) {
                     rectsToGrow.push({ id, sceneEl, coreObj })
                 }
@@ -292,7 +343,6 @@ export function createApplyGroupProperty(deps) {
             }
         })
 
-        // Emit one BATCH so a single undo press rolls every child back.
         if (batchEntries.length > 0) {
             recordBatchToHistoryLog?.(batchEntries)
         }
@@ -300,9 +350,66 @@ export function createApplyGroupProperty(deps) {
         twoJSInstance?.update()
 
         // Grow wrapping rectangles in a single RAF after Two.js has rendered
-        // the new text size/family. Records width/height changes as a second
-        // BATCH — undo of a textSize-with-grow takes two presses (grow, then
-        // size) but the size change itself is still a single press.
+        // the new text size/family.
+        function runGrowPass(): void {
+            const PAD = 20
+            const growEntries: HistoryBatchEntry[] = []
+            rectsToGrow.forEach(({ id, sceneEl, coreObj }) => {
+                const sceneText = sceneEl ? findTextNodeInside(sceneEl) : null
+                const coreText = coreObj ? findTextNodeInside(coreObj) : null
+                // Prefer coreText for measurement: the scene element's outer
+                // group is at opacity=0 while a group is focused, and Two.js's
+                // render path leaves sceneText's _flagSize unprocessed in that
+                // state — its DOM font-size attribute stays stale. coreText is
+                // on the visible group and gets rendered correctly.
+                const measureNode = coreText || sceneText
+                const bbox = measureNode?._renderer?.elem?.getBBox?.()
+                if (!bbox || bbox.width <= 0) return
+
+                const sceneRect = sceneEl?.children?.[0]
+                const coreRect = coreObj?.children?.[0]
+                const currentW = sceneRect?.width ?? coreRect?.width
+                const currentH = sceneRect?.height ?? coreRect?.height
+                if (!currentW || !currentH) return
+
+                const minW = bbox.width + PAD
+                const minH = bbox.height + PAD
+                const newW = Math.max(currentW, minW)
+                const newH = Math.max(currentH, minH)
+                if (newW === currentW && newH === currentH) return
+
+                if (sceneRect) {
+                    sceneRect.width = newW
+                    sceneRect.height = newH
+                }
+                if (coreRect) {
+                    coreRect.width = newW
+                    coreRect.height = newH
+                }
+                const roundedW = Math.round(newW)
+                const roundedH = Math.round(newH)
+                const prevW =
+                    stateRefForComponentStore?.current?.[id]?.width
+                const prevH =
+                    stateRefForComponentStore?.current?.[id]?.height
+                updateComponentBulkPropertiesInLocalStore(
+                    id,
+                    { width: roundedW, height: roundedH },
+                    true
+                )
+                growEntries.push({
+                    action: 'UPDATE_BULK',
+                    id,
+                    prevProps: { width: prevW, height: prevH },
+                    bulkObj: { width: roundedW, height: roundedH },
+                })
+            })
+            if (growEntries.length > 0) {
+                recordBatchToHistoryLog?.(growEntries)
+                twoJSInstance?.update()
+            }
+        }
+
         if (rectsToGrow.length > 0) {
             // Two RAFs: first lets Two.js commit the new font-size to the SVG;
             // second lets the browser flush layout so getBBox reflects the new
@@ -311,70 +418,6 @@ export function createApplyGroupProperty(deps) {
                 twoJSInstance?.update()
                 requestAnimationFrame(() => runGrowPass())
             })
-        }
-        function runGrowPass() {
-                const PAD = 20
-                const growEntries = []
-                rectsToGrow.forEach(({ id, sceneEl, coreObj }) => {
-                    const sceneText = sceneEl
-                        ? findTextNodeInside(sceneEl)
-                        : null
-                    const coreText = coreObj
-                        ? findTextNodeInside(coreObj)
-                        : null
-                    // Prefer coreText for measurement: the scene element's
-                    // outer group is at opacity=0 while a group is focused,
-                    // and Two.js's render path leaves sceneText's _flagSize
-                    // unprocessed in that state — its DOM font-size attribute
-                    // stays stale. coreText is on the visible group and gets
-                    // rendered correctly, so its bbox reflects the new size.
-                    const measureNode = coreText || sceneText
-                    const bbox =
-                        measureNode?._renderer?.elem?.getBBox?.()
-                    if (!bbox || bbox.width <= 0) return
-
-                    const sceneRect = sceneEl?.children?.[0]
-                    const coreRect = coreObj?.children?.[0]
-                    const currentW = sceneRect?.width ?? coreRect?.width
-                    const currentH = sceneRect?.height ?? coreRect?.height
-                    if (!currentW || !currentH) return
-
-                    const minW = bbox.width + PAD
-                    const minH = bbox.height + PAD
-                    const newW = Math.max(currentW, minW)
-                    const newH = Math.max(currentH, minH)
-                    if (newW === currentW && newH === currentH) return
-
-                    if (sceneRect) {
-                        sceneRect.width = newW
-                        sceneRect.height = newH
-                    }
-                    if (coreRect) {
-                        coreRect.width = newW
-                        coreRect.height = newH
-                    }
-                    const roundedW = Math.round(newW)
-                    const roundedH = Math.round(newH)
-                    const prevW =
-                        stateRefForComponentStore?.current?.[id]?.width
-                    const prevH =
-                        stateRefForComponentStore?.current?.[id]?.height
-                    updateComponentBulkPropertiesInLocalStore(
-                        id,
-                        { width: roundedW, height: roundedH },
-                        true
-                    )
-                    growEntries.push({
-                        action: 'UPDATE_BULK',
-                        id,
-                        prevProps: { width: prevW, height: prevH },
-                        bulkObj: { width: roundedW, height: roundedH },
-                    })
-                })
-                if (growEntries.length > 0) {
-                    recordBatchToHistoryLog?.(growEntries)
-                    twoJSInstance?.update()
-                }
         }
     }
 }

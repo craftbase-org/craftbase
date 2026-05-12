@@ -1,10 +1,29 @@
-export const updateX1Y1Vertices = (TwoRef, line, x1, y1, pointCircle1, two) => {
-    // copied code from definition of makeArrow
-    let headlen = 10
+// Vertex math for arrow lines. The Two.js types we need (Anchor, Commands) come
+// off the constructor namespace. Parameters are intentionally typed loosely
+// here because the calling sites pass through scene-bookkeeping shapes that get
+// fully typed in Stages 7–9 (canvas / newCanvas).
 
-    let angle = Math.atan2(line.vertices[1].y - y1, line.vertices[1].x - x1)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TwoRefLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LineLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PointCircleLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TwoLike = any
 
-    let vertices = [
+export const updateX1Y1Vertices = (
+    TwoRef: TwoRefLike,
+    line: LineLike,
+    x1: number,
+    y1: number,
+    pointCircle1: PointCircleLike,
+    two: TwoLike
+): void => {
+    const headlen = 10
+    const angle = Math.atan2(line.vertices[1].y - y1, line.vertices[1].x - x1)
+
+    const vertices = [
         new TwoRef.Anchor(
             x1,
             y1,
@@ -32,7 +51,6 @@ export const updateX1Y1Vertices = (TwoRef, line, x1, y1, pointCircle1, two) => {
             undefined,
             TwoRef.Commands.line
         ),
-
         new TwoRef.Anchor(
             line.vertices[1].x,
             line.vertices[1].y,
@@ -54,23 +72,24 @@ export const updateX1Y1Vertices = (TwoRef, line, x1, y1, pointCircle1, two) => {
     ]
     line.vertices = vertices
 
-    // old code
-    // pointCircle1.translation.x = line.vertices[0].x + 0
-    // pointCircle1.translation.y = line.vertices[0].y + parseInt(line.linewidth)
-
     pointCircle1.translation.x = line.vertices[0].x
     pointCircle1.translation.y = line.vertices[0].y
 
     two.update()
 }
 
-export const updateX2Y2Vertices = (TwoRef, line, x2, y2, pointCircle2, two) => {
-    // copied code from definition of makeArrow
-    let headlen = 10
+export const updateX2Y2Vertices = (
+    TwoRef: TwoRefLike,
+    line: LineLike,
+    x2: number,
+    y2: number,
+    pointCircle2: PointCircleLike,
+    two: TwoLike
+): void => {
+    const headlen = 10
+    const angle = Math.atan2(y2 - line.vertices[0].y, x2 - line.vertices[0].x)
 
-    let angle = Math.atan2(y2 - line.vertices[0].y, x2 - line.vertices[0].x)
-
-    let vertices = [
+    const vertices = [
         new TwoRef.Anchor(
             line.vertices[0].x,
             line.vertices[0].y,
@@ -98,7 +117,6 @@ export const updateX2Y2Vertices = (TwoRef, line, x2, y2, pointCircle2, two) => {
             undefined,
             TwoRef.Commands.line
         ),
-
         new TwoRef.Anchor(
             x2,
             y2,
@@ -119,13 +137,6 @@ export const updateX2Y2Vertices = (TwoRef, line, x2, y2, pointCircle2, two) => {
         ),
     ]
     line.vertices = vertices
-
-    // old code
-    //  pointCircle2.translation.x =
-    // line.vertices[1].x < line.vertices[0].x
-    // ? line.vertices[1].x
-    // : line.vertices[1].x + 6
-    // pointCircle2.translation.y = line.vertices[1].y + parseInt(line.linewidth)
 
     pointCircle2.translation.x = line.vertices[1].x
     pointCircle2.translation.y = line.vertices[1].y
