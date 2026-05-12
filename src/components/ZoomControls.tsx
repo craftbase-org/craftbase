@@ -1,35 +1,39 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import type { ReactElement } from 'react'
 import { useBoardContext } from '../views/Board/board'
 import zoomInIcon from '../assets/zoom-in.svg'
 import zoomOutIcon from '../assets/zoom-out.svg'
 
-const ZoomControls = () => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ZuiWrapperLike = { zui: any } | null
+
+const ZoomControls = (): ReactElement => {
     const { zuiInBoard, twoJSInstance, scaleToDisplay } = useBoardContext()
+    const zui = zuiInBoard as ZuiWrapperLike
     const [scale, setScale] = useState(1)
 
     useEffect(() => {
-        if (zuiInBoard) {
-            setScale(zuiInBoard.zui.scale)
+        if (zui) {
+            setScale(zui.zui.scale)
         }
-    }, [zuiInBoard])
+    }, [zui])
 
     useEffect(() => {
-        const handler = (e) => setScale(e.detail.scale)
+        const handler = (e: Event): void => {
+            const detail = (e as CustomEvent<{ scale: number }>).detail
+            if (detail) setScale(detail.scale)
+        }
         window.addEventListener('zoomChanged', handler)
-        return () => window.removeEventListener('zoomChanged', handler)
+        return (): void => window.removeEventListener('zoomChanged', handler)
     }, [])
 
-    const zoom = (delta) => {
-        if (!zuiInBoard || !twoJSInstance) return
-        zuiInBoard.zui.zoomBy(
-            delta,
-            window.innerWidth / 2,
-            window.innerHeight / 2
-        )
+    const zoom = (delta: number): void => {
+        if (!zui || !twoJSInstance) return
+        zui.zui.zoomBy(delta, window.innerWidth / 2, window.innerHeight / 2)
         twoJSInstance.update()
         window.dispatchEvent(
             new CustomEvent('zoomChanged', {
-                detail: { scale: zuiInBoard.zui.scale },
+                detail: { scale: zui.zui.scale },
             })
         )
     }
@@ -40,7 +44,7 @@ const ZoomControls = () => {
             className="flex items-center gap-1 bg-card-bg rounded-lg shadow-card px-2 py-1"
         >
             <button
-                onClick={() => zoom(-0.2)}
+                onClick={(): void => zoom(-0.2)}
                 className="w-7 h-7 flex items-center justify-center rounded hover:bg-accent transition-colors duration-150"
                 title="Zoom out"
             >
@@ -52,7 +56,7 @@ const ZoomControls = () => {
                     : `${Math.round(scale * 100)}%`}
             </span>
             <button
-                onClick={() => zoom(0.2)}
+                onClick={(): void => zoom(0.2)}
                 className="w-7 h-7 flex items-center justify-center rounded hover:bg-accent transition-colors duration-150"
                 title="Zoom in"
             >

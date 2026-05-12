@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useContext } from 'react'
+import { useState, useEffect } from 'react'
+import type { ReactElement } from 'react'
 import { useQuery } from '@apollo/client'
-import { useNavigate } from 'react-router-dom'
 
 import ShapesToolbar from './shapesToolbar'
 import { GET_COMPONENT_TYPES } from '../../schema/queries'
 import SpinnerWithSize from '../common/spinnerWithSize'
-import Button from '../common/button'
 import { generateUUID } from '../../utils/misc'
 import { useBoardContext } from '../../views/Board/board'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
+import type { ComponentRecord } from '../../types/board'
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
@@ -16,10 +16,9 @@ import MenuDrawer from './menuDrawer'
 
 const DRAW_SHAPE_TYPES = ['circle', 'rectangle', 'diamond']
 
-const PrimarySidebar = () => {
+const PrimarySidebar = (): ReactElement => {
     const {
         boardId,
-        isPersisted,
         updateLastAddedElement,
         togglePointer,
         togglePencilMode,
@@ -27,7 +26,6 @@ const PrimarySidebar = () => {
         addToLocalComponentStore,
         enableTextDrawMode,
         setArrowDrawModeInBoard,
-        setTextDrawModeInBoard,
         setRubberModeInBoard,
         cancelPendingElement,
         defaultLinewidth,
@@ -36,23 +34,16 @@ const PrimarySidebar = () => {
         defaultStrokeColor,
         defaultOpacity,
         defaultTextFontFamily,
-        onCreateBoard,
-        createBoardLoading,
     } = useBoardContext()
-    const [secondaryMenu, toggleSecondaryMenu] = useState(true)
     const [hintText, setHintText] = useState(
         'Click anywhere to place element there.'
     )
     const {
         loading: getComponentTypesLoading,
         data: getComponentTypesData,
-        error: getComponentTypesError,
     } = useQuery(GET_COMPONENT_TYPES)
 
-    const history = useNavigate()
-
-    // A check to see if the component types seeds are already populated in DB.
-    // We need all the component types being inserted as DB seeds otherwise we insert component functionality will be affected
+    // Verify component-type seeds are present.
     useEffect(() => {
         if (
             !getComponentTypesLoading &&
@@ -63,26 +54,30 @@ const PrimarySidebar = () => {
                 'Error : The component types are not available from the DB. Hint: Please check if component types seeds are already populated in component type table in DB '
             )
         }
-    }, [getComponentTypesData])
+    }, [getComponentTypesData, getComponentTypesLoading])
 
-    const handleArrowElement = (label) => {
+    const handleArrowElement = (label: string): void => {
         togglePencilMode(false)
         togglePointer(false)
 
-        let savingEl = document.getElementById('show-saving-loader')
-        savingEl.style.opacity = 1
-        savingEl.style.zIndex = 1
+        const savingEl = document.getElementById('show-saving-loader')
+        if (savingEl) {
+            savingEl.style.opacity = '1'
+            savingEl.style.zIndex = '1'
+        }
 
         setTimeout(() => {
-            savingEl.style.opacity = 0
-            savingEl.style.zIndex = -1
+            if (savingEl) {
+                savingEl.style.opacity = '0'
+                savingEl.style.zIndex = '-1'
+            }
         }, 100)
 
-        let shapeData = null
-        let generateId = generateUUID()
+        let shapeData: ComponentRecord | null = null
+        const generateId = generateUUID()
 
         if (getComponentTypesData) {
-            getComponentTypesData.componentTypes.forEach((item, index) => {
+            getComponentTypesData.componentTypes.forEach((item) => {
                 if (item.label === label) {
                     const userId = localStorage.getItem('userId')
                     shapeData = {
@@ -94,59 +89,69 @@ const PrimarySidebar = () => {
                         children: {},
                         x: -9999,
                         y: -9999,
+                        x1: 0,
                         x2: 0,
-                        boardId: boardId,
+                        y1: 0,
+                        y2: 0,
+                        boardId,
+                        boardName: null,
+                        radius: null,
+                        iconStroke: null,
+                        isDummy: null,
+                        createdAt: null,
                         metadata: {
-                            ...(item.metadata || {}),
+                            ...((item.metadata as Record<string, unknown>) ?? {}),
                             opacity: defaultOpacity ?? 1,
                             ...(defaultTextFontFamily && {
                                 textFontFamily: defaultTextFontFamily,
                             }),
                         },
-                        width: item.width,
-                        height: item.height,
-                        fill: item.fill,
-                        textColor: item.textColor,
+                        width: item.width ?? 120,
+                        height: item.height ?? 120,
+                        fill: item.fill ?? '#f4f4f2',
+                        textColor: item.textColor ?? null,
                         updatedBy: userId,
                     }
                 }
             })
         }
 
+        if (!shapeData) return
+
         updateLastAddedElement(shapeData)
-        document.getElementById('main-two-root').style.cursor = 'crosshair'
+        const root = document.getElementById('main-two-root')
+        if (root) root.style.cursor = 'crosshair'
         localStorage.setItem('arrowDrawMode', 'true')
         localStorage.setItem('lastAddedElementId', generateId)
         setArrowDrawModeInBoard(true)
-        // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
         addToLocalComponentStore(
-            shapeData.id,
-            shapeData.componentType,
+            (shapeData as ComponentRecord).id,
+            (shapeData as ComponentRecord).componentType,
             shapeData
         )
     }
 
-    const handleTextElement = () => {
-        let savingEl = document.getElementById('show-saving-loader')
-        savingEl.style.opacity = 1
-        savingEl.style.zIndex = 1
+    const handleTextElement = (): void => {
+        const savingEl = document.getElementById('show-saving-loader')
+        if (savingEl) {
+            savingEl.style.opacity = '1'
+            savingEl.style.zIndex = '1'
+        }
 
         setTimeout(() => {
-            savingEl.style.opacity = 0
-            savingEl.style.zIndex = -1
+            if (savingEl) {
+                savingEl.style.opacity = '0'
+                savingEl.style.zIndex = '-1'
+            }
         }, 100)
 
         enableTextDrawMode()
     }
 
-    const addElement = (label) => {
+    const addElement = (label: string): void => {
         cancelPendingElement()
-        if (label !== 'rubber') {
-            setRubberModeInBoard(false)
-        }
-        if (label !== 'pan') {
-            togglePanMode(false)
-        }
+        if (label !== 'rubber') setRubberModeInBoard(false)
+        if (label !== 'pan') togglePanMode(false)
         switch (label) {
             case 'pointer':
                 togglePointer(true)
@@ -166,15 +171,17 @@ const PrimarySidebar = () => {
                 handleArrowElement(label)
                 break
             case 'text':
-                handleTextElement(label)
+                handleTextElement()
                 break
-            default:
+            default: {
                 togglePencilMode(false)
                 togglePointer(false)
 
-                let savingEl = document.getElementById('show-saving-loader')
-                savingEl.style.opacity = 1
-                savingEl.style.zIndex = 1
+                const savingEl = document.getElementById('show-saving-loader')
+                if (savingEl) {
+                    savingEl.style.opacity = '1'
+                    savingEl.style.zIndex = '1'
+                }
 
                 setTimeout(() => {
                     if (DRAW_SHAPE_TYPES.includes(label)) {
@@ -182,68 +189,74 @@ const PrimarySidebar = () => {
                     } else {
                         setHintText('Click anywhere to place element there.')
                     }
-                    document.getElementById(
+                    const clickEl = document.getElementById(
                         'show-click-anywhere-btn'
-                    ).style.opacity = 1
-                    savingEl.style.opacity = 0
-                    savingEl.style.zIndex = -1
+                    )
+                    if (clickEl) clickEl.style.opacity = '1'
+                    if (savingEl) {
+                        savingEl.style.opacity = '0'
+                        savingEl.style.zIndex = '-1'
+                    }
                 }, 100)
 
-                let shapeData = null
-                let randomNumber = Math.floor(Math.random() * 80 + 30)
-                let generateId = generateUUID()
+                let shapeData: ComponentRecord | null = null
+                const randomNumber = Math.floor(Math.random() * 80 + 30)
+                const generateId = generateUUID()
 
                 if (getComponentTypesData) {
-                    getComponentTypesData.componentTypes.forEach(
-                        (item, index) => {
-                            if (item.label === label) {
-                                const userId = localStorage.getItem('userId')
-                                const useShapeFill = DRAW_SHAPE_TYPES.includes(
-                                    label
-                                )
-                                shapeData = {
-                                    id: generateId,
-                                    componentType: label,
-                                    linewidth: defaultLinewidth,
-                                    strokeType: defaultStrokeType,
-                                    stroke: defaultStrokeColor ?? '#3A342C',
-                                    children: {},
-                                    x: parseInt(
-                                        window.outerWidth -
-                                            (randomNumber * window.outerWidth) /
-                                                100
-                                    ),
-                                    y: parseInt(
-                                        window.outerHeight -
-                                            (randomNumber *
-                                                window.outerHeight) /
-                                                100
-                                    ),
-                                    x2: label.includes('divider') ? 100 : 0,
-                                    boardId: boardId,
-                                    metadata: {
-                                        ...(item.metadata || {}),
-                                        opacity: defaultOpacity ?? 1,
-                                        ...(defaultTextFontFamily && {
-                                            textFontFamily: defaultTextFontFamily,
-                                        }),
-                                    },
-                                    width: item.width,
-                                    height: item.height,
-                                    fill: useShapeFill
-                                        ? defaultFill ?? item.fill
-                                        : item.fill,
-                                    textColor: item.textColor,
-                                    updatedBy: userId,
-                                }
+                    getComponentTypesData.componentTypes.forEach((item) => {
+                        if (item.label === label) {
+                            const userId = localStorage.getItem('userId')
+                            const useShapeFill = DRAW_SHAPE_TYPES.includes(label)
+                            shapeData = {
+                                id: generateId,
+                                componentType: label,
+                                linewidth: defaultLinewidth,
+                                strokeType: defaultStrokeType,
+                                stroke: defaultStrokeColor ?? '#3A342C',
+                                children: {},
+                                x: Math.floor(
+                                    window.outerWidth -
+                                        (randomNumber * window.outerWidth) / 100
+                                ),
+                                y: Math.floor(
+                                    window.outerHeight -
+                                        (randomNumber * window.outerHeight) / 100
+                                ),
+                                x1: 0,
+                                x2: label.includes('divider') ? 100 : 0,
+                                y1: 0,
+                                y2: 0,
+                                boardId,
+                                boardName: null,
+                                radius: null,
+                                iconStroke: null,
+                                isDummy: null,
+                                createdAt: null,
+                                metadata: {
+                                    ...((item.metadata as Record<
+                                        string,
+                                        unknown
+                                    >) ?? {}),
+                                    opacity: defaultOpacity ?? 1,
+                                    ...(defaultTextFontFamily && {
+                                        textFontFamily: defaultTextFontFamily,
+                                    }),
+                                },
+                                width: item.width ?? 120,
+                                height: item.height ?? 120,
+                                fill: useShapeFill
+                                    ? (defaultFill ?? item.fill ?? '#f4f4f2')
+                                    : (item.fill ?? '#f4f4f2'),
+                                textColor: item.textColor ?? null,
+                                updatedBy: userId,
                             }
                         }
-                    )
+                    })
                 }
 
                 // Fallback for diamond when the DB catalog doesn't have a
-                // diamond row yet. Lets the shape work end-to-end without a
-                // Hasura seed. Mirrors rectangle defaults.
+                // diamond row yet.
                 if (!shapeData && label === 'diamond') {
                     const userId = localStorage.getItem('userId')
                     shapeData = {
@@ -253,16 +266,24 @@ const PrimarySidebar = () => {
                         strokeType: defaultStrokeType,
                         stroke: defaultStrokeColor ?? '#3A342C',
                         children: {},
-                        x: parseInt(
+                        x: Math.floor(
                             window.outerWidth -
                                 (randomNumber * window.outerWidth) / 100
                         ),
-                        y: parseInt(
+                        y: Math.floor(
                             window.outerHeight -
                                 (randomNumber * window.outerHeight) / 100
                         ),
+                        x1: 0,
                         x2: 0,
-                        boardId: boardId,
+                        y1: 0,
+                        y2: 0,
+                        boardId,
+                        boardName: null,
+                        radius: null,
+                        iconStroke: null,
+                        isDummy: null,
+                        createdAt: null,
                         metadata: {
                             opacity: defaultOpacity ?? 1,
                             ...(defaultTextFontFamily && {
@@ -277,34 +298,31 @@ const PrimarySidebar = () => {
                     }
                 }
 
-                // shapeData is null if getComponentTypesData hasn't loaded yet (e.g. incognito
-                // on first page load). Bail out — user can click again once data is ready.
                 if (!shapeData) return
 
                 if (DRAW_SHAPE_TYPES.includes(label)) {
-                    // Draw-to-place: store pending shape props, canvas will create on mouseup
+                    // Draw-to-place: store pending shape props, canvas creates on mouseup
                     localStorage.setItem('pendingShapeType', label)
                     localStorage.setItem(
                         'pendingShapeProps',
                         JSON.stringify(shapeData)
                     )
-                    document.getElementById('main-two-root').style.cursor =
-                        'crosshair'
+                    const root = document.getElementById('main-two-root')
+                    if (root) root.style.cursor = 'crosshair'
                 } else {
-                    // Handles text and divider elements
                     updateLastAddedElement(shapeData)
                     localStorage.setItem('lastAddedElementId', generateId)
-                    // PATCH/CAVEAT - gets error if current server request rate limit exceeds 60 req per min.
                     addToLocalComponentStore(
-                        shapeData.id,
-                        shapeData.componentType,
+                        (shapeData as ComponentRecord).id,
+                        (shapeData as ComponentRecord).componentType,
                         shapeData
                     )
                 }
+            }
         }
     }
     const { isMobile } = useMediaQueryUtils()
-    let isLiveSession = false
+    const isLiveSession = false
     return (
         <>
             <ShapesToolbar addElement={addElement} />
@@ -316,7 +334,7 @@ const PrimarySidebar = () => {
             >
                 <div
                     className="w-auto mt-2
-                         bg-reds-r400 text-reds-r50  
+                         bg-reds-r400 text-reds-r50
                             px-4 py-2 rounded-md shadow-md
                             "
                 >
@@ -331,15 +349,9 @@ const PrimarySidebar = () => {
                 <div
                     id="show-saving-loader"
                     className="w-28 h-9 pr-2 transition-all opacity-0"
-                    style={{ zIndex: '-1' }}
+                    style={{ zIndex: -1 }}
                 >
-                    <div
-                        className="w-auto  
-                             
-                             bg-greens-g400 text-greens-g75  
-                            px-4 py-2 rounded-md shadow-md
-                            "
-                    >
+                    <div className="w-auto bg-greens-g400 text-greens-g75 px-4 py-2 rounded-md shadow-md">
                         <div className="flex items-center ">
                             <div className="w-auto text-sm text-left">
                                 Saving
@@ -358,33 +370,18 @@ const PrimarySidebar = () => {
                     </div>
                 </div>
 
-                {isLiveSession ? (
-                    <>
-                        <div className="w-9 h-9 text-sm pr-2">
-                            <a className="flex items-center px-4 py-2 rounded-card bg-card-bg text-ink shadow-card">
-                                <span className="text-sm ">Live</span>
-
-                                <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
-                                    <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
-                                </div>
-                            </a>
-                        </div>
-                    </>
-                ) : (
-                    <></>
+                {isLiveSession && (
+                    <div className="w-9 h-9 text-sm pr-2">
+                        <a className="flex items-center px-4 py-2 rounded-card bg-card-bg text-ink shadow-card">
+                            <span className="text-sm ">Live</span>
+                            <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
+                                <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
+                            </div>
+                        </a>
+                    </div>
                 )}
 
                 {!isMobile && <ShareLinkPopup />}
-                {/* {isPersisted && (
-                        <Button
-                            intent="primary"
-                            size="medium"
-                            label="New Board"
-                            onClick={() => history('/')}
-                            extendClass="font-semibold shadow-lg ml-2"
-                        />
-                    )} */}
-                {/* <UserDetailsPopup /> */}
             </div>
         </>
     )

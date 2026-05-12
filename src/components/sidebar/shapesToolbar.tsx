@@ -1,5 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { staticPrimaryElementData } from '../../utils/constants'
+import { useEffect, useRef, useState } from 'react'
+import type { ReactElement } from 'react'
+import {
+    staticPrimaryElementData,
+    type PrimaryElement,
+} from '../../utils/constants'
 import { useBoardContext } from '../../views/Board/board'
 import UndoIcon from '../../assets/undo_amber.svg?react'
 import RedoIcon from '../../assets/redo.svg?react'
@@ -9,14 +13,33 @@ const allElementsRaw = staticPrimaryElementData.flatMap(
     (section) => section.elements
 )
 
-const flattenShapesForDesktop = (elements) =>
+const flattenShapesForDesktop = (
+    elements: PrimaryElement[]
+): PrimaryElement[] =>
     elements.flatMap((el) =>
         el.elementName === 'shapes'
-            ? el.drawerData.map((d) => ({ ...d, hasDrawer: false, noAction: false, drawerData: [] }))
+            ? el.drawerData.map((d) => ({
+                  elementName: d.elementName,
+                  elementDisplayName: d.elementDisplayName,
+                  elementIcon: d.elementIcon,
+                  hasDrawer: false,
+                  noAction: false,
+                  drawerData: [],
+              }))
             : [el]
     )
 
-const ShapesToolbar = ({ addElement }) => {
+interface ShapesToolbarProps {
+    addElement: (label: string) => void
+}
+
+interface DrawerAnchor {
+    left: number
+    top: number
+    rectTop: number
+}
+
+const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
     const {
         currentElement,
         setCurrentElementInBoard,
@@ -26,9 +49,9 @@ const ShapesToolbar = ({ addElement }) => {
         bucketLog,
     } = useBoardContext()
     const { isMobile } = useMediaQueryUtils()
-    const [openDrawer, setOpenDrawer] = useState(null)
-    const [drawerAnchor, setDrawerAnchor] = useState(null)
-    const drawerRef = useRef(null)
+    const [openDrawer, setOpenDrawer] = useState<string | null>(null)
+    const [drawerAnchor, setDrawerAnchor] = useState<DrawerAnchor | null>(null)
+    const drawerRef = useRef<HTMLDivElement | null>(null)
 
     const allElements = (
         isMobile ? allElementsRaw : flattenShapesForDesktop(allElementsRaw)
@@ -36,26 +59,30 @@ const ShapesToolbar = ({ addElement }) => {
 
     useEffect(() => {
         setCurrentElementInBoard('pointer')
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {
         if (!openDrawer) return
-        const handleClickOutside = (e) => {
-            if (drawerRef.current && !drawerRef.current.contains(e.target)) {
+        const handleClickOutside = (e: MouseEvent): void => {
+            if (
+                drawerRef.current &&
+                !drawerRef.current.contains(e.target as Node)
+            ) {
                 setOpenDrawer(null)
             }
         }
         document.addEventListener('mousedown', handleClickOutside)
-        return () =>
+        return (): void => {
             document.removeEventListener('mousedown', handleClickOutside)
+        }
     }, [openDrawer])
 
     const btnSize = isMobile ? 'w-8 h-8' : 'w-9 h-9'
     const iconSize = isMobile ? 'w-4 h-4' : 'w-5 h-5'
 
     const shapeDrawerElements =
-        allElements.find((el) => el.elementName === openDrawer)?.drawerData ??
-        []
+        allElements.find((el) => el.elementName === openDrawer)?.drawerData ?? []
 
     const undoButton = (
         <div
@@ -65,7 +92,7 @@ const ShapesToolbar = ({ addElement }) => {
                 transition-all ease-in-out duration-200 text-ink-muted
                 ${historyLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/30 hover:text-ink'}
             `}
-            onClick={() => {
+            onClick={(): void => {
                 if (historyLog.length > 0) {
                     undoLastAction()
                 }
@@ -82,7 +109,7 @@ const ShapesToolbar = ({ addElement }) => {
                 transition-all ease-in-out duration-200 text-ink-muted
                 ${bucketLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/30 hover:text-ink'}
             `}
-            onClick={() => {
+            onClick={(): void => {
                 if (bucketLog.length > 0) {
                     redoLastAction()
                 }
@@ -137,7 +164,7 @@ const ShapesToolbar = ({ addElement }) => {
                                         : 'text-ink-muted hover:bg-accent/30 hover:text-ink'
                                 }
                             `}
-                            onClick={(e) => {
+                            onClick={(e): void => {
                                 if (element.hasDrawer) {
                                     const rect =
                                         e.currentTarget.getBoundingClientRect()
@@ -222,7 +249,7 @@ const ShapesToolbar = ({ addElement }) => {
                                             : 'text-ink-muted hover:bg-accent/30 hover:text-ink'
                                     }
                                 `}
-                                onClick={() => {
+                                onClick={(): void => {
                                     addElement(item.elementName)
                                     setCurrentElementInBoard(item.elementName)
                                     setOpenDrawer(null)

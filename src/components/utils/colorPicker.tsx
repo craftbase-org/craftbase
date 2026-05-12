@@ -1,5 +1,5 @@
-import React, { Fragment, useState, useEffect } from 'react'
-import PropTypes from 'prop-types'
+import { Fragment, useState, useEffect } from 'react'
+import type { CSSProperties, ReactElement } from 'react'
 import { allColorShades, essentialShades } from '../../utils/constants'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MIXED } from '../../utils/groupInspect'
@@ -7,19 +7,29 @@ import { MIXED } from '../../utils/groupInspect'
 const STORAGE_KEY = 'craftbase_saved_colors'
 const MAX_SAVED = 8
 
-const loadSavedColors = () => {
+const loadSavedColors = (): string[] => {
     try {
         const stored = localStorage.getItem(STORAGE_KEY)
-        return stored ? JSON.parse(stored) : []
+        return stored ? (JSON.parse(stored) as string[]) : []
     } catch {
         return []
     }
 }
 
-const persistSavedColors = (colors) => {
+const persistSavedColors = (colors: string[]): void => {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(colors))
-    } catch {}
+    } catch {
+        /* noop */
+    }
+}
+
+export interface ColorPickerProps {
+    title?: string
+    onChangeComplete: (color: string) => void
+    currentColor?: string
+    isExpanded?: boolean
+    onToggleExpand?: () => void
 }
 
 const ColorPicker = ({
@@ -28,10 +38,10 @@ const ColorPicker = ({
     currentColor,
     isExpanded,
     onToggleExpand,
-}) => {
+}: ColorPickerProps): ReactElement => {
     const [localExpanded, setLocalExpanded] = useState(false)
-    const [savedColors, setSavedColors] = useState(loadSavedColors)
-    const [removingColor, setRemovingColor] = useState(null)
+    const [savedColors, setSavedColors] = useState<string[]>(loadSavedColors)
+    const [removingColor, setRemovingColor] = useState<string | null>(null)
     const isMixed = currentColor === MIXED
     const [hexInput, setHexInput] = useState(
         isMixed ? '' : (currentColor?.replace(/^#/, '') ?? '')
@@ -40,7 +50,8 @@ const ColorPicker = ({
     // Support both controlled (isExpanded prop) and uncontrolled (local state) modes.
     const controlled = isExpanded !== undefined
     const expanded = controlled ? isExpanded : localExpanded
-    const handleToggle = onToggleExpand ?? (() => setLocalExpanded((p) => !p))
+    const handleToggle =
+        onToggleExpand ?? ((): void => setLocalExpanded((p) => !p))
 
     useEffect(() => {
         if (currentColor === MIXED) {
@@ -54,18 +65,18 @@ const ColorPicker = ({
         persistSavedColors(savedColors)
     }, [savedColors])
 
-    const handleColorSelect = (color) => {
+    const handleColorSelect = (color: string): void => {
         onChangeComplete(color)
     }
 
-    const handleHexSubmit = () => {
+    const handleHexSubmit = (): void => {
         const full = `#${hexInput.toUpperCase()}`
         if (/^#[0-9A-Fa-f]{6}$/.test(full)) {
             onChangeComplete(full)
         }
     }
 
-    const handleSaveColor = () => {
+    const handleSaveColor = (): void => {
         if (
             !currentColor ||
             savedColors.includes(currentColor) ||
@@ -75,17 +86,16 @@ const ColorPicker = ({
         setSavedColors((prev) => [...prev, currentColor])
     }
 
-    const handleRemoveColor = (color) => {
+    const handleRemoveColor = (color: string): void => {
         setSavedColors((prev) => prev.filter((c) => c !== color))
         setRemovingColor(null)
     }
 
     const hasColor = !!currentColor && !isMixed
-    // Diagonal-stripe pattern reused for the "Mixed" indicator swatches.
     const mixedSwatchBg =
         'repeating-linear-gradient(45deg, #C4B89A 0 4px, #F5F0E8 4px 8px)'
 
-    const swatchStyle = (color) => ({
+    const swatchStyle = (color: string): CSSProperties => ({
         background: color,
         border: color === '#FFFFFF' ? '1.5px solid #1A1612' : 'none',
         outline: currentColor === color ? '2px solid #C48B0A' : 'none',
@@ -94,7 +104,6 @@ const ColorPicker = ({
 
     return (
         <Fragment>
-            {/* Header: section label + badge pill */}
             <div className="flex items-center justify-between mb-2">
                 {title && (
                     <span className="text-[11px] text-[#8a7d6b] uppercase tracking-[0.06em] font-medium">
@@ -115,8 +124,8 @@ const ColorPicker = ({
                             background: isMixed
                                 ? mixedSwatchBg
                                 : hasColor
-                                    ? currentColor
-                                    : 'transparent',
+                                  ? currentColor
+                                  : 'transparent',
                             border:
                                 hasColor || isMixed
                                     ? 'none'
@@ -127,8 +136,8 @@ const ColorPicker = ({
                         {isMixed
                             ? 'Mixed'
                             : hasColor
-                                ? currentColor.toUpperCase()
-                                : 'None'}
+                              ? currentColor.toUpperCase()
+                              : 'None'}
                     </span>
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                         <path
@@ -145,7 +154,6 @@ const ColorPicker = ({
                 </button>
             </div>
 
-            {/* Expanded panel with full palette */}
             <AnimatePresence>
                 {expanded && (
                     <motion.div
@@ -155,7 +163,6 @@ const ColorPicker = ({
                         className="overflow-hidden mb-2"
                     >
                         <div className="bg-[#F5F0E8] border border-[#DDD6C4] rounded-lg p-2.5 space-y-2">
-                            {/* Selected color preview */}
                             <div className="flex items-center gap-1.5">
                                 <div
                                     className="w-7 h-7 rounded-[6px] flex-shrink-0"
@@ -173,17 +180,19 @@ const ColorPicker = ({
                                     <div className="text-[11px] font-semibold text-[#1A1612] font-mono truncate">
                                         {isMixed
                                             ? 'Mixed'
-                                            : (currentColor?.toUpperCase() ?? '—')}
+                                            : (currentColor?.toUpperCase() ??
+                                              '—')}
                                     </div>
                                 </div>
                                 <button
                                     className="bg-[#FFFCF5] border border-[#C4B89A] rounded-[5px] p-1 flex-shrink-0 hover:bg-[#EDE7D7] transition-colors"
-                                    onClick={() =>
-                                        currentColor &&
-                                        navigator.clipboard?.writeText(
-                                            currentColor
-                                        )
-                                    }
+                                    onClick={(): void => {
+                                        if (currentColor) {
+                                            navigator.clipboard?.writeText(
+                                                currentColor
+                                            )
+                                        }
+                                    }}
                                     title="Copy hex"
                                 >
                                     <svg
@@ -210,16 +219,15 @@ const ColorPicker = ({
                                 </button>
                             </div>
 
-                            {/* Full color grid: all shades + saved custom colors */}
                             <div className="flex flex-wrap gap-1">
                                 {[...allColorShades, ...savedColors].map(
                                     (color, i) => (
                                         <button
                                             key={`${color}-${i}`}
-                                            onClick={() =>
+                                            onClick={(): void =>
                                                 handleColorSelect(color)
                                             }
-                                            onContextMenu={(e) => {
+                                            onContextMenu={(e): void => {
                                                 if (
                                                     savedColors.includes(color)
                                                 ) {
@@ -251,7 +259,7 @@ const ColorPicker = ({
                                                             scale: 0.5,
                                                         }}
                                                         className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] leading-none"
-                                                        onClick={(e) => {
+                                                        onClick={(e): void => {
                                                             e.stopPropagation()
                                                             handleRemoveColor(
                                                                 color
@@ -286,7 +294,6 @@ const ColorPicker = ({
                                 </button>
                             </div>
 
-                            {/* Hex input */}
                             <div className="flex items-center gap-1.5">
                                 <div
                                     className="w-5 h-5 rounded-[4px] flex-shrink-0 border border-[#C4B89A]"
@@ -302,7 +309,7 @@ const ColorPicker = ({
                                     <input
                                         className="text-[11px] text-[#1A1612] font-mono font-medium bg-transparent outline-none w-full"
                                         value={hexInput}
-                                        onChange={(e) =>
+                                        onChange={(e): void =>
                                             setHexInput(
                                                 e.target.value
                                                     .replace(
@@ -313,10 +320,10 @@ const ColorPicker = ({
                                             )
                                         }
                                         onBlur={handleHexSubmit}
-                                        onKeyDown={(e) =>
-                                            e.key === 'Enter' &&
-                                            handleHexSubmit()
-                                        }
+                                        onKeyDown={(e): void => {
+                                            if (e.key === 'Enter')
+                                                handleHexSubmit()
+                                        }}
                                         placeholder="3DB88A"
                                         maxLength={6}
                                     />
@@ -327,12 +334,11 @@ const ColorPicker = ({
                 )}
             </AnimatePresence>
 
-            {/* Essential shades row — always visible */}
             <div className="flex items-center gap-1">
                 {essentialShades.map((color) => (
                     <button
                         key={color}
-                        onClick={() => handleColorSelect(color)}
+                        onClick={(): void => handleColorSelect(color)}
                         title={color}
                         className="mr-1 w-5 h-5 rounded-full flex-shrink-0 transition-transform hover:scale-110"
                         style={{
@@ -366,14 +372,6 @@ const ColorPicker = ({
             </div>
         </Fragment>
     )
-}
-
-ColorPicker.propTypes = {
-    currentColor: PropTypes.string,
-    onChangeComplete: PropTypes.func,
-    title: PropTypes.string,
-    isExpanded: PropTypes.bool,
-    onToggleExpand: PropTypes.func,
 }
 
 export default ColorPicker

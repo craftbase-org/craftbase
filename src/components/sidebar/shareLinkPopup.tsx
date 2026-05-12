@@ -1,40 +1,35 @@
-import React, { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
+import type { ReactElement } from 'react'
 import { useMutation } from '@apollo/client'
 
 import Button from '../common/button'
 import Modal from '../common/modal'
 import ShareIcon from '../../assets/share-android.svg'
 import CopyIcon from '../../assets/copy.svg'
-import Spinner from '../common/spinnerWithSize'
 import { useBoardContext } from '../../views/Board/board'
 import { UPDATE_BOARD_VISIBILITY } from '../../schema/mutations'
 
-const ShareLinkPopup = ({}) => {
-    const refNode = useRef(null)
+const ShareLinkPopup = (): ReactElement => {
+    const refNode = useRef<HTMLDivElement | null>(null)
     const [showLink, setShowLink] = useState(false)
     const [showConfirmModal, setShowConfirmModal] = useState(false)
     const [isPersisting, setIsPersisting] = useState(false)
-    const [shareUrl, setShareUrl] = useState(null)
+    const [shareUrl, setShareUrl] = useState<string | null>(null)
     const { isPersisted, persistBoard, backgroundBoardId } = useBoardContext()
     const [updateBoardVisibility] = useMutation(UPDATE_BOARD_VISIBILITY)
 
     useEffect(() => {
+        const handleClick = (e: MouseEvent): void => {
+            if (refNode.current?.contains(e.target as Node)) return
+            setShowLink(false)
+        }
         document.addEventListener('mousedown', handleClick, false)
-
-        return () => {
+        return (): void => {
             document.removeEventListener('mousedown', handleClick, false)
         }
     }, [])
 
-    const handleClick = (e) => {
-        if (refNode && refNode.current.contains(e.target)) {
-            return
-        }
-
-        setShowLink(false)
-    }
-
-    const handleShareClick = (e) => {
+    const handleShareClick = (e: React.MouseEvent): void => {
         e.preventDefault()
         if (!isPersisted) {
             setShowConfirmModal(true)
@@ -44,7 +39,7 @@ const ShareLinkPopup = ({}) => {
         }
     }
 
-    const handleConfirmShare = async () => {
+    const handleConfirmShare = async (): Promise<void> => {
         setIsPersisting(true)
         try {
             const serverBoardId = await persistBoard()
@@ -70,7 +65,7 @@ const ShareLinkPopup = ({}) => {
                     className="w-10 h-10 flex items-center justify-center rounded-md bg-accent text-ink font-semibold shadow-card cursor-pointer"
                     onClick={handleShareClick}
                 >
-                    <img src={ShareIcon} className="w-5 h-5" />
+                    <img src={ShareIcon} className="w-5 h-5" alt="Share" />
                 </div>
 
                 <div
@@ -99,13 +94,17 @@ const ShareLinkPopup = ({}) => {
                                 px-2 py-2 cursor-pointer bg-sidebar border border-border-card
                                 hover:bg-border-panel
                                 "
-                                onClick={(e) => {
+                                onClick={(e): void => {
                                     e.stopPropagation()
-                                    navigator?.clipboard?.writeText(shareUrl)
+                                    if (shareUrl) {
+                                        navigator?.clipboard?.writeText(
+                                            shareUrl
+                                        )
+                                    }
                                     setShowLink(false)
                                 }}
                             >
-                                <img src={CopyIcon} className="w-5 h-5 " />
+                                <img src={CopyIcon} className="w-5 h-5 " alt="Copy" />
                             </div>
                         </div>
                     </div>
@@ -114,7 +113,9 @@ const ShareLinkPopup = ({}) => {
 
             <Modal
                 open={showConfirmModal}
-                onClose={() => !isPersisting && setShowConfirmModal(false)}
+                onClose={(): void => {
+                    if (!isPersisting) setShowConfirmModal(false)
+                }}
                 locked={isPersisting}
             >
                 <div style={{ minWidth: '440px', maxWidth: '520px' }}>
@@ -142,7 +143,9 @@ const ShareLinkPopup = ({}) => {
                                     intent="secondary"
                                     size="medium"
                                     label="Cancel"
-                                    onClick={() => setShowConfirmModal(false)}
+                                    onClick={(): void =>
+                                        setShowConfirmModal(false)
+                                    }
                                     disabled={isPersisting}
                                 />
                                 <Button
@@ -161,15 +164,17 @@ const ShareLinkPopup = ({}) => {
                                 Nothing to share yet
                             </h2>
                             <p className="text-sm text-ink-mid mb-4">
-                                Before you share, please create something on the
-                                board to make it shareable.
+                                Before you share, please create something on
+                                the board to make it shareable.
                             </p>
                             <div className="flex justify-end">
                                 <Button
                                     intent="primary"
                                     size="medium"
                                     label="Okay"
-                                    onClick={() => setShowConfirmModal(false)}
+                                    onClick={(): void =>
+                                        setShowConfirmModal(false)
+                                    }
                                 />
                             </div>
                         </>

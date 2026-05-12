@@ -1,9 +1,7 @@
-import React, { Fragment, useState } from 'react'
-import PropTypes from 'prop-types'
-import styled, { css } from 'styled-components'
-import { allColorShades, essentialShades } from '../../utils/constants'
+import { Fragment } from 'react'
+import type { ReactElement } from 'react'
+import styled from 'styled-components'
 
-import { motion } from 'framer-motion'
 import ColorPicker from './colorPicker'
 
 const BorderStyleBoxContainer = styled.div`
@@ -18,7 +16,18 @@ const STROKE_TYPES = [
     { value: 'solid', display: '—' },
     { value: 'dashed', display: '- -' },
     { value: 'dotted', display: '...' },
-]
+] as const
+
+type StrokeTypeValue = (typeof STROKE_TYPES)[number]['value']
+
+export interface BorderStyleBoxProps {
+    currentType?: StrokeTypeValue | string
+    currentWidth?: number
+    currentColor?: string
+    onChangeColor: (color: string) => void
+    onChangeBorderWidth: (width: number) => void
+    onChangeStrokeType?: (type: StrokeTypeValue) => void
+}
 
 const BorderStyleBox = ({
     currentType,
@@ -27,16 +36,16 @@ const BorderStyleBox = ({
     onChangeColor,
     onChangeBorderWidth,
     onChangeStrokeType,
-}) => {
-    const renderBorderType = () => {
+}: BorderStyleBoxProps): ReactElement => {
+    const renderBorderType = (): ReactElement[] => {
         return STROKE_TYPES.map((type, index) => {
             const isSelected = currentType === type.value
             return (
                 <Fragment key={index}>
                     <button
                         data-parent="floating-toolbar"
-                        onClick={() =>
-                            onChangeStrokeType && onChangeStrokeType(type.value)
+                        onClick={(): void =>
+                            onChangeStrokeType?.(type.value)
                         }
                         className={`flex-1 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
                             isSelected ? 'bg-accent/20' : 'hover:bg-accent/20'
@@ -63,7 +72,7 @@ const BorderStyleBox = ({
         })
     }
 
-    const renderBorderWidths = () => {
+    const renderBorderWidths = (): ReactElement[] => {
         const widths = [
             { value: 0, strokeHeight: '0px' },
             { value: 2, strokeHeight: '2px' },
@@ -76,7 +85,7 @@ const BorderStyleBox = ({
                 <button
                     key={value}
                     data-parent="floating-toolbar"
-                    onClick={() => onChangeBorderWidth(value)}
+                    onClick={(): void => onChangeBorderWidth(value)}
                     className={`flex-1 w-1/4 h-8 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
                         isSelected ? 'bg-accent/20' : 'hover:bg-accent/20'
                     }`}
@@ -87,31 +96,26 @@ const BorderStyleBox = ({
                     }}
                 >
                     {value === 0 ? (
-                        <>
-                            <div
-                                className="my-2 w-0.5 h-0.5 rotate-45"
-                                style={{
-                                    // height: strokeHeight, // e.g. 1.5px, 2.5px, 4px
-                                    background:
-                                        currentWidth === value
-                                            ? '#C4901A'
-                                            : '#8C7E6A',
-                                }}
-                            ></div>
-                        </>
+                        <div
+                            className="my-2 w-0.5 h-0.5 rotate-45"
+                            style={{
+                                background:
+                                    currentWidth === value
+                                        ? '#C4901A'
+                                        : '#8C7E6A',
+                            }}
+                        ></div>
                     ) : (
-                        <>
-                            <div
-                                className="w-full my-2 mx-1 rounded-full"
-                                style={{
-                                    height: strokeHeight, // e.g. 1.5px, 2.5px, 4px
-                                    backgroundColor:
-                                        currentWidth === value
-                                            ? '#C4901A'
-                                            : '#8C7E6A',
-                                }}
-                            ></div>
-                        </>
+                        <div
+                            className="w-full my-2 mx-1 rounded-full"
+                            style={{
+                                height: strokeHeight,
+                                backgroundColor:
+                                    currentWidth === value
+                                        ? '#C4901A'
+                                        : '#8C7E6A',
+                            }}
+                        ></div>
                     )}
                 </button>
             )
@@ -146,7 +150,7 @@ const BorderStyleBox = ({
                     <ColorPicker
                         title="Stroke Fill"
                         currentColor={currentColor}
-                        onChangeComplete={(color) => {
+                        onChangeComplete={(color: string): void => {
                             onChangeColor(color)
                         }}
                     />
@@ -156,10 +160,5 @@ const BorderStyleBox = ({
         </Fragment>
     )
 }
-
-// BorderStyleBox.defaultProps = {
-//     currentType: 'solid',
-//     currentWidth: '',
-// }
 
 export default BorderStyleBox

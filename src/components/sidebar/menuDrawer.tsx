@@ -1,11 +1,12 @@
-import React, { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
+import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import routes from '../../routes'
 import { useBoardContext } from '../../views/Board/board'
 import Modal from '../common/modal'
 import Button from '../common/button'
 
-const HamburgerIcon = () => (
+const HamburgerIcon = (): ReactElement => (
     <svg
         width="16"
         height="16"
@@ -19,7 +20,7 @@ const HamburgerIcon = () => (
     </svg>
 )
 
-const ExternalIcon = () => (
+const ExternalIcon = (): ReactElement => (
     <svg
         width="12"
         height="12"
@@ -44,7 +45,7 @@ const ExternalIcon = () => (
     </svg>
 )
 
-const TrashIcon = () => (
+const TrashIcon = (): ReactElement => (
     <svg
         width="14"
         height="14"
@@ -62,32 +63,29 @@ const TrashIcon = () => (
     </svg>
 )
 
-const MenuDrawer = () => {
-    const refNode = useRef(null)
+const MenuDrawer = (): ReactElement => {
+    const refNode = useRef<HTMLDivElement | null>(null)
     const [showMenu, setShowMenu] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const { clearBoard } = useBoardContext()
 
     useEffect(() => {
+        const handleClick = (e: MouseEvent): void => {
+            if (refNode.current?.contains(e.target as Node)) return
+            setShowMenu(false)
+        }
         document.addEventListener('mousedown', handleClick, false)
-        return () => {
+        return (): void => {
             document.removeEventListener('mousedown', handleClick, false)
         }
     }, [])
 
-    const handleClick = (e) => {
-        if (refNode && refNode.current && refNode.current.contains(e.target)) {
-            return
-        }
-        setShowMenu(false)
-    }
-
-    const handleClearClick = () => {
+    const handleClearClick = (): void => {
         setShowMenu(false)
         setShowConfirm(true)
     }
 
-    const handleConfirmClear = () => {
+    const handleConfirmClear = (): void => {
         clearBoard()
         setShowConfirm(false)
     }
@@ -99,7 +97,6 @@ const MenuDrawer = () => {
                 className="relative bg-sidebar border border-border-panel shadow-card rounded-card"
                 style={{ position: 'fixed', top: '8px', left: '10px', zIndex: 10 }}
             >
-                {/* Trigger button — matches ShapesToolbar item sizing exactly */}
                 <div
                     title="Menu"
                     className={`
@@ -107,12 +104,11 @@ const MenuDrawer = () => {
                         transition-all ease-in-out duration-200
                         ${showMenu ? 'bg-accent/30' : 'hover:bg-accent/30'}
                     `}
-                    onClick={() => setShowMenu((prev) => !prev)}
+                    onClick={(): void => setShowMenu((prev) => !prev)}
                 >
                     <HamburgerIcon />
                 </div>
 
-                {/* Dropdown panel */}
                 <div
                     className="absolute left-0 transition-all ease-in duration-200"
                     style={{
@@ -122,10 +118,7 @@ const MenuDrawer = () => {
                         pointerEvents: showMenu ? 'auto' : 'none',
                     }}
                 >
-                    <div
-                        className="bg-card-bg border border-border-panel rounded-lg shadow-lg py-1 w-[188px] max-w-[calc(100vw-20px)]"
-                    >
-                        {/* Section label */}
+                    <div className="bg-card-bg border border-border-panel rounded-lg shadow-lg py-1 w-[188px] max-w-[calc(100vw-20px)]">
                         <div className="px-3 pt-1 pb-1.5">
                             <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
                                 More
@@ -141,7 +134,7 @@ const MenuDrawer = () => {
                             className="flex items-center justify-between px-3 py-2 mx-1 text-sm text-ink-mid
                                 hover:bg-accent/30 rounded cursor-pointer no-underline
                                 transition-colors ease-in-out duration-150"
-                            onClick={() => setShowMenu(false)}
+                            onClick={(): void => setShowMenu(false)}
                         >
                             <div className="flex items-center gap-2.5">
                                 <svg
@@ -173,7 +166,7 @@ const MenuDrawer = () => {
                             className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
                                 hover:bg-accent/30 rounded cursor-pointer no-underline
                                 transition-colors ease-in-out duration-150"
-                            onClick={() => setShowMenu(false)}
+                            onClick={(): void => setShowMenu(false)}
                         >
                             <svg
                                 width="14"
@@ -215,7 +208,10 @@ const MenuDrawer = () => {
                 </div>
             </div>
 
-            <Modal open={showConfirm} onClose={() => setShowConfirm(false)}>
+            <Modal
+                open={showConfirm}
+                onClose={(): void => setShowConfirm(false)}
+            >
                 <div style={{ minWidth: '360px', maxWidth: '440px' }}>
                     <h2 className="text-lg font-semibold mb-3 font-display">
                         Clear canvas?
@@ -229,7 +225,7 @@ const MenuDrawer = () => {
                             intent="secondary"
                             size="medium"
                             label="Cancel"
-                            onClick={() => setShowConfirm(false)}
+                            onClick={(): void => setShowConfirm(false)}
                         />
                         <button
                             className="px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium

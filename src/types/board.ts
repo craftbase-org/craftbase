@@ -72,7 +72,9 @@ export interface BoardProps {
 // Kept opaque here until canvas/selection internals convert (Stages 7–9).
 export type SelectedComponent = unknown
 export type SelectedGroup = unknown
-export type CurrentElement = unknown
+// CurrentElement is the active toolbar tool name (e.g. 'pointer', 'rectangle',
+// 'arrowLine', 'pencil', 'text'). Toolbar code compares against literal names.
+export type CurrentElement = string
 
 // History entry shape lives in useComponentHistory; tightened in Stage 4.
 export type HistoryEntry = unknown
@@ -81,7 +83,7 @@ export interface BoardContextValue {
     // Identity / persistence
     boardId: string
     isPersisted: boolean
-    persistBoard: () => void
+    persistBoard: () => Promise<string>
     backgroundBoardId: string | null
     onCreateBoard: () => void
     createBoardLoading: boolean
@@ -119,14 +121,21 @@ export interface BoardContextValue {
     setCurrentElementInBoard: (element: CurrentElement | null) => void
 
     // Local component store mutations
-    addToLocalComponentStore: (records: ComponentRecord | ComponentRecord[]) => void
+    addToLocalComponentStore: (
+        id: string,
+        type: string,
+        componentInfo: ComponentRecord,
+        skipHistory?: boolean
+    ) => void
     updateComponentVerticesInLocalStore: (
         id: string,
-        update: Partial<ComponentRecord>
+        x: number,
+        y: number
     ) => void
     updateComponentBulkPropertiesInLocalStore: (
         id: string,
-        update: Partial<ComponentRecord>
+        update: Partial<ComponentRecord>,
+        skipDbWrite?: boolean
     ) => void
     deleteComponentFromLocalStore: (id: string) => void
     deleteBulkComponentsFromLocalStore: (ids: string[]) => void

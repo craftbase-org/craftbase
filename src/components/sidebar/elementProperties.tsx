@@ -60,6 +60,17 @@ const SET_LABELS = {
     GROUP: 'Group',
 }
 
+interface ResolveSetKeyOptions {
+    isRubberMode: boolean
+    isPencilMode: boolean
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    selectedComponent: any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    selectedGroup: any
+    isArrowDrawMode: boolean
+    isTextDrawMode: boolean
+}
+
 function resolveSetKey({
     isRubberMode,
     isPencilMode,
@@ -67,7 +78,7 @@ function resolveSetKey({
     selectedGroup,
     isArrowDrawMode,
     isTextDrawMode,
-}) {
+}: ResolveSetKeyOptions): string | null {
     // A focused group beats every other mode — show the union toolbar.
     if (selectedGroup) return 'GROUP'
     if (isRubberMode) return null
@@ -106,13 +117,25 @@ function resolveSetKey({
     return 'SHAPE'
 }
 
+interface ReadEffectiveValuesOptions {
+    setKey: string | null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    selectedComponent: any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    selectedGroup: any
+    isMobile: boolean
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    defaults: any
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function readEffectiveValues({
     setKey,
     selectedComponent,
     selectedGroup,
     isMobile,
     defaults,
-}) {
+}: ReadEffectiveValuesOptions): any {
     // Group mode: walk the group's children and report common values, falling
     // back to defaults when no child carries the property and to MIXED when
     // children disagree.
@@ -175,13 +198,14 @@ function readEffectiveValues({
     }
 }
 
-const SectionLabel = ({ children }) => (
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <div className="w-full text-ink-muted font-normal text-xs pl-0 mb-2">
         {children}
     </div>
 )
 
-const StrokeWidthRow = ({ value, onChange }) => (
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const StrokeWidthRow = ({ value, onChange }: { value: any; onChange: (v: number) => void }) => (
     <div id="stroke-width-section" className="pt-2 px-2">
         <SectionLabel>Stroke Width</SectionLabel>
         <div className="flex gap-2">
@@ -227,7 +251,8 @@ const StrokeWidthRow = ({ value, onChange }) => (
     </div>
 )
 
-const StrokeTypeRow = ({ value, onChange }) => (
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const StrokeTypeRow = ({ value, onChange }: { value: any; onChange: (v: string) => void }) => (
     <div id="stroke-type-section" className="pt-3 px-2">
         <SectionLabel>Stroke Type</SectionLabel>
         <div className="flex gap-2">
@@ -263,7 +288,7 @@ const StrokeTypeRow = ({ value, onChange }) => (
     </div>
 )
 
-const TextSizeRow = ({ value, onChange }) => (
+const TextSizeRow = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
     <div className="pt-3 px-2">
         <SectionLabel>Text Size</SectionLabel>
         <div className="flex flex-row gap-2">
@@ -287,7 +312,7 @@ const TextSizeRow = ({ value, onChange }) => (
     </div>
 )
 
-const FontFamilyRow = ({ value, onChange }) => {
+const FontFamilyRow = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => {
     const families = [
         { label: 'Caveat', family: 'Caveat' },
         { label: 'Geist', family: 'Geist' },
@@ -384,9 +409,9 @@ const ElementPropertiesToolbar = () => {
         })
     )
 
-    const [expandedSection, setExpandedSection] = useState(null)
+    const [expandedSection, setExpandedSection] = useState<string | null>(null)
 
-    const toggleSection = (key) =>
+    const toggleSection = (key: string): void =>
         setExpandedSection((prev) => (prev === key ? null : key))
 
     // Collapse any open color picker when context changes (new selection, mode switch).
@@ -427,9 +452,11 @@ const ElementPropertiesToolbar = () => {
     if (!setKey) return null
     if (isMobile && !showMobileToolbarPanel) return null
 
-    const sections = SETS[setKey]
-    const handle = (key) => (val) => {
-        setValues((prev) => ({ ...prev, [key]: val }))
+    const sections = SETS[setKey as keyof typeof SETS]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handle = (key: string) => (val: any): void => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setValues((prev: any) => ({ ...prev, [key]: val }))
         if (selectedGroup) {
             // textSize comes through as a label (e.g. 'M'); resolve to the
             // numeric Two.js size before forwarding to the bulk apply path.
@@ -460,9 +487,9 @@ const ElementPropertiesToolbar = () => {
             // itself down) the moment focus moves elsewhere. Clicks still
             // fire normally. Skip text inputs so the hex field in ColorPicker
             // can still receive focus.
-            onMouseDown={(e) => {
+            onMouseDown={(e): void => {
                 if (!selectedGroup) return
-                const tag = e.target?.tagName
+                const tag = (e.target as HTMLElement | null)?.tagName
                 if (tag === 'INPUT' || tag === 'TEXTAREA') return
                 e.preventDefault()
             }}
@@ -479,7 +506,7 @@ const ElementPropertiesToolbar = () => {
             }
         >
             <div className="w-full px-2 font-semibold text-xs pt-1 pb-1 border-b border-border-panel text-ink-muted">
-                {SET_LABELS[setKey]}
+                {SET_LABELS[setKey as keyof typeof SET_LABELS]}
             </div>
 
             {sections.includes('fill') && (
@@ -560,8 +587,9 @@ const ElementPropertiesToolbar = () => {
                     <SectionLabel>Opacity</SectionLabel>
                     <OpacitySlider
                         currentOpacity={values.opacity}
-                        handleOnDrag={(arr) =>
-                            setValues((prev) => ({
+                        handleOnDrag={(arr): void =>
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            setValues((prev: any) => ({
                                 ...prev,
                                 opacity: arr[0],
                             }))

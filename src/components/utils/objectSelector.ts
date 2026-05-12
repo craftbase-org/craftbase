@@ -1,44 +1,61 @@
 import Two from 'two.js'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TwoLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GroupLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ShapeLike = any
+
+interface SelectorVertices {
+    x1: number
+    x2: number
+    y1: number
+    y2: number
+}
+
 export default class Selector {
-    constructor(instance, group, x1, x2, y1, y2, showCircles) {
+    two: TwoLike
+    group: GroupLike
+    area: ShapeLike = null
+    circle1: ShapeLike = null
+    circle2: ShapeLike = null
+    circle3: ShapeLike = null
+    circle4: ShapeLike = null
+    circleGroup: ShapeLike = null
+    areaGroup: ShapeLike = null
+    showCircles: unknown
+    vertices: SelectorVertices
+
+    constructor(
+        instance: TwoLike,
+        group: GroupLike,
+        x1: number,
+        x2: number,
+        y1: number,
+        y2: number,
+        showCircles: unknown
+    ) {
         this.two = instance
         this.group = group
-        this.area = null
-        this.circle1 = null
-        this.circle2 = null
-        this.circle3 = null
-        this.circle4 = null
-        this.circleGroup = null
-        this.areaGroup = null
         this.showCircles = showCircles
-        this.vertices = {
-            x1,
-            x2,
-            y1,
-            y2,
-        }
+        this.vertices = { x1, x2, y1, y2 }
     }
-    create() {
+
+    create(): void {
         const { x1, x2, y1, y2 } = this.vertices
-        // console.log("vertices", this.two, x1, x2, y1, y2);
 
         const area = this.two.makePath(x1, y1, x2, y1, x2, y2, x1, y2)
         area.fill = 'rgba(0,0,0,0)'
         area.opacity = 1
         area.linewidth = 2
-        // area.dashes[0] = 6
         area.stroke = '#C4901A'
-        // area.curved = true;
-        // console.log("area", area);
         this.area = area
 
-        let circleGroup = null
+        let circleGroup: ShapeLike = null
         if (this.showCircles) {
-            // console.log("show circles 1", this.showCircles);
             switch (this.showCircles) {
-                case 2:
-                    // console.log("falls in case 2");
+                case 2: {
                     const yAxisMidpoint = (y1 + y2) / 2
                     const circleLeft = this.two.makeCircle(x1, yAxisMidpoint, 3)
                     const circleRight = this.two.makeCircle(
@@ -46,21 +63,19 @@ export default class Selector {
                         yAxisMidpoint,
                         3
                     )
-                    // const circleGroup = this.two.makeGroup(circle1, circle2, circle3, circle4);
                     this.circle1 = circleLeft
                     this.circle2 = circleRight
                     this.circle3 = null
                     this.circle4 = null
                     circleGroup = this.two.makeGroup(circleLeft, circleRight)
-                    // circleGroup.opacity = 1
                     this.circleGroup = circleGroup
                     break
-                case 4:
+                }
+                case 4: {
                     const circle1 = this.two.makeCircle(x1, y1, 4)
                     const circle2 = this.two.makeCircle(x2, y1, 4)
                     const circle3 = this.two.makeCircle(x2, y2, 4)
                     const circle4 = this.two.makeCircle(x1, y2, 4)
-                    // const circleGroup = this.two.makeGroup(circle1, circle2, circle3, circle4);
                     this.circle1 = circle1
                     this.circle2 = circle2
                     this.circle3 = circle3
@@ -76,7 +91,7 @@ export default class Selector {
                     circleGroup.stroke = '#C4901A'
                     this.circleGroup = circleGroup
                     break
-
+                }
                 default:
                     break
             }
@@ -88,25 +103,25 @@ export default class Selector {
         this.group.add(areaGroup)
         this.two.update()
 
-        const clearSelector = () => {
+        const clearSelector = (): void => {
             this.areaGroup.opacity = 0
         }
         window.addEventListener('clearSelector', clearSelector, false)
     }
 
-    show() {
+    show(): void {
         this.areaGroup.opacity = 1
     }
 
-    hide() {
+    hide(): void {
         this.areaGroup.opacity = 0
     }
 
-    getInstance() {
+    getInstance(): string {
         return this.areaGroup.id
     }
 
-    setScale(scale) {
+    setScale(scale: number): void {
         const s = scale > 0 ? scale : 1
         this.area.linewidth = 2 / s
         if (this.showCircles && this.circle1) {
@@ -122,32 +137,35 @@ export default class Selector {
         }
     }
 
-    update(x1, x2, y1, y2, scale = 1) {
-        // console.log("on selector update", x1, x2, y1, y2);
-        this.vertices = {
-            x1,
-            x2,
-            y1,
-            y2,
-        }
+    update(
+        x1: number,
+        x2: number,
+        y1: number,
+        y2: number,
+        scale = 1
+    ): void {
+        this.vertices = { x1, x2, y1, y2 }
 
         this.area.vertices = [
-            new Two.Anchor(x1, y1, null, null, null, null, Two.Commands.line),
-            new Two.Anchor(x2, y1, null, null, null, null, Two.Commands.line),
-
-            new Two.Anchor(x2, y2, null, null, null, null, Two.Commands.line),
-            new Two.Anchor(x1, y2, null, null, null, null, Two.Commands.line),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            new (Two as any).Anchor(x1, y1, null, null, null, null, (Two as any).Commands.line),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            new (Two as any).Anchor(x2, y1, null, null, null, null, (Two as any).Commands.line),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            new (Two as any).Anchor(x2, y2, null, null, null, null, (Two as any).Commands.line),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            new (Two as any).Anchor(x1, y2, null, null, null, null, (Two as any).Commands.line),
         ]
 
         if (this.showCircles) {
             this.circleGroup.opacity = 1
-            // console.log("show circles 2", this.showCircles);
             switch (this.showCircles) {
-                case 2:
+                case 2: {
                     const yAxisMidpoint = (y1 + y2) / 2
                     this.circle1.translation.set(x1, yAxisMidpoint)
                     this.circle2.translation.set(x2, yAxisMidpoint)
                     break
+                }
                 case 4:
                     this.circle1.translation.set(x1, y1)
                     this.circle2.translation.set(x2, y1)
