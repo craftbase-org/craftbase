@@ -1,7 +1,23 @@
 import { gql } from '@apollo/client'
+import type { TypedDocumentNode } from '@apollo/client'
+import type {
+    MyQueryQuery,
+    MyQueryQueryVariables,
+    GetComponentTypesQuery,
+    GetComponentTypesQueryVariables,
+    GetComponentsForBoardQuery,
+    GetComponentsForBoardQueryVariables,
+    GetComponentInfoQueryQuery,
+    GetComponentInfoQueryQueryVariables,
+    GetBoardComponentsQuery,
+    GetBoardComponentsQueryVariables,
+} from '../generated'
 
-export const GET_USER_DETAILS = gql`
-    query MyQuery($id: uuid = "") {
+export const GET_USER_DETAILS: TypedDocumentNode<
+    MyQueryQuery,
+    MyQueryQueryVariables
+> = gql`
+    query MyQuery($id: String = "") {
         users: users_user(where: { id: { _eq: $id } }) {
             firstName
             id
@@ -9,7 +25,10 @@ export const GET_USER_DETAILS = gql`
     }
 `
 
-export const GET_COMPONENT_TYPES = gql`
+export const GET_COMPONENT_TYPES: TypedDocumentNode<
+    GetComponentTypesQuery,
+    GetComponentTypesQueryVariables
+> = gql`
     query getComponentTypes {
         componentTypes: components_componentType {
             label
@@ -23,7 +42,10 @@ export const GET_COMPONENT_TYPES = gql`
     }
 `
 
-export const GET_COMPONENTS_FOR_BOARD_QUERY = gql`
+export const GET_COMPONENTS_FOR_BOARD_QUERY: TypedDocumentNode<
+    GetComponentsForBoardQuery,
+    GetComponentsForBoardQueryVariables
+> = gql`
     query getComponentsForBoard($boardId: uuid = "") {
         components: components_component(
             where: { boardId: { _eq: $boardId } }
@@ -50,7 +72,10 @@ export const GET_COMPONENTS_FOR_BOARD_QUERY = gql`
     }
 `
 
-export const GET_COMPONENT_INFO_QUERY = gql`
+export const GET_COMPONENT_INFO_QUERY: TypedDocumentNode<
+    GetComponentInfoQueryQuery,
+    GetComponentInfoQueryQueryVariables
+> = gql`
     query getComponentInfoQuery($id: uuid = "") {
         component: components_component_by_pk(id: $id) {
             metadata
@@ -76,8 +101,11 @@ export const GET_COMPONENT_INFO_QUERY = gql`
     }
 `
 
-export const GET_BOARD_DATA_QUERY = gql`
-    query getBoardComponents($boardId: String! = "") {
+export const GET_BOARD_DATA_QUERY: TypedDocumentNode<
+    GetBoardComponentsQuery,
+    GetBoardComponentsQueryVariables
+> = gql`
+    query getBoardComponents($boardId: uuid! = "") {
         components: components_component(
             where: { boardId: { _eq: $boardId } }
         ) {

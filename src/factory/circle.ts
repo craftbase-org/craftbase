@@ -1,16 +1,30 @@
 import Main from './main'
-import { color_blue } from '../utils/constants'
 import { strokeTypeToDashes } from '../utils/misc'
 
-export default class CircleFactory extends Main {
-    createElement() {
+export interface CircleProperties {
+    fill?: string
+    width?: number
+    height?: number
+    radius?: number
+    stroke?: string
+    linewidth?: number
+    strokeType?: string | null
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ShapeLike = any
+
+export default class CircleFactory extends Main<CircleProperties> {
+    circle?: ShapeLike
+    group?: ShapeLike
+
+    createElement(): { group: ShapeLike; circle: ShapeLike } {
         const two = this.two
         const prevX = this.x
         const prevY = this.y
-        const { fill, width, height, radius, stroke, linewidth, strokeType } =
+        const { fill, width, height, stroke, linewidth, strokeType } =
             this.properties
 
-        // Implement core element
         const circle = two.makeEllipse(0, 0, 0, 0)
         circle.width = width || 100
         circle.height = height || 100
@@ -22,12 +36,10 @@ export default class CircleFactory extends Main {
 
         this.circle = circle
 
-        // Create group and take children elements as a parameter
         const group = two.makeGroup(circle)
-        group.translation.x = parseInt(prevX)
-        group.translation.y = parseInt(prevY)
+        group.translation.x = parseInt(String(prevX))
+        group.translation.y = parseInt(String(prevY))
         this.group = group
-        // console.log('group.id circle', group.id)
         return { group: this.group, circle: this.circle }
     }
 }
