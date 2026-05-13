@@ -138,14 +138,17 @@ interface ResolveResult {
 
 // Walk the DOM event path to find the Two.js group and determine drag behavior.
 export function resolveShapeFromPath(
-    path: Element[],
+    path: EventTarget[] | undefined,
     two: TwoLike
 ): ResolveResult {
     let shape: ShapeLike | null = null
     let avoidDragging = false
 
-    path.forEach((item) => {
-        const classList = (item as HTMLElement)?.classList
+    if (!path) return { shape, avoidDragging }
+
+    path.forEach((rawItem) => {
+        const item = rawItem as HTMLElement
+        const classList = item?.classList
         if (classList?.value?.includes('avoid-dragging')) {
             avoidDragging = true
             if (item.tagName === 'g' && shape == null) {
