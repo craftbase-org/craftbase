@@ -530,14 +530,25 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         y: number
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ): any | null => {
-        if (!getComponentTypesData) return null
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let typeItem: any = null
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        getComponentTypesData.componentTypes.forEach((item: any) => {
-            if (item.label === 'text') typeItem = item
-        })
-        if (!typeItem) return null
+        if (getComponentTypesData) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            getComponentTypesData.componentTypes.forEach((item: any) => {
+                if (item.label === 'text') typeItem = item
+            })
+        }
+        // Fallback when the Hasura catalog isn't reachable — keeps text
+        // creation working when craftbase runs standalone as a library.
+        if (!typeItem) {
+            typeItem = {
+                width: 120,
+                height: 36,
+                fill: 'transparent',
+                textColor: '#3A342C',
+                metadata: {},
+            }
+        }
         const userId = localStorage.getItem('userId')
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
         const fontSizePx =

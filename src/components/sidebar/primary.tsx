@@ -16,6 +16,21 @@ import MenuDrawer from './menuDrawer'
 
 const DRAW_SHAPE_TYPES = ['circle', 'rectangle', 'diamond']
 
+// Defaults used when the Hasura componentTypes catalog isn't reachable
+// (craftbase runs standalone as a library without a backend). Keeps shape
+// creation working end-to-end without DB seeds.
+const FALLBACK_CATALOG: Record<
+    string,
+    { width: number; height: number; fill: string; textColor: string | null }
+> = {
+    rectangle: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
+    circle: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
+    diamond: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
+    arrowLine: { width: 100, height: 0, fill: 'transparent', textColor: null },
+    divider: { width: 100, height: 0, fill: 'transparent', textColor: null },
+    text: { width: 120, height: 36, fill: 'transparent', textColor: '#3A342C' },
+}
+
 const PrimarySidebar = (): ReactElement => {
     const {
         boardId,
@@ -114,6 +129,43 @@ const PrimarySidebar = (): ReactElement => {
                     }
                 }
             })
+        }
+
+        // Fallback when the Hasura catalog isn't reachable.
+        if (!shapeData && FALLBACK_CATALOG[label]) {
+            const userId = localStorage.getItem('userId')
+            const fb = FALLBACK_CATALOG[label]
+            shapeData = {
+                id: generateId,
+                componentType: label,
+                linewidth: defaultLinewidth,
+                strokeType: defaultStrokeType,
+                stroke: defaultStrokeColor ?? '#3A342C',
+                children: {},
+                x: -9999,
+                y: -9999,
+                x1: 0,
+                x2: 0,
+                y1: 0,
+                y2: 0,
+                boardId,
+                boardName: null,
+                radius: null,
+                iconStroke: null,
+                isDummy: null,
+                createdAt: null,
+                metadata: {
+                    opacity: defaultOpacity ?? 1,
+                    ...(defaultTextFontFamily && {
+                        textFontFamily: defaultTextFontFamily,
+                    }),
+                },
+                width: fb.width,
+                height: fb.height,
+                fill: fb.fill,
+                textColor: fb.textColor,
+                updatedBy: userId,
+            }
         }
 
         if (!shapeData) return
@@ -255,10 +307,13 @@ const PrimarySidebar = (): ReactElement => {
                     })
                 }
 
-                // Fallback for diamond when the DB catalog doesn't have a
-                // diamond row yet.
-                if (!shapeData && label === 'diamond') {
+                // Fallback when the DB catalog isn't reachable / doesn't
+                // seed this label. Lets craftbase work standalone as a
+                // library without a Hasura backend.
+                if (!shapeData && FALLBACK_CATALOG[label]) {
                     const userId = localStorage.getItem('userId')
+                    const fb = FALLBACK_CATALOG[label]
+                    const useShapeFill = DRAW_SHAPE_TYPES.includes(label)
                     shapeData = {
                         id: generateId,
                         componentType: label,
@@ -275,7 +330,7 @@ const PrimarySidebar = (): ReactElement => {
                                 (randomNumber * window.outerHeight) / 100
                         ),
                         x1: 0,
-                        x2: 0,
+                        x2: label.includes('divider') ? 100 : 0,
                         y1: 0,
                         y2: 0,
                         boardId,
@@ -290,10 +345,12 @@ const PrimarySidebar = (): ReactElement => {
                                 textFontFamily: defaultTextFontFamily,
                             }),
                         },
-                        width: 160,
-                        height: 160,
-                        fill: defaultFill ?? '#fff',
-                        textColor: '#3A342C',
+                        width: fb.width,
+                        height: fb.height,
+                        fill: useShapeFill
+                            ? (defaultFill ?? fb.fill)
+                            : fb.fill,
+                        textColor: fb.textColor,
                         updatedBy: userId,
                     }
                 }
