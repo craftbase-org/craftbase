@@ -102,15 +102,15 @@ export interface BoardContextValue {
     isArrowSelected: boolean
     isRubberMode: boolean
     isPanMode: boolean
-    togglePencilMode: (...args: unknown[]) => void
-    togglePointer: (...args: unknown[]) => void
-    togglePanMode: (...args: unknown[]) => void
+    togglePencilMode: (value: boolean) => void
+    togglePointer: (value: boolean) => void
+    togglePanMode: (value: boolean) => void
     setArrowDrawModeInBoard: (value: boolean) => void
     setTextDrawModeInBoard: (value: boolean) => void
     setRubberModeInBoard: (value: boolean) => void
     cancelPendingElement: () => void
     enableTextDrawMode: () => void
-    createTextAtSurface: (...args: unknown[]) => void
+    createTextAtSurface: (x: number, y: number) => void
     updateLastAddedElement: (element: unknown) => void
 
     // Selection

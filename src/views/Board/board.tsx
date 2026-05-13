@@ -4,14 +4,15 @@ import React, {
     useRef,
     useContext,
     createContext,
+    type ReactNode,
 } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useMediaQueryUtils } from 'constants/exportHooks'
+import { useMediaQueryUtils } from '../../constants/exportHooks'
 import {
     GET_COMPONENTS_FOR_BOARD_QUERY,
     GET_COMPONENT_TYPES,
-} from 'schema/queries'
+} from '../../schema/queries'
 import {
     UPDATE_USER_REVISIT_COUNT,
     INSERT_COMPONENT,
@@ -20,18 +21,21 @@ import {
     DELETE_BULK_COMPONENTS,
     UPDATE_COMPONENT_INFO,
     CREATE_BOARD,
-} from 'schema/mutations'
+} from '../../schema/mutations'
 import Canvas from '../../newCanvas'
-import ZoomControls from 'components/ZoomControls'
-import Sidebar from 'components/sidebar/primary'
-import ElementPropertiesToolbar from 'components/sidebar/elementProperties'
-import controlsIcon from 'assets/controls.svg'
-import Spinner from 'components/common/spinnerWithSize'
-import PermissionErrorModal from 'components/modals/PermissionErrorModal'
-import StorageLimitModal from 'components/modals/StorageLimitModal'
-import { generateUUID } from 'utils/misc'
-import { pollUntilElement } from 'utils/canvasUtils'
-import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from 'utils/constants'
+import ZoomControls from '../../components/ZoomControls'
+import Sidebar from '../../components/sidebar/primary'
+import ElementPropertiesToolbar from '../../components/sidebar/elementProperties'
+import controlsIcon from '../../assets/controls.svg'
+import Spinner from '../../components/common/spinnerWithSize'
+import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
+import StorageLimitModal from '../../components/modals/StorageLimitModal'
+import { generateUUID } from '../../utils/misc'
+import { pollUntilElement } from '../../utils/canvasUtils'
+import {
+    TEXT_SIZES_OBJECT,
+    MOBILE_TEXT_SIZES_OBJECT,
+} from '../../utils/constants'
 import {
     RUBBER_MODE_KEY,
     GROUP_COMPONENT,
@@ -46,19 +50,32 @@ import {
     VIEWPORT_KEY_PREFIX,
     MOBILE_VIEWPORT_KEY_PREFIX,
     VIEWPORT_TTL_MS,
-} from 'constants/misc'
-import { useDrawingModes } from 'hooks/useDrawingModes'
-import { useElementDefaults } from 'hooks/useElementDefaults'
-import { useMobileToolbarPanels } from 'hooks/useMobileToolbarPanels'
-import { useLocalDraftPersistence } from 'hooks/useLocalDraftPersistence'
-import { useComponentHistory } from 'hooks/useComponentHistory'
-import { createApplyProperty } from 'utils/applyProperty'
-import { createApplyGroupProperty } from 'utils/applyGroupProperty'
+} from '../../constants/misc'
+import { useDrawingModes } from '../../hooks/useDrawingModes'
+import { useElementDefaults } from '../../hooks/useElementDefaults'
+import { useMobileToolbarPanels } from '../../hooks/useMobileToolbarPanels'
+import { useLocalDraftPersistence } from '../../hooks/useLocalDraftPersistence'
+import {
+    useComponentHistory,
+    type HistoryEntry,
+} from '../../hooks/useComponentHistory'
+import { createApplyProperty } from '../../utils/applyProperty'
+import { createApplyGroupProperty } from '../../utils/applyGroupProperty'
+import type {
+    BoardProps,
+    BoardContextValue,
+    ComponentRecord,
+    ComponentStore,
+    CameraChangeEvent,
+} from '../../types/board'
 
-export const BoardContext = createContext()
+export const BoardContext = createContext<BoardContextValue | undefined>(
+    undefined
+)
 
 // Strips __typename fields injected by Apollo before sending data back to Hasura
-function stripTypename(obj) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stripTypename(obj: any): any {
     if (Array.isArray(obj)) return obj.map(stripTypename)
     if (obj && typeof obj === 'object') {
         const { __typename, ...rest } = obj
@@ -69,7 +86,7 @@ function stripTypename(obj) {
     return obj
 }
 
-const BoardViewPage = (props) => {
+const BoardViewPage: React.FC<BoardProps> = (props) => {
     const routeParams = useParams()
     const boardIdFromUrl = routeParams.id
     const [localBoardId, setLocalBoardId] = useState(() => {
@@ -88,9 +105,11 @@ const BoardViewPage = (props) => {
     const [isPersisted, setIsPersisted] = useState(!!boardIdFromUrl)
     const isPersistedRef = useRef(!!boardIdFromUrl)
     const boardId = boardIdFromUrl || localBoardId
-    const [backgroundBoardId, setBackgroundBoardId] = useState(null)
-    const backgroundBoardIdRef = useRef(null)
-    const boardCreationInFlightRef = useRef(false)
+    const [backgroundBoardId, setBackgroundBoardId] = useState<string | null>(
+        null
+    )
+    const backgroundBoardIdRef = useRef<string | null>(null)
+    const boardCreationInFlightRef = useRef<boolean>(false)
 
     const {
         loading: getComponentsForBoardLoading,
@@ -143,24 +162,29 @@ const BoardViewPage = (props) => {
         ignoreResults: true,
     })
 
-    const [componentStore, setComponentStore] = useState({})
-    const [lastAddedElement, setLastAddedElement] = useState(null)
-    const [twoJSInstance, setTwoJSInstance] = useState(null)
-    const [zuiInBoard, setZuiInBoard] = useState(null)
-    const [selectedComponent, setSelectedComponent] = useState(null)
-    const [selectedGroup, setSelectedGroup] = useState(null)
+    const [componentStore, setComponentStore] = useState<ComponentStore>({})
+    const [lastAddedElement, setLastAddedElement] =
+        useState<ComponentRecord | null>(null)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [twoJSInstance, setTwoJSInstance] = useState<any>(null)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [zuiInBoard, setZuiInBoard] = useState<any>(null)
+    const [selectedComponent, setSelectedComponent] = useState<unknown>(null)
+    const [selectedGroup, setSelectedGroup] = useState<unknown>(null)
     // Mirror of selectedGroup as a ref — useComponentHistory's applyBatch needs
     // to read the currently-focused group at undo/redo time without re-running.
-    const selectedGroupRef = useRef(null)
-    const [currentElement, setCurrentElement] = useState(null)
+    const selectedGroupRef = useRef<unknown>(null)
+    const [currentElement, setCurrentElement] = useState<string | null>(null)
     const [showPermissionErrorModal, setShowPermissionErrorModal] =
         useState(false)
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
-    const stateRefForComponentStore = useRef()
-    const twoJSInstanceRef = useRef(null)
-    const zuiInBoardRef = useRef(null)
-    const skipComponentStoreResetRef = useRef(false)
+    const stateRefForComponentStore = useRef<ComponentStore>({})
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const twoJSInstanceRef = useRef<any>(null)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const zuiInBoardRef = useRef<any>(null)
+    const skipComponentStoreResetRef = useRef<boolean>(false)
 
     const {
         pointerToggle,
@@ -207,7 +231,7 @@ const BoardViewPage = (props) => {
         setDefaultStrokeTypeInBoard,
     } = useElementDefaults()
 
-    const onStorageLimitRef = useRef(null)
+    const onStorageLimitRef = useRef<(() => Promise<void>) | null>(null)
 
     const {
         showStorageLimitModal,
@@ -276,7 +300,9 @@ const BoardViewPage = (props) => {
                 )
                     continue
                 try {
-                    const parsed = JSON.parse(localStorage.getItem(key))
+                    const parsed = JSON.parse(
+                        localStorage.getItem(key) ?? 'null'
+                    )
                     if (
                         !parsed?.savedAt ||
                         now - parsed.savedAt > VIEWPORT_TTL_MS
@@ -326,9 +352,10 @@ const BoardViewPage = (props) => {
             getComponentsForBoardData.components
         ) {
             if (getComponentsForBoardData.components.length > 0) {
-                let baseComponentStore = { ...componentStore }
-                getComponentsForBoardData.components.forEach((item) => {
-                    baseComponentStore[item.id] = item
+                const baseComponentStore: ComponentStore = { ...componentStore }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                getComponentsForBoardData.components.forEach((item: any) => {
+                    baseComponentStore[item.id] = item as ComponentRecord
                 })
                 setComponentStore(baseComponentStore)
             }
@@ -354,35 +381,40 @@ const BoardViewPage = (props) => {
         )
     }
 
-    const updateLastAddedElement = (obj) => {
-        setLastAddedElement(obj)
-        document.getElementById('main-two-root').style.cursor = 'crosshair'
+    const setRootCursor = (cursor: string) => {
+        const root = document.getElementById('main-two-root')
+        if (root) root.style.cursor = cursor
     }
 
-    const togglePointer = (pointerVal) => {
+    const updateLastAddedElement = (obj: unknown) => {
+        setLastAddedElement(obj as ComponentRecord | null)
+        setRootCursor('crosshair')
+    }
+
+    const togglePointer = (pointerVal: boolean) => {
         setPointerToggle(pointerVal)
         setPencilMode(false)
         if (pointerVal) {
             cancelPendingElement()
             setSelectedComponent(null)
             setRubberModeInBoard(false)
-            document.getElementById('main-two-root').style.cursor = 'default'
+            setRootCursor('default')
         }
     }
 
-    const togglePencilMode = (value) => {
+    const togglePencilMode = (value: boolean) => {
         setPencilMode(value)
         if (value) {
             cancelPendingElement()
             setRubberModeInBoard(false)
             localStorage.setItem(PENCIL_MODE_KEY, 'TRUE')
-            document.getElementById('main-two-root').style.cursor = 'crosshair'
+            setRootCursor('crosshair')
         } else {
             localStorage.removeItem(PENCIL_MODE_KEY)
         }
     }
 
-    const togglePanMode = (value) => {
+    const togglePanMode = (value: boolean) => {
         togglePanModeFromHook(value, {
             cancelPendingElement,
             setSelectedComponent,
@@ -390,17 +422,19 @@ const BoardViewPage = (props) => {
         })
     }
 
-    const setTwoJSInstanceInBoard = (two) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const setTwoJSInstanceInBoard = (two: any) => {
         twoJSInstanceRef.current = two
         setTwoJSInstance(two)
     }
 
-    const setZuiInstanceInBoard = (zuiInst) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const setZuiInstanceInBoard = (zuiInst: any) => {
         zuiInBoardRef.current = zuiInst
         setZuiInBoard(zuiInst)
     }
 
-    const setSelectedComponentInBoard = (shape) => {
+    const setSelectedComponentInBoard = (shape: unknown) => {
         setSelectedComponent(shape ?? null)
     }
 
@@ -417,7 +451,8 @@ const BoardViewPage = (props) => {
             const { data: boardData } = await createBoard({
                 variables: { object: {} },
             })
-            const newBoardId = boardData.board.id
+            const newBoardId = boardData?.board?.id
+            if (!newBoardId) return
             backgroundBoardIdRef.current = newBoardId
             setBackgroundBoardId(newBoardId)
             localStorage.setItem(BACKGROUND_BOARD_STORAGE_KEY, newBoardId)
@@ -430,10 +465,10 @@ const BoardViewPage = (props) => {
 
     // Records ADD action, updates store and syncs to DB
     const addToLocalComponentStore = (
-        id,
-        type,
-        componentInfo,
-        skipHistory = false
+        id: string,
+        type: string,
+        componentInfo: ComponentRecord,
+        skipHistory: boolean = false
     ) => {
         // groupobject is a transient visual construct and must never be persisted
         if (
@@ -448,7 +483,8 @@ const BoardViewPage = (props) => {
             relativeX: _rX,
             relativeY: _rY,
             ...safeInfo
-        } = componentInfo ?? {}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } = (componentInfo ?? {}) as any
 
         // Trigger background board creation on first interaction
         ensureBackgroundBoard()
@@ -470,9 +506,11 @@ const BoardViewPage = (props) => {
 
         if (isPersistedRef.current && safeInfo) {
             insertComponent({ variables: { object: safeInfo } }).catch(
-                (error) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (error: any) => {
                     const isPermissionError = error.graphQLErrors?.some(
-                        (e) => e.extensions?.code === 'permission-error'
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (e: any) => e.extensions?.code === 'permission-error'
                     )
                     if (isPermissionError) {
                         undoLastAction()
@@ -486,17 +524,25 @@ const BoardViewPage = (props) => {
     // Builds a text-element shapeData object using the dynamic defaults
     // returned by GET_COMPONENT_TYPES (so dblclick/T-key paths produce the
     // exact same shape the sidebar Text button does).
-    const buildTextShapeData = (id, x, y) => {
+    const buildTextShapeData = (
+        id: string,
+        x: number,
+        y: number
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ): any | null => {
         if (!getComponentTypesData) return null
-        let typeItem = null
-        getComponentTypesData.componentTypes.forEach((item) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let typeItem: any = null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        getComponentTypesData.componentTypes.forEach((item: any) => {
             if (item.label === 'text') typeItem = item
         })
         if (!typeItem) return null
         const userId = localStorage.getItem('userId')
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
         const fontSizePx =
-            sizesMap[defaultTextSize] ?? typeItem.metadata?.fontSize
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (sizesMap as any)[defaultTextSize] ?? typeItem.metadata?.fontSize
         return {
             id,
             componentType: 'newText',
@@ -511,8 +557,8 @@ const BoardViewPage = (props) => {
                 }),
                 opacity: defaultOpacity ?? 1,
             },
-            x: parseInt(x),
-            y: parseInt(y),
+            x: Math.trunc(x),
+            y: Math.trunc(y),
             x2: 0,
             boardId: boardId,
             width: typeItem.width,
@@ -532,7 +578,7 @@ const BoardViewPage = (props) => {
         const shapeData = buildTextShapeData(id, -9999, -9999)
         if (!shapeData) return
         updateLastAddedElement(shapeData)
-        document.getElementById('main-two-root').style.cursor = 'crosshair'
+        setRootCursor('crosshair')
         localStorage.setItem(TEXT_DRAW_MODE_KEY, 'true')
         localStorage.setItem(LAST_ADDED_ELEMENT_ID_KEY, id)
         setTextDrawModeInBoard(true)
@@ -544,7 +590,7 @@ const BoardViewPage = (props) => {
     // timer — the NewText component is lazy-loaded, so on first use the
     // listener may not be registered for several hundred ms. Poll the Two.js
     // scene for the element instead, then dispatch once it's mounted.
-    const createTextAtSurface = (x, y) => {
+    const createTextAtSurface = (x: number, y: number) => {
         const id = generateUUID()
         const shapeData = buildTextShapeData(id, x, y)
         if (!shapeData) return
@@ -562,20 +608,23 @@ const BoardViewPage = (props) => {
 
     // Snapshots only the properties being changed before applying bulk updates
     const updateComponentBulkPropertiesInLocalStore = (
-        id,
-        bulkObj,
-        skipHistory = false,
-        syncDefaults = false
+        id: string,
+        bulkObj: Partial<ComponentRecord>,
+        skipHistory: boolean = false,
+        syncDefaults: boolean = false
     ) => {
         const userId = localStorage.getItem('userId')
 
         if (!skipHistory) {
             // Snapshot only the properties that bulkObj will overwrite
             const currentComponent = stateRefForComponentStore.current[id]
-            const prevProps = {}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const prevProps: Record<string, any> = {}
             Object.keys(bulkObj).forEach((key) => {
-                if (currentComponent?.[key] !== undefined) {
-                    prevProps[key] = currentComponent[key]
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const val = (currentComponent as any)?.[key]
+                if (val !== undefined) {
+                    prevProps[key] = val
                 }
             })
 
@@ -589,7 +638,8 @@ const BoardViewPage = (props) => {
         }
 
         const updatedComponentStore = { ...stateRefForComponentStore.current }
-        const merged = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const merged: any = {
             ...updatedComponentStore[id],
             ...bulkObj,
             updatedBy: userId,
@@ -614,25 +664,28 @@ const BoardViewPage = (props) => {
     }
 
     // Snapshots current x,y before updating position, then updates store and DB
-    const updateComponentVerticesInLocalStore = (id, x, y) => {
+    const updateComponentVerticesInLocalStore = (
+        id: string,
+        x: number,
+        y: number
+    ) => {
         const userId = localStorage.getItem('userId')
 
         recordToHistoryLog({
             action: 'UPDATE_VERTICES',
             id,
-            prevX: stateRefForComponentStore.current[id]?.x,
-            prevY: stateRefForComponentStore.current[id]?.y,
-            x: parseInt(x),
-            y: parseInt(y),
+            prevX: stateRefForComponentStore.current[id]?.x ?? 0,
+            prevY: stateRefForComponentStore.current[id]?.y ?? 0,
         })
 
         const updatedComponentStore = { ...stateRefForComponentStore.current }
         updatedComponentStore[id] = {
             ...updatedComponentStore[id],
-            x: parseInt(x),
-            y: parseInt(y),
+            x: Math.trunc(x),
+            y: Math.trunc(y),
             updatedBy: userId,
-        }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
 
@@ -641,8 +694,8 @@ const BoardViewPage = (props) => {
                 variables: {
                     id: id,
                     updateObj: {
-                        x: parseInt(x),
-                        y: parseInt(y),
+                        x: Math.trunc(x),
+                        y: Math.trunc(y),
                         updatedBy: userId,
                     },
                 },
@@ -650,13 +703,15 @@ const BoardViewPage = (props) => {
         }
     }
 
-    const deleteBulkComponentsFromLocalStore = (ids) => {
+    const deleteBulkComponentsFromLocalStore = (ids: string[]) => {
         ensureBackgroundBoard()
 
-        const batchEntries = ids.map((id) => ({
+        const batchEntries: HistoryEntry[] = ids.map((id) => ({
             action: 'DELETE',
             id,
-            prevState: { ...stateRefForComponentStore.current[id] },
+            prevState: {
+                ...stateRefForComponentStore.current[id],
+            } as ComponentRecord,
         }))
         recordBatchToHistoryLog(batchEntries)
 
@@ -676,13 +731,15 @@ const BoardViewPage = (props) => {
     }
 
     // Snapshots full component state before deletion, then removes from store and DB
-    const deleteComponentFromLocalStore = (id) => {
+    const deleteComponentFromLocalStore = (id: string) => {
         ensureBackgroundBoard()
 
         recordToHistoryLog({
             action: 'DELETE',
             id,
-            prevState: { ...stateRefForComponentStore.current[id] },
+            prevState: {
+                ...stateRefForComponentStore.current[id],
+            } as ComponentRecord,
         })
 
         const updatedComponentStore = { ...stateRefForComponentStore.current }
@@ -698,12 +755,13 @@ const BoardViewPage = (props) => {
         if (isPersistedRef.current) {
             deleteComponent({
                 variables: { id },
-                errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                errorPolicy: import.meta.env.VITE_GRAPHQL_ERROR_POLICY as any,
             })
         }
     }
 
-    const setCurrentElementInBoard = (val) => {
+    const setCurrentElementInBoard = (val: string | null) => {
         setCurrentElement(val)
     }
 
@@ -716,14 +774,15 @@ const BoardViewPage = (props) => {
         })
     }
 
-    const persistBoard = async () => {
+    const persistBoard = async (): Promise<string> => {
         // Always create a fresh board at share time. The background board
         // pre-created by ensureBackgroundBoard may be stale (e.g. DB was reset
         // between sessions) — using its ID would cause a FK violation on insert.
         const { data: boardData } = await createBoard({
             variables: { object: {} },
         })
-        const serverBoardId = boardData.board.id
+        const serverBoardId = boardData?.board?.id
+        if (!serverBoardId) throw new Error('createBoard returned no id')
 
         // Insert all components to DB under the server board ID.
         // Generate a fresh UUID for each component's id so re-sharing from '/'
@@ -750,7 +809,7 @@ const BoardViewPage = (props) => {
         // local identity rotates.
         const newLocalId = generateUUID()
 
-        const updatedStore = {}
+        const updatedStore: ComponentStore = {}
         Object.entries(stateRefForComponentStore.current).forEach(
             ([id, comp]) => {
                 updatedStore[id] = { ...comp, boardId: newLocalId }
@@ -817,17 +876,25 @@ const BoardViewPage = (props) => {
         clearHistory(isPersisted)
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sel: any = selectedComponent
     const isArrowSelected =
         selectedComponent !== null &&
-        (selectedComponent?.shape?.type === 'arrowLine' ||
-            selectedComponent?.group?.data?.elementData?.isLineCircle === true)
+        (sel?.shape?.type === 'arrowLine' ||
+            sel?.group?.data?.elementData?.isLineCircle === true)
 
     // Mirror text-property changes to a live editing textarea so the overlay
     // visually matches what Two.js will render on blur. No-op when no
     // textarea is open. fontSize is in surface units; we scale to screen
     // pixels using the current scene zoom.
-    const syncOpenTextarea = ({ fontSize, fontFamily }) => {
-        const ta = document.querySelector('.temp-input-area')
+    const syncOpenTextarea = ({
+        fontSize,
+        fontFamily,
+    }: {
+        fontSize?: number
+        fontFamily?: string
+    }) => {
+        const ta = document.querySelector<HTMLElement>('.temp-input-area')
         if (!ta) return
         const sceneScale = twoJSInstance?.scene?.scale || 1
         if (typeof fontSize === 'number') {
@@ -841,16 +908,17 @@ const BoardViewPage = (props) => {
         }
     }
 
-    const handleTextSizeChange = (newLabel) => {
+    const handleTextSizeChange = (newLabel: string) => {
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
-        const textSize = sizesMap[newLabel]
-        const twoText = selectedComponent?.shape?.data
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const textSize = (sizesMap as any)[newLabel]
+        const twoText = sel?.shape?.data
         if (!twoText) return
         twoText.size = textSize
         twoText.leading = textSize
-        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
-            selectedComponent?.group?.data?.elementData?.metadata ?? {}
+            sel?.group?.data?.elementData?.metadata ?? {}
         updateComponentBulkPropertiesInLocalStore(componentId, {
             metadata: {
                 ...existingMetadata,
@@ -865,7 +933,13 @@ const BoardViewPage = (props) => {
     // Schedule a post-render measurement of the text's bounding box and grow
     // the parent rectangle if needed. Called after any property change that
     // affects text dimensions (size, family, etc.).
-    const scheduleRectFitToText = (twoText, componentId, updatedMetadata) => {
+    const scheduleRectFitToText = (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        twoText: any,
+        componentId: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        updatedMetadata: any
+    ) => {
         // Capture whether text editing is active NOW so the RAF can detect
         // if blur fires between the property change and the next frame.
         const textAreaAtChange = document.querySelector('.temp-input-area')
@@ -881,7 +955,7 @@ const BoardViewPage = (props) => {
                 return
 
             twoJSInstance?.update()
-            const rectangleShape = selectedComponent?.shape?.data
+            const rectangleShape = sel?.shape?.data
             const bbox = twoText._renderer?.elem?.getBBox?.()
             if (!rectangleShape || !bbox || bbox.width <= 0) {
                 updateComponentBulkPropertiesInLocalStore(componentId, {
@@ -915,35 +989,36 @@ const BoardViewPage = (props) => {
         })
     }
 
-    const handleRectangleTextSizeChange = (newLabel) => {
+    const handleRectangleTextSizeChange = (newLabel: string) => {
         const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
-        const textSize = sizesMap[newLabel]
-        const twoText = selectedComponent?.text?.data
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const textSize = (sizesMap as any)[newLabel]
+        const twoText = sel?.text?.data
         if (!twoText) return
         twoText.size = textSize
         twoJSInstance?.update()
 
-        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const componentId = sel?.group?.data?.elementData?.id
         // stateRefForComponentStore is always current; group.elementData.metadata
         // is only set at mount and is stale after blur updates the store.
         const existingMetadata =
             stateRefForComponentStore.current[componentId]?.metadata ?? {}
         const updatedMetadata = { ...existingMetadata, textFontSize: textSize }
-        if (selectedComponent?.group?.data?.elementData) {
-            selectedComponent.group.data.elementData.metadata = updatedMetadata
+        if (sel?.group?.data?.elementData) {
+            sel.group.data.elementData.metadata = updatedMetadata
         }
 
         scheduleRectFitToText(twoText, componentId, updatedMetadata)
         syncOpenTextarea({ fontSize: textSize })
     }
 
-    const handleTextFontFamilyChange = (fontFamily) => {
-        const twoText = selectedComponent?.shape?.data
+    const handleTextFontFamilyChange = (fontFamily: string) => {
+        const twoText = sel?.shape?.data
         if (!twoText) return
         twoText.family = fontFamily
-        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
-            selectedComponent?.group?.data?.elementData?.metadata ?? {}
+            sel?.group?.data?.elementData?.metadata ?? {}
         updateComponentBulkPropertiesInLocalStore(componentId, {
             metadata: {
                 ...existingMetadata,
@@ -957,20 +1032,20 @@ const BoardViewPage = (props) => {
         setDefaultTextFontFamily(fontFamily)
     }
 
-    const handleRectangleTextFontFamilyChange = (fontFamily) => {
-        const twoText = selectedComponent?.text?.data
+    const handleRectangleTextFontFamilyChange = (fontFamily: string) => {
+        const twoText = sel?.text?.data
         if (!twoText) return
         twoText.family = fontFamily
         twoJSInstance?.update()
-        const componentId = selectedComponent?.group?.data?.elementData?.id
+        const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
             stateRefForComponentStore.current[componentId]?.metadata ?? {}
         const updatedMetadata = {
             ...existingMetadata,
             textFontFamily: fontFamily,
         }
-        if (selectedComponent?.group?.data?.elementData) {
-            selectedComponent.group.data.elementData.metadata = updatedMetadata
+        if (sel?.group?.data?.elementData) {
+            sel.group.data.elementData.metadata = updatedMetadata
         }
         // Re-fit the rectangle to the new text bbox; some families (e.g.
         // Fraunces) render wider than Caveat at the same size.
@@ -1002,11 +1077,11 @@ const BoardViewPage = (props) => {
     // into React state so the sidebar can react. Independent of newCanvas.js's
     // own activeGroupRef listeners, which serve event-handler land.
     useEffect(() => {
-        const onFocus = (e) => {
+        const onFocus = ((e: CustomEvent) => {
             const g = e?.detail?.group ?? null
             selectedGroupRef.current = g
             setSelectedGroup(g)
-        }
+        }) as EventListener
         const onBlur = () => {
             selectedGroupRef.current = null
             setSelectedGroup(null)
@@ -1033,29 +1108,38 @@ const BoardViewPage = (props) => {
         updateComponentBulkPropertiesInLocalStore,
         updateBulkPropsForRectangleWithText: (id, obj) =>
             updateBulkPropsForRectangleWithText(id, obj),
-        handleTextSizeChange,
-        handleRectangleTextSizeChange,
-        handleTextFontFamilyChange,
-        handleRectangleTextFontFamilyChange,
+        handleTextSizeChange: (value: unknown) =>
+            handleTextSizeChange(value as string),
+        handleRectangleTextSizeChange: (value: unknown) =>
+            handleRectangleTextSizeChange(value as string),
+        handleTextFontFamilyChange: (value: unknown) =>
+            handleTextFontFamilyChange(value as string),
+        handleRectangleTextFontFamilyChange: (value: unknown) =>
+            handleRectangleTextFontFamilyChange(value as string),
         setDefaultFill,
         setDefaultStrokeColor,
         setDefaultLinewidth,
         setDefaultStrokeType,
         setDefaultOpacity,
         setDefaultTextColor,
-        setDefaultTextSize,
+        setDefaultTextSize: (value: string) =>
+            setDefaultTextSize(value as never),
         setDefaultTextFontFamily,
     })
 
-    const updateBulkPropsForRectangleWithText = (id, obj) => {
+    const updateBulkPropsForRectangleWithText = (
+        id: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        obj: any
+    ) => {
         let finalObj = { ...obj }
         if (obj.textColor !== undefined) {
             const existingMeta =
                 stateRefForComponentStore.current[id]?.metadata ?? {}
             const updatedMeta = { ...existingMeta, textFill: obj.textColor }
             finalObj.metadata = updatedMeta
-            if (selectedComponent?.group?.data?.elementData) {
-                selectedComponent.group.data.elementData.metadata = updatedMeta
+            if (sel?.group?.data?.elementData) {
+                sel.group.data.elementData.metadata = updatedMeta
             }
         }
         updateComponentBulkPropertiesInLocalStore(id, finalObj)
@@ -1132,7 +1216,9 @@ const BoardViewPage = (props) => {
 
     return (
         <>
-            <BoardContext.Provider value={contextValueForSidebar}>
+            <BoardContext.Provider
+                value={contextValueForSidebar as unknown as BoardContextValue}
+            >
                 <div>
                     <Sidebar />
                     {!isRubberMode && isMobile && (
@@ -1202,8 +1288,12 @@ const BoardViewPage = (props) => {
     )
 }
 
-export const useBoardContext = () => {
-    return useContext(BoardContext)
+export const useBoardContext = (): BoardContextValue => {
+    const ctx = useContext(BoardContext)
+    if (!ctx) {
+        throw new Error('useBoardContext must be called inside <Board />')
+    }
+    return ctx
 }
 
 export default BoardViewPage
