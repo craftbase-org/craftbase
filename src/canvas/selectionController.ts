@@ -1,10 +1,26 @@
 import Two from 'two.js'
 
-// Shape adapters — how the controller reads/writes dimensions per componentType.
-// Only shapes registered here participate in central selection/resize.
-// Arrow, pencil, divider intentionally absent — they stay on legacy interactjs
-// until we migrate them in a later stage.
-const DEFAULT_ADAPTER = {
+// Two.js scene shapes carry codebase-specific bookkeeping (elementData,
+// _renderer, etc.) outside the published types. Stay loose here; Stage 12
+// can tighten once newCanvas converges in Stage 9.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TwoLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ShapeLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GroupLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ZuiLike = any
+
+interface ShapeAdapter {
+    getLocalSize: (shape: ShapeLike) => { width: number; height: number }
+    applySize: (shape: ShapeLike, width: number, height: number) => void
+    resizable: boolean
+    minWidth: number
+    minHeight: number
+}
+
+const DEFAULT_ADAPTER: ShapeAdapter = {
     getLocalSize: (shape) => ({
         width: shape.width,
         height: shape.height,
@@ -18,7 +34,8 @@ const DEFAULT_ADAPTER = {
     minHeight: 20,
 }
 
-const TEXT_ADAPTER = {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const TEXT_ADAPTER: ShapeAdapter = {
     getLocalSize: (shape) => ({
         width: shape.getBoundingClientRect(true).width || 60,
         height: shape.getBoundingClientRect(true).height || 30,
@@ -29,11 +46,10 @@ const TEXT_ADAPTER = {
     minHeight: 20,
 }
 
-const SHAPE_ADAPTERS = {
+const SHAPE_ADAPTERS: Record<string, ShapeAdapter> = {
     rectangle: DEFAULT_ADAPTER,
     circle: DEFAULT_ADAPTER,
     diamond: DEFAULT_ADAPTER,
-    // newText: TEXT_ADAPTER,
 }
 
 const HANDLE_BASE_PX = 10
@@ -41,10 +57,18 @@ const CORNER_BASE_PX = 25
 const MIN_SCALE_DIMENSION = 20
 const SELECTION_PADDING = 5
 
-function buildToolbarState(group, shape) {
+interface ToolbarState {
+    element: Record<string, ShapeLike>
+    group: { id: string; data: GroupLike }
+    shape: { type: string | undefined; id: string; data: ShapeLike }
+    text: { data: ShapeLike }
+    icon: { data: Record<string, unknown> }
+}
+
+function buildToolbarState(group: GroupLike, shape: ShapeLike): ToolbarState {
     const componentType = group?.elementData?.componentType
     const textChild = group?.children?.find(
-        (child) => typeof child.value === 'string'
+        (child: ShapeLike) => typeof child.value === 'string'
     )
     return {
         element: {
@@ -65,13 +89,90 @@ function buildToolbarState(group, shape) {
     }
 }
 
-function distSq(ax, ay, bx, by) {
+function distSq(ax: number, ay: number, bx: number, by: number): number {
     const dx = ax - bx
     const dy = ay - by
     return dx * dx + dy * dy
 }
 
+interface SelectionControllerOptions {
+    two: TwoLike
+    zui: ZuiLike
+    domElement: HTMLElement
+    onSelect?: (state: ToolbarState) => void
+    onDeselect?: () => void
+    commit?: (
+        id: string,
+        patch: { width: number; height: number; x: number; y: number }
+    ) => void
+    recordHistory?: () => void
+    onDelete?: (group: GroupLike) => void
+}
+
+interface HitResult {
+    mode: 'scale' | 'rotate'
+    corner: CornerHandle
+}
+
+interface CornerHandle {
+    name: string
+    point: { x: number; y: number }
+}
+
+interface ScaleInteraction {
+    mode: 'scale'
+    corner: CornerHandle
+    startSurface: { x: number; y: number }
+    initialWidth: number
+    initialHeight: number
+    initialPosition: { x: number; y: number }
+    initialRotation: number
+}
+
+interface RotateInteraction {
+    mode: 'rotate'
+    corner: CornerHandle
+    startSurface: { x: number; y: number }
+    initialRotation: number
+    center: { x: number; y: number }
+}
+
+type Interaction = ScaleInteraction | RotateInteraction
+
 export default class SelectionController {
+    two: TwoLike
+    zui: ZuiLike
+    domElement: HTMLElement
+    callbacks: Required<
+        Pick<
+            SelectionControllerOptions,
+            'onSelect' | 'onDeselect' | 'commit' | 'recordHistory' | 'onDelete'
+        >
+    >
+
+    rotationEnabled = false
+
+    targets: Set<GroupLike> = new Set()
+    currentGroup: GroupLike = null
+    currentShape: ShapeLike = null
+    currentAdapter: ShapeAdapter | null = null
+    currentTextChild: ShapeLike = null
+
+    interaction: Interaction | null = null
+
+    ui!: ShapeLike
+    box!: ShapeLike
+    endpoints!: ShapeLike
+    midEndpoints!: ShapeLike
+    midPoints!: ShapeLike[]
+
+    private _onUpdate: (() => void) | null = null
+    private _onClearSelector: (() => void) | null = null
+    private _onKeyDown: ((e: KeyboardEvent) => void) | null = null
+    private _onMove: ((ev: MouseEvent) => void) | null = null
+    private _onUp: ((ev: MouseEvent) => void) | null = null
+    private _onHover: ((ev: MouseEvent) => void) | null = null
+
     constructor({
         two,
         zui,
@@ -81,58 +182,52 @@ export default class SelectionController {
         commit,
         recordHistory,
         onDelete,
-    }) {
+    }: SelectionControllerOptions) {
         this.two = two
         this.zui = zui
         this.domElement = domElement
         this.callbacks = {
-            onSelect: onSelect || (() => {}),
-            onDeselect: onDeselect || (() => {}),
-            commit: commit || (() => {}),
-            recordHistory: recordHistory || (() => {}),
-            onDelete: onDelete || (() => {}),
+            onSelect: onSelect ?? ((): void => {}),
+            onDeselect: onDeselect ?? ((): void => {}),
+            commit: commit ?? ((): void => {}),
+            recordHistory: recordHistory ?? ((): void => {}),
+            onDelete: onDelete ?? ((): void => {}),
         }
-
-        this.rotationEnabled = false
-
-        this.targets = new Set()
-        this.currentGroup = null
-        this.currentShape = null
-        this.currentAdapter = null
-        this.currentTextChild = null
-
-        this.interaction = null
 
         this._buildUi()
         this._bindExternal()
     }
 
-    // ---------- UI construction ----------
-
-    _buildUi() {
-        const ui = new Two.Group()
+    private _buildUi(): void {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ui = new (Two as any).Group()
         ui.visible = false
 
-        const box = new Two.Rectangle(0, 0, 0, 0)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const box = new (Two as any).Rectangle(0, 0, 0, 0)
         box.noFill()
         box.stroke = '#C4901A'
         box.linewidth = 1.5
 
-        // Corner handles: white fill with blue border
-        const endpoints = new Two.Points(box.vertices)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const endpoints = new (Two as any).Points(box.vertices)
         endpoints.size = 10
         endpoints.fill = '#FFFCF5'
         endpoints.stroke = '#C4901A'
         endpoints.linewidth = 1.5
 
-        // Mid-edge handles (rectangle only)
         this.midPoints = [
-            new Two.Vector(0, 0), // n
-            new Two.Vector(0, 0), // e
-            new Two.Vector(0, 0), // s
-            new Two.Vector(0, 0), // w
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            new (Two as any).Vector(0, 0), // n
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            new (Two as any).Vector(0, 0), // e
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            new (Two as any).Vector(0, 0), // s
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            new (Two as any).Vector(0, 0), // w
         ]
-        const midEndpoints = new Two.Points(this.midPoints)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const midEndpoints = new (Two as any).Points(this.midPoints)
         midEndpoints.size = 10
         midEndpoints.fill = '#FFFCF5'
         midEndpoints.stroke = '#C4901A'
@@ -148,14 +243,14 @@ export default class SelectionController {
         this.midEndpoints = midEndpoints
     }
 
-    _bindExternal() {
-        this._onUpdate = () => this.syncToTarget()
+    private _bindExternal(): void {
+        this._onUpdate = (): void => this.syncToTarget()
         this.two.bind('update', this._onUpdate)
 
-        this._onClearSelector = () => this.detach()
+        this._onClearSelector = (): void => this.detach()
         window.addEventListener('clearSelector', this._onClearSelector, false)
 
-        this._onKeyDown = (e) => {
+        this._onKeyDown = (e: KeyboardEvent): void => {
             if (!this.currentGroup) return
             const tag = document.activeElement?.tagName
             if (tag === 'INPUT' || tag === 'TEXTAREA') return
@@ -167,34 +262,30 @@ export default class SelectionController {
         window.addEventListener('keydown', this._onKeyDown, false)
     }
 
-    destroy() {
-        this.two.unbind('update', this._onUpdate)
-        window.removeEventListener(
-            'clearSelector',
-            this._onClearSelector,
-            false
-        )
-        window.removeEventListener('keydown', this._onKeyDown, false)
+    destroy(): void {
+        if (this._onUpdate) this.two.unbind('update', this._onUpdate)
+        if (this._onClearSelector) {
+            window.removeEventListener(
+                'clearSelector',
+                this._onClearSelector,
+                false
+            )
+        }
+        if (this._onKeyDown) {
+            window.removeEventListener('keydown', this._onKeyDown, false)
+        }
         this._detachPointerStream()
         this.two.remove(this.ui)
     }
 
-    // ---------- Registry ----------
-
-    canHandle(group) {
+    canHandle(group: GroupLike): boolean {
         const type = group?.elementData?.componentType
         return !!SHAPE_ADAPTERS[type]
     }
 
-    // ---------- Attach / detach ----------
-
-    _bringToFront() {
+    private _bringToFront(): void {
         const scene = this.two.scene
         const idx = scene.children.indexOf(this.ui)
-        // If the UI was detached from the scene (e.g. by an external
-        // two.clear() during clearBoard), re-add it. Otherwise this.ui
-        // would stay invisible despite ui.visible = true because it
-        // isn't in the render tree.
         if (idx === -1) {
             this.two.add(this.ui)
             return
@@ -205,7 +296,7 @@ export default class SelectionController {
         }
     }
 
-    attach(group, shape) {
+    attach(group: GroupLike, shape?: ShapeLike): boolean {
         const type = group?.elementData?.componentType
         const adapter = SHAPE_ADAPTERS[type]
         if (!adapter) return false
@@ -218,8 +309,9 @@ export default class SelectionController {
         this.currentShape = shape || group.children[0]
         this.currentAdapter = adapter
         this.currentTextChild =
-            group.children?.find((child) => typeof child.value === 'string') ||
-            null
+            group.children?.find(
+                (child: ShapeLike) => typeof child.value === 'string'
+            ) || null
         this.targets.add(group)
 
         this._bringToFront()
@@ -234,7 +326,7 @@ export default class SelectionController {
         return true
     }
 
-    detach() {
+    detach(): void {
         if (!this.currentGroup) return
         this._detachPointerStream()
         this._detachHoverListener()
@@ -249,22 +341,19 @@ export default class SelectionController {
         this.callbacks.onDeselect()
     }
 
-    resync() {
+    resync(): void {
         if (this.currentGroup) {
             this.syncToTarget()
             this.two.update()
         }
     }
 
-    // ---------- UI sync ----------
-
-    syncToTarget() {
+    syncToTarget(): void {
         if (!this.currentGroup || !this.currentShape || !this.currentAdapter)
             return
 
         const scale = this.zui.scale || 1
         this.box.linewidth = 1.5 / scale
-        // Cap handle growth at 1.25× base so they stay small relative to the element at extreme zoom-out
         const handleSize = Math.min(HANDLE_BASE_PX / scale, HANDLE_BASE_PX * 1.25)
         this.endpoints.size = handleSize
         this.midEndpoints.size = handleSize
@@ -288,18 +377,16 @@ export default class SelectionController {
         if (isRect) {
             const hw = (width + pad * 2) / 2
             const hh = (height + pad * 2) / 2
-            this.midPoints[0].set(0, -hh)
-            this.midPoints[1].set(hw, 0)
-            this.midPoints[2].set(0, hh)
-            this.midPoints[3].set(-hw, 0)
+            this.midPoints[0]!.set(0, -hh)
+            this.midPoints[1]!.set(hw, 0)
+            this.midPoints[2]!.set(0, hh)
+            this.midPoints[3]!.set(-hw, 0)
         }
     }
 
     // ---------- Hit testing ----------
 
-    // Returns { mode, corner } in SURFACE coordinates, or null.
-    // Radii are scaled by 1 / zui.scale so handles stay grabbable at any zoom.
-    hitTest(clientX, clientY) {
+    hitTest(clientX: number, clientY: number): HitResult | null {
         if (!this.currentGroup || !this.ui.visible) return null
         if (this.currentAdapter && !this.currentAdapter.resizable) return null
 
@@ -327,12 +414,10 @@ export default class SelectionController {
         return { mode, corner }
     }
 
-    // Returns a vertex's position in surface space (scene-local, pre-zoom).
-    // We deliberately avoid Two.Utils.getComputedMatrix here: it would walk
-    // up into two.scene whose matrix includes ZUI's zoom/pan, producing
-    // client-space coordinates. Our input point is surface-space (via
-    // zui.clientToSurface), so both sides must agree on the frame.
-    _vertexToSurface(v) {
+    private _vertexToSurface(v: { x: number; y: number }): {
+        x: number
+        y: number
+    } {
         const rot = this.ui.rotation || 0
         const cos = Math.cos(rot)
         const sin = Math.sin(rot)
@@ -342,10 +427,13 @@ export default class SelectionController {
         }
     }
 
-    _atCorner(point, limit) {
+    private _atCorner(
+        point: { x: number; y: number },
+        limit: number
+    ): CornerHandle | null {
         const verts = this.box.vertices
         const sq = limit * limit
-        const corners = [
+        const corners: CornerHandle[] = [
             { name: 'nw-resize', point: verts[0] },
             { name: 'ne-resize', point: verts[1] },
             { name: 'se-resize', point: verts[2] },
@@ -358,13 +446,16 @@ export default class SelectionController {
         return null
     }
 
-    _atMidEdge(point, limit) {
+    private _atMidEdge(
+        point: { x: number; y: number },
+        limit: number
+    ): CornerHandle | null {
         const sq = limit * limit
-        const edges = [
-            { name: 'n-resize', point: this.midPoints[0] },
-            { name: 'e-resize', point: this.midPoints[1] },
-            { name: 's-resize', point: this.midPoints[2] },
-            { name: 'w-resize', point: this.midPoints[3] },
+        const edges: CornerHandle[] = [
+            { name: 'n-resize', point: this.midPoints[0]! },
+            { name: 'e-resize', point: this.midPoints[1]! },
+            { name: 's-resize', point: this.midPoints[2]! },
+            { name: 'w-resize', point: this.midPoints[3]! },
         ]
         for (const edge of edges) {
             const p = this._vertexToSurface(edge.point)
@@ -373,14 +464,18 @@ export default class SelectionController {
         return null
     }
 
-    _withinCornerRadius(point, corner, limit) {
+    private _withinCornerRadius(
+        point: { x: number; y: number },
+        corner: CornerHandle,
+        limit: number
+    ): boolean {
         const p = this._vertexToSurface(corner.point)
         return distSq(point.x, point.y, p.x, p.y) < limit * limit
     }
 
     // ---------- Interaction lifecycle ----------
 
-    beginInteraction(e, hit) {
+    beginInteraction(e: MouseEvent, hit: HitResult | null): boolean {
         if (!this.currentGroup || !hit) return false
         if (hit.mode === 'scale') return this._beginScale(e, hit.corner)
         if (hit.mode === 'rotate' && this.rotationEnabled) {
@@ -389,7 +484,8 @@ export default class SelectionController {
         return false
     }
 
-    _beginScale(e, corner) {
+    private _beginScale(e: MouseEvent, corner: CornerHandle): boolean {
+        if (!this.currentAdapter) return false
         const surface = this.zui.clientToSurface(e.clientX, e.clientY)
         const { width, height } = this.currentAdapter.getLocalSize(
             this.currentShape
@@ -411,7 +507,7 @@ export default class SelectionController {
         return true
     }
 
-    _beginRotate(e, corner) {
+    private _beginRotate(e: MouseEvent, corner: CornerHandle): boolean {
         const surface = this.zui.clientToSurface(e.clientX, e.clientY)
         this.interaction = {
             mode: 'rotate',
@@ -427,14 +523,14 @@ export default class SelectionController {
         return true
     }
 
-    _attachPointerStream() {
-        this._onMove = (ev) => this._onPointerMove(ev)
-        this._onUp = (ev) => this._onPointerUp(ev)
+    private _attachPointerStream(): void {
+        this._onMove = (ev): void => this._onPointerMove(ev)
+        this._onUp = (ev): void => this._onPointerUp(ev)
         this.domElement.addEventListener('mousemove', this._onMove, false)
         this.domElement.addEventListener('mouseup', this._onUp, false)
     }
 
-    _detachPointerStream() {
+    private _detachPointerStream(): void {
         if (this._onMove) {
             this.domElement.removeEventListener(
                 'mousemove',
@@ -449,9 +545,9 @@ export default class SelectionController {
         }
     }
 
-    _attachHoverListener() {
+    private _attachHoverListener(): void {
         if (this._onHover) return
-        this._onHover = (ev) => {
+        this._onHover = (ev): void => {
             if (this.interaction) return
             const hit = this.hitTest(ev.clientX, ev.clientY)
             if (!hit) {
@@ -476,19 +572,21 @@ export default class SelectionController {
         this.domElement.addEventListener('mousemove', this._onHover, false)
     }
 
-    _detachHoverListener() {
+    private _detachHoverListener(): void {
         if (!this._onHover) return
         this.domElement.removeEventListener('mousemove', this._onHover, false)
         this._onHover = null
     }
 
-    _onPointerMove(e) {
+    private _onPointerMove(e: MouseEvent): void {
         if (!this.interaction) return
         if (this.interaction.mode === 'scale') this._scaleMove(e)
         else if (this.interaction.mode === 'rotate') this._rotateMove(e)
     }
 
-    _scaleMove(e) {
+    private _scaleMove(e: MouseEvent): void {
+        if (!this.interaction || this.interaction.mode !== 'scale') return
+        if (!this.currentAdapter) return
         const {
             corner,
             startSurface,
@@ -549,7 +647,12 @@ export default class SelectionController {
         let scaleX = newWidth / initialWidth
         let scaleY = newHeight / initialHeight
 
-        const isEdgeOnly = ['n-resize', 's-resize', 'e-resize', 'w-resize'].includes(corner.name)
+        const isEdgeOnly = [
+            'n-resize',
+            's-resize',
+            'e-resize',
+            'w-resize',
+        ].includes(corner.name)
         if (e.shiftKey && !isEdgeOnly) {
             const ratio = Math.min(Math.abs(scaleX), Math.abs(scaleY))
             scaleX = scaleX >= 0 ? ratio : -ratio
@@ -611,7 +714,7 @@ export default class SelectionController {
                 break
         }
 
-        let nextX, nextY
+        let nextX: number, nextY: number
         if (initialRotation !== 0) {
             const cos = Math.cos(initialRotation)
             const sin = Math.sin(initialRotation)
@@ -633,7 +736,8 @@ export default class SelectionController {
         this.two.update()
     }
 
-    _rotateMove(e) {
+    private _rotateMove(e: MouseEvent): void {
+        if (!this.interaction || this.interaction.mode !== 'rotate') return
         const { center, startSurface, initialRotation } = this.interaction
         const surface = this.zui.clientToSurface(e.clientX, e.clientY)
         const startAngle = Math.atan2(
@@ -650,22 +754,26 @@ export default class SelectionController {
         this.two.update()
     }
 
-    _onPointerUp(e) {
+    private _onPointerUp(_e: MouseEvent): void {
         if (!this.interaction) {
             this._detachPointerStream()
             return
         }
 
         const componentId = this.currentGroup?.elementData?.id
-        if (this.interaction.mode === 'scale' && componentId) {
+        if (
+            this.interaction.mode === 'scale' &&
+            componentId &&
+            this.currentAdapter
+        ) {
             const { width, height } = this.currentAdapter.getLocalSize(
                 this.currentShape
             )
             const patch = {
-                width: parseInt(width),
-                height: parseInt(height),
-                x: parseInt(this.currentGroup.translation.x),
-                y: parseInt(this.currentGroup.translation.y),
+                width: parseInt(String(width)),
+                height: parseInt(String(height)),
+                x: parseInt(String(this.currentGroup.translation.x)),
+                y: parseInt(String(this.currentGroup.translation.y)),
             }
             this.callbacks.commit(componentId, patch)
         }
