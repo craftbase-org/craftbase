@@ -43,7 +43,7 @@ const cards = [
     },
 ]
 
-const SupportPage = () => {
+const SupportPage: React.FC = () => {
     const { isMobile } = useMediaQueryUtils()
 
     return (

@@ -4,7 +4,7 @@ import Spinner from '../../components/common/spinner'
 
 const SupportPage = React.lazy(() => import('./support'))
 
-const SupportViewContainer = (props) => (
+const SupportViewContainer: React.FC = (props) => (
     <Suspense fallback={<Spinner />}>
         <ErrorBoundary>
             <SupportPage {...props} />

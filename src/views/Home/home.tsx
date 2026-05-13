@@ -14,10 +14,10 @@ import BlueStarSVG from '../../assets/blue_star.svg'
 import WhiteboardingPNG from '../../assets/whiteboarding.png'
 import Button from '../../components/common/button'
 
-const HomePage = (props) => {
+const HomePage: React.FC = () => {
     // create user mutation
     const [pageHeight, setPageHeight] = useState(0)
-    const [btnId, setBtnId] = useState(null)
+    const [btnId, setBtnId] = useState<string | null>(null)
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -25,8 +25,9 @@ const HomePage = (props) => {
         setPageHeight(window.innerHeight - 200)
     }, [window.innerHeight])
 
-    const onCreateCanvas = (e) => {
-        setBtnId(e.target.name)
+    const onCreateCanvas = (e: React.MouseEvent<HTMLElement>) => {
+        const target = e.target as HTMLElement & { name?: string }
+        setBtnId(target.name ?? null)
         navigate(`/`)
     }
 

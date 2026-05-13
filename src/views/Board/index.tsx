@@ -1,16 +1,18 @@
 import React, { Suspense } from 'react'
+
 import ErrorBoundary from './errorBoundary'
 import Spinner from '../../components/common/spinner'
 import './index.css'
+import type { BoardProps } from '../../types/board'
 
-const HomePage = React.lazy(() => import('./home'))
+const BoardViewPage = React.lazy(() => import('./board'))
 
-const HomePageViewContainer = (props) => (
+const BoardViewContainer: React.FC<BoardProps> = (props) => (
     <Suspense fallback={<Spinner />}>
         <ErrorBoundary>
-            <HomePage {...props} />
+            <BoardViewPage {...props} />
         </ErrorBoundary>
     </Suspense>
 )
 
-export default HomePageViewContainer
+export default BoardViewContainer

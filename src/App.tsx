@@ -110,7 +110,7 @@ function getApolloClient() {
 
 const apolloClient = getApolloClient()
 
-function AppInit({ children }) {
+function AppInit({ children }: { children: React.ReactNode }) {
     const [userReady, setUserReady] = useState(
         () => !!localStorage.getItem('userId')
     )
@@ -122,23 +122,25 @@ function AppInit({ children }) {
             insertUser({
                 variables: { object: { nickname, firstName, lastName } },
             }).then(({ data }) => {
-                localStorage.setItem('userId', data.user.id)
-                setUserReady(true)
+                if (data?.user?.id) {
+                    localStorage.setItem('userId', data.user.id)
+                    setUserReady(true)
+                }
             })
         }
     }, [])
 
     if (!userReady) return null
 
-    return children
+    return <>{children}</>
 }
 
 class App extends Component {
-    constructor(props) {
+    constructor(props: object) {
         super(props)
     }
 
-    render() {
+    override render() {
         return (
             <BrowserRouter>
                 <ApolloProvider client={apolloClient}>
