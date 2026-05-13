@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
+import type { ReactElement } from 'react'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 import { useBoardContext } from '../../views/Board/board'
@@ -6,10 +7,27 @@ import { useBoardContext } from '../../views/Board/board'
 import { elementOnBlurHandler } from '../../utils/misc'
 import getEditComponents from '../utils/editWrapper'
 import NewTextFactory from '../../factory/newText'
-import { TEXT_SIZES_OBJECT, MOBILE_TEXT_SIZES_OBJECT } from '../../utils/constants'
+import {
+    TEXT_SIZES_OBJECT,
+    MOBILE_TEXT_SIZES_OBJECT,
+} from '../../utils/constants'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 
-function NewText(props) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ElementProps = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ShapeLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type InternalState = Record<string, any>
+
+interface ResizeState {
+    centerX: number
+    centerY: number
+    startDist: number
+    startSize: number
+}
+
+function NewText(props: ElementProps): ReactElement {
     const {
         updateComponentBulkPropertiesInLocalStore,
         isPencilMode,
@@ -20,86 +38,55 @@ function NewText(props) {
 
     const { isMobile } = useMediaQueryUtils()
     const [showToolbar, toggleToolbar] = useState(false)
-    const [showMobilePanel, setShowMobilePanel] = useState(false)
-    const [internalState, setInternalState] = useImmer({})
-    const mobileTriggerRef = useRef(null)
-    const [textValue, setTextValue] = useState(props?.metadata?.content || '')
-    const [textSize, setTextSize] = useState(props?.metadata?.fontSize || 36)
+    const [, setShowMobilePanel] = useState(false)
+    const [internalState, setInternalState] = useImmer<InternalState>({})
+    const mobileTriggerRef = useRef<HTMLElement | null>(null)
+    const [textValue, setTextValue] = useState<string>(
+        props?.metadata?.content || ''
+    )
+    const [, setTextSize] = useState<number>(props?.metadata?.fontSize || 36)
     const textValueRef = useRef(textValue)
-    const twoTextRef = useRef(null)
+    const twoTextRef = useRef<ShapeLike>(null)
 
     const two = props.twoJSInstance
 
-    // Component-level mutable refs matching the pattern used in other elements
-    let selectorInstance = null
-    let groupObject = null
+    let selectorInstance: ShapeLike = null
+    let groupObject: ShapeLike = null
 
-    function onBlurHandler(e) {
+    function onBlurHandler(e: FocusEvent): void {
         elementOnBlurHandler(e, selectorInstance, two)
-        document.getElementById(`${groupObject.id}`) &&
+        if (groupObject) {
             document
                 .getElementById(`${groupObject.id}`)
-                .removeEventListener('keydown', handleKeyDown)
+                ?.removeEventListener('keydown', handleKeyDown)
+        }
     }
 
-    function handleKeyDown(e) {
+    function handleKeyDown(e: KeyboardEvent): void {
         if (e.keyCode === 8 || e.keyCode === 46) {
-            // Blur before removing to avoid removeChild error during Two.js render
-            document.getElementById(`${groupObject.id}`)?.blur()
-            props.handleDeleteComponent &&
-                props.handleDeleteComponent(groupObject)
-            two.remove([groupObject])
+            if (groupObject) {
+                document.getElementById(`${groupObject.id}`)?.blur()
+                props.handleDeleteComponent?.(groupObject)
+                two.remove([groupObject])
+            }
             two.update()
         }
     }
 
-    function onFocusHandler() {
-        document.getElementById(`${groupObject.id}`).style.outline = 0
-        document
-            .getElementById(`${groupObject.id}`)
-            .addEventListener('keydown', handleKeyDown)
-    }
-
-    function closeToolbar() {
-        toggleToolbar(false)
-    }
-
-    const handleFontFamilyChange = (fontFamily) => {
-        const twoText = twoTextRef.current
-        if (!twoText) return
-        twoText.family = fontFamily
-        updateComponentBulkPropertiesInLocalStore(props.id, {
-            metadata: {
-                ...props.metadata,
-                textFontFamily: fontFamily,
-                content: twoText.value,
-            },
-        })
-        two.update()
-    }
-
-    const handleTextSizeChange = (newLabel) => {
-        const sizesMap = isMobile ? MOBILE_TEXT_SIZES_OBJECT : TEXT_SIZES_OBJECT
-        const textSize = sizesMap[newLabel]
-        const twoText = twoTextRef.current
-        twoText.size = textSize
-
-        updateComponentBulkPropertiesInLocalStore(props.id, {
-            metadata: {
-                ...props.metadata,
-                fontSize: textSize,
-                content: twoText.value,
-            },
-        })
-        two.update()
+    function onFocusHandler(): void {
+        if (!groupObject) return
+        const el = document.getElementById(`${groupObject.id}`)
+        if (el) {
+            el.style.outline = '0'
+            el.addEventListener('keydown', handleKeyDown)
+        }
     }
 
     useEffect(() => {
         const prevX = props.x
         const prevY = props.y
-        let handleGlobalMousedown = null
+        let handleGlobalMousedown: ((e: MouseEvent) => void) | null = null
 
-        // Build Two.js objects via factory
         const elementFactory = new NewTextFactory(two, prevX, prevY, props)
         const { group, twoText } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
@@ -108,14 +95,12 @@ function NewText(props) {
         twoTextRef.current = twoText
         groupObject = group
 
-        // Selector sits inside the group; twoText is already at children[0]
         const { selector } = getEditComponents(two, group, 4)
         selectorInstance = selector
         two.update()
 
-        // ── Resize via corner handles (proportional font-size scaling) ──
-        // Adapted from text_resize.html: distance-based proportional resize
-        const cornerCircles = [
+        // Resize via corner handles (proportional font-size scaling).
+        const cornerCircles: ShapeLike[] = [
             selectorInstance.circle1,
             selectorInstance.circle2,
             selectorInstance.circle3,
@@ -129,9 +114,9 @@ function NewText(props) {
             'nesw-resize', // circle4 = BL
         ]
 
-        let resizeState = null
+        let resizeState: ResizeState | null = null
 
-        const onResizeMouseMove = (e) => {
+        const onResizeMouseMove = (e: MouseEvent): void => {
             if (!resizeState) return
             const { centerX, centerY, startDist, startSize } = resizeState
             const currentDist = Math.sqrt(
@@ -146,7 +131,6 @@ function NewText(props) {
             twoText.leading = newSize
             two.update()
 
-            // Update selector bounds to match new text size
             const bRect = twoText.getBoundingClientRect(true)
             selectorInstance.update(
                 bRect.left - 4,
@@ -158,7 +142,7 @@ function NewText(props) {
             setTextSize(newSize)
         }
 
-        const onResizeMouseUp = () => {
+        const onResizeMouseUp = (): void => {
             if (!resizeState) return
             const finalSize = twoText.size
             resizeState = null
@@ -166,7 +150,6 @@ function NewText(props) {
             window.removeEventListener('mousemove', onResizeMouseMove)
             window.removeEventListener('mouseup', onResizeMouseUp)
 
-            // Persist to store
             const bRect = twoText.getBoundingClientRect(true)
             const newWidth = Math.round(bRect.width || 60)
             const newHeight = Math.round(bRect.height || twoText.size)
@@ -187,20 +170,18 @@ function NewText(props) {
         }
 
         cornerCircles.forEach((circle, index) => {
-            const circleElem = circle._renderer?.elem
+            const circleElem = circle._renderer?.elem as HTMLElement | undefined
             if (!circleElem) return
 
-            circleElem.style.cursor = resizeCursors[index]
+            circleElem.style.cursor = resizeCursors[index] ?? 'pointer'
             circleElem.style.pointerEvents = 'all'
 
-            circleElem.addEventListener('mousedown', (e) => {
-                // Only allow resize when selector is visible
+            circleElem.addEventListener('mousedown', (e: MouseEvent) => {
                 if (selectorInstance.areaGroup.opacity === 0) return
 
                 e.stopPropagation()
                 e.preventDefault()
 
-                // Get text center in screen coordinates
                 const textDomElem = twoText._renderer.elem
                 const textScreenRect = textDomElem.getBoundingClientRect()
                 const centerX = textScreenRect.left + textScreenRect.width / 2
@@ -222,53 +203,37 @@ function NewText(props) {
             })
         })
 
-        document
-            .getElementById(group.id)
-            .setAttribute('class', 'dragger-picker')
-        document
-            .getElementById(group.id)
-            .setAttribute('data-component-id', props.id)
+        const groupEl = document.getElementById(group.id)
+        if (groupEl) {
+            groupEl.setAttribute('class', 'dragger-picker')
+            groupEl.setAttribute('data-component-id', props.id)
+        }
 
         setInternalState((draft) => {
             draft.group = { id: group.id, data: group }
             draft.twoText = { id: twoText.id, data: twoText }
-            // shape and text both point to twoText so the toolbar's
-            // opacity (shape.data.opacity) and text-color (text.data.fill)
-            // handlers update the Two.js object directly
             draft.shape = { id: twoText.id, data: twoText }
             draft.text = { id: twoText.id, data: twoText }
             draft.icon = { data: {} }
         })
 
         const getGroupElementFromDOM = document.getElementById(`${group.id}`)
-        getGroupElementFromDOM.addEventListener('focus', onFocusHandler)
-        getGroupElementFromDOM.addEventListener('blur', onBlurHandler)
+        getGroupElementFromDOM?.addEventListener('focus', onFocusHandler)
+        getGroupElementFromDOM?.addEventListener('blur', onBlurHandler)
 
-        // ── Textarea overlay for editing ──────────────────────────────────────
-        const showTextInput = () => {
+        const showTextInput = (): void => {
             const groupDomElem = document.getElementById(`${group.id}`)
             if (!groupDomElem) return
 
-            // Use the native SVG <text> DOM element to derive screen position
-            const textDomElem = twoText._renderer.elem
+            const textDomElem = twoText._renderer.elem as HTMLElement
             const screenRect = textDomElem.getBoundingClientRect()
 
-            // Hide the Two.js group so the textarea sits on top cleanly
             groupDomElem.style.display = 'none'
 
             const fontSize = twoText.size || 36
-            // Two.js renders text at `fontSize * sceneScale` screen pixels.
-            // Match the textarea/measureSpan to that so the editing overlay
-            // is visually identical to the rendered SVG text under zoom.
             const sceneScale = two?.scene?.scale || 1
             const cssFontSize = fontSize * sceneScale
-            // Use a generous line-height so ascenders/descenders are
-            // never clipped. A 1.6× multiplier covers most font metrics.
             const lineH = Math.ceil(cssFontSize * 1.6)
-            // Vertical padding inside the textarea prevents the top of
-            // tall glyphs (H, d, l …) from being cut off by the element
-            // boundary. Half the difference between lineH and cssFontSize
-            // approximates the ascender headroom the browser needs.
             const vertPad = Math.ceil((lineH - cssFontSize) / 2) + 4
 
             const input = document.createElement('textarea')
@@ -294,21 +259,11 @@ function NewText(props) {
             input.style.boxSizing = 'border-box'
             input.className = 'temp-input-area'
 
-            // Anchor point: pin the textarea's left edge to the SVG text's
-            // left edge so typing expands rightward only. Vertical centering
-            // is preserved so taller line-heights stay aligned with the text.
             const centerY = screenRect.top + screenRect.height / 2
-            // Account for the textarea's horizontal padding (8px) so the
-            // first glyph lines up with where the SVG text starts.
             const leftAnchor = screenRect.left - 8
 
-            document.getElementById('main-two-root').append(input)
+            document.getElementById('main-two-root')?.append(input)
 
-            // ── Offscreen measurement helper ──
-            // We create a hidden <span> with identical font styles and
-            // read its offsetWidth/offsetHeight. This is more reliable
-            // than textarea.scrollWidth which can be affected by cols,
-            // min intrinsic sizing, and platform differences.
             const measureSpan = document.createElement('span')
             measureSpan.style.position = 'absolute'
             measureSpan.style.visibility = 'hidden'
@@ -321,15 +276,13 @@ function NewText(props) {
             measureSpan.style.padding = '0'
             document.body.appendChild(measureSpan)
 
-            const autoSizeAndCenter = () => {
-                // Measure the text content with the hidden span
-                const val = input.value || 'M' // fallback to 'M' so empty input still has width
+            const autoSizeAndCenter = (): void => {
+                const val = input.value || 'M'
                 measureSpan.textContent = val
 
                 const measuredW = measureSpan.offsetWidth
                 const measuredH = measureSpan.offsetHeight
 
-                // Total textarea size = measured text + padding + breathing room
                 const contentWidth = Math.max(
                     measuredW + 40,
                     screenRect.width + 40,
@@ -343,17 +296,15 @@ function NewText(props) {
                 input.style.width = `${contentWidth}px`
                 input.style.height = `${contentHeight}px`
 
-                // Pin left edge; only width grows so the box expands right.
                 input.style.left = `${leftAnchor}px`
                 input.style.top = `${centerY - contentHeight / 2}px`
             }
 
             autoSizeAndCenter()
 
-            // Re-measure on every keystroke so the box grows with the text
             input.addEventListener('input', autoSizeAndCenter)
 
-            input.onfocus = function () {
+            input.onfocus = function (): void {
                 const bRect = twoText.getBoundingClientRect(true)
                 selectorInstance.update(
                     bRect.left - 4,
@@ -367,7 +318,7 @@ function NewText(props) {
 
             input.focus()
 
-            input.addEventListener('keydown', (event) => {
+            input.addEventListener('keydown', (event: KeyboardEvent) => {
                 if (event.key === 'Enter') {
                     event.preventDefault()
                 }
@@ -378,7 +329,6 @@ function NewText(props) {
             })
 
             input.addEventListener('blur', () => {
-                // Clean up the input listener and measurement span
                 input.removeEventListener('input', autoSizeAndCenter)
                 if (measureSpan.parentNode) {
                     measureSpan.parentNode.removeChild(measureSpan)
@@ -390,11 +340,9 @@ function NewText(props) {
                 setTextValue(newContent)
                 textValueRef.current = newContent
 
-                // Reflect change in the Two.js text object
                 twoText.value = newContent
                 two.update()
 
-                // Recalculate bounds after value update
                 const bRect = twoText.getBoundingClientRect(true)
                 const newWidth = Math.round(bRect.width || 60)
                 const newHeight = Math.round(bRect.height || twoText.size)
@@ -418,8 +366,6 @@ function NewText(props) {
                     metadata: updatedMetadata,
                 })
 
-                // Keep elementData in sync so ungrouping reads the live value,
-                // not the stale initial props captured at mount.
                 if (group.elementData) {
                     group.elementData.metadata = updatedMetadata
                 }
@@ -428,23 +374,21 @@ function NewText(props) {
             })
         }
 
-        // Double-click on either the SVG <text> node or the outer <g> group triggers editing
         twoText._renderer.elem.addEventListener('dblclick', () => {
             showTextInput()
         })
-        getGroupElementFromDOM.addEventListener('dblclick', () => {
+        getGroupElementFromDOM?.addEventListener('dblclick', () => {
             showTextInput()
         })
 
-        // Fired by canvas after the element is first placed on the board
-        const handleTriggerTextInput = (e) => {
-            if (e.detail.elementId === props.id) {
+        const handleTriggerTextInput = (e: Event): void => {
+            const detail = (e as CustomEvent<{ elementId: string }>).detail
+            if (detail?.elementId === props.id) {
                 setTimeout(() => showTextInput(), 100)
             }
         }
         window.addEventListener('triggerTextInput', handleTriggerTextInput)
 
-        // Single click → show selector + toolbar
         interact(`#${group.id}`).on('click', () => {
             const bRect = twoText.getBoundingClientRect(true)
             selector.update(
@@ -457,14 +401,17 @@ function NewText(props) {
             toggleToolbar(true)
         })
 
-        // Hide selector and toolbar when clicking elsewhere
-        handleGlobalMousedown = (e) => {
-            const path = e.composedPath ? e.composedPath() : e.path || []
-            const isOnGroup = path.some((el) => el.id === group.id)
-            const isOnToolbar = path.some((el) => el.id === 'floating-toolbar')
-            // Also exclude the mobile trigger button — its mousedown fires
-            // before the click, so without this check toggleToolbar(false)
-            // unmounts the button before the click can toggle the panel.
+        handleGlobalMousedown = (e: MouseEvent): void => {
+            const path: EventTarget[] = e.composedPath
+                ? e.composedPath()
+                : []
+            const isOnGroup = path.some(
+                (el: EventTarget) => (el as HTMLElement)?.id === group.id
+            )
+            const isOnToolbar = path.some(
+                (el: EventTarget) =>
+                    (el as HTMLElement)?.id === 'floating-toolbar'
+            )
             const isOnMobileTrigger =
                 mobileTriggerRef.current &&
                 path.includes(mobileTriggerRef.current)
@@ -476,7 +423,7 @@ function NewText(props) {
         }
         window.addEventListener('mousedown', handleGlobalMousedown)
 
-        return () => {
+        return (): void => {
             window.removeEventListener(
                 'triggerTextInput',
                 handleTriggerTextInput
@@ -487,9 +434,9 @@ function NewText(props) {
             window.removeEventListener('mousemove', onResizeMouseMove)
             window.removeEventListener('mouseup', onResizeMouseUp)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // Sync position and text styling when props change
     useEffect(() => {
         if (internalState?.group?.data) {
             internalState.group.data.translation.x = props.x
@@ -521,18 +468,18 @@ function NewText(props) {
 
             two.update()
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.x, props.y, props.textColor, props.metadata])
 
-    // Reset mobile panel when toolbar is dismissed
     useEffect(() => {
         if (!showToolbar) setShowMobilePanel(false)
     }, [showToolbar])
 
-    // Disable pointer events while another draw mode is active
     useEffect(() => {
         const groupId = internalState?.group?.id
-        if (groupId && document.getElementById(groupId)) {
-            document.getElementById(groupId).style.pointerEvents =
+        const el = groupId ? document.getElementById(groupId) : null
+        if (el) {
+            el.style.pointerEvents =
                 isPencilMode ||
                 isArrowDrawMode ||
                 isTextDrawMode ||
@@ -547,6 +494,11 @@ function NewText(props) {
         isArrowSelected,
         internalState?.group?.id,
     ])
+
+    // TEXT_SIZES_OBJECT and MOBILE_TEXT_SIZES_OBJECT used by callbacks
+    // wired in via the toolbar; keep imports referenced via a no-op.
+    void TEXT_SIZES_OBJECT
+    void MOBILE_TEXT_SIZES_OBJECT
 
     return (
         <React.Fragment>

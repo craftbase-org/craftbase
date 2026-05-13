@@ -1,14 +1,20 @@
 import React, { useEffect, useRef } from 'react'
+import type { ReactElement } from 'react'
 import { useBoardContext } from '../../views/Board/board'
 
-import ElementFactory from '../../factory/rectangle'
+import ElementFactory from '../../factory/diamond'
 import { strokeTypeToDashes } from '../../utils/misc'
 
-function Rectangle(props) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ElementProps = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ShapeLike = any
+
+function Diamond(props: ElementProps): ReactElement {
     const { isPencilMode, isArrowDrawMode, isArrowSelected } = useBoardContext()
 
-    const groupRef = useRef(null)
-    const shapeRef = useRef(null)
+    const groupRef = useRef<ShapeLike>(null)
+    const shapeRef = useRef<ShapeLike>(null)
 
     const two = props.twoJSInstance
 
@@ -19,22 +25,22 @@ function Rectangle(props) {
         const elementFactory = new ElementFactory(two, prevX, prevY, {
             ...props,
         })
-        const { group, rectangle } = elementFactory.createElement()
+        const { group, diamond } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        rectangle.opacity = props.metadata?.opacity ?? 1
+        diamond.opacity = props.metadata?.opacity ?? 1
 
         if (props.parentGroup) {
             const parentGroup = props.parentGroup
-            parentGroup.add(rectangle)
+            parentGroup.add(diamond)
             two.update()
         } else {
             groupRef.current = group
-            shapeRef.current = rectangle
-            group.children.unshift(rectangle)
+            shapeRef.current = diamond
+            group.children.unshift(diamond)
 
             const meta = props.metadata || {}
             if (meta.hasText && meta.textContent) {
-                // this means "rectangle-with-text"
+                // "diamond-with-text"
                 const twoText = two.makeText(meta.textContent, 0, 0)
                 twoText.fill = meta.textFill || '#3A342C'
                 twoText.size = meta.textFontSize || 24
@@ -47,25 +53,23 @@ function Rectangle(props) {
 
             two.update()
 
-            document
-                .getElementById(group.id)
-                .setAttribute('class', 'dragger-picker')
-            document
-                .getElementById(group.id)
-                .setAttribute('data-component-id', props.id)
-            document
-                .getElementById(group.id)
-                .setAttribute('data-linewidth', String(props.linewidth ?? ''))
+            const groupEl = document.getElementById(group.id)
+            if (groupEl) {
+                groupEl.setAttribute('class', 'dragger-picker')
+                groupEl.setAttribute('data-component-id', props.id)
+                groupEl.setAttribute(
+                    'data-linewidth',
+                    String(props.linewidth ?? '')
+                )
+            }
         }
 
-        return () => {
+        return (): void => {
             two.remove(group)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // Syncs visual properties to the Two.js shape when props change.
-    // Props are updated by ElementRenderWrapper (newCanvas.js) whenever componentStore changes,
-    // which happens on GraphQL subscription updates from other users editing this component.
     useEffect(() => {
         const groupInstance = groupRef.current
         const shapeInstance = shapeRef.current
@@ -73,25 +77,24 @@ function Rectangle(props) {
 
         groupInstance.translation.x = props.x
         groupInstance.translation.y = props.y
-        shapeInstance.width = props.width || shapeInstance.width
-        shapeInstance.height = props.height || shapeInstance.height
+        if (props.width) shapeInstance.width = props.width
+        if (props.height) shapeInstance.height = props.height
         shapeInstance.fill = props.fill || shapeInstance.fill
         two.update()
-    }, [props.x, props.y, props.width, props.height, props.fill])
+    }, [props.x, props.y, props.width, props.height, props.fill, two])
 
     useEffect(() => {
         if (shapeRef.current) {
             shapeRef.current.dashes = strokeTypeToDashes(props.strokeType)
             two.update()
         }
-    }, [props.strokeType])
+    }, [props.strokeType, two])
 
-    // When pencil mode is active, disable pointer events on this component
-    // so pencil drawing captures events instead of shape selection.
     useEffect(() => {
         const group = groupRef.current
-        if (group && document.getElementById(group.id)) {
-            document.getElementById(group.id).style.pointerEvents =
+        const el = group ? document.getElementById(group.id) : null
+        if (el) {
+            el.style.pointerEvents =
                 isPencilMode || isArrowDrawMode || isArrowSelected
                     ? 'none'
                     : 'auto'
@@ -100,9 +103,9 @@ function Rectangle(props) {
 
     return (
         <React.Fragment>
-            <div id="two-rectangle"></div>
+            <div id="two-diamond"></div>
         </React.Fragment>
     )
 }
 
-export default Rectangle
+export default Diamond

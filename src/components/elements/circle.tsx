@@ -1,14 +1,25 @@
 import React, { useEffect, useRef } from 'react'
+import type { ReactElement } from 'react'
 import { useBoardContext } from '../../views/Board/board'
 
 import CircleFactory from '../../factory/circle'
 import { strokeTypeToDashes } from '../../utils/misc'
 
-function Circle(props) {
+// Element components receive a fluid prop bag composed of the ComponentRecord
+// fields plus canvas-side handles (twoJSInstance, parentGroup, itemData,
+// handleDeleteComponent). Typing this strictly fights more than it helps
+// during the migration; the props originate in ElementRenderWrapper and the
+// canvas, which are themselves loose.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ElementProps = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ShapeLike = any
+
+function Circle(props: ElementProps): ReactElement {
     const { isPencilMode, isArrowDrawMode, isArrowSelected } = useBoardContext()
 
-    const groupRef = useRef(null)
-    const shapeRef = useRef(null)
+    const groupRef = useRef<ShapeLike>(null)
+    const shapeRef = useRef<ShapeLike>(null)
 
     const two = props.twoJSInstance
 
@@ -35,20 +46,21 @@ function Circle(props) {
             group.children.unshift(circle)
             two.update()
 
-            document
-                .getElementById(group.id)
-                .setAttribute('class', 'dragger-picker')
-            document
-                .getElementById(group.id)
-                .setAttribute('data-component-id', props.id)
-            document
-                .getElementById(group.id)
-                .setAttribute('data-linewidth', String(props.linewidth ?? ''))
+            const groupEl = document.getElementById(group.id)
+            if (groupEl) {
+                groupEl.setAttribute('class', 'dragger-picker')
+                groupEl.setAttribute('data-component-id', props.id)
+                groupEl.setAttribute(
+                    'data-linewidth',
+                    String(props.linewidth ?? '')
+                )
+            }
         }
 
-        return () => {
+        return (): void => {
             two.remove(group)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {
@@ -62,19 +74,20 @@ function Circle(props) {
         shapeInstance.height = props.height || shapeInstance.height
         shapeInstance.fill = props.fill || shapeInstance.fill
         two.update()
-    }, [props.x, props.y, props.fill, props.width, props.height])
+    }, [props.x, props.y, props.fill, props.width, props.height, two])
 
     useEffect(() => {
         if (shapeRef.current) {
             shapeRef.current.dashes = strokeTypeToDashes(props.strokeType)
             two.update()
         }
-    }, [props.strokeType])
+    }, [props.strokeType, two])
 
     useEffect(() => {
         const group = groupRef.current
-        if (group && document.getElementById(group.id)) {
-            document.getElementById(group.id).style.pointerEvents =
+        const el = group ? document.getElementById(group.id) : null
+        if (el) {
+            el.style.pointerEvents =
                 isPencilMode || isArrowDrawMode || isArrowSelected
                     ? 'none'
                     : 'auto'
