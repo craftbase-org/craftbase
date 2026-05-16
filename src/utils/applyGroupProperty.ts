@@ -98,9 +98,11 @@ const ACCEPTS: Record<GroupPropertyKey, Set<string>> = {
         'arrowLine',
         'newText',
     ]),
-    textColor: new Set(['newText', 'rectangle']),
-    textSize: new Set(['newText', 'rectangle']),
-    textFontFamily: new Set(['newText', 'rectangle']),
+    // diamond carries text the same way rectangle does (diamond.tsx:43-51
+    // "diamond-with-text"), so a group text edit must reach it too.
+    textColor: new Set(['newText', 'rectangle', 'diamond']),
+    textSize: new Set(['newText', 'rectangle', 'diamond']),
+    textFontFamily: new Set(['newText', 'rectangle', 'diamond']),
 }
 
 function findSceneElement(two: TwoLike, id: string): ShapeLike | undefined {
@@ -130,6 +132,30 @@ function findTextNodeInside(coreObject: ShapeLike): ShapeLike | null {
     return null
 }
 
+// Recursively apply a dash pattern to every Path leaf inside `node`, skipping
+// Two.js Group containers (descended into) and Text nodes (a dash pattern on
+// glyph outlines is wrong, and consistent with the fill/stroke/linewidth
+// handling that leaves the text node untouched). Used by the strokeType branch
+// instead of `applyToTwoShape`: Two.js Group has no `dashes` setter (unlike
+// fill/stroke/linewidth — group.js:1168-1216), so writing `group.dashes` is a
+// dead own-property assignment that never reaches the child Paths.
+function applyDashesToLeaves(
+    node: ShapeLike,
+    dashes: number[],
+    clearSolid: boolean
+): void {
+    if (!node) return
+    if (Array.isArray(node.children)) {
+        for (let i = 0; i < node.children.length; i++) {
+            applyDashesToLeaves(node.children[i], dashes, clearSolid)
+        }
+        return
+    }
+    if (typeof node.value === 'string') return
+    node.dashes = dashes
+    if (clearSolid) clearDashesOnTwoJSShape(node)
+}
+
 function applyToTwoShape(
     shape: ShapeLike,
     propertyKey: GroupPropertyKey,
@@ -141,10 +167,6 @@ function applyToTwoShape(
     else if (propertyKey === 'stroke') shape.stroke = value
     else if (propertyKey === 'linewidth') shape.linewidth = value
     else if (propertyKey === 'opacity') shape.opacity = value
-    else if (propertyKey === 'strokeType') {
-        shape.dashes = strokeTypeToDashes(value)
-        if (value === 'solid') clearDashesOnTwoJSShape(shape)
-    }
 }
 
 export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
@@ -214,8 +236,31 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                 propertyKey === 'stroke' ||
                 propertyKey === 'linewidth'
             ) {
+                // Two.js Group.fill/stroke/linewidth setters propagate the
+                // value to *every* child (see node_modules/two.js/src/
+                // group.js — each setter loops `child[prop] = v`). For a
+                // rectangle-with-text the text node is a child of the same
+                // group, so a group-level write hits the text alongside the
+                // rectangle: `fill` repaints the text and it vanishes,
+                // `stroke` gives it an outline, `linewidth` thickens that
+                // outline. Capture the text node's own value before the group
+                // write and restore it after, so the shape changes but the
+                // text is left untouched. (The single-element path in
+                // rectangle.tsx and the `opacity` branch below already avoid
+                // this by targeting the shape leaf, not the group.)
+                const sceneText = findTextNodeInside(sceneEl)
+                const coreText = findTextNodeInside(coreObj)
+                const sceneTextValue = sceneText?.[propertyKey]
+                const coreTextValue = coreText?.[propertyKey]
+
                 applyToTwoShape(sceneEl, propertyKey, value)
                 applyToTwoShape(coreObj, propertyKey, value)
+
+                if (sceneText && sceneTextValue !== undefined)
+                    sceneText[propertyKey] = sceneTextValue
+                if (coreText && coreTextValue !== undefined)
+                    coreText[propertyKey] = coreTextValue
+
                 if (sceneEl?.elementData)
                     sceneEl.elementData[propertyKey] = value
                 child[propertyKey] = value
@@ -225,8 +270,10 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
 
             if (propertyKey === 'strokeType') {
                 const dbValue = value === 'solid' ? 'solid' : value
-                applyToTwoShape(sceneEl, 'strokeType', value)
-                applyToTwoShape(coreObj, 'strokeType', value)
+                const dashes = strokeTypeToDashes(value)
+                const clearSolid = value === 'solid'
+                applyDashesToLeaves(sceneEl, dashes, clearSolid)
+                applyDashesToLeaves(coreObj, dashes, clearSolid)
                 if (sceneEl?.elementData)
                     sceneEl.elementData.strokeType = dbValue
                 child.strokeType = dbValue
@@ -269,18 +316,14 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                         sceneEl.elementData.textColor = value
                     child.textColor = value
                     recordChild(id, { textColor: value })
-                } else if (type === 'rectangle') {
+                } else if (type === 'rectangle' || type === 'diamond') {
                     const sceneText = sceneEl
                         ? findTextNodeInside(sceneEl)
                         : null
                     const coreText = coreObj
                         ? findTextNodeInside(coreObj)
                         : null
-                    if (
-                        !sceneText &&
-                        !coreText &&
-                        !child?.metadata?.hasText
-                    ) {
+                    if (!sceneText && !coreText && !child?.metadata?.hasText) {
                         return
                     }
                     if (sceneText) sceneText.fill = value
@@ -309,7 +352,7 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                 const sceneText = sceneEl ? findTextNodeInside(sceneEl) : null
                 const coreText = coreObj ? findTextNodeInside(coreObj) : null
                 if (
-                    type === 'rectangle' &&
+                    (type === 'rectangle' || type === 'diamond') &&
                     !sceneText &&
                     !coreText &&
                     !child?.metadata?.hasText
@@ -336,7 +379,10 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                 child.metadata = updatedMeta
                 recordChild(id, { metadata: updatedMeta })
 
-                if (type === 'rectangle' && (sceneText || coreText)) {
+                if (
+                    (type === 'rectangle' || type === 'diamond') &&
+                    (sceneText || coreText)
+                ) {
                     rectsToGrow.push({ id, sceneEl, coreObj })
                 }
                 return
@@ -388,10 +434,8 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                 }
                 const roundedW = Math.round(newW)
                 const roundedH = Math.round(newH)
-                const prevW =
-                    stateRefForComponentStore?.current?.[id]?.width
-                const prevH =
-                    stateRefForComponentStore?.current?.[id]?.height
+                const prevW = stateRefForComponentStore?.current?.[id]?.width
+                const prevH = stateRefForComponentStore?.current?.[id]?.height
                 updateComponentBulkPropertiesInLocalStore(
                     id,
                     { width: roundedW, height: roundedH },
