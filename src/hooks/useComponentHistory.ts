@@ -234,6 +234,12 @@ export function useComponentHistory({
         onPermissionError?: () => void
     ): void => {
         const two = twoJSInstanceRef.current
+        // A DELETE entry snapshots prevState as { ...store[id] }; if the
+        // component wasn't in the store at delete time (transient/group ids,
+        // double-delete, already-removed), that snapshot is {}. Restoring it
+        // would write a { boardId }-only entry that later breaks Share's bulk
+        // insert (componentType NOT NULL). Same guard as applyBatch.
+        if (!componentInfo || !componentInfo.componentType) return
         const restoredState = { ...componentInfo, boardId }
         const updatedStore = {
             ...stateRefForComponentStore.current,

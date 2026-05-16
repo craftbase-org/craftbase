@@ -27,7 +27,6 @@ import ZoomControls from '../../components/ZoomControls'
 import Sidebar from '../../components/sidebar/primary'
 import ElementPropertiesToolbar from '../../components/sidebar/elementProperties'
 import controlsIcon from '../../assets/controls.svg'
-import Spinner from '../../components/common/spinnerWithSize'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
 import { generateUUID } from '../../utils/misc'
@@ -371,15 +370,10 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         stateRefForComponentStore.current = componentStore
     }, [componentStore])
 
-    if (isPersisted && getComponentsForBoardLoading) {
-        return (
-            <>
-                <div className="w-full h-full flex items-center justify-center">
-                    <Spinner loaderSize="lg" />
-                </div>
-            </>
-        )
-    }
+    // NOTE: the persisted-board loading gate lives in the parent
+    // (views/Board/index.tsx). Never add a conditional `return` here — this
+    // component runs hundreds of hooks below this point and an early return
+    // changes the hook count between renders (Rules of Hooks violation).
 
     const setRootCursor = (cursor: string) => {
         const root = document.getElementById('main-two-root')
@@ -798,16 +792,36 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         // Insert all components to DB under the server board ID.
         // Generate a fresh UUID for each component's id so re-sharing from '/'
         // never hits a "duplicate key" uniqueness violation.
-        const componentsForDB = Object.values(
-            stateRefForComponentStore.current
-        ).map((comp) => {
-            const {
-                relativeX: _rX,
-                relativeY: _rY,
-                ...cleaned
-            } = stripTypename(comp)
-            return { ...cleaned, id: generateUUID(), boardId: serverBoardId }
-        })
+        const allEntries = Object.entries(stateRefForComponentStore.current)
+        const componentsForDB = allEntries
+            // Skip corrupt/partial store entries (no componentType). These come
+            // from undo/redo restore paths and would abort the whole bulk
+            // insert with a NOT NULL violation on componentType.
+            .filter(([, comp]) => (comp as ComponentRecord)?.componentType)
+            .map(([, comp]) => {
+                const {
+                    relativeX: _rX,
+                    relativeY: _rY,
+                    ...cleaned
+                } = stripTypename(comp)
+                return {
+                    ...cleaned,
+                    id: generateUUID(),
+                    boardId: serverBoardId,
+                }
+            })
+
+        const skipped = allEntries.filter(
+            ([, comp]) => !(comp as ComponentRecord)?.componentType
+        )
+        if (skipped.length > 0) {
+            console.warn(
+                '[persistBoard] skipped',
+                skipped.length,
+                'malformed component(s) with no componentType:',
+                Object.fromEntries(skipped)
+            )
+        }
 
         if (componentsForDB.length > 0) {
             await insertBulkComponents({
