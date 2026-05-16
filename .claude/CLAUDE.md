@@ -2,7 +2,10 @@
 
 - Use ES modules (import/export) syntax, not CommonJS (require)
 - Destructure imports when possible (eg. import { foo } from 'bar')
-- Use `tabWidth:4` for generating code for all the files (.js, .yaml, .md, etc...)
+- Use `tabWidth:4` for generating code for all the files (.ts, .tsx, .yaml, .md, etc...)
+- The codebase is **TypeScript** (`strict: true`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`). New files must be `.ts` or `.tsx`. Type-only imports use `import type { ... }`.
+- For Two.js scene shapes (Path/Group with codebase-specific bookkeeping like `.elementData`, `._renderer`, `.lineData`, `.siblingCircle`) cast to `any` at the access site with `// eslint-disable-next-line @typescript-eslint/no-explicit-any`. Designing strict interfaces for these is a follow-up, not Stage 12's scope.
+- For DOM null-safety, use the intermediate-variable pattern: `const el = document.getElementById('x'); if (el) el.style...`
 
 # General guidelines
 
@@ -19,13 +22,13 @@ For example:
 ## Implications when editing craftbase
 
 - **Keep `Board` generic.** Don't bake in assumptions about the host app (no map concepts, no consumer-specific UI, no hard-coded routes/branding inside reusable components). If a feature is consumer-specific, it belongs in the consumer, not here.
-- **The public surface lives in `src/lib.js`.** Anything a consumer needs (`Board`, `BoardContext`, `useBoardContext`, hooks, bootstrap helpers like `INSERT_USER_ONE`, `generateRandomUsernames`) must be exported there. Adding a new consumer-facing API? Export it from `lib.js` and avoid breaking existing exports.
+- **The public surface lives in `src/lib.ts`.** Anything a consumer needs (`Board`, `BoardContext`, `useBoardContext`, hooks, bootstrap helpers like `INSERT_USER_ONE`, `generateRandomUsernames`) must be exported there. Adding a new consumer-facing API? Export it from `lib.ts` and avoid breaking existing exports.
 - **Extension points over forks.** When a consumer needs to customize behavior, prefer adding an **optional prop on `Board`** (default-free, no-op when omitted) rather than letting them fork. Existing examples used by craftmaps:
     - `onCameraChange({ scale, tx, ty })` — fires on ZUI camera updates (wired via `useRef` inside `addZUI` to dodge the stale-closure trap documented below).
     - `renderBackground={() => <JSX />}` — render slot mounted between `#selector-rect` and `#main-two-root` for the consumer's background layer.
     - `scaleToDisplay(scale) → string` — overrides the zoom-readout in `ZoomControls` (read from `BoardContext`).
-- **JSX-in-`.js` is part of the contract.** craftbase ships `.js` files containing JSX; consumers configure their bundler to handle this (craftmaps extends vite's esbuild JSX transform to `node_modules/craftbase/src/...` and adds `craftbase` to `optimizeDeps.exclude`). Don't rename to `.jsx` without coordinating — it would break consumers.
-- **Tailwind classes must survive consumer purging.** Consumers add `./node_modules/craftbase/src/**/*.{js,jsx}` to their tailwind `content`. Stick to standard utility classes; avoid dynamically composed class names that purge can't see.
+- **Craftbase ships `.ts`/`.tsx` source files.** Consumers must configure their bundler to handle TypeScript from `node_modules/craftbase/src/...` (craftmaps' vite glob needs to include `node_modules/craftbase/src/**/*.{ts,tsx}` and keep `craftbase` in `optimizeDeps.exclude`). The previous JSX-in-`.js` contract was retired as part of the TypeScript migration — consumers need to update their bundler config on next reload.
+- **Tailwind classes must survive consumer purging.** Consumers add `./node_modules/craftbase/src/**/*.{ts,tsx}` to their tailwind `content`. Stick to standard utility classes; avoid dynamically composed class names that purge can't see.
 - **`link:` symlink, not `file:` copy.** Edits in `craftbase/src` are picked up live in craftmaps' dev server with no reinstall. Behavior changes here ship to consumers immediately on their next dev reload — be mindful when changing existing prop shapes or context values.
 
 ## When in doubt
@@ -53,14 +56,14 @@ The Board component uses React Context (`BoardContext`) to pass state and method
 
 ## React + Two.js Stale Closure Pattern
 
-**Critical architectural constraint**: `addZUI` in `src/newCanvas.js` is called **once on mount** via `useEffect([], [])`. All DOM event listeners registered inside it (mouse, dblclick, keydown, etc.) close over the initial `props` and local variables — they never see React state updates.
+**Critical architectural constraint**: `addZUI` in `src/newCanvas.tsx` is called **once on mount** via `useEffect([], [])`. All DOM event listeners registered inside it (mouse, dblclick, keydown, etc.) close over the initial `props` and local variables — they never see React state updates.
 
 **Rule**: Any Two.js event handler that needs live React state **must** read from a `useRef`, not from `props` or state directly.
 
 Pattern:
 
-```js
-const myValueRef = useRef(props.myValue)
+```ts
+const myValueRef = useRef<MyType>(props.myValue)
 useEffect(() => {
     myValueRef.current = props.myValue
 }, [props.myValue])
@@ -96,7 +99,7 @@ This is because Two.js attaches raw DOM `addEventListener` calls outside React's
 - `node_modules/two.js/src/renderers/svg.js` — `svg.group.removeChild` (has a `parentNode != this.elem` early-return check) and `svg.group.render` (calls `subtractions.forEach`).
 - `node_modules/two.js/src/group.js` — `subtractions`/`additions` arrays, `flagReset()` clearing logic, the `splice()` helper that pushes into `subtractions` when a child is detached.
 
-**Reference**: `src/components/elements/groupobject.js` `handleOnDeleteGroupElements` is the canonical example of cleanly tearing down a group with a `try/catch` + subtraction reset.
+**Reference**: `src/components/elements/groupobject.tsx` `handleOnDeleteGroupElements` is the canonical example of cleanly tearing down a group with a `try/catch` + subtraction reset.
 
 ## Directory Structure
 
@@ -105,9 +108,9 @@ This is because Two.js attaches raw DOM `addEventListener` calls outside React's
 Top-level page views/routes.
 
 - **`Board/`**: Main whiteboard page
-    - `board.js` - Board component with `BoardContext` provider, GraphQL operations
-    - `index.js` - Entry point with error boundary
-    - `errorBoundary.js` - Error boundary wrapper
+    - `board.tsx` - Board component with `BoardContext` provider, GraphQL operations
+    - `index.tsx` - Entry point with error boundary
+    - `errorBoundary.tsx` - Error boundary wrapper
 
 - **`Home/`**: Marketing/landing page (served at `/home`, no longer the default route)
 
@@ -116,41 +119,41 @@ Top-level page views/routes.
 Reusable React UI components.
 
 - **`elements/`**: Whiteboard element components (shapes, controls, UI widgets)
-    - Shape components: `circle.js`, `rectangle.js`, `frame.js`
-    - Arrow components: `arrowLine.js`, `divider.js`
-    - Drawing: `pencil.js`
-    - Text components: `newText.js`
-    - Other: `groupobject.js`
+    - Shape components: `circle.tsx`, `rectangle.tsx`, `diamond.tsx`
+    - Arrow components: `arrowLine.tsx`, `divider.tsx`
+    - Drawing: `pencil.tsx`
+    - Text components: `newText.tsx`
+    - Other: `groupobject.tsx`
 
 - **`sidebar/`**: Left sidebar UI
-    - `primary.js` - Main sidebar component
-    - `defaults.js` - Defaults section sidebar (where default stroke width and stroke type can be applied)
-    - `shareLinkPopup.js` - Share functionality popup
-    - `userDetailsPopup.js` - User information popup
+    - `primary.tsx` - Main sidebar component
+    - `defaults.tsx` - Defaults section sidebar (where default stroke width and stroke type can be applied)
+    - `shareLinkPopup.tsx` - Share functionality popup
+    - `userDetailsPopup.tsx` - User information popup
 
 - **`common/`**: Shared utility components
-    - `button.js` - Base button component
-    - `modal.js`, `modalContainer.js` - Modal system
-    - `portal.js` - React portal wrapper
-    - `spinner.js`, `spinnerWithSize.js` - Loading indicators
+    - `button.tsx` - Base button component
+    - `modal.tsx`, `modalContainer.tsx` - Modal system
+    - `portal.tsx` - React portal wrapper
+    - `spinner.tsx`, `spinnerWithSize.tsx` - Loading indicators
 
 - **`utils/`**: Component-specific utility functions
-    - `elementRenderWrappers.js` - `ElementRenderWrapper` and `GroupRenderWrapper` factory functions used by Canvas to lazily mount element components
+    - `elementRenderWrappers.tsx` - `ElementRenderWrapper` and `GroupRenderWrapper` factory functions used by Canvas to lazily mount element components
 
 - **`modals/`**: Standalone modal components
-    - `PermissionErrorModal.js` - Permission error modal (extracted from board.js)
-    - `StorageLimitModal.js` - Storage quota exceeded modal (extracted from board.js)
+    - `PermissionErrorModal.tsx` - Permission error modal (extracted from board.tsx)
+    - `StorageLimitModal.tsx` - Storage quota exceeded modal (extracted from board.tsx)
 
-- **`floatingToolbar.js`**: Floating toolbar for quick actions (every time when a user clicks component, this floating toolbar gets visible and invisible when the focus is moved away from component)
+- **`floatingToolbar.tsx`**: Floating toolbar for quick actions (every time when a user clicks component, this floating toolbar gets visible and invisible when the focus is moved away from component)
 
 ### `/src/factory/`
 
-Component factory classes (.js file under /src/factory) that generate template definitions for each element type. Each factory corresponds to a component element.
+Component factory classes (.ts file under /src/factory) that generate template definitions for each element type. Each factory corresponds to a component element.
 
 Example of factory-component relation:
 
-- Factories (`/src/factory/`): `arrowLine.js`, `circle.js`, `divider.js`, `pencil.js`, `rectangle.js`, `newText.js`
-- Component (`/src/components/elements/`): `arrowLine.js`, `circle.js`, `divider.js`, `pencil.js`,`rectangle.js`, `newText.js`
+- Factories (`/src/factory/`): `arrowLine.ts`, `circle.ts`, `divider.ts`, `pencil.ts`, `rectangle.ts`, `newText.ts`
+- Component (`/src/components/elements/`): `arrowLine.tsx`, `circle.tsx`, `divider.tsx`, `pencil.tsx`, `rectangle.tsx`, `newText.tsx`
 
 ### `/src/store` (not in use)
 
@@ -171,30 +174,30 @@ GraphQL schema definitions for backend communication (Hasura).
 
 Application constants and configuration.
 
-- `elementSchema.js` - Element schema definitions
-- `misc.js` - Miscellaneous constants
-- `exportHooks.js` - Custom hook exports
+- `elementSchema.ts` - Element schema definitions
+- `misc.ts` - Miscellaneous constants
+- `exportHooks.ts` - Custom hook exports
 
 ### `/src/hooks`
 
-Custom React hooks extracted from board.js and newCanvas.js.
+Custom React hooks extracted from board.tsx and newCanvas.tsx.
 
-- `useDrawingModes.js` - Draw mode state (`isPencilMode`, `isArrowDrawMode`, `isTextDrawMode`, pointer toggle)
-- `usePencilDefaults.js` - Pencil/stroke defaults (`defaultLinewidth`, `defaultStrokeType`, `pencilStrokeColor`) and their setters
-- `useMobileToolbarPanels.js` - Mobile panel visibility state with useEffect-based auto-close logic
-- `useLocalDraftPersistence.js` - localStorage draft save/restore + storage-quota modal state
-- `useComponentHistory.js` - Undo/history stack (`historyLog`, `recordToHistoryLog`, `undoLastAction`, `clearHistory`)
-- `useCanvasClipboard.js` - Copy (Ctrl+C) and paste (Ctrl+V) logic for canvas elements
+- `useDrawingModes.ts` - Draw mode state (`isPencilMode`, `isArrowDrawMode`, `isTextDrawMode`, pointer toggle)
+- `useElementDefaults.ts` - Element defaults (`defaultLinewidth`, `defaultStrokeType`, `defaultStrokeColor`, text defaults) and their setters
+- `useMobileToolbarPanels.ts` - Mobile panel visibility state with useEffect-based auto-close logic
+- `useLocalDraftPersistence.ts` - localStorage draft save/restore + storage-quota modal state
+- `useComponentHistory.ts` - Undo/history stack (`historyLog`, `recordToHistoryLog`, `undoLastAction`, `clearHistory`) — `HistoryEntry` is a discriminated union (`ADD | DELETE | UPDATE_VERTICES | UPDATE_BULK | BATCH`)
+- `useCanvasClipboard.ts` - Copy (Ctrl+C) and paste (Ctrl+V) logic for canvas elements
 
 ### `/src/utils`
 
 Utility functions and helpers.
 
-- `constants.js` - Shared constants
-- `misc.js` - Miscellaneous utilities
-- `updateVertices.js` - Vertex update utilities
-- `canvasUtils.js` - Pure Two.js canvas helpers: `setArrowEndpointsVisible`, `applyShapeStyle`, `cloneElementData`, `resolveShapeFromPath`, `pollUntilElement`
-- `drawModeUtils.js` - localStorage draw mode helpers: `getArrowDrawMode`, `isSelectPanMode`, `clearAllDrawModes`
+- `constants.ts` - Shared constants
+- `misc.ts` - Miscellaneous utilities
+- `updateVertices.ts` - Vertex update utilities
+- `canvasUtils.ts` - Pure Two.js canvas helpers: `setArrowEndpointsVisible`, `applyShapeStyle`, `cloneElementData`, `resolveShapeFromPath`, `pollUntilElement`
+- `drawModeUtils.ts` - localStorage draw mode helpers: `getArrowDrawMode`, `isSelectPanMode`, `clearAllDrawModes`
 
 ### `/src/icons`
 
@@ -216,11 +219,11 @@ Global stylesheets.
 
 ### Root Level (`/src`)
 
-- **`App.js`**: Root application component with routing (`/` → Board, `/board/:id` → Board, `/home` → Marketing)
-- **`newCanvas.js`**: Main canvas rendering logic using Two.js
-- **`routes.js`**: Application routes configuration
-- **`index.js`**: Application entry point
-- **`serviceWorker.js`**: PWA service worker
+- **`App.tsx`**: Root application component with routing (`/` → Board, `/board/:id` → Board, `/home` → Marketing)
+- **`newCanvas.tsx`**: Main canvas rendering logic using Two.js
+- **`routes.ts`**: Application routes configuration
+- **`index.tsx`**: Application entry point
+- **`serviceWorker.ts`**: PWA service worker
 
 ## Data Flow
 
@@ -258,14 +261,16 @@ Child components access this context via `useContext(BoardContext)`.
 
 ## Technology Stack
 
+- **Language**: TypeScript (`strict: true`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`)
 - **UI Framework**: React (^18.3.1)
-- **Canvas Rendering**: Two.js
+- **Canvas Rendering**: Two.js (custom DOM-level event handling; see Stale Closure section)
 - **State Management**: React Context (BoardContext) + local component state
-- **Backend**: GraphQL (Hasura)
+- **Backend**: GraphQL (Hasura) with codegen via `yarn codegen` → `src/schema/generated.ts`
 - **GraphQL Client**: Apollo Client
 - **Styling**: CSS + Tailwind CSS
 - **Build Tool**: Vite
 - **Package manager**: Yarn (v1.22.22)
+- **Type-check**: `yarn typecheck` (runs `tsc --noEmit`)
 
 # Workflow
 
