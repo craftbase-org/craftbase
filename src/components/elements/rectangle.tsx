@@ -4,6 +4,8 @@ import { useBoardContext } from '../../views/Board/board'
 
 import ElementFactory from '../../factory/rectangle'
 import { strokeTypeToDashes } from '../../utils/misc'
+import { applyShapeText } from '../../utils/canvasUtils'
+import { componentTypes } from '../../constants/misc'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -39,17 +41,14 @@ function Rectangle(props: ElementProps): ReactElement {
             group.children.unshift(rectangle)
 
             const meta = props.metadata || {}
-            if (meta.hasText && meta.textContent) {
-                // "rectangle-with-text"
-                const twoText = two.makeText(meta.textContent, 0, 0)
-                twoText.fill = meta.textFill || '#3A342C'
-                twoText.size = meta.textFontSize || 24
-                twoText.alignment = 'center'
-                twoText.baseline = meta.textBaseLine || 'middle'
-                twoText.family =
-                    meta.textFontFamily || meta.textFamily || 'Caveat'
-                group.add(twoText)
-            }
+            // "rectangle-with-text": multiline text reflowed to the box width.
+            applyShapeText(
+                two,
+                group,
+                componentTypes.rectangle,
+                props.width || rectangle.width || 120,
+                meta
+            )
 
             two.update()
 
@@ -82,6 +81,22 @@ function Rectangle(props: ElementProps): ReactElement {
         shapeInstance.fill = props.fill || shapeInstance.fill
         two.update()
     }, [props.x, props.y, props.width, props.height, props.fill, two])
+
+    // Re-wrap the embedded text whenever the box width or text metadata
+    // changes so resize/reload reflow deterministically from raw content.
+    useEffect(() => {
+        const groupInstance = groupRef.current
+        const shapeInstance = shapeRef.current
+        if (!groupInstance || !shapeInstance) return
+        applyShapeText(
+            two,
+            groupInstance,
+            componentTypes.rectangle,
+            props.width || shapeInstance.width || 120,
+            props.metadata || {}
+        )
+        two.update()
+    }, [props.width, props.metadata, two])
 
     useEffect(() => {
         if (shapeRef.current) {

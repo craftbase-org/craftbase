@@ -30,7 +30,13 @@ import controlsIcon from '../../assets/controls.svg'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
 import { generateUUID } from '../../utils/misc'
-import { pollUntilElement } from '../../utils/canvasUtils'
+import {
+    pollUntilElement,
+    getShapeTextNodes,
+    applyShapeText,
+    shapeTextStyleFromMeta,
+} from '../../utils/canvasUtils'
+import { reflowTextForShape } from '../../utils/shapeTextFit'
 import {
     TEXT_SIZES_OBJECT,
     MOBILE_TEXT_SIZES_OBJECT,
@@ -955,62 +961,52 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         syncOpenTextarea({ fontSize: textSize })
     }
 
-    // Schedule a post-render measurement of the text's bounding box and grow
-    // the parent rectangle if needed. Called after any property change that
-    // affects text dimensions (size, family, etc.).
-    const scheduleRectFitToText = (
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        twoText: any,
+    // After a text style change (size/family) on a shape-with-text, re-wrap
+    // the text to the shape's current width at the NEW style and grow the
+    // shape's height to fit the resulting line count — then persist height +
+    // metadata together. This keeps the live scene and a post-reload render
+    // identical (a bigger font re-wraps to more lines and the box grows
+    // vertically, instead of the text spilling out). Width stays user-driven.
+    const reflowShapeTextAfterStyleChange = (
         componentId: string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         updatedMetadata: any
     ) => {
-        // Capture whether text editing is active NOW so the RAF can detect
-        // if blur fires between the property change and the next frame.
-        const textAreaAtChange = document.querySelector('.temp-input-area')
-        requestAnimationFrame(() => {
-            // If text editing was active when the property changed but the
-            // textarea is now gone, blur already committed the correct
-            // metadata (textContent + textFill). Overwriting with the stale
-            // snapshot captured here would wipe that out.
-            if (
-                textAreaAtChange &&
-                !document.body.contains(textAreaAtChange)
-            )
-                return
+        const group = sel?.group?.data
+        const shapePath = sel?.shape?.data
+        const kind = group?.elementData?.componentType
+        // While the inline editor is open the text layer is hidden and the
+        // blur path owns the reflow+persist — don't fight it; just persist
+        // the metadata so the editor reads the latest style.
+        const editingActive = !!document.querySelector('.temp-input-area')
+        if (editingActive || !group || !shapePath || !kind) {
+            updateComponentBulkPropertiesInLocalStore(componentId, {
+                metadata: updatedMetadata,
+            })
+            return
+        }
 
-            twoJSInstance?.update()
-            const rectangleShape = sel?.shape?.data
-            const bbox = twoText._renderer?.elem?.getBBox?.()
-            if (!rectangleShape || !bbox || bbox.width <= 0) {
-                updateComponentBulkPropertiesInLocalStore(componentId, {
-                    metadata: updatedMetadata,
-                })
-                return
-            }
-
-            const PAD = 20
-            const minW = bbox.width + PAD
-            const minH = bbox.height + PAD
-            const needsExpand =
-                rectangleShape.width < minW || rectangleShape.height < minH
-
-            if (needsExpand) {
-                const newW = Math.max(rectangleShape.width, minW)
-                const newH = Math.max(rectangleShape.height, minH)
-                rectangleShape.width = newW
-                rectangleShape.height = newH
-                twoJSInstance?.update()
-                updateComponentBulkPropertiesInLocalStore(componentId, {
-                    metadata: updatedMetadata,
-                    width: Math.round(newW),
-                    height: Math.round(newH),
-                })
-            } else {
-                updateComponentBulkPropertiesInLocalStore(componentId, {
-                    metadata: updatedMetadata,
-                })
-            }
+        const rawText =
+            typeof updatedMetadata.textContent === 'string'
+                ? updatedMetadata.textContent
+                : ''
+        const width = shapePath.width
+        // Re-render the wrapped multiline layer at the new style.
+        applyShapeText(twoJSInstance, group, kind, width, updatedMetadata)
+        const { font } = shapeTextStyleFromMeta(updatedMetadata)
+        const { requiredHeight } = reflowTextForShape(
+            kind,
+            width,
+            rawText,
+            font
+        )
+        const newH = Math.max(shapePath.height, requiredHeight)
+        if (newH !== shapePath.height) shapePath.height = newH
+        twoJSInstance?.update()
+        updateComponentBulkPropertiesInLocalStore(componentId, {
+            metadata: updatedMetadata,
+            width: Math.round(width),
+            height: Math.round(newH),
         })
     }
 
@@ -1020,7 +1016,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         const textSize = (sizesMap as any)[newLabel]
         const twoText = sel?.text?.data
         if (!twoText) return
-        twoText.size = textSize
+        // Size every line node in the text layer (not just the first), so
+        // multiline updates live — not only after a reload.
+        const sizeNodes = getShapeTextNodes(sel?.group?.data)
+        ;(sizeNodes.length > 0 ? sizeNodes : [twoText]).forEach(
+            (n) => (n.size = textSize)
+        )
         twoJSInstance?.update()
 
         const componentId = sel?.group?.data?.elementData?.id
@@ -1033,7 +1034,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             sel.group.data.elementData.metadata = updatedMetadata
         }
 
-        scheduleRectFitToText(twoText, componentId, updatedMetadata)
+        reflowShapeTextAfterStyleChange(componentId, updatedMetadata)
         syncOpenTextarea({ fontSize: textSize })
     }
 
@@ -1060,7 +1061,11 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     const handleRectangleTextFontFamilyChange = (fontFamily: string) => {
         const twoText = sel?.text?.data
         if (!twoText) return
-        twoText.family = fontFamily
+        // Apply to every line node so multiline text updates live.
+        const familyNodes = getShapeTextNodes(sel?.group?.data)
+        ;(familyNodes.length > 0 ? familyNodes : [twoText]).forEach(
+            (n) => (n.family = fontFamily)
+        )
         twoJSInstance?.update()
         const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
@@ -1072,9 +1077,9 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         if (sel?.group?.data?.elementData) {
             sel.group.data.elementData.metadata = updatedMetadata
         }
-        // Re-fit the rectangle to the new text bbox; some families (e.g.
-        // Fraunces) render wider than Caveat at the same size.
-        scheduleRectFitToText(twoText, componentId, updatedMetadata)
+        // Re-wrap + grow height: some families (e.g. Fraunces) render wider
+        // than Caveat at the same size, changing the wrap.
+        reflowShapeTextAfterStyleChange(componentId, updatedMetadata)
         syncOpenTextarea({ fontFamily })
         // Make selection universal: future new elements pick up this family.
         setDefaultTextFontFamily(fontFamily)

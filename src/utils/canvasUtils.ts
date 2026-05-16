@@ -1,5 +1,7 @@
 import { SHAPE_DEFAULT_STROKE } from '../constants/misc'
 import { generateUUID } from './misc'
+import { lineHeightFor, measureTextWidth, type FontSpec } from './textLayout'
+import { reflowTextForShape } from './shapeTextFit'
 
 // Two.js scene/shape objects in the codebase carry extra bookkeeping fields
 // (elementData, _renderer, etc.) that aren't part of the published types. Keep
@@ -240,4 +242,157 @@ export function pollUntilElement(
         }
     }
     requestAnimationFrame(() => attempt(0))
+}
+
+// ── Shape text layer ──
+// Multiline text inside a shape lives in a dedicated, detectable sub-group
+// (one Two.Text per visual line). The marker `elementData.isTextLayer` lets
+// every consumer (group-apply, inspector, selection/resize) ask "is this the
+// text group?" and "give me all the line nodes" without ad-hoc value sniffing.
+
+export interface ShapeTextStyle {
+    fill: string
+    size: number
+    family: string
+    weight?: string | number
+    alignment?: 'center' | 'left' | 'right'
+    baseline?: string
+    lineHeight?: number
+}
+
+// Return the tagged text-layer sub-group of `group`, or null.
+export function findShapeTextLayer(group: ShapeLike): ShapeLike | null {
+    const children = group?.children
+    if (!children) return null
+    for (let i = 0; i < children.length; i++) {
+        if (children[i]?.elementData?.isTextLayer === true) return children[i]
+    }
+    return null
+}
+
+// All Two.Text line nodes for a shape. Falls back to legacy direct
+// string-valued children so callers stay correct mid-migration.
+export function getShapeTextNodes(group: ShapeLike): ShapeLike[] {
+    const layer = findShapeTextLayer(group)
+    const source = layer ? layer.children : group?.children
+    if (!source) return []
+    return source.filter(
+        (c: ShapeLike) => typeof c?.value === 'string'
+    )
+}
+
+/**
+ * Render `lines` as a vertical stack of Two.Text nodes inside `group`'s text
+ * layer, creating the layer on first use. Existing line nodes are reused
+ * (value/position/style updated) and only the surplus is removed — we never
+ * `two.remove` the layer group itself, sidestepping the documented Two.js
+ * `scene.subtractions` double-removal crash. Caller owns `two.update()`.
+ *
+ * Lines are centered as a block around the group origin (the shape Path is
+ * also centered there), so no `group.center()` is needed.
+ */
+export function renderShapeTextLayer(
+    two: TwoLike,
+    group: ShapeLike,
+    lines: string[],
+    style: ShapeTextStyle
+): ShapeLike {
+    let layer = findShapeTextLayer(group)
+    if (!layer) {
+        layer = two.makeGroup()
+        layer.elementData = { isTextLayer: true }
+        group.add(layer)
+    }
+
+    const lineH = style.lineHeight ?? lineHeightFor(style.size)
+    const n = lines.length
+    const alignment = style.alignment ?? 'left'
+
+    // Two.Text positions relative to its translation per `alignment`. For a
+    // left-aligned block we shift every line left by half the widest line so
+    // the block stays centered in the shape while each line shares one left
+    // edge (ragged right).
+    let blockX = 0
+    if (alignment === 'left') {
+        const font: FontSpec = {
+            family: style.family,
+            size: style.size,
+            weight: style.weight,
+        }
+        let maxW = 0
+        for (const ln of lines) {
+            const w = measureTextWidth(ln, font)
+            if (w > maxW) maxW = w
+        }
+        blockX = -maxW / 2
+    }
+
+    for (let i = 0; i < n; i++) {
+        const y = (i - (n - 1) / 2) * lineH
+        let node = layer.children[i]
+        if (!node || typeof node.value !== 'string') {
+            node = two.makeText(lines[i] ?? '', blockX, y)
+            layer.add(node)
+        } else {
+            node.value = lines[i] ?? ''
+        }
+        node.translation.set(blockX, y)
+        node.fill = style.fill
+        node.size = style.size
+        node.family = style.family
+        node.alignment = alignment
+        node.baseline = style.baseline ?? 'middle'
+        if (style.weight !== undefined) node.weight = style.weight
+    }
+
+    // Drop surplus line nodes from a previous, longer render.
+    if (layer.children.length > n) {
+        const extras = layer.children.slice(n)
+        layer.remove(extras)
+    }
+
+    return layer
+}
+
+// Derive the text style + measurement font from a shape's metadata, matching
+// the historical single-makeText defaults (Caveat / #3A342C / size 24).
+export function shapeTextStyleFromMeta(meta: ShapeLike): {
+    style: ShapeTextStyle
+    font: FontSpec
+} {
+    const family = meta?.textFontFamily || meta?.textFamily || 'Caveat'
+    const size = meta?.textFontSize || 24
+    const weight = meta?.textWeight || 'normal'
+    return {
+        style: {
+            fill: meta?.textFill || '#3A342C',
+            size,
+            family,
+            weight,
+            alignment: 'left',
+            baseline: meta?.textBaseLine || 'middle',
+        },
+        font: { family, size, weight },
+    }
+}
+
+/**
+ * Reflow a shape's text to its current width and render it into the text
+ * layer. Single entry point used by the rectangle/diamond/circle components
+ * on mount and whenever width/metadata change, so persisted boards reflow
+ * deterministically from raw content + width (no wrapped text is stored).
+ * Caller owns `two.update()`.
+ */
+export function applyShapeText(
+    two: TwoLike,
+    group: ShapeLike,
+    kind: string,
+    width: number,
+    meta: ShapeLike
+): void {
+    if (!meta?.hasText) return
+    const raw = typeof meta.textContent === 'string' ? meta.textContent : ''
+    const { style, font } = shapeTextStyleFromMeta(meta)
+    const { lines } = reflowTextForShape(kind, width, raw, font)
+    renderShapeTextLayer(two, group, lines, style)
 }

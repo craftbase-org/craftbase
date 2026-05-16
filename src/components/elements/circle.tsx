@@ -4,6 +4,8 @@ import { useBoardContext } from '../../views/Board/board'
 
 import CircleFactory from '../../factory/circle'
 import { strokeTypeToDashes } from '../../utils/misc'
+import { applyShapeText } from '../../utils/canvasUtils'
+import { componentTypes } from '../../constants/misc'
 
 // Element components receive a fluid prop bag composed of the ComponentRecord
 // fields plus canvas-side handles (twoJSInstance, parentGroup, itemData,
@@ -44,6 +46,17 @@ function Circle(props: ElementProps): ReactElement {
             groupRef.current = group
             shapeRef.current = circle
             group.children.unshift(circle)
+
+            const meta = props.metadata || {}
+            // "circle-with-text": multiline text reflowed to the inscribed box.
+            applyShapeText(
+                two,
+                group,
+                componentTypes.circle,
+                props.width || circle.width || 100,
+                meta
+            )
+
             two.update()
 
             const groupEl = document.getElementById(group.id)
@@ -75,6 +88,22 @@ function Circle(props: ElementProps): ReactElement {
         shapeInstance.fill = props.fill || shapeInstance.fill
         two.update()
     }, [props.x, props.y, props.fill, props.width, props.height, two])
+
+    // Re-wrap the embedded text whenever the box width or text metadata
+    // changes so resize/reload reflow deterministically from raw content.
+    useEffect(() => {
+        const groupInstance = groupRef.current
+        const shapeInstance = shapeRef.current
+        if (!groupInstance || !shapeInstance) return
+        applyShapeText(
+            two,
+            groupInstance,
+            componentTypes.circle,
+            props.width || shapeInstance.width || 100,
+            props.metadata || {}
+        )
+        two.update()
+    }, [props.width, props.metadata, two])
 
     useEffect(() => {
         if (shapeRef.current) {

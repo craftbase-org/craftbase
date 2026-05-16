@@ -98,11 +98,12 @@ const ACCEPTS: Record<GroupPropertyKey, Set<string>> = {
         'arrowLine',
         'newText',
     ]),
-    // diamond carries text the same way rectangle does (diamond.tsx:43-51
-    // "diamond-with-text"), so a group text edit must reach it too.
-    textColor: new Set(['newText', 'rectangle', 'diamond']),
-    textSize: new Set(['newText', 'rectangle', 'diamond']),
-    textFontFamily: new Set(['newText', 'rectangle', 'diamond']),
+    // rectangle, diamond AND circle all carry text the same way (see
+    // applyShapeText / the *-with-text components), so a group text edit
+    // must reach every one of them.
+    textColor: new Set(['newText', 'rectangle', 'diamond', 'circle']),
+    textSize: new Set(['newText', 'rectangle', 'diamond', 'circle']),
+    textFontFamily: new Set(['newText', 'rectangle', 'diamond', 'circle']),
 }
 
 function findSceneElement(two: TwoLike, id: string): ShapeLike | undefined {
@@ -123,13 +124,18 @@ function findVisibleCoreObject(
     return null
 }
 
-function findTextNodeInside(coreObject: ShapeLike): ShapeLike | null {
-    if (!coreObject?.children) return null
-    for (let i = 0; i < coreObject.children.length; i++) {
-        const c = coreObject.children[i]
-        if (typeof c?.value === 'string') return c
+// Collect every Two.Text line node inside `obj`, recursing through the
+// text-layer sub-group (multiline text is a stack of nodes). Replaces the
+// old single-node finder so group text edits reach every visible line.
+function findTextNodesInside(obj: ShapeLike): ShapeLike[] {
+    if (!obj?.children) return []
+    const out: ShapeLike[] = []
+    for (let i = 0; i < obj.children.length; i++) {
+        const c = obj.children[i]
+        if (typeof c?.value === 'string') out.push(c)
+        else if (Array.isArray(c?.children)) out.push(...findTextNodesInside(c))
     }
-    return null
+    return out
 }
 
 // Recursively apply a dash pattern to every Path leaf inside `node`, skipping
@@ -248,18 +254,25 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                 // text is left untouched. (The single-element path in
                 // rectangle.tsx and the `opacity` branch below already avoid
                 // this by targeting the shape leaf, not the group.)
-                const sceneText = findTextNodeInside(sceneEl)
-                const coreText = findTextNodeInside(coreObj)
-                const sceneTextValue = sceneText?.[propertyKey]
-                const coreTextValue = coreText?.[propertyKey]
+                const sceneTexts = findTextNodesInside(sceneEl)
+                const coreTexts = findTextNodesInside(coreObj)
+                const sceneTextValues = sceneTexts.map(
+                    (t) => t?.[propertyKey]
+                )
+                const coreTextValues = coreTexts.map((t) => t?.[propertyKey])
 
                 applyToTwoShape(sceneEl, propertyKey, value)
                 applyToTwoShape(coreObj, propertyKey, value)
 
-                if (sceneText && sceneTextValue !== undefined)
-                    sceneText[propertyKey] = sceneTextValue
-                if (coreText && coreTextValue !== undefined)
-                    coreText[propertyKey] = coreTextValue
+                // Restore every line node's own value the group write clobbered.
+                sceneTexts.forEach((t, i) => {
+                    if (sceneTextValues[i] !== undefined)
+                        t[propertyKey] = sceneTextValues[i]
+                })
+                coreTexts.forEach((t, i) => {
+                    if (coreTextValues[i] !== undefined)
+                        t[propertyKey] = coreTextValues[i]
+                })
 
                 if (sceneEl?.elementData)
                     sceneEl.elementData[propertyKey] = value
@@ -304,30 +317,38 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
 
             if (propertyKey === 'textColor') {
                 if (type === 'newText') {
-                    const sceneText = sceneEl
-                        ? findTextNodeInside(sceneEl)
-                        : null
-                    const coreText = coreObj
-                        ? findTextNodeInside(coreObj)
-                        : null
-                    if (sceneText) sceneText.fill = value
-                    if (coreText) coreText.fill = value
+                    const sceneTexts = sceneEl
+                        ? findTextNodesInside(sceneEl)
+                        : []
+                    const coreTexts = coreObj
+                        ? findTextNodesInside(coreObj)
+                        : []
+                    sceneTexts.forEach((t) => (t.fill = value))
+                    coreTexts.forEach((t) => (t.fill = value))
                     if (sceneEl?.elementData)
                         sceneEl.elementData.textColor = value
                     child.textColor = value
                     recordChild(id, { textColor: value })
-                } else if (type === 'rectangle' || type === 'diamond') {
-                    const sceneText = sceneEl
-                        ? findTextNodeInside(sceneEl)
-                        : null
-                    const coreText = coreObj
-                        ? findTextNodeInside(coreObj)
-                        : null
-                    if (!sceneText && !coreText && !child?.metadata?.hasText) {
+                } else if (
+                    type === 'rectangle' ||
+                    type === 'diamond' ||
+                    type === 'circle'
+                ) {
+                    const sceneTexts = sceneEl
+                        ? findTextNodesInside(sceneEl)
+                        : []
+                    const coreTexts = coreObj
+                        ? findTextNodesInside(coreObj)
+                        : []
+                    if (
+                        sceneTexts.length === 0 &&
+                        coreTexts.length === 0 &&
+                        !child?.metadata?.hasText
+                    ) {
                         return
                     }
-                    if (sceneText) sceneText.fill = value
-                    if (coreText) coreText.fill = value
+                    sceneTexts.forEach((t) => (t.fill = value))
+                    coreTexts.forEach((t) => (t.fill = value))
                     const existingMeta =
                         sceneEl?.elementData?.metadata &&
                         !Array.isArray(sceneEl.elementData.metadata)
@@ -349,12 +370,18 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                 propertyKey === 'textSize' ||
                 propertyKey === 'textFontFamily'
             ) {
-                const sceneText = sceneEl ? findTextNodeInside(sceneEl) : null
-                const coreText = coreObj ? findTextNodeInside(coreObj) : null
+                const sceneTexts = sceneEl
+                    ? findTextNodesInside(sceneEl)
+                    : []
+                const coreTexts = coreObj
+                    ? findTextNodesInside(coreObj)
+                    : []
                 if (
-                    (type === 'rectangle' || type === 'diamond') &&
-                    !sceneText &&
-                    !coreText &&
+                    (type === 'rectangle' ||
+                        type === 'diamond' ||
+                        type === 'circle') &&
+                    sceneTexts.length === 0 &&
+                    coreTexts.length === 0 &&
                     !child?.metadata?.hasText
                 ) {
                     return
@@ -364,8 +391,8 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                         ? 'textFontSize'
                         : 'textFontFamily'
                 const twoKey = propertyKey === 'textSize' ? 'size' : 'family'
-                if (sceneText) sceneText[twoKey] = value
-                if (coreText) coreText[twoKey] = value
+                sceneTexts.forEach((t) => (t[twoKey] = value))
+                coreTexts.forEach((t) => (t[twoKey] = value))
                 const existingMeta =
                     sceneEl?.elementData?.metadata &&
                     !Array.isArray(sceneEl.elementData.metadata)
@@ -380,8 +407,10 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                 recordChild(id, { metadata: updatedMeta })
 
                 if (
-                    (type === 'rectangle' || type === 'diamond') &&
-                    (sceneText || coreText)
+                    (type === 'rectangle' ||
+                        type === 'diamond' ||
+                        type === 'circle') &&
+                    (sceneTexts.length > 0 || coreTexts.length > 0)
                 ) {
                     rectsToGrow.push({ id, sceneEl, coreObj })
                 }
@@ -401,16 +430,30 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
             const PAD = 20
             const growEntries: HistoryBatchEntry[] = []
             rectsToGrow.forEach(({ id, sceneEl, coreObj }) => {
-                const sceneText = sceneEl ? findTextNodeInside(sceneEl) : null
-                const coreText = coreObj ? findTextNodeInside(coreObj) : null
-                // Prefer coreText for measurement: the scene element's outer
+                const sceneTexts = sceneEl
+                    ? findTextNodesInside(sceneEl)
+                    : []
+                const coreTexts = coreObj
+                    ? findTextNodesInside(coreObj)
+                    : []
+                // Prefer coreTexts for measurement: the scene element's outer
                 // group is at opacity=0 while a group is focused, and Two.js's
                 // render path leaves sceneText's _flagSize unprocessed in that
                 // state — its DOM font-size attribute stays stale. coreText is
-                // on the visible group and gets rendered correctly.
-                const measureNode = coreText || sceneText
-                const bbox = measureNode?._renderer?.elem?.getBBox?.()
-                if (!bbox || bbox.width <= 0) return
+                // on the visible group and gets rendered correctly. Union the
+                // line nodes' boxes so multiline text is fully enclosed.
+                const measureNodes =
+                    coreTexts.length > 0 ? coreTexts : sceneTexts
+                let bw = 0
+                let bh = 0
+                measureNodes.forEach((nd) => {
+                    const b = nd?._renderer?.elem?.getBBox?.()
+                    if (!b) return
+                    bw = Math.max(bw, b.width)
+                    bh += b.height
+                })
+                const bbox = { width: bw, height: bh }
+                if (bbox.width <= 0) return
 
                 const sceneRect = sceneEl?.children?.[0]
                 const coreRect = coreObj?.children?.[0]

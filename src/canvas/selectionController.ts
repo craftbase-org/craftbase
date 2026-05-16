@@ -1,4 +1,14 @@
 import Two from 'two.js'
+import {
+    findShapeTextLayer,
+    getShapeTextNodes,
+    renderShapeTextLayer,
+    shapeTextStyleFromMeta,
+} from '../utils/canvasUtils'
+import {
+    reflowTextForShape,
+    minShapeWidthForText,
+} from '../utils/shapeTextFit'
 
 // Two.js scene shapes carry codebase-specific bookkeeping (elementData,
 // _renderer, etc.) outside the published types. Stay loose here; Stage 12
@@ -67,9 +77,8 @@ interface ToolbarState {
 
 function buildToolbarState(group: GroupLike, shape: ShapeLike): ToolbarState {
     const componentType = group?.elementData?.componentType
-    const textChild = group?.children?.find(
-        (child: ShapeLike) => typeof child.value === 'string'
-    )
+    // First line node of the (possibly multiline) text layer.
+    const textChild = getShapeTextNodes(group)[0]
     return {
         element: {
             [shape.id]: shape,
@@ -157,6 +166,7 @@ export default class SelectionController {
     currentShape: ShapeLike = null
     currentAdapter: ShapeAdapter | null = null
     currentTextChild: ShapeLike = null
+    currentTextLayer: ShapeLike = null
 
     interaction: Interaction | null = null
 
@@ -308,10 +318,8 @@ export default class SelectionController {
         this.currentGroup = group
         this.currentShape = shape || group.children[0]
         this.currentAdapter = adapter
-        this.currentTextChild =
-            group.children?.find(
-                (child: ShapeLike) => typeof child.value === 'string'
-            ) || null
+        this.currentTextLayer = findShapeTextLayer(group)
+        this.currentTextChild = getShapeTextNodes(group)[0] || null
         this.targets.add(group)
 
         this._bringToFront()
@@ -335,6 +343,7 @@ export default class SelectionController {
         this.currentShape = null
         this.currentAdapter = null
         this.currentTextChild = null
+        this.currentTextLayer = null
         this.ui.visible = false
         this.domElement.style.cursor = ''
         this.two.update()
@@ -661,16 +670,54 @@ export default class SelectionController {
             newHeight = initialHeight * scaleY
         }
 
-        let minW = this.currentAdapter.minWidth ?? MIN_SCALE_DIMENSION
-        let minH = this.currentAdapter.minHeight ?? MIN_SCALE_DIMENSION
+        const minW = this.currentAdapter.minWidth ?? MIN_SCALE_DIMENSION
+        const minH = this.currentAdapter.minHeight ?? MIN_SCALE_DIMENSION
 
-        if (this.currentTextChild) {
-            const bbox = this.currentTextChild._renderer?.elem?.getBBox?.()
-            if (bbox && bbox.width > 0) minW = Math.max(minW, bbox.width + 20)
-            if (bbox && bbox.height > 0) minH = Math.max(minH, bbox.height + 20)
+        // Shape-with-text: width is user-driven, height auto-fits the
+        // reflowed lines. The shape may be squeezed until each line holds
+        // just its widest single character (1 char/line) — but no further.
+        const meta = this.currentGroup?.elementData?.metadata
+        const rawText =
+            meta && typeof meta.textContent === 'string'
+                ? meta.textContent
+                : ''
+        const hasShapeText =
+            !!this.currentTextLayer && !!meta?.hasText && rawText.length > 0
+
+        if (hasShapeText) {
+            const kind = this.currentGroup?.elementData?.componentType
+            const { style, font } = shapeTextStyleFromMeta(meta)
+            const textMinW = minShapeWidthForText(kind, rawText, font)
+            if (Math.abs(newWidth) < Math.max(minW, textMinW)) return
+
+            const reflow = reflowTextForShape(
+                kind,
+                Math.abs(newWidth),
+                rawText,
+                font
+            )
+            // Force the height to fit the wrapped lines (auto vertical
+            // adjust), preserving the drag direction's sign.
+            const signH = newHeight < 0 ? -1 : 1
+            newHeight =
+                signH * Math.max(Math.abs(newHeight), reflow.requiredHeight)
+            // Recompute scales so the anchored corner stays put for the
+            // (possibly taller) shape.
+            scaleX = newWidth / initialWidth
+            scaleY = newHeight / initialHeight
+
+            renderShapeTextLayer(
+                this.two,
+                this.currentGroup,
+                reflow.lines,
+                style
+            )
+        } else if (
+            Math.abs(newWidth) < minW ||
+            Math.abs(newHeight) < minH
+        ) {
+            return
         }
-
-        if (Math.abs(newWidth) < minW || Math.abs(newHeight) < minH) return
 
         const anchorOffsetX = (initialWidth * (scaleX - 1)) / 2
         const anchorOffsetY = (initialHeight * (scaleY - 1)) / 2

@@ -11,6 +11,7 @@ import {
     TEXT_SIZES_OBJECT,
     MOBILE_TEXT_SIZES_OBJECT,
 } from '../../utils/constants'
+import { lineHeightFor } from '../../utils/textLayout'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,6 +48,10 @@ function NewText(props: ElementProps): ReactElement {
     const [, setTextSize] = useState<number>(props?.metadata?.fontSize || 36)
     const textValueRef = useRef(textValue)
     const twoTextRef = useRef<ShapeLike>(null)
+    // Satellite Two.Text nodes for lines 2..N (line 1 stays `twoText`), and a
+    // ref to the layout sync so the metadata effect can re-run it.
+    const extraLineNodesRef = useRef<ShapeLike[]>([])
+    const syncMultilineRef = useRef<(() => void) | null>(null)
 
     const two = props.twoJSInstance
 
@@ -95,6 +100,87 @@ function NewText(props: ElementProps): ReactElement {
         twoTextRef.current = twoText
         groupObject = group
 
+        // Multiline rendering for standalone text: `twoText` holds line 1;
+        // satellite Two.Text nodes hold lines 2..N. We honor only hard
+        // newlines (Shift+Enter) — standalone text is NOT width-reflowed on
+        // resize (per product decision). The whole block is vertically
+        // centered around the group origin.
+        const syncMultilineLayout = (): void => {
+            const t = twoTextRef.current
+            if (!t) return
+            const lines = (textValueRef.current || '').split('\n')
+            const n = lines.length
+            const lineH = lineHeightFor(t.size || 36)
+            const extra = extraLineNodesRef.current
+
+            t.value = lines[0] ?? ''
+            t.translation.set(0, (0 - (n - 1) / 2) * lineH)
+
+            for (let i = 1; i < n; i++) {
+                let node = extra[i - 1]
+                if (!node) {
+                    node = two.makeText(lines[i] ?? '', 0, 0)
+                    group.add(node)
+                    extra[i - 1] = node
+                }
+                node.value = lines[i] ?? ''
+                node.fill = t.fill
+                node.size = t.size
+                node.family = t.family
+                node.alignment = t.alignment
+                node.baseline = t.baseline
+                node.opacity = t.opacity
+                node.translation.set(0, (i - (n - 1) / 2) * lineH)
+            }
+            if (extra.length > n - 1) {
+                const surplus = extra.splice(Math.max(n - 1, 0))
+                if (surplus.length > 0) group.remove(surplus)
+            }
+            two.update()
+        }
+        syncMultilineRef.current = syncMultilineLayout
+
+        // Union screen box over every line node so the selection rectangle
+        // encloses the whole multiline block (not just line 1).
+        const blockRect = (): {
+            left: number
+            right: number
+            top: number
+            bottom: number
+            width: number
+            height: number
+        } => {
+            const nodes = [
+                twoTextRef.current,
+                ...extraLineNodesRef.current,
+            ].filter(Boolean)
+            let L = Infinity
+            let R = -Infinity
+            let T = Infinity
+            let B = -Infinity
+            nodes.forEach((nd) => {
+                const r = nd.getBoundingClientRect(true)
+                L = Math.min(L, r.left)
+                R = Math.max(R, r.right)
+                T = Math.min(T, r.top)
+                B = Math.max(B, r.bottom)
+            })
+            if (L === Infinity) {
+                return twoText.getBoundingClientRect(true)
+            }
+            return {
+                left: L,
+                right: R,
+                top: T,
+                bottom: B,
+                width: R - L,
+                height: B - T,
+            }
+        }
+
+        // Render any persisted multiline content as the stacked block.
+        syncMultilineLayout()
+
         const { selector } = getEditComponents(two, group, 4)
         selectorInstance = selector
         two.update()
@@ -129,9 +215,14 @@ function NewText(props: ElementProps): ReactElement {
 
             twoText.size = newSize
             twoText.leading = newSize
-            two.update()
+            extraLineNodesRef.current.forEach((nd) => {
+                nd.size = newSize
+                nd.leading = newSize
+            })
+            // Re-stack for the new line height, then box the whole block.
+            syncMultilineLayout()
 
-            const bRect = twoText.getBoundingClientRect(true)
+            const bRect = blockRect()
             selectorInstance.update(
                 bRect.left - 4,
                 bRect.right + 4,
@@ -150,14 +241,14 @@ function NewText(props: ElementProps): ReactElement {
             window.removeEventListener('mousemove', onResizeMouseMove)
             window.removeEventListener('mouseup', onResizeMouseUp)
 
-            const bRect = twoText.getBoundingClientRect(true)
+            const bRect = blockRect()
             const newWidth = Math.round(bRect.width || 60)
             const newHeight = Math.round(bRect.height || twoText.size)
 
             const resizeMetadata = {
                 ...props.metadata,
                 fontSize: finalSize,
-                content: twoText.value,
+                content: textValueRef.current,
             }
             updateComponentBulkPropertiesInLocalStore(props.id, {
                 width: newWidth,
@@ -305,7 +396,7 @@ function NewText(props: ElementProps): ReactElement {
             input.addEventListener('input', autoSizeAndCenter)
 
             input.onfocus = function (): void {
-                const bRect = twoText.getBoundingClientRect(true)
+                const bRect = blockRect()
                 selectorInstance.update(
                     bRect.left - 4,
                     bRect.right + 4,
@@ -320,7 +411,14 @@ function NewText(props: ElementProps): ReactElement {
 
             input.addEventListener('keydown', (event: KeyboardEvent) => {
                 if (event.key === 'Enter') {
+                    if (event.shiftKey) {
+                        // Shift+Enter inserts a newline (textarea is
+                        // whiteSpace:'pre'); hard newlines are preserved.
+                        return
+                    }
+                    // Plain Enter commits and closes the editor.
                     event.preventDefault()
+                    input.blur()
                 }
                 if (event.key === 'Escape') {
                     event.preventDefault()
@@ -336,14 +434,14 @@ function NewText(props: ElementProps): ReactElement {
 
                 groupDomElem.style.display = 'block'
 
+                // Raw text — may contain hard newlines from Shift+Enter.
                 const newContent = input.value
                 setTextValue(newContent)
                 textValueRef.current = newContent
 
-                twoText.value = newContent
-                two.update()
+                syncMultilineLayout()
 
-                const bRect = twoText.getBoundingClientRect(true)
+                const bRect = blockRect()
                 const newWidth = Math.round(bRect.width || 60)
                 const newHeight = Math.round(bRect.height || twoText.size)
 
@@ -390,7 +488,7 @@ function NewText(props: ElementProps): ReactElement {
         window.addEventListener('triggerTextInput', handleTriggerTextInput)
 
         interact(`#${group.id}`).on('click', () => {
-            const bRect = twoText.getBoundingClientRect(true)
+            const bRect = blockRect()
             selector.update(
                 bRect.left - 4,
                 bRect.right + 4,
@@ -461,10 +559,14 @@ function NewText(props: ElementProps): ReactElement {
                 props.metadata?.content !== undefined &&
                 props.metadata.content !== textValueRef.current
             ) {
-                twoText.value = props.metadata.content
                 textValueRef.current = props.metadata.content
                 setTextValue(props.metadata.content)
             }
+
+            // Propagate style/content changes across every line node and
+            // restack (handles font-size/family/color from the toolbar and
+            // group-apply, plus external content updates).
+            syncMultilineRef.current?.()
 
             two.update()
         }
