@@ -15,6 +15,7 @@ import {
 } from '../../schema/queries'
 import {
     UPDATE_USER_REVISIT_COUNT,
+    INSERT_USER_ONE,
     INSERT_COMPONENT,
     INSERT_BULK_COMPONENTS,
     DELETE_COMPONENT_BY_ID,
@@ -29,7 +30,7 @@ import ElementPropertiesToolbar from '../../components/sidebar/elementProperties
 import controlsIcon from '../../assets/controls.svg'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
-import { generateUUID } from '../../utils/misc'
+import { generateUUID, generateRandomUsernames } from '../../utils/misc'
 import {
     pollUntilElement,
     getShapeTextNodes,
@@ -157,6 +158,8 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             error: updateUserRevisitError,
         },
     ] = useMutation(UPDATE_USER_REVISIT_COUNT)
+
+    const [insertUser] = useMutation(INSERT_USER_ONE)
 
     const navigate = useNavigate()
 
@@ -337,17 +340,34 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         }
     }, [boardId])
 
-    // Update revisit count on every board open, persisted or local
+    // Update revisit count on every board open, persisted or local.
+    // A null payload means there's no revisit row for this userId — i.e.
+    // the user was never created in this DB. Self-heal by inserting the
+    // user with the known id; the `after_user_insert` Postgres trigger
+    // then creates the revisits row (count = 1) for this visit.
     useEffect(() => {
         const userId = localStorage.getItem('userId')
-        if (userId) {
-            // Capture the revisit moment client-side as an ISO 8601 string;
-            // Hasura coerces it into the timestamptz `last_visit` column for
-            // cohort analysis in the DB.
-            updateUserRevisit({
-                variables: { userId, lastVisit: new Date().toISOString() },
+        if (!userId) return
+        // Capture the revisit moment client-side as an ISO 8601 string;
+        // Hasura coerces it into the timestamptz `last_visit` column for
+        // cohort analysis in the DB.
+        updateUserRevisit({
+            variables: { userId, lastVisit: new Date().toISOString() },
+        })
+            .then(({ data }) => {
+                if (data?.update_users_user_revisits_by_pk) return
+                const { nickname, firstName, lastName } =
+                    generateRandomUsernames()
+                return insertUser({
+                    variables: {
+                        object: { id: userId, nickname, firstName, lastName },
+                    },
+                })
             })
-        }
+            .catch(() => {
+                // Non-blocking: revisit tracking is best-effort and must
+                // never break board mount (network/permission/conflict).
+            })
     }, [])
 
     // Track last opened board only once it's persisted
