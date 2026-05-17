@@ -4,6 +4,7 @@ import {
     drawShape,
     drawRectangle,
     addTextToRectangle,
+    readGroupText,
     getCanvasBox,
 } from './helpers/index.js'
 
@@ -73,8 +74,11 @@ test.describe('Copy-paste', () => {
         }
         expect(pastedHandle).not.toBeNull()
 
-        // The pasted rectangle must contain a <text> SVG node with the original text
-        const pastedText = await pastedHandle.$eval('text', (el) => el.textContent)
+        // The pasted rectangle must preserve the full text. At the user
+        // default size ("M") "Hello Craftbase" wraps to two <text> line
+        // nodes inside the 200px-wide rectangle, so read the whole stack
+        // (not just line 1) and reconstruct the space-separated content.
+        const pastedText = await readGroupText(pastedHandle)
         expect(pastedText).toBe(TEXT)
     })
 

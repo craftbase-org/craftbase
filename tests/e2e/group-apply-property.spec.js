@@ -139,10 +139,14 @@ async function createCluster(page, { includeNewText }) {
         false
     )
 
+    h = await drawShape(page, 'circle', shapeBox(bx + 2 * COL, by + ROW))
+    await addTextToRectangle(page, h, 'Ct')
+    await add(h, 'circle-with-text', true)
+
     if (includeNewText) {
         h = await placeText(page, {
-            x: bx + 2 * COL + W / 2,
-            y: by + ROW + H / 2,
+            x: bx + W / 2,
+            y: by + 2 * ROW + H / 2,
         })
         await add(h, 'newText', true)
     }
@@ -163,7 +167,7 @@ async function selectGroup(page, layout) {
         startX: bx - 55,
         startY: by - 55,
         endX: bx + 2 * COL + W + 60,
-        endY: by + ROW + H + 60,
+        endY: by + 2 * ROW + H + 60,
     })
     expect(groupHandle).not.toBeNull()
     await page.waitForSelector('#floating-toolbar', { timeout: 5_000 })

@@ -331,6 +331,28 @@ export async function dragSelectArea(
     return page.$('[data-label="groupobject_coord"]')
 }
 
+/**
+ * Reads the full visible text of a shape/text group as the user sees it.
+ *
+ * Shape-with-text and multiline standalone text render as a STACK of
+ * <text> SVG nodes (one per wrapped/hard line), not a single node. A naive
+ * `$eval('text', el => el.textContent)` only reads line 1 — which silently
+ * truncates once text wraps (e.g. after the default text size grew from the
+ * old hard-coded "S"/24 to the user default "M"/36).
+ *
+ * We join the per-line nodes with a single space. Word-wrap breaks at spaces
+ * and the separating space is consumed by the wrap, so space-joining the
+ * lines reconstructs the original space-separated content.
+ */
+export async function readGroupText(handle) {
+    return handle.$$eval('text', (nodes) =>
+        nodes
+            .map((n) => n.textContent)
+            .filter((s) => s && s.length > 0)
+            .join(' ')
+    )
+}
+
 export async function addTextToRectangle(page, rectHandle, text) {
     const box = await rectHandle.boundingBox()
     const cx = box.x + box.width / 2

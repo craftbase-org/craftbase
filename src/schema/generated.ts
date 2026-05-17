@@ -16,6 +16,7 @@ export type Scalars = {
   bigint: { input: number; output: number; }
   float8: { input: any; output: any; }
   jsonb: { input: unknown; output: unknown; }
+  timestamptz: { input: string; output: string; }
   uuid: { input: string; output: string; }
 };
 
@@ -2559,9 +2560,23 @@ export type Test_Variance_Fields = {
   id?: Maybe<Scalars['Float']['output']>;
 };
 
+/** Boolean expression to compare columns of type "timestamptz". All fields are combined with logical 'AND'. */
+export type Timestamptz_Comparison_Exp = {
+  _eq?: InputMaybe<Scalars['timestamptz']['input']>;
+  _gt?: InputMaybe<Scalars['timestamptz']['input']>;
+  _gte?: InputMaybe<Scalars['timestamptz']['input']>;
+  _in?: InputMaybe<Array<Scalars['timestamptz']['input']>>;
+  _is_null?: InputMaybe<Scalars['Boolean']['input']>;
+  _lt?: InputMaybe<Scalars['timestamptz']['input']>;
+  _lte?: InputMaybe<Scalars['timestamptz']['input']>;
+  _neq?: InputMaybe<Scalars['timestamptz']['input']>;
+  _nin?: InputMaybe<Array<Scalars['timestamptz']['input']>>;
+};
+
 /** columns and relationships of "users.user" */
 export type Users_User = {
   __typename?: 'users_user';
+  createdAt: Scalars['timestamptz']['output'];
   email?: Maybe<Scalars['String']['output']>;
   firstName?: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
@@ -2598,6 +2613,7 @@ export type Users_User_Bool_Exp = {
   _and?: InputMaybe<Array<Users_User_Bool_Exp>>;
   _not?: InputMaybe<Users_User_Bool_Exp>;
   _or?: InputMaybe<Array<Users_User_Bool_Exp>>;
+  createdAt?: InputMaybe<Timestamptz_Comparison_Exp>;
   email?: InputMaybe<String_Comparison_Exp>;
   firstName?: InputMaybe<String_Comparison_Exp>;
   id?: InputMaybe<String_Comparison_Exp>;
@@ -2614,6 +2630,7 @@ export type Users_User_Constraint =
 
 /** input type for inserting data into table "users.user" */
 export type Users_User_Insert_Input = {
+  createdAt?: InputMaybe<Scalars['timestamptz']['input']>;
   email?: InputMaybe<Scalars['String']['input']>;
   firstName?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -2626,6 +2643,7 @@ export type Users_User_Insert_Input = {
 /** aggregate max on columns */
 export type Users_User_Max_Fields = {
   __typename?: 'users_user_max_fields';
+  createdAt?: Maybe<Scalars['timestamptz']['output']>;
   email?: Maybe<Scalars['String']['output']>;
   firstName?: Maybe<Scalars['String']['output']>;
   id?: Maybe<Scalars['String']['output']>;
@@ -2637,6 +2655,7 @@ export type Users_User_Max_Fields = {
 /** aggregate min on columns */
 export type Users_User_Min_Fields = {
   __typename?: 'users_user_min_fields';
+  createdAt?: Maybe<Scalars['timestamptz']['output']>;
   email?: Maybe<Scalars['String']['output']>;
   firstName?: Maybe<Scalars['String']['output']>;
   id?: Maybe<Scalars['String']['output']>;
@@ -2663,6 +2682,7 @@ export type Users_User_On_Conflict = {
 
 /** Ordering options when selecting data from "users.user". */
 export type Users_User_Order_By = {
+  createdAt?: InputMaybe<Order_By>;
   email?: InputMaybe<Order_By>;
   firstName?: InputMaybe<Order_By>;
   id?: InputMaybe<Order_By>;
@@ -2681,6 +2701,7 @@ export type Users_User_Pk_Columns_Input = {
 export type Users_User_Revisits = {
   __typename?: 'users_user_revisits';
   count: Scalars['bigint']['output'];
+  last_visit: Scalars['timestamptz']['output'];
   user_id: Scalars['String']['output'];
 };
 
@@ -2726,6 +2747,7 @@ export type Users_User_Revisits_Bool_Exp = {
   _not?: InputMaybe<Users_User_Revisits_Bool_Exp>;
   _or?: InputMaybe<Array<Users_User_Revisits_Bool_Exp>>;
   count?: InputMaybe<Bigint_Comparison_Exp>;
+  last_visit?: InputMaybe<Timestamptz_Comparison_Exp>;
   user_id?: InputMaybe<String_Comparison_Exp>;
 };
 
@@ -2742,6 +2764,7 @@ export type Users_User_Revisits_Inc_Input = {
 /** input type for inserting data into table "users.user_revisits" */
 export type Users_User_Revisits_Insert_Input = {
   count?: InputMaybe<Scalars['bigint']['input']>;
+  last_visit?: InputMaybe<Scalars['timestamptz']['input']>;
   user_id?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2749,6 +2772,7 @@ export type Users_User_Revisits_Insert_Input = {
 export type Users_User_Revisits_Max_Fields = {
   __typename?: 'users_user_revisits_max_fields';
   count?: Maybe<Scalars['bigint']['output']>;
+  last_visit?: Maybe<Scalars['timestamptz']['output']>;
   user_id?: Maybe<Scalars['String']['output']>;
 };
 
@@ -2756,6 +2780,7 @@ export type Users_User_Revisits_Max_Fields = {
 export type Users_User_Revisits_Min_Fields = {
   __typename?: 'users_user_revisits_min_fields';
   count?: Maybe<Scalars['bigint']['output']>;
+  last_visit?: Maybe<Scalars['timestamptz']['output']>;
   user_id?: Maybe<Scalars['String']['output']>;
 };
 
@@ -2778,6 +2803,7 @@ export type Users_User_Revisits_On_Conflict = {
 /** Ordering options when selecting data from "users.user_revisits". */
 export type Users_User_Revisits_Order_By = {
   count?: InputMaybe<Order_By>;
+  last_visit?: InputMaybe<Order_By>;
   user_id?: InputMaybe<Order_By>;
 };
 
@@ -2791,11 +2817,14 @@ export type Users_User_Revisits_Select_Column =
   /** column name */
   | 'count'
   /** column name */
+  | 'last_visit'
+  /** column name */
   | 'user_id';
 
 /** input type for updating data in table "users.user_revisits" */
 export type Users_User_Revisits_Set_Input = {
   count?: InputMaybe<Scalars['bigint']['input']>;
+  last_visit?: InputMaybe<Scalars['timestamptz']['input']>;
   user_id?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2828,6 +2857,7 @@ export type Users_User_Revisits_Stream_Cursor_Input = {
 /** Initial value of the column from where the streaming should start */
 export type Users_User_Revisits_Stream_Cursor_Value_Input = {
   count?: InputMaybe<Scalars['bigint']['input']>;
+  last_visit?: InputMaybe<Scalars['timestamptz']['input']>;
   user_id?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2841,6 +2871,8 @@ export type Users_User_Revisits_Sum_Fields = {
 export type Users_User_Revisits_Update_Column =
   /** column name */
   | 'count'
+  /** column name */
+  | 'last_visit'
   /** column name */
   | 'user_id';
 
@@ -2874,6 +2906,8 @@ export type Users_User_Revisits_Variance_Fields = {
 /** select columns of table "users.user" */
 export type Users_User_Select_Column =
   /** column name */
+  | 'createdAt'
+  /** column name */
   | 'email'
   /** column name */
   | 'firstName'
@@ -2890,6 +2924,7 @@ export type Users_User_Select_Column =
 
 /** input type for updating data in table "users.user" */
 export type Users_User_Set_Input = {
+  createdAt?: InputMaybe<Scalars['timestamptz']['input']>;
   email?: InputMaybe<Scalars['String']['input']>;
   firstName?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -2909,6 +2944,7 @@ export type Users_User_Stream_Cursor_Input = {
 
 /** Initial value of the column from where the streaming should start */
 export type Users_User_Stream_Cursor_Value_Input = {
+  createdAt?: InputMaybe<Scalars['timestamptz']['input']>;
   email?: InputMaybe<Scalars['String']['input']>;
   firstName?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -2920,6 +2956,8 @@ export type Users_User_Stream_Cursor_Value_Input = {
 
 /** update columns of table "users.user" */
 export type Users_User_Update_Column =
+  /** column name */
+  | 'createdAt'
   /** column name */
   | 'email'
   /** column name */
@@ -3022,10 +3060,11 @@ export type UpdateBoardVisibilityMutation = { __typename?: 'mutation_root', upda
 
 export type UpdateUserRevisitCountMutationVariables = Exact<{
   userId: Scalars['String']['input'];
+  lastVisit: Scalars['timestamptz']['input'];
 }>;
 
 
-export type UpdateUserRevisitCountMutation = { __typename?: 'mutation_root', update_users_user_revisits_by_pk?: { __typename?: 'users_user_revisits', count: number, user_id: string } | null };
+export type UpdateUserRevisitCountMutation = { __typename?: 'mutation_root', update_users_user_revisits_by_pk?: { __typename?: 'users_user_revisits', count: number, user_id: string, last_visit: string } | null };
 
 export type MyQueryQueryVariables = Exact<{
   id?: InputMaybe<Scalars['String']['input']>;
@@ -3098,7 +3137,7 @@ export const InsertUserDocument = {"kind":"Document","definitions":[{"kind":"Ope
 export const CreateBoardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"createBoard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"object"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"boards_board_insert_input"}}},"defaultValue":{"kind":"ObjectValue","fields":[]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"board"},"name":{"kind":"Name","value":"insert_boards_board_one"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"object"},"value":{"kind":"Variable","name":{"kind":"Name","value":"object"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"createdBy"}}]}}]}}]} as unknown as DocumentNode<CreateBoardMutation, CreateBoardMutationVariables>;
 export const DeleteComponentsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"deleteComponents"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"_in"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}}}}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"deleteComponents"},"name":{"kind":"Name","value":"delete_components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"id"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_in"},"value":{"kind":"Variable","name":{"kind":"Name","value":"_in"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"affected_rows"}}]}}]}}]} as unknown as DocumentNode<DeleteComponentsMutation, DeleteComponentsMutationVariables>;
 export const UpdateBoardVisibilityDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"updateBoardVisibility"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"update_boards_board_by_pk"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"pk_columns"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}},{"kind":"Argument","name":{"kind":"Name","value":"_set"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"isPublic"},"value":{"kind":"BooleanValue","value":true}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"isPublic"}}]}}]}}]} as unknown as DocumentNode<UpdateBoardVisibilityMutation, UpdateBoardVisibilityMutationVariables>;
-export const UpdateUserRevisitCountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"updateUserRevisitCount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"update_users_user_revisits_by_pk"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"pk_columns"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"user_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userId"}}}]}},{"kind":"Argument","name":{"kind":"Name","value":"_inc"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"count"},"value":{"kind":"StringValue","value":"1","block":false}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"user_id"}}]}}]}}]} as unknown as DocumentNode<UpdateUserRevisitCountMutation, UpdateUserRevisitCountMutationVariables>;
+export const UpdateUserRevisitCountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"updateUserRevisitCount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"lastVisit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"timestamptz"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"update_users_user_revisits_by_pk"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"pk_columns"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"user_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userId"}}}]}},{"kind":"Argument","name":{"kind":"Name","value":"_inc"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"count"},"value":{"kind":"StringValue","value":"1","block":false}}]}},{"kind":"Argument","name":{"kind":"Name","value":"_set"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"last_visit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"lastVisit"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"user_id"}},{"kind":"Field","name":{"kind":"Name","value":"last_visit"}}]}}]}}]} as unknown as DocumentNode<UpdateUserRevisitCountMutation, UpdateUserRevisitCountMutationVariables>;
 export const MyQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"MyQuery"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"users"},"name":{"kind":"Name","value":"users_user"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"id"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<MyQueryQuery, MyQueryQueryVariables>;
 export const GetComponentTypesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getComponentTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"componentTypes"},"name":{"kind":"Name","value":"components_componentType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"logo"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}}]}}]}}]} as unknown as DocumentNode<GetComponentTypesQuery, GetComponentTypesQueryVariables>;
 export const GetComponentsForBoardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getComponentsForBoard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"components"},"name":{"kind":"Name","value":"components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"boardId"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}},{"kind":"Field","name":{"kind":"Name","value":"children"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"x"}},{"kind":"Field","name":{"kind":"Name","value":"x1"}},{"kind":"Field","name":{"kind":"Name","value":"x2"}},{"kind":"Field","name":{"kind":"Name","value":"y"}},{"kind":"Field","name":{"kind":"Name","value":"y1"}},{"kind":"Field","name":{"kind":"Name","value":"y2"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"iconStroke"}},{"kind":"Field","name":{"kind":"Name","value":"stroke"}},{"kind":"Field","name":{"kind":"Name","value":"linewidth"}},{"kind":"Field","name":{"kind":"Name","value":"strokeType"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}}]}}]}}]} as unknown as DocumentNode<GetComponentsForBoardQuery, GetComponentsForBoardQueryVariables>;

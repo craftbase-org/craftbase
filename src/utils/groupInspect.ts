@@ -105,9 +105,9 @@ const ACCEPTS: Record<InspectableProperty, Set<string>> = {
         'arrowLine',
         'newText',
     ]),
-    textColor: new Set(['newText', 'rectangle']),
-    textSize: new Set(['newText', 'rectangle']),
-    textFontFamily: new Set(['newText', 'rectangle']),
+    textColor: new Set(['newText', 'rectangle', 'diamond', 'circle']),
+    textSize: new Set(['newText', 'rectangle', 'diamond', 'circle']),
+    textFontFamily: new Set(['newText', 'rectangle', 'diamond', 'circle']),
 }
 
 function readChildValue(child: ChildEntry, key: InspectableProperty): unknown {

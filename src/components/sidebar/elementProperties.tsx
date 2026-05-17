@@ -86,7 +86,17 @@ function resolveSetKey({
     if (selectedComponent) {
         const shapeType = selectedComponent?.shape?.type
         const hasText = typeof selectedComponent?.text?.data?.value === 'string'
-        if (shapeType === 'rectangle' && hasText) return 'RECT_WITH_TEXT'
+        const elementType =
+            selectedComponent?.group?.data?.elementData?.componentType
+        // rectangle/diamond/circle all carry text the same way — show the
+        // shape+text toolbar (text size/color/font) for any of them.
+        const isShapeWithText =
+            hasText &&
+            (shapeType === 'rectangle' ||
+                elementType === 'rectangle' ||
+                elementType === 'diamond' ||
+                elementType === 'circle')
+        if (isShapeWithText) return 'RECT_WITH_TEXT'
         if (
             shapeType === 'rectangle' ||
             shapeType === 'circle' ||
@@ -99,8 +109,6 @@ function resolveSetKey({
         if (shapeType === 'arrowLine') return 'ARROW'
         if (shapeType === 'newText') return 'TEXT'
         // Diamond is a custom Path; the elementData carries the type.
-        const elementType =
-            selectedComponent?.group?.data?.elementData?.componentType
         if (
             elementType === 'diamond' ||
             elementType === 'rectangle' ||

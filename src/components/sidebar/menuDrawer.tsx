@@ -192,6 +192,37 @@ const MenuDrawer = (): ReactElement => {
                             <span>Support</span>
                         </Link>
 
+                        <Link
+                            to={routes.privacy}
+                            className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                hover:bg-accent/30 rounded cursor-pointer no-underline
+                                transition-colors ease-in-out duration-150"
+                            onClick={(): void => setShowMenu(false)}
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 14 14"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    d="M7 1.25l4.5 1.75v3.5c0 2.6-1.9 4.7-4.5 5.5-2.6-.8-4.5-2.9-4.5-5.5V3z"
+                                    stroke="#8C7E6A"
+                                    strokeWidth="1.1"
+                                    strokeLinejoin="round"
+                                />
+                                <path
+                                    d="M5.25 7l1.25 1.25L9 5.75"
+                                    stroke="#8C7E6A"
+                                    strokeWidth="1.1"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                            <span>Privacy</span>
+                        </Link>
+
                         <div className="h-px bg-border-panel mx-2 mt-1 mb-1" />
 
                         <button

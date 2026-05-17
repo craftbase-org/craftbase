@@ -8,6 +8,7 @@ export const VIEWPORT_TTL_MS = 30 * 24 * 60 * 60 * 1000
 export const componentTypes = {
     rectangle: 'rectangle',
     diamond: 'diamond',
+    circle: 'circle',
 } as const
 
 // Draw mode localStorage keys

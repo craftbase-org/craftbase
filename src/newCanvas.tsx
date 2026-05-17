@@ -64,7 +64,15 @@ import {
     pollUntilElement,
     cloneElementData,
     resolveShapeFromPath,
+    findShapeTextLayer,
+    getShapeTextNodes,
+    applyShapeText,
+    shapeTextStyleFromMeta,
 } from './utils/canvasUtils'
+import {
+    growShapeToFitText,
+    usableTextWidth,
+} from './utils/shapeTextFit'
 import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
 import { createDiamondPath } from './factory/diamond'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
@@ -91,6 +99,7 @@ interface CanvasProps {
     defaultLinewidth: number
     defaultStrokeType: string | null
     defaultStrokeColor: string
+    defaultTextSize: number
     onCameraChange?: (event: CameraChangeEvent) => void
     renderBackground?: () => ReactNode
 }
@@ -133,6 +142,10 @@ let isDrawing: boolean = false
 let defaultLinewidthValue: number = 1
 let defaultStrokeTypeValue: string | null = null
 let defaultStrokeColorValue: string = PENCIL_DEFAULT_COLOR
+// Live default text size (px) for shape-with-text. Module-level + synced via
+// useEffect so the once-bound addZUI DOM handlers read the latest value
+// (same stale-closure escape hatch as defaultLinewidthValue).
+let defaultTextSizeValue: number = DEFAULT_TEXT_SIZE
 
 function addZUI(
     props: CanvasProps,
@@ -347,8 +360,6 @@ function addZUI(
         const showTextInput = (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             group: any,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            twoText: any,
             componentId: string,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             currentMetadata: any
@@ -356,17 +367,46 @@ function addZUI(
             const groupDomElem = document.getElementById(`${group.id}`)
             if (!groupDomElem) return
 
-            // Use the native SVG <text> DOM element to derive screen position
-            const textDomElem = twoText._renderer.elem
-            const screenRect = textDomElem.getBoundingClientRect()
+            const shapeKind = group?.elementData?.componentType
+            // The shape Path child (rectangle/ellipse/diamond). The text layer
+            // is a Group with no numeric width, so this still resolves the
+            // geometry node and lets us auto-grow it while typing.
+            const rectChild = group.children.find(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (c: any) =>
+                    typeof c.value !== 'string' &&
+                    typeof c.width === 'number' &&
+                    typeof c.height === 'number'
+            )
 
-            // Hide only the SVG text node so the rectangle shape stays visible
-            // while the textarea overlays it for editing.
-            textDomElem.style.display = 'none'
+            // Anchor the textarea over the shape's screen box — its center is
+            // where the centered text block sits, valid whether or not text
+            // exists yet.
+            const anchorElem =
+                rectChild?._renderer?.elem ?? (groupDomElem as Element)
+            const screenRect = anchorElem.getBoundingClientRect()
+
+            // Hide the text layer (not the shape) while the textarea overlays.
+            const textLayer = findShapeTextLayer(group)
+            const layerElem = textLayer?._renderer?.elem as
+                | HTMLElement
+                | undefined
+            if (layerElem) layerElem.style.display = 'none'
             selectionController.ui.visible = false
             two.update()
 
-            const fontSize = twoText.size || DEFAULT_TEXT_SIZE
+            const rawLiveMeta =
+                group.elementData?.metadata || currentMetadata || {}
+            // A shape that's never had text has no `textFontSize` —
+            // shapeTextStyleFromMeta would fall back to its hardcoded 24px
+            // ("S"). Seed it from the user's current default text size (the
+            // defaults toolbar) so new shape-text honors the last-set size.
+            const liveMeta = {
+                ...rawLiveMeta,
+                textFontSize: rawLiveMeta.textFontSize ?? defaultTextSizeValue,
+            }
+            const { style: textStyle } = shapeTextStyleFromMeta(liveMeta)
+            const fontSize = textStyle.size || DEFAULT_TEXT_SIZE
             // Two.js renders text at `fontSize * sceneScale` screen pixels.
             // Match the textarea/measureSpan to that so visuals stay in sync
             // and the surface-unit math (measuredW / zoom) remains correct.
@@ -384,23 +424,31 @@ function addZUI(
             const input = document.createElement('textarea')
             const randomId = Math.floor(Math.random() * 90 + 10)
             input.id = `new-text-input-area-${randomId}`
-            input.value = twoText.value || ''
+            // Edit the RAW text (hard newlines preserved) — the wrapped
+            // layout shown on canvas is derived, never the source of truth.
+            input.value =
+                typeof liveMeta.textContent === 'string'
+                    ? liveMeta.textContent
+                    : ''
             input.rows = 1
             input.style.border = 'none'
             input.style.background = 'transparent'
             input.style.padding = `${vertPad}px 8px`
-            input.style.color = twoText.fill || '#3A342C'
+            input.style.color = textStyle.fill || '#3A342C'
             input.style.fontSize = `${cssFontSize}px`
-            input.style.fontFamily = twoText.family || 'Caveat'
-            input.style.fontWeight = twoText.weight || 'normal'
+            input.style.fontFamily = textStyle.family || 'Caveat'
+            input.style.fontWeight = String(textStyle.weight ?? 'normal')
             input.style.lineHeight = `${lineH}px`
             input.style.letterSpacing = '0px'
-            input.style.textAlign = 'center'
+            input.style.textAlign = 'left'
             input.style.position = 'absolute'
             input.style.outline = 'none'
             input.style.resize = 'none'
-            input.style.overflow = 'visible'
-            input.style.whiteSpace = 'pre'
+            input.style.overflow = 'hidden'
+            // Wrap inside the shape (don't run past it horizontally); long
+            // words break so the box can squeeze to 1 char/line.
+            input.style.whiteSpace = 'pre-wrap'
+            input.style.overflowWrap = 'anywhere'
             input.style.boxSizing = 'border-box'
             input.className = 'temp-input-area'
 
@@ -408,69 +456,9 @@ function addZUI(
             const centerX = screenRect.left + screenRect.width / 2
             const centerY = screenRect.top + screenRect.height / 2
 
-            // Locate the parent rectangle child so we can auto-grow it when
-            // the text outgrows the box during edit. Only meaningful for
-            // rectangle-with-text (componentId is set in that path).
-            const rectChild = componentId
-                ? group.children.find(
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      (c: any) =>
-                          typeof c.value !== 'string' &&
-                          typeof c.width === 'number' &&
-                          typeof c.height === 'number'
-                  )
-                : null
-            // Inner padding (surface units) preserved between the text and
-            // the rectangle edge so glyphs never touch the border.
-            const RECT_INNER_PAD_X = 24
-            const RECT_INNER_PAD_Y = 12
-            // Diamond's inscribed rect is smaller than its bbox; keep
-            // padding tight so growth isn't aggressive. The slanted edges
-            // already provide visual breathing room.
-            const DIAMOND_INNER_PAD_X = 12
-            const DIAMOND_INNER_PAD_Y = 6
-            const shapeKind = group?.elementData?.componentType
-
-            // Returns the minimum (w, h) for the host shape that fits a
-            // text rect of (textSurfaceW, textSurfaceH). Per-shape geometry.
-            const fitShape = (
-                currentW: number,
-                currentH: number,
-                textSurfaceW: number,
-                textSurfaceH: number
-            ) => {
-                if (shapeKind === componentTypes.diamond) {
-                    // Inscribed rect constraint: tw/w + th/h <= 1.
-                    // Pad first, then solve for minimum w (keeping h fixed).
-                    const TW = textSurfaceW + DIAMOND_INNER_PAD_X * 2
-                    const TH = textSurfaceH + DIAMOND_INNER_PAD_Y * 2
-                    let h = currentH
-                    if (TH >= h - 1) {
-                        // Text taller than current diamond — bump h just
-                        // enough (text occupies ~85% of vertical budget).
-                        h = Math.ceil(TH / 0.85)
-                    }
-                    const denom = 1 - TH / h
-                    const wNeed =
-                        denom > 0
-                            ? Math.ceil(TW / denom)
-                            : Number.POSITIVE_INFINITY
-                    return { w: Math.max(currentW, wNeed), h }
-                }
-                // rectangle (default)
-                const w = Math.max(
-                    currentW,
-                    Math.ceil(textSurfaceW + RECT_INNER_PAD_X * 2)
-                )
-                const h = Math.max(
-                    currentH,
-                    Math.ceil(textSurfaceH + RECT_INNER_PAD_Y * 2)
-                )
-                return { w, h }
-            }
-            // px-per-surface-unit derived from the rect's current screen
-            // size; lets us convert the textarea's pixel measurement back
-            // into Two.js surface units before resizing the rectangle.
+            // px-per-surface-unit derived from the shape's current screen
+            // size; converts the textarea's pixel measurement back into
+            // Two.js surface units before growing the shape.
             const rectScreen = rectChild?._renderer?.elem?.getBoundingClientRect()
             const zoom =
                 rectChild && rectScreen && rectChild.width
@@ -484,32 +472,39 @@ function addZUI(
             // read its offsetWidth/offsetHeight. This is more reliable
             // than textarea.scrollWidth which can be affected by cols,
             // min intrinsic sizing, and platform differences.
+            // The textarea content width = the shape's usable inner width
+            // (screen px), so wrapping mirrors the committed render and the
+            // box never spills outside the shape horizontally.
+            const surfaceW = rectChild?.width || screenRect.width / zoom
+            const usableScreenW = Math.max(
+                Math.round(usableTextWidth(shapeKind, surfaceW) * zoom),
+                Math.ceil(cssFontSize) // never below ~1 glyph
+            )
+            const PAD_X = 8
+
             const measureSpan = document.createElement('span')
             measureSpan.style.position = 'absolute'
             measureSpan.style.visibility = 'hidden'
-            measureSpan.style.whiteSpace = 'pre'
+            measureSpan.style.display = 'inline-block'
+            measureSpan.style.whiteSpace = 'pre-wrap'
+            measureSpan.style.overflowWrap = 'anywhere'
+            measureSpan.style.width = `${usableScreenW}px`
             measureSpan.style.fontSize = `${cssFontSize}px`
-            measureSpan.style.fontFamily = twoText.family || 'Caveat'
-            measureSpan.style.fontWeight = twoText.weight || 'normal'
+            measureSpan.style.fontFamily = textStyle.family || 'Caveat'
+            measureSpan.style.fontWeight = String(textStyle.weight ?? 'normal')
             measureSpan.style.lineHeight = `${lineH}px`
             measureSpan.style.letterSpacing = '0px'
             measureSpan.style.padding = '0'
+            measureSpan.style.boxSizing = 'content-box'
             document.body.appendChild(measureSpan)
 
             const autoSizeAndCenter = () => {
-                // Measure the text content with the hidden span
-                const val = input.value || 'M' // fallback to 'M' so empty input still has width
+                // Measure wrapped height at the fixed usable width.
+                const val = input.value || 'M'
                 measureSpan.textContent = val
-
-                const measuredW = measureSpan.offsetWidth
                 const measuredH = measureSpan.offsetHeight
 
-                // Total textarea size = measured text + padding + breathing room
-                const contentWidth = Math.max(
-                    measuredW + 40,
-                    screenRect.width + 40,
-                    80
-                )
+                const contentWidth = usableScreenW + PAD_X * 2
                 const contentHeight = Math.max(
                     measuredH + vertPad * 2,
                     lineH + vertPad * 2
@@ -518,32 +513,28 @@ function addZUI(
                 input.style.width = `${contentWidth}px`
                 input.style.height = `${contentHeight}px`
 
-                // Centre over the original text midpoint
+                // Centre over the shape midpoint. Width is fixed to the
+                // shape's usable width, so the box stays inside the shape;
+                // only the height grows as lines are added.
                 input.style.left = `${centerX - contentWidth / 2}px`
                 input.style.top = `${centerY - contentHeight / 2}px`
 
-                // Grow the parent rectangle so the centered text never
-                // overflows its bounds. Symmetric growth preserves the
-                // rectangle's center, which keeps centerX/centerY valid.
+                // Grow ONLY the shape height to fit the wrapped lines
+                // (width is user-driven). Symmetric growth keeps the centre
+                // fixed, so centerX/centerY stay valid.
                 if (rectChild) {
-                    const textSurfaceW = measuredW / zoom
                     const textSurfaceH = measuredH / zoom
-                    const { w: nextW, h: nextH } = fitShape(
+                    const { h: nextH } = growShapeToFitText(
+                        shapeKind,
                         rectChild.width,
                         rectChild.height,
-                        textSurfaceW,
+                        0,
                         textSurfaceH
                     )
-                    let rectChanged = false
-                    if (rectChild.width < nextW) {
-                        rectChild.width = nextW
-                        rectChanged = true
-                    }
                     if (rectChild.height < nextH) {
                         rectChild.height = nextH
-                        rectChanged = true
+                        two.update()
                     }
-                    if (rectChanged) two.update()
                 }
             }
 
@@ -556,7 +547,15 @@ function addZUI(
 
             input.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
+                    if (event.shiftKey) {
+                        // Shift+Enter: let the textarea insert a hard newline
+                        // (whiteSpace:'pre-wrap' preserves it; reflow on
+                        // commit re-wraps to the shape width).
+                        return
+                    }
+                    // Plain Enter commits and closes the editor.
                     event.preventDefault()
+                    input.blur()
                 }
                 if (event.key === 'Escape') {
                     event.preventDefault()
@@ -571,7 +570,7 @@ function addZUI(
                     measureSpan.parentNode.removeChild(measureSpan)
                 }
 
-                textDomElem.style.display = ''
+                if (layerElem) layerElem.style.display = ''
                 // mousedown fires before blur, so if the user clicked empty
                 // canvas, detach() already ran and currentGroup is null.
                 // Only restore the selection UI if we still have a target.
@@ -581,44 +580,41 @@ function addZUI(
                 }
                 two.update()
 
+                // Raw text — may contain hard newlines from Shift+Enter.
                 const newContent = input.value
 
-                // Reflect change in the Two.js text object
-                twoText.value = newContent
-                two.update()
-
-                group.center()
-                two.update()
-
-                // this means "rectangle-with-text" is enabled
                 if (componentId) {
                     // Use the live elementData.metadata (updated by toolbar ops
                     // like font-size and text-color) rather than the stale
-                    // currentMetadata snapshot captured at dblclick time.
+                    // snapshot captured at dblclick time.
                     const latestMeta = group.elementData?.metadata || {}
                     const updatedMetadata = {
                         ...latestMeta,
                         hasText: true,
                         textContent: newContent,
-                        textFill:
-                            latestMeta.textFill ||
-                            twoText.fill ||
-                            '#3A342C',
+                        textFill: latestMeta.textFill || textStyle.fill,
                         textFontSize:
-                            latestMeta.textFontSize || twoText.size || 24,
+                            latestMeta.textFontSize || textStyle.size,
                         textFamily:
-                            latestMeta.textFamily ||
-                            twoText.family ||
-                            'Caveat',
+                            latestMeta.textFamily || textStyle.family,
                         textFontFamily:
-                            latestMeta.textFontFamily ||
-                            twoText.family ||
-                            'Caveat',
+                            latestMeta.textFontFamily || textStyle.family,
                         textBaseLine:
                             latestMeta.textBaseLine ||
-                            twoText.baseline ||
+                            textStyle.baseline ||
                             'middle',
                     }
+                    // Re-wrap the raw text to the (possibly grown) box width
+                    // and rebuild the multiline layer.
+                    applyShapeText(
+                        two,
+                        group,
+                        shapeKind,
+                        rectChild?.width || screenRect.width,
+                        updatedMetadata
+                    )
+                    two.update()
+
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const persistPayload: any = { metadata: updatedMetadata }
                     if (rectChild) {
@@ -649,25 +645,11 @@ function addZUI(
             const ct = shape.elementData?.componentType
             if (
                 ct === componentTypes.rectangle ||
-                ct === componentTypes.diamond
+                ct === componentTypes.diamond ||
+                ct === componentTypes.circle
             ) {
                 const meta = shape.elementData.metadata || {}
-                let twoText = shape.children.find(
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (child: any) => typeof child.value === 'string'
-                )
-                if (!twoText) {
-                    twoText = two.makeText(meta.textContent || '', 0, 0)
-                    twoText.fill = meta.textFill || SHAPE_DEFAULT_STROKE
-                    twoText.size = meta.textFontSize || DEFAULT_TEXT_SIZE
-                    twoText.alignment = 'center'
-                    twoText.baseline = meta.textBaseLine || 'middle'
-                    twoText.family =
-                        meta.textFontFamily || meta.textFamily || 'Caveat'
-                    shape.add(twoText)
-                    two.update()
-                }
-                showTextInput(shape, twoText, shape.elementData.id, meta)
+                showTextInput(shape, shape.elementData.id, meta)
             }
         }
     }
@@ -1214,10 +1196,10 @@ function addZUI(
                         ? shape.elementData.lineData
                         : shape.children[0]
 
-                    const textChild = groupForToolbar.children.find(
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (child: any) => typeof child.value === 'string'
-                    )
+                    // First line node of the text layer (or a legacy direct
+                    // text child) — gives the toolbar a representative text
+                    // node for shape-with-text enablement.
+                    const textChild = getShapeTextNodes(groupForToolbar)[0]
 
                     let componentInternalState = {
                         element: {
@@ -2422,6 +2404,29 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                 )
             }
         }
+
+        // Two.js `fullscreen: true` mutates document.body inline styles
+        // (overflow:hidden, position:fixed, margin/padding/inset:0) and binds
+        // a window 'resize' listener — none of which it auto-reverts. Without
+        // this cleanup, leaving the Board (e.g. navigating to /privacy or
+        // /support) leaves <body> scroll-locked so those pages can't scroll.
+        // Resetting to '' drops the inline declarations so the stylesheet /
+        // browser defaults take over again; remounting the Board re-applies
+        // them, so the whiteboard's no-scroll behavior is unchanged.
+        return () => {
+            for (const prop of [
+                'overflow',
+                'position',
+                'margin',
+                'padding',
+                'top',
+                'left',
+                'right',
+                'bottom',
+            ]) {
+                document.body.style.removeProperty(prop)
+            }
+        }
     }, [])
 
     useEffect(() => {
@@ -2475,6 +2480,10 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         defaultStrokeColorValue =
             props.defaultStrokeColor || PENCIL_DEFAULT_COLOR
     }, [props.defaultStrokeColor])
+
+    useEffect(() => {
+        defaultTextSizeValue = props.defaultTextSize || DEFAULT_TEXT_SIZE
+    }, [props.defaultTextSize])
 
     // on group select use effect hook
     useEffect(() => {

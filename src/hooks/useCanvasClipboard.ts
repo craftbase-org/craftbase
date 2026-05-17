@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { MutableRefObject } from 'react'
 import { GROUP_COMPONENT } from '../constants/misc'
 import { generateUUID } from '../utils/misc'
-import { cloneElementData } from '../utils/canvasUtils'
+import { cloneElementData, getShapeTextNodes } from '../utils/canvasUtils'
 import type { ComponentRecord } from '../types/board'
 
 // Two.js scene objects are typed loosely here; canvas-side typing converges
@@ -130,16 +130,24 @@ export function useCanvasClipboard({
                     }
                 }
                 if (elementData.componentType === 'newText') {
-                    const twoText = liveGroup.children?.[0]
-                    if (twoText && typeof twoText.value === 'string') {
-                        item.textColor = twoText.fill || item.textColor
+                    // Multiline standalone text is a stack of Two.Text line
+                    // nodes (line 1 + satellites) in the same group;
+                    // children[0] alone is only line 1. Reconstruct the raw
+                    // string from every line node so the clone keeps all
+                    // lines.
+                    const textNodes = getShapeTextNodes(liveGroup)
+                    const firstNode = textNodes[0]
+                    if (firstNode && typeof firstNode.value === 'string') {
+                        item.textColor = firstNode.fill || item.textColor
                         item.metadata = {
                             ...item.metadata,
-                            content: twoText.value,
+                            content: textNodes
+                                .map((n) => n.value)
+                                .join('\n'),
                             fontSize:
-                                twoText.size || item.metadata?.fontSize,
+                                firstNode.size || item.metadata?.fontSize,
                             textFontFamily:
-                                twoText.family ||
+                                firstNode.family ||
                                 item.metadata?.textFontFamily,
                         }
                     }

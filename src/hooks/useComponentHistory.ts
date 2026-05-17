@@ -3,6 +3,14 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import Two from 'two.js'
 import { strokeTypeToDashes, clearDashesOnTwoJSShape } from '../utils/misc'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from '../utils/updateVertices'
+import {
+    getShapeTextNodes,
+    findShapeTextLayer,
+    renderShapeTextLayer,
+    shapeTextStyleFromMeta,
+    applyShapeText,
+} from '../utils/canvasUtils'
+import { lineHeightFor } from '../utils/textLayout'
 import { DRAFT_STORAGE_KEY } from '../constants/misc'
 import type { ComponentRecord, ComponentStore } from '../types/board'
 
@@ -112,6 +120,13 @@ function applyPropertyToTwoJSGroup(
     const shape = group.children?.[0]
     if (!shape) return
 
+    // Multiline text (standalone or shape-with-text) is a stack of Two.Text
+    // line nodes — text props must hit EVERY node, not just children[0].
+    // Empty for non-text shapes, so this stays a no-op there.
+    const textNodes: ShapeLike[] = getShapeTextNodes(group)
+    const isStandaloneText =
+        group.elementData?.componentType === 'newText'
+
     switch (name) {
         case 'fill':
         case 'stroke':
@@ -119,9 +134,17 @@ function applyPropertyToTwoJSGroup(
         case 'radius':
         case 'width':
         case 'height':
-        case 'textColor':
         case 'iconStroke':
             shape[name] = value
+            break
+        case 'textColor':
+            // Standalone text records color as a top-level prop; it renders
+            // via each line node's `.fill`. Revert all lines, not just line 1.
+            if (textNodes.length > 0) {
+                textNodes.forEach((n: ShapeLike) => (n.fill = value))
+            } else {
+                shape[name] = value
+            }
             break
         case 'strokeType':
             shape.dashes = strokeTypeToDashes(value as string | null)
@@ -135,27 +158,55 @@ function applyPropertyToTwoJSGroup(
                 typeof value === 'object' &&
                 !Array.isArray(value)
             ) {
-                // The actual text node is either `shape` itself (newText: a
-                // Two.js text is shape) or a sibling inside the group
-                // (rectangle-with-text: text node sits next to the rect).
-                const textNode: ShapeLike =
+                // Fallback single node for legacy/non-multiline shapes where
+                // getShapeTextNodes finds no text layer.
+                const fallbackTextNode: ShapeLike =
                     typeof shape?.value === 'string'
                         ? shape
                         : group.children?.find(
                               (c: ShapeLike) => typeof c?.value === 'string'
                           )
+                const applyToText = (fn: (n: ShapeLike) => void): void => {
+                    if (textNodes.length > 0) textNodes.forEach(fn)
+                    else if (fallbackTextNode) fn(fallbackTextNode)
+                }
                 Object.entries(value as Record<string, unknown>).forEach(
                     ([k, v]) => {
                         if (k === 'opacity') {
                             // Opacity lives on the leaf shape (children[0]) by
                             // codebase convention; matches applyGroupProperty.
                             shape.opacity = v
-                        } else if (k === 'textFontSize' && textNode) {
-                            textNode.size = v
-                        } else if (k === 'textFontFamily' && textNode) {
-                            textNode.family = v
-                        } else if (k === 'textFill' && textNode) {
-                            textNode.fill = v
+                        } else if (
+                            k === 'textFontSize' ||
+                            k === 'fontSize'
+                        ) {
+                            // Standalone text stores size as `fontSize`,
+                            // shape-with-text as `textFontSize` — honor both.
+                            applyToText((n) => {
+                                n.size = v
+                                n.leading = v
+                            })
+                            // Standalone multiline must re-stack at the new
+                            // line height (shape-with-text reflows elsewhere).
+                            if (isStandaloneText && textNodes.length > 1) {
+                                const lh = lineHeightFor(Number(v))
+                                const cnt = textNodes.length
+                                textNodes.forEach(
+                                    (n: ShapeLike, i: number) =>
+                                        n.translation.set(
+                                            0,
+                                            (i - (cnt - 1) / 2) * lh
+                                        )
+                                )
+                            }
+                        } else if (k === 'textFontFamily') {
+                            applyToText((n) => {
+                                n.family = v
+                            })
+                        } else if (k === 'textFill') {
+                            applyToText((n) => {
+                                n.fill = v
+                            })
                         }
                         // Other metadata keys (textContent, textBaseLine,
                         // hasText) have no direct Two.js field mapping; skip
@@ -234,6 +285,12 @@ export function useComponentHistory({
         onPermissionError?: () => void
     ): void => {
         const two = twoJSInstanceRef.current
+        // A DELETE entry snapshots prevState as { ...store[id] }; if the
+        // component wasn't in the store at delete time (transient/group ids,
+        // double-delete, already-removed), that snapshot is {}. Restoring it
+        // would write a { boardId }-only entry that later breaks Share's bulk
+        // insert (componentType NOT NULL). Same guard as applyBatch.
+        if (!componentInfo || !componentInfo.componentType) return
         const restoredState = { ...componentInfo, boardId }
         const updatedStore = {
             ...stateRefForComponentStore.current,
@@ -285,6 +342,83 @@ export function useComponentHistory({
         requestAnimationFrame(() => two?.update())
     }
 
+    // Text *content* has no single Two.js field, so applyPropertyToTwoJSGroup
+    // deliberately skips it. The React fallback is also dead on undo:
+    // ElementRenderWrapper freezes each element's props at mount, so the
+    // shape/text components' metadata-reflow effects never re-fire. This
+    // rebuilds the visible text from the restored metadata directly on the
+    // scene — the same direct-mutation contract every other undo prop uses.
+    // Call it AFTER width has been applied so shape-with-text reflows to the
+    // reverted box width, not the post-edit one.
+    const reapplyTextFromMeta = (
+        group: ShapeLike,
+        meta: BulkProps['metadata']
+    ): void => {
+        const two = twoJSInstanceRef.current
+        if (
+            !two ||
+            !group ||
+            !meta ||
+            typeof meta !== 'object' ||
+            Array.isArray(meta)
+        ) {
+            return
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const m = meta as Record<string, any>
+        const ct = group.elementData?.componentType
+
+        if (ct === 'newText') {
+            // Standalone multiline text is a stack of Two.Text nodes owned by
+            // the newText component (extraLineNodesRef). Rebuilding them from
+            // here would desync that ref and orphan nodes on the next edit, so
+            // let the component re-stack through its own path instead.
+            if (typeof m.content !== 'string') return
+            if (group.elementData) {
+                group.elementData.metadata = {
+                    ...(group.elementData.metadata || {}),
+                    ...m,
+                }
+            }
+            window.dispatchEvent(
+                new CustomEvent('standaloneTextReverted', {
+                    detail: {
+                        id: group.elementData?.id,
+                        content: m.content,
+                    },
+                })
+            )
+            return
+        }
+
+        if (ct === 'rectangle' || ct === 'diamond' || ct === 'circle') {
+            const shapeChild = group.children?.[0]
+            const width = shapeChild?.width
+            if (!width) return
+            if (group.elementData) {
+                group.elementData.metadata = {
+                    ...(group.elementData.metadata || {}),
+                    ...m,
+                }
+            }
+            if (m.hasText && typeof m.textContent === 'string') {
+                applyShapeText(two, group, ct, width, m)
+            } else {
+                // Reverting to a no-text state — clear any rendered lines.
+                const layer = findShapeTextLayer(group)
+                if (layer) {
+                    renderShapeTextLayer(
+                        two,
+                        group,
+                        [],
+                        shapeTextStyleFromMeta(m).style
+                    )
+                }
+            }
+            two.update()
+        }
+    }
+
     const applyBulkProps = (
         id: string,
         props: BulkProps,
@@ -326,6 +460,14 @@ export function useComponentHistory({
                     updateX1Y1Vertices(Two, line, x1, y1, pointCircle1Group, two)
                     updateX2Y2Vertices(Two, line, x2, y2, pointCircle2Group, two)
                 }
+            }
+
+            if (
+                props.metadata &&
+                typeof props.metadata === 'object' &&
+                !Array.isArray(props.metadata)
+            ) {
+                reapplyTextFromMeta(group, props.metadata)
             }
 
             two?.update()
@@ -511,6 +653,16 @@ export function useComponentHistory({
                         Object.entries(propsToApply).forEach(([k, v]) => {
                             sceneGroup.elementData[k] = v
                         })
+                    }
+                    if (
+                        propsToApply.metadata &&
+                        typeof propsToApply.metadata === 'object' &&
+                        !Array.isArray(propsToApply.metadata)
+                    ) {
+                        reapplyTextFromMeta(
+                            sceneGroup,
+                            propsToApply.metadata
+                        )
                     }
                     if (
                         propsToApply.width !== undefined ||

@@ -1,4 +1,5 @@
 import { strokeTypeToDashes, clearDashesOnTwoJSShape } from './misc'
+import { getShapeTextNodes } from './canvasUtils'
 
 // Scene-bound selectedComponent shape: `.shape.data`, `.text.data`, and
 // `.group.data.elementData` are scaffolded by newCanvas / element renderers
@@ -102,30 +103,49 @@ export function createApplyProperty(deps: ApplyPropertyDeps) {
         if (!id) return
 
         const shapeType = selectedComponent?.shape?.type
-        const isRectangleWithText =
-            shapeType === 'rectangle' &&
-            typeof selectedComponent?.text?.data?.value === 'string'
+        const elementType =
+            selectedComponent?.group?.data?.elementData?.componentType
+        // rectangle/diamond/circle all embed text the same way; route all
+        // three through the shape-with-text handlers.
+        const isShapeWithText =
+            typeof selectedComponent?.text?.data?.value === 'string' &&
+            (shapeType === 'rectangle' ||
+                elementType === 'rectangle' ||
+                elementType === 'diamond' ||
+                elementType === 'circle')
 
         // 3. Route text properties — these have their own bulky resize logic.
         if (propertyKey === 'textSize') {
-            if (isRectangleWithText) handleRectangleTextSizeChange?.(value)
+            if (isShapeWithText) handleRectangleTextSizeChange?.(value)
             else handleTextSizeChange?.(value)
             return
         }
         if (propertyKey === 'textFontFamily') {
-            if (isRectangleWithText)
+            if (isShapeWithText)
                 handleRectangleTextFontFamilyChange?.(value)
             else handleTextFontFamilyChange?.(value)
             return
         }
         if (propertyKey === 'textColor') {
-            if (isRectangleWithText) {
-                if (selectedComponent?.text?.data)
-                    selectedComponent.text.data.fill = value
+            if (isShapeWithText) {
+                // Apply to EVERY line node in the text layer, not just the
+                // first — otherwise multiline only updates on reload.
+                getShapeTextNodes(selectedComponent?.group?.data).forEach(
+                    (n) => (n.fill = value)
+                )
                 updateBulkPropsForRectangleWithText?.(id, { textColor: value })
             } else {
-                if (selectedComponent?.shape?.data)
+                // Standalone text is a stack of Two.Text line nodes (line 1
+                // + satellites). Color EVERY node, not just line 1 — sel.shape
+                // .data is only the first node.
+                const textNodes = getShapeTextNodes(
+                    selectedComponent?.group?.data
+                )
+                if (textNodes.length > 0) {
+                    textNodes.forEach((n) => (n.fill = value))
+                } else if (selectedComponent?.shape?.data) {
                     selectedComponent.shape.data.fill = value
+                }
                 if (selectedComponent?.group?.data?.elementData) {
                     selectedComponent.group.data.elementData.textColor = value
                 }

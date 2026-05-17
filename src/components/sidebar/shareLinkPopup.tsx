@@ -15,7 +15,19 @@ const ShareLinkPopup = (): ReactElement => {
     const [showConfirmModal, setShowConfirmModal] = useState(false)
     const [isPersisting, setIsPersisting] = useState(false)
     const [shareUrl, setShareUrl] = useState<string | null>(null)
-    const { isPersisted, persistBoard, backgroundBoardId } = useBoardContext()
+    const { isPersisted, persistBoard, backgroundBoardId, stateRefForComponentStore } =
+        useBoardContext()
+
+    // Whether there's anything to share. Gate on the actual component store,
+    // NOT backgroundBoardId: that id is only minted by ensureBackgroundBoard()
+    // on a user *mutation*, so a draft restored from localStorage renders
+    // components on the board while backgroundBoardId is still null — which
+    // wrongly showed "Nothing to share yet" until the user touched the board.
+    // Mirror persistBoard's filter (entries without componentType are skipped
+    // there) so the two stay consistent.
+    const hasComponents = Object.values(
+        stateRefForComponentStore.current
+    ).some((c) => c?.componentType)
     const [updateBoardVisibility] = useMutation(UPDATE_BOARD_VISIBILITY)
 
     useEffect(() => {
@@ -119,7 +131,7 @@ const ShareLinkPopup = (): ReactElement => {
                 locked={isPersisting}
             >
                 <div style={{ minWidth: '440px', maxWidth: '520px' }}>
-                    {backgroundBoardId ? (
+                    {hasComponents ? (
                         <>
                             <h2 className="text-lg font-semibold mb-3 font-display">
                                 Share this board

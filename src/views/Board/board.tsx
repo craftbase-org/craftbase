@@ -27,11 +27,17 @@ import ZoomControls from '../../components/ZoomControls'
 import Sidebar from '../../components/sidebar/primary'
 import ElementPropertiesToolbar from '../../components/sidebar/elementProperties'
 import controlsIcon from '../../assets/controls.svg'
-import Spinner from '../../components/common/spinnerWithSize'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
 import { generateUUID } from '../../utils/misc'
-import { pollUntilElement } from '../../utils/canvasUtils'
+import {
+    pollUntilElement,
+    getShapeTextNodes,
+    applyShapeText,
+    shapeTextStyleFromMeta,
+} from '../../utils/canvasUtils'
+import { reflowTextForShape } from '../../utils/shapeTextFit'
+import { lineHeightFor } from '../../utils/textLayout'
 import {
     TEXT_SIZES_OBJECT,
     MOBILE_TEXT_SIZES_OBJECT,
@@ -50,6 +56,7 @@ import {
     VIEWPORT_KEY_PREFIX,
     MOBILE_VIEWPORT_KEY_PREFIX,
     VIEWPORT_TTL_MS,
+    DEFAULT_TEXT_SIZE,
 } from '../../constants/misc'
 import { useDrawingModes } from '../../hooks/useDrawingModes'
 import { useElementDefaults } from '../../hooks/useElementDefaults'
@@ -334,7 +341,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     useEffect(() => {
         const userId = localStorage.getItem('userId')
         if (userId) {
-            updateUserRevisit({ variables: { userId } })
+            // Capture the revisit moment client-side as an ISO 8601 string;
+            // Hasura coerces it into the timestamptz `last_visit` column for
+            // cohort analysis in the DB.
+            updateUserRevisit({
+                variables: { userId, lastVisit: new Date().toISOString() },
+            })
         }
     }, [])
 
@@ -371,15 +383,10 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         stateRefForComponentStore.current = componentStore
     }, [componentStore])
 
-    if (isPersisted && getComponentsForBoardLoading) {
-        return (
-            <>
-                <div className="w-full h-full flex items-center justify-center">
-                    <Spinner loaderSize="lg" />
-                </div>
-            </>
-        )
-    }
+    // NOTE: the persisted-board loading gate lives in the parent
+    // (views/Board/index.tsx). Never add a conditional `return` here — this
+    // component runs hundreds of hooks below this point and an early return
+    // changes the hook count between renders (Rules of Hooks violation).
 
     const setRootCursor = (cursor: string) => {
         const root = document.getElementById('main-two-root')
@@ -798,16 +805,36 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         // Insert all components to DB under the server board ID.
         // Generate a fresh UUID for each component's id so re-sharing from '/'
         // never hits a "duplicate key" uniqueness violation.
-        const componentsForDB = Object.values(
-            stateRefForComponentStore.current
-        ).map((comp) => {
-            const {
-                relativeX: _rX,
-                relativeY: _rY,
-                ...cleaned
-            } = stripTypename(comp)
-            return { ...cleaned, id: generateUUID(), boardId: serverBoardId }
-        })
+        const allEntries = Object.entries(stateRefForComponentStore.current)
+        const componentsForDB = allEntries
+            // Skip corrupt/partial store entries (no componentType). These come
+            // from undo/redo restore paths and would abort the whole bulk
+            // insert with a NOT NULL violation on componentType.
+            .filter(([, comp]) => (comp as ComponentRecord)?.componentType)
+            .map(([, comp]) => {
+                const {
+                    relativeX: _rX,
+                    relativeY: _rY,
+                    ...cleaned
+                } = stripTypename(comp)
+                return {
+                    ...cleaned,
+                    id: generateUUID(),
+                    boardId: serverBoardId,
+                }
+            })
+
+        const skipped = allEntries.filter(
+            ([, comp]) => !(comp as ComponentRecord)?.componentType
+        )
+        if (skipped.length > 0) {
+            console.warn(
+                '[persistBoard] skipped',
+                skipped.length,
+                'malformed component(s) with no componentType:',
+                Object.fromEntries(skipped)
+            )
+        }
 
         if (componentsForDB.length > 0) {
             await insertBulkComponents({
@@ -925,8 +952,19 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         const textSize = (sizesMap as any)[newLabel]
         const twoText = sel?.shape?.data
         if (!twoText) return
-        twoText.size = textSize
-        twoText.leading = textSize
+        // Standalone multiline text is a stack of Two.Text line nodes (line 1
+        // is `twoText`, lines 2..N are satellites in the same group). Size
+        // EVERY node and re-stack the block at the new line height — sizing
+        // only line 1 left the rest unchanged until a reload.
+        const sizeNodes = getShapeTextNodes(sel?.group?.data)
+        const nodes = sizeNodes.length > 0 ? sizeNodes : [twoText]
+        const n = nodes.length
+        const lineH = lineHeightFor(textSize)
+        nodes.forEach((node, i) => {
+            node.size = textSize
+            node.leading = textSize
+            node.translation.set(0, (i - (n - 1) / 2) * lineH)
+        })
         const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
             sel?.group?.data?.elementData?.metadata ?? {}
@@ -934,69 +972,61 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             metadata: {
                 ...existingMetadata,
                 fontSize: textSize,
-                content: twoText.value,
+                // Reconstruct the raw multiline string from every line node,
+                // not just line 1 — otherwise a reload would drop lines 2..N.
+                content: nodes.map((node) => node.value).join('\n'),
             },
         })
         twoJSInstance?.update()
         syncOpenTextarea({ fontSize: textSize })
     }
 
-    // Schedule a post-render measurement of the text's bounding box and grow
-    // the parent rectangle if needed. Called after any property change that
-    // affects text dimensions (size, family, etc.).
-    const scheduleRectFitToText = (
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        twoText: any,
+    // After a text style change (size/family) on a shape-with-text, re-wrap
+    // the text to the shape's current width at the NEW style and grow the
+    // shape's height to fit the resulting line count — then persist height +
+    // metadata together. This keeps the live scene and a post-reload render
+    // identical (a bigger font re-wraps to more lines and the box grows
+    // vertically, instead of the text spilling out). Width stays user-driven.
+    const reflowShapeTextAfterStyleChange = (
         componentId: string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         updatedMetadata: any
     ) => {
-        // Capture whether text editing is active NOW so the RAF can detect
-        // if blur fires between the property change and the next frame.
-        const textAreaAtChange = document.querySelector('.temp-input-area')
-        requestAnimationFrame(() => {
-            // If text editing was active when the property changed but the
-            // textarea is now gone, blur already committed the correct
-            // metadata (textContent + textFill). Overwriting with the stale
-            // snapshot captured here would wipe that out.
-            if (
-                textAreaAtChange &&
-                !document.body.contains(textAreaAtChange)
-            )
-                return
+        const group = sel?.group?.data
+        const shapePath = sel?.shape?.data
+        const kind = group?.elementData?.componentType
+        // While the inline editor is open the text layer is hidden and the
+        // blur path owns the reflow+persist — don't fight it; just persist
+        // the metadata so the editor reads the latest style.
+        const editingActive = !!document.querySelector('.temp-input-area')
+        if (editingActive || !group || !shapePath || !kind) {
+            updateComponentBulkPropertiesInLocalStore(componentId, {
+                metadata: updatedMetadata,
+            })
+            return
+        }
 
-            twoJSInstance?.update()
-            const rectangleShape = sel?.shape?.data
-            const bbox = twoText._renderer?.elem?.getBBox?.()
-            if (!rectangleShape || !bbox || bbox.width <= 0) {
-                updateComponentBulkPropertiesInLocalStore(componentId, {
-                    metadata: updatedMetadata,
-                })
-                return
-            }
-
-            const PAD = 20
-            const minW = bbox.width + PAD
-            const minH = bbox.height + PAD
-            const needsExpand =
-                rectangleShape.width < minW || rectangleShape.height < minH
-
-            if (needsExpand) {
-                const newW = Math.max(rectangleShape.width, minW)
-                const newH = Math.max(rectangleShape.height, minH)
-                rectangleShape.width = newW
-                rectangleShape.height = newH
-                twoJSInstance?.update()
-                updateComponentBulkPropertiesInLocalStore(componentId, {
-                    metadata: updatedMetadata,
-                    width: Math.round(newW),
-                    height: Math.round(newH),
-                })
-            } else {
-                updateComponentBulkPropertiesInLocalStore(componentId, {
-                    metadata: updatedMetadata,
-                })
-            }
+        const rawText =
+            typeof updatedMetadata.textContent === 'string'
+                ? updatedMetadata.textContent
+                : ''
+        const width = shapePath.width
+        // Re-render the wrapped multiline layer at the new style.
+        applyShapeText(twoJSInstance, group, kind, width, updatedMetadata)
+        const { font } = shapeTextStyleFromMeta(updatedMetadata)
+        const { requiredHeight } = reflowTextForShape(
+            kind,
+            width,
+            rawText,
+            font
+        )
+        const newH = Math.max(shapePath.height, requiredHeight)
+        if (newH !== shapePath.height) shapePath.height = newH
+        twoJSInstance?.update()
+        updateComponentBulkPropertiesInLocalStore(componentId, {
+            metadata: updatedMetadata,
+            width: Math.round(width),
+            height: Math.round(newH),
         })
     }
 
@@ -1006,7 +1036,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         const textSize = (sizesMap as any)[newLabel]
         const twoText = sel?.text?.data
         if (!twoText) return
-        twoText.size = textSize
+        // Size every line node in the text layer (not just the first), so
+        // multiline updates live — not only after a reload.
+        const sizeNodes = getShapeTextNodes(sel?.group?.data)
+        ;(sizeNodes.length > 0 ? sizeNodes : [twoText]).forEach(
+            (n) => (n.size = textSize)
+        )
         twoJSInstance?.update()
 
         const componentId = sel?.group?.data?.elementData?.id
@@ -1019,14 +1054,19 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             sel.group.data.elementData.metadata = updatedMetadata
         }
 
-        scheduleRectFitToText(twoText, componentId, updatedMetadata)
+        reflowShapeTextAfterStyleChange(componentId, updatedMetadata)
         syncOpenTextarea({ fontSize: textSize })
     }
 
     const handleTextFontFamilyChange = (fontFamily: string) => {
         const twoText = sel?.shape?.data
         if (!twoText) return
-        twoText.family = fontFamily
+        // Apply to every line node (line 1 + satellites), not just line 1,
+        // so multiline standalone text updates live. Family doesn't change
+        // line height, so no re-stack is needed.
+        const familyNodes = getShapeTextNodes(sel?.group?.data)
+        const nodes = familyNodes.length > 0 ? familyNodes : [twoText]
+        nodes.forEach((node) => (node.family = fontFamily))
         const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
             sel?.group?.data?.elementData?.metadata ?? {}
@@ -1034,7 +1074,9 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             metadata: {
                 ...existingMetadata,
                 textFontFamily: fontFamily,
-                content: twoText.value,
+                // Reconstruct the raw multiline string from every line node,
+                // not just line 1 — otherwise a reload would drop lines 2..N.
+                content: nodes.map((node) => node.value).join('\n'),
             },
         })
         twoJSInstance?.update()
@@ -1046,7 +1088,11 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     const handleRectangleTextFontFamilyChange = (fontFamily: string) => {
         const twoText = sel?.text?.data
         if (!twoText) return
-        twoText.family = fontFamily
+        // Apply to every line node so multiline text updates live.
+        const familyNodes = getShapeTextNodes(sel?.group?.data)
+        ;(familyNodes.length > 0 ? familyNodes : [twoText]).forEach(
+            (n) => (n.family = fontFamily)
+        )
         twoJSInstance?.update()
         const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
@@ -1058,9 +1104,9 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         if (sel?.group?.data?.elementData) {
             sel.group.data.elementData.metadata = updatedMetadata
         }
-        // Re-fit the rectangle to the new text bbox; some families (e.g.
-        // Fraunces) render wider than Caveat at the same size.
-        scheduleRectFitToText(twoText, componentId, updatedMetadata)
+        // Re-wrap + grow height: some families (e.g. Fraunces) render wider
+        // than Caveat at the same size, changing the wrap.
+        reflowShapeTextAfterStyleChange(componentId, updatedMetadata)
         syncOpenTextarea({ fontFamily })
         // Make selection universal: future new elements pick up this family.
         setDefaultTextFontFamily(fontFamily)
@@ -1269,6 +1315,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                         defaultLinewidth={defaultLinewidth}
                         defaultStrokeType={defaultStrokeType}
                         defaultStrokeColor={defaultStrokeColor}
+                        defaultTextSize={
+                            (isMobile
+                                ? MOBILE_TEXT_SIZES_OBJECT
+                                : TEXT_SIZES_OBJECT)[defaultTextSize] ??
+                            DEFAULT_TEXT_SIZE
+                        }
                         onCameraChange={props.onCameraChange}
                         renderBackground={props.renderBackground}
                     />

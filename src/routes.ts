@@ -4,4 +4,5 @@ export default {
     marketing: '/home',
     about: '/about',
     support: '/support',
+    privacy: '/privacy',
 }
