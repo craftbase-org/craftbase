@@ -1,11 +1,15 @@
 {
     "name": "craftbase",
-    "version": "0.7.2",
+    "version": "0.7.3",
     "private": true,
-    "main": "src/lib.js",
-    "module": "src/lib.js",
+    "main": "src/lib.ts",
+    "module": "src/lib.ts",
+    "types": "src/lib.ts",
     "exports": {
-        ".": "./src/lib.js",
+        ".": {
+            "types": "./src/lib.ts",
+            "default": "./src/lib.ts"
+        },
         "./package.json": "./package.json"
     },
     "peerDependencies": {
@@ -27,7 +31,6 @@
         "idx": "^3.0.3",
         "immer": "^10.1.1",
         "interactjs": "^1.10.27",
-        "prop-types": "^15.8.1",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "react-responsive": "10.0.0",
@@ -45,7 +48,9 @@
         "test": "vitest",
         "test:e2e": "playwright test",
         "test:e2e:ui": "playwright test --ui",
-        "test:e2e:headed": "playwright test --headed"
+        "test:e2e:headed": "playwright test --headed",
+        "typecheck": "tsc --noEmit",
+        "codegen": "graphql-codegen --config codegen.ts"
     },
     "resolutions": {
         "micromatch": ">=4.0.8",
@@ -68,11 +73,22 @@
         ]
     },
     "devDependencies": {
+        "@graphql-codegen/cli": "^5.0.2",
+        "@graphql-codegen/typed-document-node": "^5.0.6",
+        "@graphql-codegen/typescript": "^4.0.6",
+        "@graphql-codegen/typescript-operations": "^4.2.0",
         "@playwright/test": "^1.59.1",
+        "@types/node": "^25.7.0",
+        "@types/react": "^18.3.0",
+        "@types/react-dom": "^18.3.0",
+        "@types/styled-components": "^5.1.36",
+        "@types/two.js": "^0.7.9",
         "@vitejs/plugin-react": "^4.7.0",
         "autoprefixer": "^10.4.27",
+        "dotenv": "^17.4.2",
         "jsdom": "^25.0.0",
         "tailwindcss": "^3.4.4",
+        "typescript": "^6.0.3",
         "vite": "^6.4.1",
         "vite-plugin-svgr": "^5.2.0",
         "vite-tsconfig-paths": "^6.1.1",

@@ -1,0 +1,398 @@
+import { SHAPE_DEFAULT_STROKE } from '../constants/misc'
+import { generateUUID } from './misc'
+import { lineHeightFor, measureTextWidth, type FontSpec } from './textLayout'
+import { reflowTextForShape } from './shapeTextFit'
+
+// Two.js scene/shape objects in the codebase carry extra bookkeeping fields
+// (elementData, _renderer, etc.) that aren't part of the published types. Keep
+// these parameters loose; Stages 7–9 will install canonical scene types.
+//
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TwoLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ShapeLike = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ZUILike = any
+
+interface MouseLikeEvent {
+    clientX: number
+    clientY: number
+}
+
+interface ShapeStyleUpdate {
+    fill?: string
+    stroke?: string | null
+    linewidth?: number
+    opacity?: number
+}
+
+// Show or hide the endpoint circles on an arrowLine group.
+// children[1] and children[2] are the endpoint handle groups.
+export function setArrowEndpointsVisible(
+    shape: ShapeLike,
+    visible: boolean
+): void {
+    const opacity = visible ? 1 : 0
+    if (shape?.children?.[1]) shape.children[1].opacity = opacity
+    if (shape?.children?.[2]) shape.children[2].opacity = opacity
+}
+
+// Convert a mouse event's client coords to Two.js surface coords via ZUI.
+export function clientToSurface(
+    zui: ZUILike,
+    e: MouseLikeEvent
+): { x: number; y: number } {
+    return zui.clientToSurface(e.clientX, e.clientY)
+}
+
+// Apply visual style properties to a Two.js shape.
+export function applyShapeStyle(
+    shape: ShapeLike,
+    { fill, stroke, linewidth, opacity }: ShapeStyleUpdate = {}
+): void {
+    if (fill !== undefined) shape.fill = fill
+    if (stroke !== undefined) shape.stroke = stroke || SHAPE_DEFAULT_STROKE
+    if (linewidth !== undefined) shape.linewidth = linewidth
+    if (opacity !== undefined) shape.opacity = opacity
+}
+
+// Component-row shape passed into cloneElementData. Loose-but-honest mapping
+// over the DB schema; full ComponentRecord shape lives in src/types/board.ts
+// but cloneElementData also handles canvas-only fields (relativeX/Y), hence
+// the local interface.
+interface ElementCloneSource {
+    componentType: string
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+    width: number
+    height: number
+    fill: string
+    stroke: string | null
+    strokeType: string | null
+    linewidth: number | null
+    radius: number | null
+    iconStroke: string | null
+    textColor: string | null
+    metadata: unknown
+    children: unknown
+    relativeX?: number
+    relativeY?: number
+}
+
+interface ClonedElement extends ElementCloneSource {
+    id: string
+    boardId: string
+    x: number
+    y: number
+}
+
+// Deep-clone a canvas element's data for copy/paste, assigning a new UUID
+// and positioning at (newX, newY).
+export function cloneElementData(
+    src: ElementCloneSource,
+    boardId: string,
+    newX: number,
+    newY: number
+): ClonedElement {
+    const cloned: ClonedElement = {
+        id: generateUUID(),
+        boardId,
+        componentType: src.componentType,
+        x: newX,
+        y: newY,
+        x1: src.x1,
+        y1: src.y1,
+        x2: src.x2,
+        y2: src.y2,
+        width: src.width,
+        height: src.height,
+        fill: src.fill,
+        stroke: src.stroke,
+        strokeType: src.strokeType,
+        linewidth: src.linewidth,
+        radius: src.radius,
+        iconStroke: src.iconStroke,
+        textColor: src.textColor,
+        metadata: Array.isArray(src.metadata)
+            ? src.metadata.map((p: unknown) =>
+                  typeof p === 'object' && p !== null ? { ...p } : p
+              )
+            : src.metadata
+              ? { ...(src.metadata as Record<string, unknown>) }
+              : {},
+        children: src.children
+            ? typeof structuredClone === 'function'
+                ? structuredClone(src.children)
+                : JSON.parse(JSON.stringify(src.children))
+            : null,
+    }
+    if (src.relativeX !== undefined) cloned.relativeX = src.relativeX
+    if (src.relativeY !== undefined) cloned.relativeY = src.relativeY
+    return cloned
+}
+
+interface ResolveResult {
+    shape: ShapeLike | null
+    avoidDragging: boolean
+}
+
+// Walk the DOM event path to find the Two.js group and determine drag behavior.
+export function resolveShapeFromPath(
+    path: EventTarget[] | undefined,
+    two: TwoLike
+): ResolveResult {
+    let shape: ShapeLike | null = null
+    let avoidDragging = false
+
+    if (!path) return { shape, avoidDragging }
+
+    path.forEach((rawItem) => {
+        const item = rawItem as HTMLElement
+        const classList = item?.classList
+        if (classList?.value?.includes('avoid-dragging')) {
+            avoidDragging = true
+            if (item.tagName === 'g' && shape == null) {
+                shape =
+                    two.scene.children.find(
+                        (child: ShapeLike) => child.id === item.id
+                    ) ?? null
+            }
+        }
+
+        if (
+            item.tagName === 'g' &&
+            classList?.value?.includes('dragger-picker') &&
+            shape == null
+        ) {
+            if (classList.value.includes('is-line-circle')) {
+                const el = document.getElementById(item.id)
+                const parentId = el?.getAttribute('data-parent-id')
+                const lineId = el?.getAttribute('data-line-id')
+                const direction = el?.getAttribute('data-direction')
+
+                const getParentTwoData = two.scene.children.find(
+                    (child: ShapeLike) => child.id === parentId
+                )
+                const getChildTwoData = getParentTwoData.children.find(
+                    (child: ShapeLike) => child.id === item.id
+                )
+                const getSiblingChild = getParentTwoData.children.find(
+                    (child: ShapeLike) =>
+                        child.id !== item.id && child?.children?.length > 0
+                )
+                const getLineTwoData = getParentTwoData.children.find(
+                    (child: ShapeLike) => child.id === lineId
+                )
+
+                shape = getChildTwoData
+                shape.lineData = getLineTwoData
+                shape.direction = direction
+                shape.siblingCircle = getSiblingChild
+                shape.opacity = 1
+                shape.siblingCircle.opacity = 1
+                shape.elementData = {
+                    isGroupSelector: false,
+                    isLineCircle: true,
+                    lineData: getLineTwoData,
+                    parentData: getParentTwoData,
+                }
+            } else {
+                shape = two.scene.children.find(
+                    (child: ShapeLike) => child.id === item.id
+                )
+                if (shape?.elementData?.componentType === 'arrowLine') {
+                    setArrowEndpointsVisible(shape, true)
+                }
+            }
+        }
+    })
+
+    return { shape, avoidDragging }
+}
+
+interface PollOptions {
+    condition?: (el: ShapeLike) => boolean
+    maxRetries?: number
+    onTimeout?: () => void
+}
+
+/**
+ * Poll `two.scene.children` for an element with the given id, calling
+ * `onFound(el)` once the element (and optional extra condition) is present.
+ * Falls back to `onTimeout()` after `maxRetries` animation frames.
+ */
+export function pollUntilElement(
+    two: TwoLike,
+    id: string,
+    onFound: (el: ShapeLike) => void,
+    { condition = () => true, maxRetries = 300, onTimeout }: PollOptions = {}
+): void {
+    const attempt = (retries: number): void => {
+        const el = two.scene.children.find(
+            (child: ShapeLike) => child?.elementData?.id === id
+        )
+        if (el && condition(el)) {
+            onFound(el)
+        } else if (retries < maxRetries) {
+            requestAnimationFrame(() => attempt(retries + 1))
+        } else {
+            onTimeout?.()
+        }
+    }
+    requestAnimationFrame(() => attempt(0))
+}
+
+// ── Shape text layer ──
+// Multiline text inside a shape lives in a dedicated, detectable sub-group
+// (one Two.Text per visual line). The marker `elementData.isTextLayer` lets
+// every consumer (group-apply, inspector, selection/resize) ask "is this the
+// text group?" and "give me all the line nodes" without ad-hoc value sniffing.
+
+export interface ShapeTextStyle {
+    fill: string
+    size: number
+    family: string
+    weight?: string | number
+    alignment?: 'center' | 'left' | 'right'
+    baseline?: string
+    lineHeight?: number
+}
+
+// Return the tagged text-layer sub-group of `group`, or null.
+export function findShapeTextLayer(group: ShapeLike): ShapeLike | null {
+    const children = group?.children
+    if (!children) return null
+    for (let i = 0; i < children.length; i++) {
+        if (children[i]?.elementData?.isTextLayer === true) return children[i]
+    }
+    return null
+}
+
+// All Two.Text line nodes for a shape. Falls back to legacy direct
+// string-valued children so callers stay correct mid-migration.
+export function getShapeTextNodes(group: ShapeLike): ShapeLike[] {
+    const layer = findShapeTextLayer(group)
+    const source = layer ? layer.children : group?.children
+    if (!source) return []
+    return source.filter(
+        (c: ShapeLike) => typeof c?.value === 'string'
+    )
+}
+
+/**
+ * Render `lines` as a vertical stack of Two.Text nodes inside `group`'s text
+ * layer, creating the layer on first use. Existing line nodes are reused
+ * (value/position/style updated) and only the surplus is removed — we never
+ * `two.remove` the layer group itself, sidestepping the documented Two.js
+ * `scene.subtractions` double-removal crash. Caller owns `two.update()`.
+ *
+ * Lines are centered as a block around the group origin (the shape Path is
+ * also centered there), so no `group.center()` is needed.
+ */
+export function renderShapeTextLayer(
+    two: TwoLike,
+    group: ShapeLike,
+    lines: string[],
+    style: ShapeTextStyle
+): ShapeLike {
+    let layer = findShapeTextLayer(group)
+    if (!layer) {
+        layer = two.makeGroup()
+        layer.elementData = { isTextLayer: true }
+        group.add(layer)
+    }
+
+    const lineH = style.lineHeight ?? lineHeightFor(style.size)
+    const n = lines.length
+    const alignment = style.alignment ?? 'left'
+
+    // Two.Text positions relative to its translation per `alignment`. For a
+    // left-aligned block we shift every line left by half the widest line so
+    // the block stays centered in the shape while each line shares one left
+    // edge (ragged right).
+    let blockX = 0
+    if (alignment === 'left') {
+        const font: FontSpec = {
+            family: style.family,
+            size: style.size,
+            weight: style.weight,
+        }
+        let maxW = 0
+        for (const ln of lines) {
+            const w = measureTextWidth(ln, font)
+            if (w > maxW) maxW = w
+        }
+        blockX = -maxW / 2
+    }
+
+    for (let i = 0; i < n; i++) {
+        const y = (i - (n - 1) / 2) * lineH
+        let node = layer.children[i]
+        if (!node || typeof node.value !== 'string') {
+            node = two.makeText(lines[i] ?? '', blockX, y)
+            layer.add(node)
+        } else {
+            node.value = lines[i] ?? ''
+        }
+        node.translation.set(blockX, y)
+        node.fill = style.fill
+        node.size = style.size
+        node.family = style.family
+        node.alignment = alignment
+        node.baseline = style.baseline ?? 'middle'
+        if (style.weight !== undefined) node.weight = style.weight
+    }
+
+    // Drop surplus line nodes from a previous, longer render.
+    if (layer.children.length > n) {
+        const extras = layer.children.slice(n)
+        layer.remove(extras)
+    }
+
+    return layer
+}
+
+// Derive the text style + measurement font from a shape's metadata, matching
+// the historical single-makeText defaults (Caveat / #3A342C / size 24).
+export function shapeTextStyleFromMeta(meta: ShapeLike): {
+    style: ShapeTextStyle
+    font: FontSpec
+} {
+    const family = meta?.textFontFamily || meta?.textFamily || 'Caveat'
+    const size = meta?.textFontSize || 24
+    const weight = meta?.textWeight || 'normal'
+    return {
+        style: {
+            fill: meta?.textFill || '#3A342C',
+            size,
+            family,
+            weight,
+            alignment: 'left',
+            baseline: meta?.textBaseLine || 'middle',
+        },
+        font: { family, size, weight },
+    }
+}
+
+/**
+ * Reflow a shape's text to its current width and render it into the text
+ * layer. Single entry point used by the rectangle/diamond/circle components
+ * on mount and whenever width/metadata change, so persisted boards reflow
+ * deterministically from raw content + width (no wrapped text is stored).
+ * Caller owns `two.update()`.
+ */
+export function applyShapeText(
+    two: TwoLike,
+    group: ShapeLike,
+    kind: string,
+    width: number,
+    meta: ShapeLike
+): void {
+    if (!meta?.hasText) return
+    const raw = typeof meta.textContent === 'string' ? meta.textContent : ''
+    const { style, font } = shapeTextStyleFromMeta(meta)
+    const { lines } = reflowTextForShape(kind, width, raw, font)
+    renderShapeTextLayer(two, group, lines, style)
+}

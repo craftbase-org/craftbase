@@ -1,0 +1,447 @@
+import { useState, useEffect } from 'react'
+import type { ReactElement } from 'react'
+import { useQuery } from '@apollo/client'
+
+import ShapesToolbar from './shapesToolbar'
+import { GET_COMPONENT_TYPES } from '../../schema/queries'
+import SpinnerWithSize from '../common/spinnerWithSize'
+import { generateUUID } from '../../utils/misc'
+import { useBoardContext } from '../../views/Board/board'
+import { useMediaQueryUtils } from '../../constants/exportHooks'
+import type { ComponentRecord } from '../../types/board'
+
+import './sidebar.css'
+import ShareLinkPopup from './shareLinkPopup'
+import MenuDrawer from './menuDrawer'
+
+const DRAW_SHAPE_TYPES = ['circle', 'rectangle', 'diamond']
+
+// Defaults used when the Hasura componentTypes catalog isn't reachable
+// (craftbase runs standalone as a library without a backend). Keeps shape
+// creation working end-to-end without DB seeds.
+const FALLBACK_CATALOG: Record<
+    string,
+    { width: number; height: number; fill: string; textColor: string | null }
+> = {
+    rectangle: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
+    circle: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
+    diamond: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
+    arrowLine: { width: 100, height: 0, fill: 'transparent', textColor: null },
+    divider: { width: 100, height: 0, fill: 'transparent', textColor: null },
+    text: { width: 120, height: 36, fill: 'transparent', textColor: '#3A342C' },
+}
+
+const PrimarySidebar = (): ReactElement => {
+    const {
+        boardId,
+        updateLastAddedElement,
+        togglePointer,
+        togglePencilMode,
+        togglePanMode,
+        addToLocalComponentStore,
+        enableTextDrawMode,
+        setArrowDrawModeInBoard,
+        setRubberModeInBoard,
+        cancelPendingElement,
+        defaultLinewidth,
+        defaultStrokeType,
+        defaultFill,
+        defaultStrokeColor,
+        defaultOpacity,
+        defaultTextFontFamily,
+    } = useBoardContext()
+    const [hintText, setHintText] = useState(
+        'Click anywhere to place element there.'
+    )
+    const {
+        loading: getComponentTypesLoading,
+        data: getComponentTypesData,
+    } = useQuery(GET_COMPONENT_TYPES)
+
+    // Verify component-type seeds are present.
+    useEffect(() => {
+        if (
+            !getComponentTypesLoading &&
+            getComponentTypesData &&
+            getComponentTypesData.componentTypes.length < 1
+        ) {
+            console.error(
+                'Error : The component types are not available from the DB. Hint: Please check if component types seeds are already populated in component type table in DB '
+            )
+        }
+    }, [getComponentTypesData, getComponentTypesLoading])
+
+    const handleArrowElement = (label: string): void => {
+        togglePencilMode(false)
+        togglePointer(false)
+
+        const savingEl = document.getElementById('show-saving-loader')
+        if (savingEl) {
+            savingEl.style.opacity = '1'
+            savingEl.style.zIndex = '1'
+        }
+
+        setTimeout(() => {
+            if (savingEl) {
+                savingEl.style.opacity = '0'
+                savingEl.style.zIndex = '-1'
+            }
+        }, 100)
+
+        let shapeData: ComponentRecord | null = null
+        const generateId = generateUUID()
+
+        if (getComponentTypesData) {
+            getComponentTypesData.componentTypes.forEach((item) => {
+                if (item.label === label) {
+                    const userId = localStorage.getItem('userId')
+                    shapeData = {
+                        id: generateId,
+                        componentType: label,
+                        linewidth: defaultLinewidth,
+                        strokeType: defaultStrokeType,
+                        stroke: defaultStrokeColor ?? '#3A342C',
+                        children: {},
+                        x: -9999,
+                        y: -9999,
+                        x1: 0,
+                        x2: 0,
+                        y1: 0,
+                        y2: 0,
+                        boardId,
+                        boardName: null,
+                        radius: null,
+                        iconStroke: null,
+                        isDummy: null,
+                        createdAt: null,
+                        metadata: {
+                            ...((item.metadata as Record<string, unknown>) ?? {}),
+                            opacity: defaultOpacity ?? 1,
+                            ...(defaultTextFontFamily && {
+                                textFontFamily: defaultTextFontFamily,
+                            }),
+                        },
+                        width: item.width ?? 120,
+                        height: item.height ?? 120,
+                        fill: item.fill ?? '#f4f4f2',
+                        textColor: item.textColor ?? null,
+                        updatedBy: userId,
+                    }
+                }
+            })
+        }
+
+        // Fallback when the Hasura catalog isn't reachable.
+        if (!shapeData && FALLBACK_CATALOG[label]) {
+            const userId = localStorage.getItem('userId')
+            const fb = FALLBACK_CATALOG[label]
+            shapeData = {
+                id: generateId,
+                componentType: label,
+                linewidth: defaultLinewidth,
+                strokeType: defaultStrokeType,
+                stroke: defaultStrokeColor ?? '#3A342C',
+                children: {},
+                x: -9999,
+                y: -9999,
+                x1: 0,
+                x2: 0,
+                y1: 0,
+                y2: 0,
+                boardId,
+                boardName: null,
+                radius: null,
+                iconStroke: null,
+                isDummy: null,
+                createdAt: null,
+                metadata: {
+                    opacity: defaultOpacity ?? 1,
+                    ...(defaultTextFontFamily && {
+                        textFontFamily: defaultTextFontFamily,
+                    }),
+                },
+                width: fb.width,
+                height: fb.height,
+                fill: fb.fill,
+                textColor: fb.textColor,
+                updatedBy: userId,
+            }
+        }
+
+        if (!shapeData) return
+
+        updateLastAddedElement(shapeData)
+        const root = document.getElementById('main-two-root')
+        if (root) root.style.cursor = 'crosshair'
+        localStorage.setItem('arrowDrawMode', 'true')
+        localStorage.setItem('lastAddedElementId', generateId)
+        setArrowDrawModeInBoard(true)
+        addToLocalComponentStore(
+            (shapeData as ComponentRecord).id,
+            (shapeData as ComponentRecord).componentType,
+            shapeData
+        )
+    }
+
+    const handleTextElement = (): void => {
+        const savingEl = document.getElementById('show-saving-loader')
+        if (savingEl) {
+            savingEl.style.opacity = '1'
+            savingEl.style.zIndex = '1'
+        }
+
+        setTimeout(() => {
+            if (savingEl) {
+                savingEl.style.opacity = '0'
+                savingEl.style.zIndex = '-1'
+            }
+        }, 100)
+
+        enableTextDrawMode()
+    }
+
+    const addElement = (label: string): void => {
+        cancelPendingElement()
+        if (label !== 'rubber') setRubberModeInBoard(false)
+        if (label !== 'pan') togglePanMode(false)
+        switch (label) {
+            case 'pointer':
+                togglePointer(true)
+                break
+            case 'pan':
+                togglePanMode(true)
+                break
+            case 'pencil':
+                togglePencilMode(true)
+                break
+            case 'rubber':
+                togglePencilMode(false)
+                togglePointer(false)
+                setRubberModeInBoard(true)
+                break
+            case 'arrowLine':
+                handleArrowElement(label)
+                break
+            case 'text':
+                handleTextElement()
+                break
+            default: {
+                togglePencilMode(false)
+                togglePointer(false)
+
+                const savingEl = document.getElementById('show-saving-loader')
+                if (savingEl) {
+                    savingEl.style.opacity = '1'
+                    savingEl.style.zIndex = '1'
+                }
+
+                setTimeout(() => {
+                    if (DRAW_SHAPE_TYPES.includes(label)) {
+                        setHintText('Click and drag to draw shape')
+                    } else {
+                        setHintText('Click anywhere to place element there.')
+                    }
+                    const clickEl = document.getElementById(
+                        'show-click-anywhere-btn'
+                    )
+                    if (clickEl) clickEl.style.opacity = '1'
+                    if (savingEl) {
+                        savingEl.style.opacity = '0'
+                        savingEl.style.zIndex = '-1'
+                    }
+                }, 100)
+
+                let shapeData: ComponentRecord | null = null
+                const randomNumber = Math.floor(Math.random() * 80 + 30)
+                const generateId = generateUUID()
+
+                if (getComponentTypesData) {
+                    getComponentTypesData.componentTypes.forEach((item) => {
+                        if (item.label === label) {
+                            const userId = localStorage.getItem('userId')
+                            const useShapeFill = DRAW_SHAPE_TYPES.includes(label)
+                            shapeData = {
+                                id: generateId,
+                                componentType: label,
+                                linewidth: defaultLinewidth,
+                                strokeType: defaultStrokeType,
+                                stroke: defaultStrokeColor ?? '#3A342C',
+                                children: {},
+                                x: Math.floor(
+                                    window.outerWidth -
+                                        (randomNumber * window.outerWidth) / 100
+                                ),
+                                y: Math.floor(
+                                    window.outerHeight -
+                                        (randomNumber * window.outerHeight) / 100
+                                ),
+                                x1: 0,
+                                x2: label.includes('divider') ? 100 : 0,
+                                y1: 0,
+                                y2: 0,
+                                boardId,
+                                boardName: null,
+                                radius: null,
+                                iconStroke: null,
+                                isDummy: null,
+                                createdAt: null,
+                                metadata: {
+                                    ...((item.metadata as Record<
+                                        string,
+                                        unknown
+                                    >) ?? {}),
+                                    opacity: defaultOpacity ?? 1,
+                                    ...(defaultTextFontFamily && {
+                                        textFontFamily: defaultTextFontFamily,
+                                    }),
+                                },
+                                width: item.width ?? 120,
+                                height: item.height ?? 120,
+                                fill: useShapeFill
+                                    ? (defaultFill ?? item.fill ?? '#f4f4f2')
+                                    : (item.fill ?? '#f4f4f2'),
+                                textColor: item.textColor ?? null,
+                                updatedBy: userId,
+                            }
+                        }
+                    })
+                }
+
+                // Fallback when the DB catalog isn't reachable / doesn't
+                // seed this label. Lets craftbase work standalone as a
+                // library without a Hasura backend.
+                if (!shapeData && FALLBACK_CATALOG[label]) {
+                    const userId = localStorage.getItem('userId')
+                    const fb = FALLBACK_CATALOG[label]
+                    const useShapeFill = DRAW_SHAPE_TYPES.includes(label)
+                    shapeData = {
+                        id: generateId,
+                        componentType: label,
+                        linewidth: defaultLinewidth,
+                        strokeType: defaultStrokeType,
+                        stroke: defaultStrokeColor ?? '#3A342C',
+                        children: {},
+                        x: Math.floor(
+                            window.outerWidth -
+                                (randomNumber * window.outerWidth) / 100
+                        ),
+                        y: Math.floor(
+                            window.outerHeight -
+                                (randomNumber * window.outerHeight) / 100
+                        ),
+                        x1: 0,
+                        x2: label.includes('divider') ? 100 : 0,
+                        y1: 0,
+                        y2: 0,
+                        boardId,
+                        boardName: null,
+                        radius: null,
+                        iconStroke: null,
+                        isDummy: null,
+                        createdAt: null,
+                        metadata: {
+                            opacity: defaultOpacity ?? 1,
+                            ...(defaultTextFontFamily && {
+                                textFontFamily: defaultTextFontFamily,
+                            }),
+                        },
+                        width: fb.width,
+                        height: fb.height,
+                        fill: useShapeFill
+                            ? (defaultFill ?? fb.fill)
+                            : fb.fill,
+                        textColor: fb.textColor,
+                        updatedBy: userId,
+                    }
+                }
+
+                if (!shapeData) return
+
+                if (DRAW_SHAPE_TYPES.includes(label)) {
+                    // Draw-to-place: store pending shape props, canvas creates on mouseup
+                    localStorage.setItem('pendingShapeType', label)
+                    localStorage.setItem(
+                        'pendingShapeProps',
+                        JSON.stringify(shapeData)
+                    )
+                    const root = document.getElementById('main-two-root')
+                    if (root) root.style.cursor = 'crosshair'
+                } else {
+                    updateLastAddedElement(shapeData)
+                    localStorage.setItem('lastAddedElementId', generateId)
+                    addToLocalComponentStore(
+                        (shapeData as ComponentRecord).id,
+                        (shapeData as ComponentRecord).componentType,
+                        shapeData
+                    )
+                }
+            }
+        }
+    }
+    const { isMobile } = useMediaQueryUtils()
+    const isLiveSession = false
+    return (
+        <>
+            <ShapesToolbar addElement={addElement} />
+            <MenuDrawer />
+            <div
+                id="show-click-anywhere-btn"
+                className="fixed w-full flex justify-center top-0  opacity-0
+                transition-opacity ease-out duration-300"
+            >
+                <div
+                    className="w-auto mt-2
+                         bg-reds-r400 text-reds-r50
+                            px-4 py-2 rounded-md shadow-md
+                            "
+                >
+                    <div className="flex items-center  ">
+                        <div className="w-auto text-sm text-left">
+                            {hintText}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div className="absolute top-2 right-1rem flex items-center px-2 py-1 gap-1">
+                <div
+                    id="show-saving-loader"
+                    className="w-28 h-9 pr-2 transition-all opacity-0"
+                    style={{ zIndex: -1 }}
+                >
+                    <div className="w-auto bg-greens-g400 text-greens-g75 px-4 py-2 rounded-md shadow-md">
+                        <div className="flex items-center ">
+                            <div className="w-auto text-sm text-left">
+                                Saving
+                            </div>
+                            <div>
+                                <SpinnerWithSize
+                                    loaderSize="sm"
+                                    customStyles={{
+                                        margin: 0,
+                                        marginLeft: '4px',
+                                        borderBottomColor: '#ABF5D1',
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {isLiveSession && (
+                    <div className="w-9 h-9 text-sm pr-2">
+                        <a className="flex items-center px-4 py-2 rounded-card bg-card-bg text-ink shadow-card">
+                            <span className="text-sm ">Live</span>
+                            <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
+                                <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
+                            </div>
+                        </a>
+                    </div>
+                )}
+
+                {!isMobile && <ShareLinkPopup />}
+            </div>
+        </>
+    )
+}
+
+export default PrimarySidebar

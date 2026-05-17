@@ -7,7 +7,13 @@ module.exports = {
         'bg-accent',
         'bg-topbar-hover',
     ],
-    content: ['./src/**/*.html', './src/**/*.js', './src/**/*.jsx'],
+    content: [
+        './src/**/*.html',
+        './src/**/*.js',
+        './src/**/*.jsx',
+        './src/**/*.ts',
+        './src/**/*.tsx',
+    ],
     future: {
         removeDeprecatedGapUtilities: true,
     },
