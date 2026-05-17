@@ -37,6 +37,7 @@ import {
     shapeTextStyleFromMeta,
 } from '../../utils/canvasUtils'
 import { reflowTextForShape } from '../../utils/shapeTextFit'
+import { lineHeightFor } from '../../utils/textLayout'
 import {
     TEXT_SIZES_OBJECT,
     MOBILE_TEXT_SIZES_OBJECT,
@@ -55,6 +56,7 @@ import {
     VIEWPORT_KEY_PREFIX,
     MOBILE_VIEWPORT_KEY_PREFIX,
     VIEWPORT_TTL_MS,
+    DEFAULT_TEXT_SIZE,
 } from '../../constants/misc'
 import { useDrawingModes } from '../../hooks/useDrawingModes'
 import { useElementDefaults } from '../../hooks/useElementDefaults'
@@ -945,8 +947,19 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         const textSize = (sizesMap as any)[newLabel]
         const twoText = sel?.shape?.data
         if (!twoText) return
-        twoText.size = textSize
-        twoText.leading = textSize
+        // Standalone multiline text is a stack of Two.Text line nodes (line 1
+        // is `twoText`, lines 2..N are satellites in the same group). Size
+        // EVERY node and re-stack the block at the new line height — sizing
+        // only line 1 left the rest unchanged until a reload.
+        const sizeNodes = getShapeTextNodes(sel?.group?.data)
+        const nodes = sizeNodes.length > 0 ? sizeNodes : [twoText]
+        const n = nodes.length
+        const lineH = lineHeightFor(textSize)
+        nodes.forEach((node, i) => {
+            node.size = textSize
+            node.leading = textSize
+            node.translation.set(0, (i - (n - 1) / 2) * lineH)
+        })
         const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
             sel?.group?.data?.elementData?.metadata ?? {}
@@ -954,7 +967,9 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             metadata: {
                 ...existingMetadata,
                 fontSize: textSize,
-                content: twoText.value,
+                // Reconstruct the raw multiline string from every line node,
+                // not just line 1 — otherwise a reload would drop lines 2..N.
+                content: nodes.map((node) => node.value).join('\n'),
             },
         })
         twoJSInstance?.update()
@@ -1041,7 +1056,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     const handleTextFontFamilyChange = (fontFamily: string) => {
         const twoText = sel?.shape?.data
         if (!twoText) return
-        twoText.family = fontFamily
+        // Apply to every line node (line 1 + satellites), not just line 1,
+        // so multiline standalone text updates live. Family doesn't change
+        // line height, so no re-stack is needed.
+        const familyNodes = getShapeTextNodes(sel?.group?.data)
+        const nodes = familyNodes.length > 0 ? familyNodes : [twoText]
+        nodes.forEach((node) => (node.family = fontFamily))
         const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
             sel?.group?.data?.elementData?.metadata ?? {}
@@ -1049,7 +1069,9 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             metadata: {
                 ...existingMetadata,
                 textFontFamily: fontFamily,
-                content: twoText.value,
+                // Reconstruct the raw multiline string from every line node,
+                // not just line 1 — otherwise a reload would drop lines 2..N.
+                content: nodes.map((node) => node.value).join('\n'),
             },
         })
         twoJSInstance?.update()
@@ -1288,6 +1310,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                         defaultLinewidth={defaultLinewidth}
                         defaultStrokeType={defaultStrokeType}
                         defaultStrokeColor={defaultStrokeColor}
+                        defaultTextSize={
+                            (isMobile
+                                ? MOBILE_TEXT_SIZES_OBJECT
+                                : TEXT_SIZES_OBJECT)[defaultTextSize] ??
+                            DEFAULT_TEXT_SIZE
+                        }
                         onCameraChange={props.onCameraChange}
                         renderBackground={props.renderBackground}
                     />

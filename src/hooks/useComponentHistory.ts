@@ -3,6 +3,8 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import Two from 'two.js'
 import { strokeTypeToDashes, clearDashesOnTwoJSShape } from '../utils/misc'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from '../utils/updateVertices'
+import { getShapeTextNodes } from '../utils/canvasUtils'
+import { lineHeightFor } from '../utils/textLayout'
 import { DRAFT_STORAGE_KEY } from '../constants/misc'
 import type { ComponentRecord, ComponentStore } from '../types/board'
 
@@ -112,6 +114,13 @@ function applyPropertyToTwoJSGroup(
     const shape = group.children?.[0]
     if (!shape) return
 
+    // Multiline text (standalone or shape-with-text) is a stack of Two.Text
+    // line nodes — text props must hit EVERY node, not just children[0].
+    // Empty for non-text shapes, so this stays a no-op there.
+    const textNodes: ShapeLike[] = getShapeTextNodes(group)
+    const isStandaloneText =
+        group.elementData?.componentType === 'newText'
+
     switch (name) {
         case 'fill':
         case 'stroke':
@@ -119,9 +128,17 @@ function applyPropertyToTwoJSGroup(
         case 'radius':
         case 'width':
         case 'height':
-        case 'textColor':
         case 'iconStroke':
             shape[name] = value
+            break
+        case 'textColor':
+            // Standalone text records color as a top-level prop; it renders
+            // via each line node's `.fill`. Revert all lines, not just line 1.
+            if (textNodes.length > 0) {
+                textNodes.forEach((n: ShapeLike) => (n.fill = value))
+            } else {
+                shape[name] = value
+            }
             break
         case 'strokeType':
             shape.dashes = strokeTypeToDashes(value as string | null)
@@ -135,27 +152,55 @@ function applyPropertyToTwoJSGroup(
                 typeof value === 'object' &&
                 !Array.isArray(value)
             ) {
-                // The actual text node is either `shape` itself (newText: a
-                // Two.js text is shape) or a sibling inside the group
-                // (rectangle-with-text: text node sits next to the rect).
-                const textNode: ShapeLike =
+                // Fallback single node for legacy/non-multiline shapes where
+                // getShapeTextNodes finds no text layer.
+                const fallbackTextNode: ShapeLike =
                     typeof shape?.value === 'string'
                         ? shape
                         : group.children?.find(
                               (c: ShapeLike) => typeof c?.value === 'string'
                           )
+                const applyToText = (fn: (n: ShapeLike) => void): void => {
+                    if (textNodes.length > 0) textNodes.forEach(fn)
+                    else if (fallbackTextNode) fn(fallbackTextNode)
+                }
                 Object.entries(value as Record<string, unknown>).forEach(
                     ([k, v]) => {
                         if (k === 'opacity') {
                             // Opacity lives on the leaf shape (children[0]) by
                             // codebase convention; matches applyGroupProperty.
                             shape.opacity = v
-                        } else if (k === 'textFontSize' && textNode) {
-                            textNode.size = v
-                        } else if (k === 'textFontFamily' && textNode) {
-                            textNode.family = v
-                        } else if (k === 'textFill' && textNode) {
-                            textNode.fill = v
+                        } else if (
+                            k === 'textFontSize' ||
+                            k === 'fontSize'
+                        ) {
+                            // Standalone text stores size as `fontSize`,
+                            // shape-with-text as `textFontSize` — honor both.
+                            applyToText((n) => {
+                                n.size = v
+                                n.leading = v
+                            })
+                            // Standalone multiline must re-stack at the new
+                            // line height (shape-with-text reflows elsewhere).
+                            if (isStandaloneText && textNodes.length > 1) {
+                                const lh = lineHeightFor(Number(v))
+                                const cnt = textNodes.length
+                                textNodes.forEach(
+                                    (n: ShapeLike, i: number) =>
+                                        n.translation.set(
+                                            0,
+                                            (i - (cnt - 1) / 2) * lh
+                                        )
+                                )
+                            }
+                        } else if (k === 'textFontFamily') {
+                            applyToText((n) => {
+                                n.family = v
+                            })
+                        } else if (k === 'textFill') {
+                            applyToText((n) => {
+                                n.fill = v
+                            })
                         }
                         // Other metadata keys (textContent, textBaseLine,
                         // hasText) have no direct Two.js field mapping; skip

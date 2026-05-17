@@ -135,8 +135,17 @@ export function createApplyProperty(deps: ApplyPropertyDeps) {
                 )
                 updateBulkPropsForRectangleWithText?.(id, { textColor: value })
             } else {
-                if (selectedComponent?.shape?.data)
+                // Standalone text is a stack of Two.Text line nodes (line 1
+                // + satellites). Color EVERY node, not just line 1 — sel.shape
+                // .data is only the first node.
+                const textNodes = getShapeTextNodes(
+                    selectedComponent?.group?.data
+                )
+                if (textNodes.length > 0) {
+                    textNodes.forEach((n) => (n.fill = value))
+                } else if (selectedComponent?.shape?.data) {
                     selectedComponent.shape.data.fill = value
+                }
                 if (selectedComponent?.group?.data?.elementData) {
                     selectedComponent.group.data.elementData.textColor = value
                 }

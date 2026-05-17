@@ -99,6 +99,7 @@ interface CanvasProps {
     defaultLinewidth: number
     defaultStrokeType: string | null
     defaultStrokeColor: string
+    defaultTextSize: number
     onCameraChange?: (event: CameraChangeEvent) => void
     renderBackground?: () => ReactNode
 }
@@ -141,6 +142,10 @@ let isDrawing: boolean = false
 let defaultLinewidthValue: number = 1
 let defaultStrokeTypeValue: string | null = null
 let defaultStrokeColorValue: string = PENCIL_DEFAULT_COLOR
+// Live default text size (px) for shape-with-text. Module-level + synced via
+// useEffect so the once-bound addZUI DOM handlers read the latest value
+// (same stale-closure escape hatch as defaultLinewidthValue).
+let defaultTextSizeValue: number = DEFAULT_TEXT_SIZE
 
 function addZUI(
     props: CanvasProps,
@@ -390,7 +395,16 @@ function addZUI(
             selectionController.ui.visible = false
             two.update()
 
-            const liveMeta = group.elementData?.metadata || currentMetadata || {}
+            const rawLiveMeta =
+                group.elementData?.metadata || currentMetadata || {}
+            // A shape that's never had text has no `textFontSize` —
+            // shapeTextStyleFromMeta would fall back to its hardcoded 24px
+            // ("S"). Seed it from the user's current default text size (the
+            // defaults toolbar) so new shape-text honors the last-set size.
+            const liveMeta = {
+                ...rawLiveMeta,
+                textFontSize: rawLiveMeta.textFontSize ?? defaultTextSizeValue,
+            }
             const { style: textStyle } = shapeTextStyleFromMeta(liveMeta)
             const fontSize = textStyle.size || DEFAULT_TEXT_SIZE
             // Two.js renders text at `fontSize * sceneScale` screen pixels.
@@ -2466,6 +2480,10 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         defaultStrokeColorValue =
             props.defaultStrokeColor || PENCIL_DEFAULT_COLOR
     }, [props.defaultStrokeColor])
+
+    useEffect(() => {
+        defaultTextSizeValue = props.defaultTextSize || DEFAULT_TEXT_SIZE
+    }, [props.defaultTextSize])
 
     // on group select use effect hook
     useEffect(() => {
