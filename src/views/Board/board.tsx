@@ -341,7 +341,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     useEffect(() => {
         const userId = localStorage.getItem('userId')
         if (userId) {
-            updateUserRevisit({ variables: { userId } })
+            // Capture the revisit moment client-side as an ISO 8601 string;
+            // Hasura coerces it into the timestamptz `last_visit` column for
+            // cohort analysis in the DB.
+            updateUserRevisit({
+                variables: { userId, lastVisit: new Date().toISOString() },
+            })
         }
     }, [])
 

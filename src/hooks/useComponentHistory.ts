@@ -3,7 +3,13 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import Two from 'two.js'
 import { strokeTypeToDashes, clearDashesOnTwoJSShape } from '../utils/misc'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from '../utils/updateVertices'
-import { getShapeTextNodes } from '../utils/canvasUtils'
+import {
+    getShapeTextNodes,
+    findShapeTextLayer,
+    renderShapeTextLayer,
+    shapeTextStyleFromMeta,
+    applyShapeText,
+} from '../utils/canvasUtils'
 import { lineHeightFor } from '../utils/textLayout'
 import { DRAFT_STORAGE_KEY } from '../constants/misc'
 import type { ComponentRecord, ComponentStore } from '../types/board'
@@ -336,6 +342,83 @@ export function useComponentHistory({
         requestAnimationFrame(() => two?.update())
     }
 
+    // Text *content* has no single Two.js field, so applyPropertyToTwoJSGroup
+    // deliberately skips it. The React fallback is also dead on undo:
+    // ElementRenderWrapper freezes each element's props at mount, so the
+    // shape/text components' metadata-reflow effects never re-fire. This
+    // rebuilds the visible text from the restored metadata directly on the
+    // scene — the same direct-mutation contract every other undo prop uses.
+    // Call it AFTER width has been applied so shape-with-text reflows to the
+    // reverted box width, not the post-edit one.
+    const reapplyTextFromMeta = (
+        group: ShapeLike,
+        meta: BulkProps['metadata']
+    ): void => {
+        const two = twoJSInstanceRef.current
+        if (
+            !two ||
+            !group ||
+            !meta ||
+            typeof meta !== 'object' ||
+            Array.isArray(meta)
+        ) {
+            return
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const m = meta as Record<string, any>
+        const ct = group.elementData?.componentType
+
+        if (ct === 'newText') {
+            // Standalone multiline text is a stack of Two.Text nodes owned by
+            // the newText component (extraLineNodesRef). Rebuilding them from
+            // here would desync that ref and orphan nodes on the next edit, so
+            // let the component re-stack through its own path instead.
+            if (typeof m.content !== 'string') return
+            if (group.elementData) {
+                group.elementData.metadata = {
+                    ...(group.elementData.metadata || {}),
+                    ...m,
+                }
+            }
+            window.dispatchEvent(
+                new CustomEvent('standaloneTextReverted', {
+                    detail: {
+                        id: group.elementData?.id,
+                        content: m.content,
+                    },
+                })
+            )
+            return
+        }
+
+        if (ct === 'rectangle' || ct === 'diamond' || ct === 'circle') {
+            const shapeChild = group.children?.[0]
+            const width = shapeChild?.width
+            if (!width) return
+            if (group.elementData) {
+                group.elementData.metadata = {
+                    ...(group.elementData.metadata || {}),
+                    ...m,
+                }
+            }
+            if (m.hasText && typeof m.textContent === 'string') {
+                applyShapeText(two, group, ct, width, m)
+            } else {
+                // Reverting to a no-text state — clear any rendered lines.
+                const layer = findShapeTextLayer(group)
+                if (layer) {
+                    renderShapeTextLayer(
+                        two,
+                        group,
+                        [],
+                        shapeTextStyleFromMeta(m).style
+                    )
+                }
+            }
+            two.update()
+        }
+    }
+
     const applyBulkProps = (
         id: string,
         props: BulkProps,
@@ -377,6 +460,14 @@ export function useComponentHistory({
                     updateX1Y1Vertices(Two, line, x1, y1, pointCircle1Group, two)
                     updateX2Y2Vertices(Two, line, x2, y2, pointCircle2Group, two)
                 }
+            }
+
+            if (
+                props.metadata &&
+                typeof props.metadata === 'object' &&
+                !Array.isArray(props.metadata)
+            ) {
+                reapplyTextFromMeta(group, props.metadata)
             }
 
             two?.update()
@@ -562,6 +653,16 @@ export function useComponentHistory({
                         Object.entries(propsToApply).forEach(([k, v]) => {
                             sceneGroup.elementData[k] = v
                         })
+                    }
+                    if (
+                        propsToApply.metadata &&
+                        typeof propsToApply.metadata === 'object' &&
+                        !Array.isArray(propsToApply.metadata)
+                    ) {
+                        reapplyTextFromMeta(
+                            sceneGroup,
+                            propsToApply.metadata
+                        )
                     }
                     if (
                         propsToApply.width !== undefined ||

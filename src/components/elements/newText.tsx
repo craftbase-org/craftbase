@@ -573,6 +573,29 @@ function NewText(props: ElementProps): ReactElement {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.x, props.y, props.textColor, props.metadata])
 
+    // Undo/redo reverts text via the history hook, but ElementRenderWrapper
+    // freezes our props at mount so the metadata effect above never re-fires.
+    // The hook dispatches this event instead; we re-stack through the
+    // component's own multiline path so extraLineNodesRef stays consistent.
+    useEffect(() => {
+        const handleTextReverted = ((
+            e: CustomEvent<{ id: string; content: string }>
+        ): void => {
+            if (e.detail?.id !== props.id) return
+            const content = e.detail.content ?? ''
+            textValueRef.current = content
+            setTextValue(content)
+            syncMultilineRef.current?.()
+            two?.update()
+        }) as EventListener
+        window.addEventListener('standaloneTextReverted', handleTextReverted)
+        return () =>
+            window.removeEventListener(
+                'standaloneTextReverted',
+                handleTextReverted
+            )
+    }, [props.id, two])
+
     useEffect(() => {
         if (!showToolbar) setShowMobilePanel(false)
     }, [showToolbar])

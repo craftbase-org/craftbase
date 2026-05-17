@@ -151,13 +151,18 @@ export const UPDATE_USER_REVISIT_COUNT: TypedDocumentNode<
     UpdateUserRevisitCountMutation,
     UpdateUserRevisitCountMutationVariables
 > = gql`
-    mutation updateUserRevisitCount($userId: String!) {
+    mutation updateUserRevisitCount(
+        $userId: String!
+        $lastVisit: timestamptz!
+    ) {
         update_users_user_revisits_by_pk(
             pk_columns: { user_id: $userId }
             _inc: { count: "1" }
+            _set: { last_visit: $lastVisit }
         ) {
             count
             user_id
+            last_visit
         }
     }
 `

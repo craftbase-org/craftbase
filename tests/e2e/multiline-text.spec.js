@@ -4,6 +4,9 @@ import {
     placeText,
     triggerUndoKeyboard,
     getCanvasBox,
+    drawRectangle,
+    addTextToRectangle,
+    readGroupText,
 } from './helpers/index.js'
 
 // Regression coverage for multiline STANDALONE text. A multiline text element
@@ -26,6 +29,28 @@ const fontSizesOf = (handle) =>
 const fillsOf = (handle) =>
     handle.$$eval('text', (ns) => ns.map((n) => n.getAttribute('fill')))
 const lineCountOf = (handle) => handle.$$eval('text', (ns) => ns.length)
+// Per-line text content, space-joined (word-wrap consumes the separator, so
+// joining the line nodes reconstructs the visible content).
+const contentOf = (handle) =>
+    handle
+        .$$eval('text', (ns) => ns.map((n) => n.textContent))
+        .then((vs) => vs.filter(Boolean).join(' '))
+
+// Press undo until the joined line content matches `expected`. Absorbs the
+// odd extra no-op history entry so a single stray Meta+z can't flake the test.
+async function undoUntilContent(page, read, expected, tries = 4) {
+    for (let i = 0; i < tries - 1; i++) {
+        await triggerUndoKeyboard(page)
+        try {
+            await expect.poll(read, { timeout: 1_500 }).toBe(expected)
+            return
+        } catch {
+            // not reverted yet — pop the next entry
+        }
+    }
+    await triggerUndoKeyboard(page)
+    await expect.poll(read, { timeout: 2_000 }).toBe(expected)
+}
 const allComponentIds = (page) =>
     page.$$eval('[data-component-id]', (els) =>
         els.map((e) => e.getAttribute('data-component-id'))
@@ -218,5 +243,84 @@ test.describe('Multiline standalone text', () => {
         // space-joining the per-line <text> nodes reconstructs the content.
         const lines = await pasted.locator('text').allTextContents()
         expect(lines.filter(Boolean).join(' ')).toBe('AAAAA BBBBB')
+    })
+
+    // Regression: editing multiline text (remove a line) + commit + undo must
+    // restore the ORIGINAL content. Undo reverts the store, but the element's
+    // props are frozen at mount (ElementRenderWrapper), so the fix re-stacks
+    // the line nodes from the history hook. Pre-fix: undo left the edited text.
+    test('edit content + undo restores the removed line', async ({ page }) => {
+        const { handle, cx, cy } = await createMultilineText(
+            page,
+            'AAAAA\nBBBBB\nCCCCC'
+        )
+        await expect.poll(() => lineCountOf(handle)).toBe(3)
+        expect(await contentOf(handle)).toBe('AAAAA BBBBB CCCCC')
+
+        // Re-open the inline editor and drop the middle line.
+        await page.mouse.click(cx - 350, cy)
+        const b = await handle.boundingBox()
+        await page.mouse.dblclick(b.x + b.width / 2, b.y + b.height / 2)
+        const editor = page.locator('.temp-input-area')
+        await editor.waitFor({ state: 'visible', timeout: 5_000 })
+        await editor.fill('AAAAA\nCCCCC')
+        await page.keyboard.press('Enter')
+        await expect(editor).toHaveCount(0, { timeout: 5_000 })
+
+        await expect.poll(() => lineCountOf(handle)).toBe(2)
+        expect(await contentOf(handle)).toBe('AAAAA CCCCC')
+
+        await page.mouse.click(cx - 350, cy)
+        await undoUntilContent(
+            page,
+            () => contentOf(handle),
+            'AAAAA BBBBB CCCCC'
+        )
+        expect(await lineCountOf(handle)).toBe(3)
+    })
+})
+
+test.describe('Shape-with-text undo', () => {
+    test.beforeEach(async ({ page }) => {
+        await setupLocalBoard(page)
+    })
+
+    // Same regression as standalone, for rectangle-with-text. The history hook
+    // reflows the text layer via applyShapeText on undo (the component's
+    // metadata-reflow effect can't fire — props are frozen at mount).
+    test('rectangle: edit content + undo restores the removed line', async ({
+        page,
+    }) => {
+        const box = await getCanvasBox(page)
+        const cx = box.x + box.width * 0.6
+        const cy = box.y + box.height * 0.55
+
+        const rectHandle = await drawRectangle(page, {
+            startX: cx - 110,
+            startY: cy - 70,
+            endX: cx + 110,
+            endY: cy + 70,
+        })
+        await addTextToRectangle(page, rectHandle, 'AAAAA\nBBBBB\nCCCCC')
+        await expect
+            .poll(() => readGroupText(rectHandle))
+            .toBe('AAAAA BBBBB CCCCC')
+
+        const rb = await rectHandle.boundingBox()
+        await page.mouse.dblclick(rb.x + rb.width / 2, rb.y + rb.height / 2)
+        const editor = page.locator('.temp-input-area')
+        await editor.waitFor({ state: 'visible', timeout: 5_000 })
+        await editor.fill('AAAAA\nCCCCC')
+        await page.keyboard.press('Enter')
+        await expect(editor).toHaveCount(0, { timeout: 5_000 })
+
+        await expect.poll(() => readGroupText(rectHandle)).toBe('AAAAA CCCCC')
+
+        await page.mouse.click(cx - 360, cy)
+        await undoUntilContent(
+            page,
+            () => readGroupText(rectHandle),
+            'AAAAA BBBBB CCCCC'
+        )
     })
 })
