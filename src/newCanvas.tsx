@@ -2390,6 +2390,29 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                 )
             }
         }
+
+        // Two.js `fullscreen: true` mutates document.body inline styles
+        // (overflow:hidden, position:fixed, margin/padding/inset:0) and binds
+        // a window 'resize' listener — none of which it auto-reverts. Without
+        // this cleanup, leaving the Board (e.g. navigating to /privacy or
+        // /support) leaves <body> scroll-locked so those pages can't scroll.
+        // Resetting to '' drops the inline declarations so the stylesheet /
+        // browser defaults take over again; remounting the Board re-applies
+        // them, so the whiteboard's no-scroll behavior is unchanged.
+        return () => {
+            for (const prop of [
+                'overflow',
+                'position',
+                'margin',
+                'padding',
+                'top',
+                'left',
+                'right',
+                'bottom',
+            ]) {
+                document.body.style.removeProperty(prop)
+            }
+        }
     }, [])
 
     useEffect(() => {
