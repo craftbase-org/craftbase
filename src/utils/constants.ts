@@ -92,12 +92,27 @@ export const allColorShades: string[] = [
     '#97A0AF',
 ]
 
+// Fully transparent fill ("none"). Browsers accept rgba() in SVG
+// presentation attributes, so Two.js renders this as no paint.
+export const TRANSPARENT_FILL = 'rgba(0,0,0,0.0)'
+
 export const essentialShades: string[] = [
     '#FFFFFF',
     '#000000',
     '#FF5630',
     '#FFAB00',
     '#36B37E',
+    '#0065FF',
+]
+
+// Fill picker only — transparent ("no fill") first, replacing the green that
+// the shared essentialShades keeps for stroke/text.
+export const fillEssentialShades: string[] = [
+    TRANSPARENT_FILL,
+    '#FFFFFF',
+    '#000000',
+    '#FF5630',
+    '#FFAB00',
     '#0065FF',
 ]
 

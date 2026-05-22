@@ -4,7 +4,7 @@ import { useBoardContext } from '../../views/Board/board'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 import ColorPicker from '../utils/colorPicker'
 import OpacitySlider from '../utils/opacitySlider'
-import { TEXT_SIZES_ARRAY } from '../../utils/constants'
+import { TEXT_SIZES_ARRAY, fillEssentialShades } from '../../utils/constants'
 import { MIXED, inspectGroupValues } from '../../utils/groupInspect'
 
 const STROKE_TYPES = [
@@ -528,6 +528,7 @@ const ElementPropertiesToolbar = () => {
                         onChangeComplete={handle('fill')}
                         isExpanded={expandedSection === 'fill'}
                         onToggleExpand={() => toggleSection('fill')}
+                        essentialColors={fillEssentialShades}
                     />
                 </div>
             )}
