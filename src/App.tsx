@@ -150,11 +150,11 @@ class App extends Component {
                             <Routes>
                                 <Route
                                     path={routes.index}
-                                    element={<BoardViewContainer />}
+                                    element={<BoardViewContainer geoObjectsEnabled />}
                                 />
                                 <Route
                                     path={routes.board}
-                                    element={<BoardViewContainer />}
+                                    element={<BoardViewContainer geoObjectsEnabled />}
                                 />
                                 <Route
                                     path={routes.marketing}

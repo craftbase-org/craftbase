@@ -44,6 +44,11 @@ import {
     LINE_HEIGHT_MULTIPLIER,
     PENCIL_DISTANCE_THROTTLE,
     DEFAULT_TEXT_SIZE,
+    GEO_DRAW_MODE_KEY,
+    GEO_DRAW_TYPE_KEY,
+    GEO_DRAW_PROPS_KEY,
+    GEO_POINT_PLACE_MODE_KEY,
+    GEO_MIN_VERTICES,
 } from './constants/misc'
 import Spinner from './components/common/spinner'
 
@@ -69,10 +74,7 @@ import {
     applyShapeText,
     shapeTextStyleFromMeta,
 } from './utils/canvasUtils'
-import {
-    growShapeToFitText,
-    usableTextWidth,
-} from './utils/shapeTextFit'
+import { growShapeToFitText, usableTextWidth } from './utils/shapeTextFit'
 import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
 import { createDiamondPath } from './factory/diamond'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
@@ -237,6 +239,8 @@ function addZUI(
     const SCENARIO_DRAW_SHAPE = 'drawShape'
     const SCENARIO_TEXT_DRAW = 'textDraw'
     const SCENARIO_RUBBER_MODE = 'rubberMode'
+    const SCENARIO_GEO_POINT = 'geoPoint'
+    const SCENARIO_GEO_DRAW = 'geoDraw'
     const SCENARIO_DEFAULT = null
 
     const pendingDeletionSet = new Set<string>()
@@ -263,6 +267,20 @@ function addZUI(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let pendingGroupSelectorOrigin: any = null
 
+    // ── Geo multi-click draw state (area / route) ────────────────────────────
+    // Vertices are surface coords; preview dots/lines live in two.scene so ZUI
+    // transforms them like everything else. Built into a component on finish.
+    let geoDrawType: 'area' | 'route' | null = null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let geoDrawProps: any = null
+    let geoVertices: { x: number; y: number }[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let geoDots: any[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let geoLines: any[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let geoPreviewLine: any = null
+
     const toSurface = (e: { clientX: number; clientY: number }) =>
         zui.clientToSurface(e.clientX, e.clientY)
     zui.addLimits(0.06, 8)
@@ -271,6 +289,157 @@ function addZUI(
         const root = document.getElementById('main-two-root')
         if (root) root.style.cursor = cursor
     }
+
+    // ── Geo multi-click draw helpers (area / route) ──────────────────────────
+    const addGeoVertex = (x: number, y: number) => {
+        geoVertices.push({ x, y })
+        // Read the live element defaults (kept in sync via useEffect) so a
+        // stroke/width change made in the geo panel mid-draw is reflected
+        // immediately — same contract as pencil. Falls back to the props
+        // stashed at tool-pick, then the global shape default.
+        const stroke =
+            defaultStrokeColorValue ||
+            geoDrawProps?.stroke ||
+            SHAPE_DEFAULT_STROKE
+        const lw = defaultLinewidthValue || geoDrawProps?.linewidth || 2
+        const dot = two.makeCircle(x, y, 4)
+        dot.fill = stroke
+        dot.noStroke()
+        geoDots.push(dot)
+        if (geoVertices.length >= 2) {
+            const prev = geoVertices[geoVertices.length - 2]!
+            const line = two.makeLine(prev.x, prev.y, x, y)
+            line.stroke = stroke
+            line.linewidth = lw
+            line.opacity = 0.6
+            geoLines.push(line)
+        }
+        two.update()
+    }
+
+    const updateGeoPreview = (sx: number, sy: number) => {
+        if (!geoDrawType || geoVertices.length === 0) return
+        const last = geoVertices[geoVertices.length - 1]!
+        const stroke =
+            defaultStrokeColorValue ||
+            geoDrawProps?.stroke ||
+            SHAPE_DEFAULT_STROKE
+        const lw = defaultLinewidthValue || geoDrawProps?.linewidth || 2
+        if (geoPreviewLine) {
+            geoPreviewLine.vertices[0].set(last.x, last.y)
+            geoPreviewLine.vertices[1].set(sx, sy)
+        } else {
+            geoPreviewLine = two.makeLine(last.x, last.y, sx, sy)
+            geoPreviewLine.stroke = stroke
+            geoPreviewLine.linewidth = lw
+            geoPreviewLine.opacity = 0.35
+        }
+        two.update()
+    }
+
+    const clearGeoPreviewArtifacts = () => {
+        geoDots.forEach((d) => two.remove(d))
+        geoLines.forEach((l) => two.remove(l))
+        if (geoPreviewLine) two.remove(geoPreviewLine)
+        geoDots = []
+        geoLines = []
+        geoPreviewLine = null
+        two.update()
+    }
+
+    const resetGeoDrawState = () => {
+        geoDrawType = null
+        geoDrawProps = null
+        geoVertices = []
+        localStorage.removeItem(GEO_DRAW_MODE_KEY)
+        localStorage.removeItem(GEO_DRAW_TYPE_KEY)
+        localStorage.removeItem(GEO_DRAW_PROPS_KEY)
+        domElement.removeEventListener('mousemove', mousemove, false)
+    }
+
+    const cancelGeoDraw = () => {
+        clearGeoPreviewArtifacts()
+        resetGeoDrawState()
+        setRootCursor('auto')
+    }
+
+    // Finish a multi-click area/route. `dropLast` strips the duplicate vertex
+    // that the second mousedown of a double-click adds. Below the minimum vertex
+    // count, the draw is discarded.
+    const finishGeoDraw = ({
+        dropLast = false,
+    }: { dropLast?: boolean } = {}) => {
+        if (!geoDrawType) return
+        let verts = geoVertices.slice()
+        if (dropLast && verts.length > 0) verts = verts.slice(0, -1)
+
+        if (verts.length < GEO_MIN_VERTICES[geoDrawType]) {
+            cancelGeoDraw()
+            setPointerElement('pointer')
+            return
+        }
+
+        const type = geoDrawType
+        const originX = Math.floor(verts[0]!.x)
+        const originY = Math.floor(verts[0]!.y)
+        const finalId = generateUUID()
+        const finalShapeData = {
+            ...(geoDrawProps || {}),
+            id: finalId,
+            componentType: type,
+            objectClass: 'geo',
+            // Stroke/width/type come from the live element defaults so geo
+            // draws honor edits made in the panel (just like pencil/shapes),
+            // sharing the one default set across shapes/pencil/geo.
+            stroke:
+                defaultStrokeColorValue ||
+                geoDrawProps?.stroke ||
+                SHAPE_DEFAULT_STROKE,
+            linewidth: defaultLinewidthValue || geoDrawProps?.linewidth || 2,
+            strokeType: defaultStrokeTypeValue,
+            x: originX,
+            y: originY,
+            x1: 0,
+            x2: 0,
+            y1: 0,
+            y2: 0,
+            width: 0,
+            height: 0,
+            radius: null,
+            iconStroke: null,
+            isDummy: null,
+            createdAt: null,
+            children: {},
+            // Absolute vertex coords (same convention as pencil).
+            metadata: verts.map((v) => ({
+                x: Math.round(v.x),
+                y: Math.round(v.y),
+            })),
+        }
+
+        clearGeoPreviewArtifacts()
+        resetGeoDrawState()
+        addToLocalComponentStore(
+            finalId,
+            type,
+            finalShapeData as unknown as ComponentRecord
+        )
+        setSelectedComponentInBoard(null)
+        setPointerElement('pointer')
+        setRootCursor('auto')
+    }
+
+    window.addEventListener('cancelGeoDraw', () => {
+        if (geoDrawType) cancelGeoDraw()
+    })
+
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (!geoDrawType) return
+        if (e.key === 'Enter' || e.key === 'Escape') {
+            e.preventDefault()
+            finishGeoDraw({})
+        }
+    })
 
     const selectionController = new SelectionController({
         two,
@@ -316,6 +485,12 @@ function addZUI(
     })
 
     function dblclick(e: MouseEvent) {
+        // In a multi-click geo draw, a double-click finishes it. Drop the
+        // duplicate vertex the second mousedown added.
+        if (geoDrawType) {
+            finishGeoDraw({ dropLast: true })
+            return
+        }
         shape = null
         mouse.x = e.clientX
         mouse.y = e.clientY
@@ -346,13 +521,12 @@ function addZUI(
                 localStorage.getItem(RUBBER_MODE_KEY) === 'true' ||
                 localStorage.getItem(TEXT_DRAW_MODE_KEY) === 'true' ||
                 localStorage.getItem(ARROW_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(GEO_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(GEO_POINT_PLACE_MODE_KEY) === 'true' ||
                 localStorage.getItem(PENDING_SHAPE_TYPE_KEY) !== null
             if (!inDrawMode && createTextAtSurfaceRef?.current) {
                 const surfaceCoords = toSurface(e)
-                createTextAtSurfaceRef.current(
-                    surfaceCoords.x,
-                    surfaceCoords.y
-                )
+                createTextAtSurfaceRef.current(surfaceCoords.x, surfaceCoords.y)
                 return
             }
         }
@@ -459,7 +633,8 @@ function addZUI(
             // px-per-surface-unit derived from the shape's current screen
             // size; converts the textarea's pixel measurement back into
             // Two.js surface units before growing the shape.
-            const rectScreen = rectChild?._renderer?.elem?.getBoundingClientRect()
+            const rectScreen =
+                rectChild?._renderer?.elem?.getBoundingClientRect()
             const zoom =
                 rectChild && rectScreen && rectChild.width
                     ? rectScreen.width / rectChild.width
@@ -593,10 +768,8 @@ function addZUI(
                         hasText: true,
                         textContent: newContent,
                         textFill: latestMeta.textFill || textStyle.fill,
-                        textFontSize:
-                            latestMeta.textFontSize || textStyle.size,
-                        textFamily:
-                            latestMeta.textFamily || textStyle.family,
+                        textFontSize: latestMeta.textFontSize || textStyle.size,
+                        textFamily: latestMeta.textFamily || textStyle.family,
                         textFontFamily:
                             latestMeta.textFontFamily || textStyle.family,
                         textBaseLine:
@@ -695,6 +868,13 @@ function addZUI(
     hoverCircle.opacity = 0
 
     function hoverDetectMove(e: MouseEvent) {
+        // No arrow-endpoint hover while drawing/placing a geo object.
+        if (
+            geoDrawType ||
+            localStorage.getItem(GEO_POINT_PLACE_MODE_KEY) === 'true'
+        ) {
+            return
+        }
         if (!isSelectPanMode(isPencilModeRef.current)) {
             if (lastHoveredCircleGroup) {
                 hoverCircle.opacity = 0
@@ -797,12 +977,20 @@ function addZUI(
         const textDrawMode = localStorage.getItem(TEXT_DRAW_MODE_KEY)
         const pendingShapeType = localStorage.getItem(PENDING_SHAPE_TYPE_KEY)
         const rubberMode = localStorage.getItem(RUBBER_MODE_KEY)
+        const geoPointPlaceMode = localStorage.getItem(GEO_POINT_PLACE_MODE_KEY)
+        const geoDrawMode = localStorage.getItem(GEO_DRAW_MODE_KEY)
         if (rubberMode === 'true') {
             scenario = SCENARIO_RUBBER_MODE
         } else if (arrowDrawMode === 'true') {
             scenario = SCENARIO_ARROW_DRAW
         } else if (textDrawMode === 'true') {
             scenario = SCENARIO_TEXT_DRAW
+        } else if (geoPointPlaceMode === 'true') {
+            // checked before JUST_ADDED_ELEMENT: point place also sets
+            // LAST_ADDED_ELEMENT_ID_KEY (the pre-created point).
+            scenario = SCENARIO_GEO_POINT
+        } else if (geoDrawMode === 'true') {
+            scenario = SCENARIO_GEO_DRAW
         } else if (pendingShapeType !== null) {
             scenario = SCENARIO_DRAW_SHAPE
         } else if (lastAddedElementId !== null) {
@@ -892,6 +1080,59 @@ function addZUI(
                 setRootCursor('auto')
                 break
             }
+            case SCENARIO_GEO_POINT: {
+                const surfaceCoords = toSurface(e)
+                const pointId = localStorage.getItem(LAST_ADDED_ELEMENT_ID_KEY)
+
+                localStorage.removeItem(LAST_ADDED_ELEMENT_ID_KEY)
+                localStorage.removeItem(GEO_POINT_PLACE_MODE_KEY)
+
+                // The point module loads lazily on first use — poll until the
+                // pre-created element appears, then drop it at the click point.
+                if (pointId) {
+                    pollUntilElement(
+                        two,
+                        pointId,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (el: any) => {
+                            el.position.x = surfaceCoords.x
+                            el.position.y = surfaceCoords.y
+                            two.update()
+                            updateComponentVertices(
+                                pointId,
+                                surfaceCoords.x,
+                                surfaceCoords.y
+                            )
+                        },
+                        { maxRetries: 30 }
+                    )
+                }
+
+                setSelectedComponentInBoard(null)
+                setPointerElement('pointer')
+                setRootCursor('auto')
+                break
+            }
+            case SCENARIO_GEO_DRAW: {
+                const surfaceCoords = toSurface(e)
+                // First click of this draw — capture type/props from storage.
+                if (!geoDrawType) {
+                    geoDrawType = localStorage.getItem(GEO_DRAW_TYPE_KEY) as
+                        | 'area'
+                        | 'route'
+                        | null
+                    geoDrawProps = JSON.parse(
+                        localStorage.getItem(GEO_DRAW_PROPS_KEY) ?? 'null'
+                    )
+                    geoVertices = []
+                    domElement.addEventListener('mousemove', mousemove, false)
+                }
+                if (geoDrawType) {
+                    addGeoVertex(surfaceCoords.x, surfaceCoords.y)
+                    setRootCursor('crosshair')
+                }
+                break
+            }
             case SCENARIO_DRAW_SHAPE: {
                 const surfaceCoords = toSurface(e)
                 drawOrigin = { x: surfaceCoords.x, y: surfaceCoords.y }
@@ -950,7 +1191,8 @@ function addZUI(
 
                 let twoJSElement = two.scene.children.find(
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (child: any) => child?.elementData?.id === lastAddedElementId
+                    (child: any) =>
+                        child?.elementData?.id === lastAddedElementId
                 )
 
                 if (twoJSElement?.position && lastAddedElementId) {
@@ -1039,8 +1281,8 @@ function addZUI(
                 })
 
                 const path =
-            (e as MouseEvent & { path?: EventTarget[] }).path ||
-            (e.composedPath && e.composedPath())
+                    (e as MouseEvent & { path?: EventTarget[] }).path ||
+                    (e.composedPath && e.composedPath())
                 ;({ shape, avoidDragging } = resolveShapeFromPath(path, two))
 
                 // Endpoint circles are opacity:0 so pointer-events don't fire on them.
@@ -1230,6 +1472,13 @@ function addZUI(
     }
 
     function mousemove(e: MouseEvent) {
+        // Multi-click geo draw: rubber-band the preview line to the cursor.
+        if (geoDrawType) {
+            const s = toSurface(e)
+            updateGeoPreview(s.x, s.y)
+            return
+        }
+
         const lastAddedElementId = localStorage.getItem(
             LAST_ADDED_ELEMENT_ID_KEY
         )
@@ -1298,7 +1547,8 @@ function addZUI(
 
                 let twoJSElement = two.scene.children.find(
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (child: any) => child?.elementData?.id === lastAddedElementId
+                    (child: any) =>
+                        child?.elementData?.id === lastAddedElementId
                 )
 
                 if (twoJSElement?.position) {
@@ -1776,10 +2026,8 @@ function addZUI(
                     // check on mouse up if shape's a group selector or not
                     // if yes, then call setOnGroup for adding a group in two.js space
                     let area = shape.children[0]
-                    const groupWidth =
-                        area.vertices[2].x - area.vertices[0].x
-                    const groupHeight =
-                        area.vertices[3].y - area.vertices[0].y
+                    const groupWidth = area.vertices[2].x - area.vertices[0].x
+                    const groupHeight = area.vertices[3].y - area.vertices[0].y
                     two.remove(shape)
                     // The selector starts as a 10x10 rect (see mousedown). If
                     // it never grew, the user just clicked without dragging —
@@ -2519,8 +2767,12 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                     let relativeY = item.y - yMid
 
                     let newMetadata = item.metadata
+                    // pencil + geo area/route all store an absolute {x,y} vertex
+                    // array; remap it into the group's child coordinate space.
                     if (
-                        item.componentType === 'pencil' &&
+                        (item.componentType === 'pencil' ||
+                            item.componentType === 'area' ||
+                            item.componentType === 'route') &&
                         Array.isArray(item.metadata)
                     ) {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2605,10 +2857,7 @@ const Canvas: React.FC<CanvasProps> = (props) => {
 
     useEffect(() => {
         const onUndoRedoKeyDown = (evt: KeyboardEvent) => {
-            if (
-                evt.key.toLowerCase() === 'z' &&
-                (evt.ctrlKey || evt.metaKey)
-            ) {
+            if (evt.key.toLowerCase() === 'z' && (evt.ctrlKey || evt.metaKey)) {
                 evt.preventDefault()
                 if (evt.shiftKey) {
                     redoLastAction()
@@ -2628,6 +2877,8 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                 localStorage.getItem(ARROW_DRAW_MODE_KEY) === 'true' ||
                 localStorage.getItem(RUBBER_MODE_KEY) === 'true' ||
                 localStorage.getItem(PENCIL_MODE_KEY) === 'TRUE' ||
+                localStorage.getItem(GEO_DRAW_MODE_KEY) === 'true' ||
+                localStorage.getItem(GEO_POINT_PLACE_MODE_KEY) === 'true' ||
                 localStorage.getItem(PENDING_SHAPE_TYPE_KEY) !== null
             )
                 return

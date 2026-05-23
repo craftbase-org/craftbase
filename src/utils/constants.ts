@@ -11,6 +11,10 @@ import EraserIcon from '../wireframeAssets/eraser.svg?react'
 import RightArrowIcon from '../assets/right_arrow.svg?react'
 import PanIcon from '../assets/pan.svg?react'
 
+import PinIcon from '../wireframeAssets/pin.svg?react'
+import PolygonIcon from '../wireframeAssets/polygon.svg?react'
+import PolylineIcon from '../wireframeAssets/polyline.svg?react'
+
 type SvgComponent = FunctionComponent<SVGProps<SVGSVGElement>>
 
 export const color_blue = '#0052CC'
@@ -215,6 +219,35 @@ export const staticPrimaryElementData: PrimarySection[] = [
                 drawerData: [],
             },
         ],
+    },
+]
+
+// Geo tools (point / area / route). Surfaced in the toolbar only when the
+// consumer passes `geoObjectsEnabled` — appended alongside the shape tools.
+export const geoElementData: PrimaryElement[] = [
+    {
+        elementName: 'point',
+        elementDisplayName: 'Point',
+        elementIcon: PinIcon,
+        hasDrawer: false,
+        noAction: false,
+        drawerData: [],
+    },
+    {
+        elementName: 'area',
+        elementDisplayName: 'Area',
+        elementIcon: PolygonIcon,
+        hasDrawer: false,
+        noAction: false,
+        drawerData: [],
+    },
+    {
+        elementName: 'route',
+        elementDisplayName: 'Route',
+        elementIcon: PolylineIcon,
+        hasDrawer: false,
+        noAction: false,
+        drawerData: [],
     },
 ]
 

@@ -26,6 +26,12 @@ const SETS = {
     ARROW: ['stroke', 'strokeWidth', 'strokeType', 'opacity'],
     PENCIL: ['stroke', 'strokeWidth', 'strokeType'],
     TEXT: ['textColor', 'textSize', 'textFont', 'opacity'],
+    // Geo objects: stroke-centric. Area's fill is auto-derived from stroke, so
+    // no fill control — but its outline still takes width/type like a route.
+    // Point exposes only its ring/icon color.
+    GEO_POINT: ['stroke'],
+    GEO_AREA: ['stroke', 'strokeWidth', 'strokeType'],
+    GEO_ROUTE: ['stroke', 'strokeWidth', 'strokeType'],
     RECT_WITH_TEXT: [
         'fill',
         'stroke',
@@ -58,6 +64,9 @@ const SET_LABELS = {
     TEXT: 'Text',
     RECT_WITH_TEXT: 'Shape',
     GROUP: 'Group',
+    GEO_POINT: 'Point',
+    GEO_AREA: 'Area',
+    GEO_ROUTE: 'Route',
 }
 
 interface ResolveSetKeyOptions {
@@ -69,6 +78,9 @@ interface ResolveSetKeyOptions {
     selectedGroup: any
     isArrowDrawMode: boolean
     isTextDrawMode: boolean
+    // Active tool from the toolbar (e.g. 'route'/'area'/'point' while a geo
+    // draw is in progress, before any vertex/element is selected).
+    currentElement: string | null
 }
 
 function resolveSetKey({
@@ -78,6 +90,7 @@ function resolveSetKey({
     selectedGroup,
     isArrowDrawMode,
     isTextDrawMode,
+    currentElement,
 }: ResolveSetKeyOptions): string | null {
     // A focused group beats every other mode — show the union toolbar.
     if (selectedGroup) return 'GROUP'
@@ -88,6 +101,11 @@ function resolveSetKey({
         const hasText = typeof selectedComponent?.text?.data?.value === 'string'
         const elementType =
             selectedComponent?.group?.data?.elementData?.componentType
+        // Geo objects checked first: area/route are path-typed and would
+        // otherwise fall into the SHAPE branch below.
+        if (elementType === 'point') return 'GEO_POINT'
+        if (elementType === 'area') return 'GEO_AREA'
+        if (elementType === 'route') return 'GEO_ROUTE'
         // rectangle/diamond/circle all carry text the same way — show the
         // shape+text toolbar (text size/color/font) for any of them.
         const isShapeWithText =
@@ -122,6 +140,12 @@ function resolveSetKey({
     }
     if (isArrowDrawMode) return 'ARROW'
     if (isTextDrawMode) return 'TEXT'
+    // Geo draw modes: the toolbar tool is active but nothing is selected yet.
+    // Surface the geo property panel so stroke edits seed the next draw — the
+    // same way pencil mode shows the pencil panel before the first stroke.
+    if (currentElement === 'point') return 'GEO_POINT'
+    if (currentElement === 'area') return 'GEO_AREA'
+    if (currentElement === 'route') return 'GEO_ROUTE'
     return 'SHAPE'
 }
 
@@ -213,7 +237,13 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 )
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const StrokeWidthRow = ({ value, onChange }: { value: any; onChange: (v: number) => void }) => (
+const StrokeWidthRow = ({
+    value,
+    onChange,
+}: {
+    value: any
+    onChange: (v: number) => void
+}) => (
     <div id="stroke-width-section" className="pt-2 px-2">
         <SectionLabel>Stroke Width</SectionLabel>
         <div className="flex gap-2">
@@ -260,7 +290,13 @@ const StrokeWidthRow = ({ value, onChange }: { value: any; onChange: (v: number)
 )
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const StrokeTypeRow = ({ value, onChange }: { value: any; onChange: (v: string) => void }) => (
+const StrokeTypeRow = ({
+    value,
+    onChange,
+}: {
+    value: any
+    onChange: (v: string) => void
+}) => (
     <div id="stroke-type-section" className="pt-3 px-2">
         <SectionLabel>Stroke Type</SectionLabel>
         <div className="flex gap-2">
@@ -296,7 +332,13 @@ const StrokeTypeRow = ({ value, onChange }: { value: any; onChange: (v: string) 
     </div>
 )
 
-const TextSizeRow = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+const TextSizeRow = ({
+    value,
+    onChange,
+}: {
+    value: string
+    onChange: (v: string) => void
+}) => (
     <div className="pt-3 px-2">
         <SectionLabel>Text Size</SectionLabel>
         <div className="flex flex-row gap-2">
@@ -320,7 +362,13 @@ const TextSizeRow = ({ value, onChange }: { value: string; onChange: (v: string)
     </div>
 )
 
-const FontFamilyRow = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => {
+const FontFamilyRow = ({
+    value,
+    onChange,
+}: {
+    value: string
+    onChange: (v: string) => void
+}) => {
     const families = [
         { label: 'Caveat', family: 'Caveat' },
         { label: 'Geist', family: 'Geist' },
@@ -361,6 +409,7 @@ const ElementPropertiesToolbar = () => {
         isRubberMode,
         selectedComponent,
         selectedGroup,
+        currentElement,
         applyProperty,
         applyGroupProperty,
         showMobileToolbarPanel,
@@ -385,6 +434,7 @@ const ElementPropertiesToolbar = () => {
                 selectedGroup,
                 isArrowDrawMode,
                 isTextDrawMode,
+                currentElement,
             }),
         [
             isRubberMode,
@@ -393,6 +443,7 @@ const ElementPropertiesToolbar = () => {
             selectedGroup,
             isArrowDrawMode,
             isTextDrawMode,
+            currentElement,
         ]
     )
 
@@ -462,30 +513,32 @@ const ElementPropertiesToolbar = () => {
 
     const sections = SETS[setKey as keyof typeof SETS]
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handle = (key: string) => (val: any): void => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setValues((prev: any) => ({ ...prev, [key]: val }))
-        if (selectedGroup) {
-            // textSize comes through as a label (e.g. 'M'); resolve to the
-            // numeric Two.js size before forwarding to the bulk apply path.
-            // The single-element path goes through handleTextSizeChange which
-            // does this conversion internally; the group path doesn't, so we
-            // do it here.
-            if (key === 'textSize') {
-                const entry = TEXT_SIZES_ARRAY.find((s) => s.label === val)
-                const numeric = entry
-                    ? isMobile
-                        ? entry.mobileValue
-                        : entry.value
-                    : val
-                applyGroupProperty?.(key, numeric)
-            } else {
-                applyGroupProperty?.(key, val)
+    const handle =
+        (key: string) =>
+        (val: any): void => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setValues((prev: any) => ({ ...prev, [key]: val }))
+            if (selectedGroup) {
+                // textSize comes through as a label (e.g. 'M'); resolve to the
+                // numeric Two.js size before forwarding to the bulk apply path.
+                // The single-element path goes through handleTextSizeChange which
+                // does this conversion internally; the group path doesn't, so we
+                // do it here.
+                if (key === 'textSize') {
+                    const entry = TEXT_SIZES_ARRAY.find((s) => s.label === val)
+                    const numeric = entry
+                        ? isMobile
+                            ? entry.mobileValue
+                            : entry.value
+                        : val
+                    applyGroupProperty?.(key, numeric)
+                } else {
+                    applyGroupProperty?.(key, val)
+                }
+                return
             }
-            return
+            applyProperty?.(key, val)
         }
-        applyProperty?.(key, val)
-    }
 
     return (
         <div

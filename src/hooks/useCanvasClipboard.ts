@@ -216,7 +216,9 @@ export function useCanvasClipboard({
                     newItem.y2 = dy
                 }
                 if (
-                    src.componentType === 'pencil' &&
+                    (src.componentType === 'pencil' ||
+                        src.componentType === 'area' ||
+                        src.componentType === 'route') &&
                     Array.isArray(src.metadata)
                 ) {
                     const dx = px - src.x

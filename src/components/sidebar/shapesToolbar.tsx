@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import {
     staticPrimaryElementData,
+    geoElementData,
     type PrimaryElement,
 } from '../../utils/constants'
 import { useBoardContext } from '../../views/Board/board'
@@ -47,6 +48,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
         redoLastAction,
         historyLog,
         bucketLog,
+        geoObjectsEnabled,
     } = useBoardContext()
     const { isMobile } = useMediaQueryUtils()
     const [openDrawer, setOpenDrawer] = useState<string | null>(null)
@@ -55,7 +57,11 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
 
     const allElements = (
         isMobile ? allElementsRaw : flattenShapesForDesktop(allElementsRaw)
-    ).filter((el) => (isMobile ? true : !el.mobileOnly))
+    )
+        .filter((el) => (isMobile ? true : !el.mobileOnly))
+        // Geo tools (point/area/route) appear alongside the shape tools only
+        // when the consumer opts in via the geoObjectsEnabled Board prop.
+        .concat(geoObjectsEnabled ? geoElementData : [])
 
     useEffect(() => {
         setCurrentElementInBoard('pointer')

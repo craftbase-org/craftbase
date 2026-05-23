@@ -22,6 +22,8 @@ export interface ComponentMetadata {
 export interface ComponentRecord {
     id: string
     componentType: string
+    /** Distinguishes geo objects (point/area/route) from regular shapes. */
+    objectClass?: 'shape' | 'geo'
     x: number
     y: number
     x1: number
@@ -63,6 +65,12 @@ export interface BoardProps {
     renderBackground?: () => ReactNode
     /** Overrides the zoom-readout shown in ZoomControls. */
     scaleToDisplay?: (scale: number) => string
+    /**
+     * Opt-in: surface geo tools (point / area / route) in the toolbar alongside
+     * the regular shape tools. Default off — no-op when omitted, so the
+     * standalone craftbase app is unaffected. Used by craftmaps.
+     */
+    geoObjectsEnabled?: boolean
 }
 
 // --- Context value ------------------------------------------------------
@@ -172,6 +180,7 @@ export interface BoardContextValue {
 
     // Consumer extension points (forwarded from BoardProps)
     scaleToDisplay?: BoardProps['scaleToDisplay']
+    geoObjectsEnabled?: BoardProps['geoObjectsEnabled']
 }
 
 // --- Utility exports ---------------------------------------------------

@@ -1,4 +1,8 @@
-import { strokeTypeToDashes, clearDashesOnTwoJSShape } from './misc'
+import {
+    strokeTypeToDashes,
+    clearDashesOnTwoJSShape,
+    strokeToAreaFill,
+} from './misc'
 import { getShapeTextNodes } from './canvasUtils'
 
 // Scene-bound selectedComponent shape: `.shape.data`, `.text.data`, and
@@ -168,6 +172,11 @@ export function createApplyProperty(deps: ApplyPropertyDeps) {
         } else if (propertyKey === 'stroke') {
             if (shapeData) shapeData.stroke = value
             if (elementData) elementData.stroke = value
+            // Area fill is a light shade of its stroke — re-derive on the
+            // Two.js path only; fill is never persisted for geo objects.
+            if (elementType === 'area' && shapeData) {
+                shapeData.fill = strokeToAreaFill(value)
+            }
             updateComponentBulkPropertiesInLocalStore(id, { stroke: value })
         } else if (propertyKey === 'linewidth') {
             if (shapeData) shapeData.linewidth = value

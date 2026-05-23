@@ -546,6 +546,7 @@ export type Components_Component = {
   isDummy?: Maybe<Scalars['Boolean']['output']>;
   linewidth?: Maybe<Scalars['float8']['output']>;
   metadata?: Maybe<Scalars['jsonb']['output']>;
+  objectClass: Scalars['String']['output'];
   position: Scalars['Int']['output'];
   radius?: Maybe<Scalars['float8']['output']>;
   stroke?: Maybe<Scalars['String']['output']>;
@@ -971,6 +972,7 @@ export type Components_Component_Bool_Exp = {
   isDummy?: InputMaybe<Boolean_Comparison_Exp>;
   linewidth?: InputMaybe<Float8_Comparison_Exp>;
   metadata?: InputMaybe<Jsonb_Comparison_Exp>;
+  objectClass?: InputMaybe<String_Comparison_Exp>;
   position?: InputMaybe<Int_Comparison_Exp>;
   radius?: InputMaybe<Float8_Comparison_Exp>;
   stroke?: InputMaybe<String_Comparison_Exp>;
@@ -1043,6 +1045,7 @@ export type Components_Component_Insert_Input = {
   isDummy?: InputMaybe<Scalars['Boolean']['input']>;
   linewidth?: InputMaybe<Scalars['float8']['input']>;
   metadata?: InputMaybe<Scalars['jsonb']['input']>;
+  objectClass?: InputMaybe<Scalars['String']['input']>;
   position?: InputMaybe<Scalars['Int']['input']>;
   radius?: InputMaybe<Scalars['float8']['input']>;
   stroke?: InputMaybe<Scalars['String']['input']>;
@@ -1071,6 +1074,7 @@ export type Components_Component_Max_Fields = {
   iconStroke?: Maybe<Scalars['String']['output']>;
   id?: Maybe<Scalars['uuid']['output']>;
   linewidth?: Maybe<Scalars['float8']['output']>;
+  objectClass?: Maybe<Scalars['String']['output']>;
   position?: Maybe<Scalars['Int']['output']>;
   radius?: Maybe<Scalars['float8']['output']>;
   stroke?: Maybe<Scalars['String']['output']>;
@@ -1099,6 +1103,7 @@ export type Components_Component_Min_Fields = {
   iconStroke?: Maybe<Scalars['String']['output']>;
   id?: Maybe<Scalars['uuid']['output']>;
   linewidth?: Maybe<Scalars['float8']['output']>;
+  objectClass?: Maybe<Scalars['String']['output']>;
   position?: Maybe<Scalars['Int']['output']>;
   radius?: Maybe<Scalars['float8']['output']>;
   stroke?: Maybe<Scalars['String']['output']>;
@@ -1146,6 +1151,7 @@ export type Components_Component_Order_By = {
   isDummy?: InputMaybe<Order_By>;
   linewidth?: InputMaybe<Order_By>;
   metadata?: InputMaybe<Order_By>;
+  objectClass?: InputMaybe<Order_By>;
   position?: InputMaybe<Order_By>;
   radius?: InputMaybe<Order_By>;
   stroke?: InputMaybe<Order_By>;
@@ -1201,6 +1207,8 @@ export type Components_Component_Select_Column =
   /** column name */
   | 'metadata'
   /** column name */
+  | 'objectClass'
+  /** column name */
   | 'position'
   /** column name */
   | 'radius'
@@ -1242,6 +1250,7 @@ export type Components_Component_Set_Input = {
   isDummy?: InputMaybe<Scalars['Boolean']['input']>;
   linewidth?: InputMaybe<Scalars['float8']['input']>;
   metadata?: InputMaybe<Scalars['jsonb']['input']>;
+  objectClass?: InputMaybe<Scalars['String']['input']>;
   position?: InputMaybe<Scalars['Int']['input']>;
   radius?: InputMaybe<Scalars['float8']['input']>;
   stroke?: InputMaybe<Scalars['String']['input']>;
@@ -1331,6 +1340,7 @@ export type Components_Component_Stream_Cursor_Value_Input = {
   isDummy?: InputMaybe<Scalars['Boolean']['input']>;
   linewidth?: InputMaybe<Scalars['float8']['input']>;
   metadata?: InputMaybe<Scalars['jsonb']['input']>;
+  objectClass?: InputMaybe<Scalars['String']['input']>;
   position?: InputMaybe<Scalars['Int']['input']>;
   radius?: InputMaybe<Scalars['float8']['input']>;
   stroke?: InputMaybe<Scalars['String']['input']>;
@@ -1391,6 +1401,8 @@ export type Components_Component_Update_Column =
   | 'linewidth'
   /** column name */
   | 'metadata'
+  /** column name */
+  | 'objectClass'
   /** column name */
   | 'position'
   /** column name */
@@ -1488,6 +1500,275 @@ export type Components_Component_Variance_Fields = {
   y2?: Maybe<Scalars['Float']['output']>;
 };
 
+/** columns and relationships of "components.geoObjectType" */
+export type Components_GeoObjectType = {
+  __typename?: 'components_geoObjectType';
+  defaultStroke?: Maybe<Scalars['String']['output']>;
+  label: Scalars['String']['output'];
+  linewidth?: Maybe<Scalars['Int']['output']>;
+  logo?: Maybe<Scalars['String']['output']>;
+  metadata?: Maybe<Scalars['jsonb']['output']>;
+};
+
+
+/** columns and relationships of "components.geoObjectType" */
+export type Components_GeoObjectTypeMetadataArgs = {
+  path?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** aggregated selection of "components.geoObjectType" */
+export type Components_GeoObjectType_Aggregate = {
+  __typename?: 'components_geoObjectType_aggregate';
+  aggregate?: Maybe<Components_GeoObjectType_Aggregate_Fields>;
+  nodes: Array<Components_GeoObjectType>;
+};
+
+/** aggregate fields of "components.geoObjectType" */
+export type Components_GeoObjectType_Aggregate_Fields = {
+  __typename?: 'components_geoObjectType_aggregate_fields';
+  avg?: Maybe<Components_GeoObjectType_Avg_Fields>;
+  count: Scalars['Int']['output'];
+  max?: Maybe<Components_GeoObjectType_Max_Fields>;
+  min?: Maybe<Components_GeoObjectType_Min_Fields>;
+  stddev?: Maybe<Components_GeoObjectType_Stddev_Fields>;
+  stddev_pop?: Maybe<Components_GeoObjectType_Stddev_Pop_Fields>;
+  stddev_samp?: Maybe<Components_GeoObjectType_Stddev_Samp_Fields>;
+  sum?: Maybe<Components_GeoObjectType_Sum_Fields>;
+  var_pop?: Maybe<Components_GeoObjectType_Var_Pop_Fields>;
+  var_samp?: Maybe<Components_GeoObjectType_Var_Samp_Fields>;
+  variance?: Maybe<Components_GeoObjectType_Variance_Fields>;
+};
+
+
+/** aggregate fields of "components.geoObjectType" */
+export type Components_GeoObjectType_Aggregate_FieldsCountArgs = {
+  columns?: InputMaybe<Array<Components_GeoObjectType_Select_Column>>;
+  distinct?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+/** append existing jsonb value of filtered columns with new jsonb value */
+export type Components_GeoObjectType_Append_Input = {
+  metadata?: InputMaybe<Scalars['jsonb']['input']>;
+};
+
+/** aggregate avg on columns */
+export type Components_GeoObjectType_Avg_Fields = {
+  __typename?: 'components_geoObjectType_avg_fields';
+  linewidth?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Boolean expression to filter rows from the table "components.geoObjectType". All fields are combined with a logical 'AND'. */
+export type Components_GeoObjectType_Bool_Exp = {
+  _and?: InputMaybe<Array<Components_GeoObjectType_Bool_Exp>>;
+  _not?: InputMaybe<Components_GeoObjectType_Bool_Exp>;
+  _or?: InputMaybe<Array<Components_GeoObjectType_Bool_Exp>>;
+  defaultStroke?: InputMaybe<String_Comparison_Exp>;
+  label?: InputMaybe<String_Comparison_Exp>;
+  linewidth?: InputMaybe<Int_Comparison_Exp>;
+  logo?: InputMaybe<String_Comparison_Exp>;
+  metadata?: InputMaybe<Jsonb_Comparison_Exp>;
+};
+
+/** unique or primary key constraints on table "components.geoObjectType" */
+export type Components_GeoObjectType_Constraint =
+  /** unique or primary key constraint on columns "label" */
+  | 'geoObjectType_pkey';
+
+/** delete the field or element with specified path (for JSON arrays, negative integers count from the end) */
+export type Components_GeoObjectType_Delete_At_Path_Input = {
+  metadata?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+/** delete the array element with specified index (negative integers count from the end). throws an error if top level container is not an array */
+export type Components_GeoObjectType_Delete_Elem_Input = {
+  metadata?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** delete key/value pair or string element. key/value pairs are matched based on their key value */
+export type Components_GeoObjectType_Delete_Key_Input = {
+  metadata?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** input type for incrementing numeric columns in table "components.geoObjectType" */
+export type Components_GeoObjectType_Inc_Input = {
+  linewidth?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** input type for inserting data into table "components.geoObjectType" */
+export type Components_GeoObjectType_Insert_Input = {
+  defaultStroke?: InputMaybe<Scalars['String']['input']>;
+  label?: InputMaybe<Scalars['String']['input']>;
+  linewidth?: InputMaybe<Scalars['Int']['input']>;
+  logo?: InputMaybe<Scalars['String']['input']>;
+  metadata?: InputMaybe<Scalars['jsonb']['input']>;
+};
+
+/** aggregate max on columns */
+export type Components_GeoObjectType_Max_Fields = {
+  __typename?: 'components_geoObjectType_max_fields';
+  defaultStroke?: Maybe<Scalars['String']['output']>;
+  label?: Maybe<Scalars['String']['output']>;
+  linewidth?: Maybe<Scalars['Int']['output']>;
+  logo?: Maybe<Scalars['String']['output']>;
+};
+
+/** aggregate min on columns */
+export type Components_GeoObjectType_Min_Fields = {
+  __typename?: 'components_geoObjectType_min_fields';
+  defaultStroke?: Maybe<Scalars['String']['output']>;
+  label?: Maybe<Scalars['String']['output']>;
+  linewidth?: Maybe<Scalars['Int']['output']>;
+  logo?: Maybe<Scalars['String']['output']>;
+};
+
+/** response of any mutation on the table "components.geoObjectType" */
+export type Components_GeoObjectType_Mutation_Response = {
+  __typename?: 'components_geoObjectType_mutation_response';
+  /** number of rows affected by the mutation */
+  affected_rows: Scalars['Int']['output'];
+  /** data from the rows affected by the mutation */
+  returning: Array<Components_GeoObjectType>;
+};
+
+/** on_conflict condition type for table "components.geoObjectType" */
+export type Components_GeoObjectType_On_Conflict = {
+  constraint: Components_GeoObjectType_Constraint;
+  update_columns?: Array<Components_GeoObjectType_Update_Column>;
+  where?: InputMaybe<Components_GeoObjectType_Bool_Exp>;
+};
+
+/** Ordering options when selecting data from "components.geoObjectType". */
+export type Components_GeoObjectType_Order_By = {
+  defaultStroke?: InputMaybe<Order_By>;
+  label?: InputMaybe<Order_By>;
+  linewidth?: InputMaybe<Order_By>;
+  logo?: InputMaybe<Order_By>;
+  metadata?: InputMaybe<Order_By>;
+};
+
+/** primary key columns input for table: components.geoObjectType */
+export type Components_GeoObjectType_Pk_Columns_Input = {
+  label: Scalars['String']['input'];
+};
+
+/** prepend existing jsonb value of filtered columns with new jsonb value */
+export type Components_GeoObjectType_Prepend_Input = {
+  metadata?: InputMaybe<Scalars['jsonb']['input']>;
+};
+
+/** select columns of table "components.geoObjectType" */
+export type Components_GeoObjectType_Select_Column =
+  /** column name */
+  | 'defaultStroke'
+  /** column name */
+  | 'label'
+  /** column name */
+  | 'linewidth'
+  /** column name */
+  | 'logo'
+  /** column name */
+  | 'metadata';
+
+/** input type for updating data in table "components.geoObjectType" */
+export type Components_GeoObjectType_Set_Input = {
+  defaultStroke?: InputMaybe<Scalars['String']['input']>;
+  label?: InputMaybe<Scalars['String']['input']>;
+  linewidth?: InputMaybe<Scalars['Int']['input']>;
+  logo?: InputMaybe<Scalars['String']['input']>;
+  metadata?: InputMaybe<Scalars['jsonb']['input']>;
+};
+
+/** aggregate stddev on columns */
+export type Components_GeoObjectType_Stddev_Fields = {
+  __typename?: 'components_geoObjectType_stddev_fields';
+  linewidth?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate stddev_pop on columns */
+export type Components_GeoObjectType_Stddev_Pop_Fields = {
+  __typename?: 'components_geoObjectType_stddev_pop_fields';
+  linewidth?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate stddev_samp on columns */
+export type Components_GeoObjectType_Stddev_Samp_Fields = {
+  __typename?: 'components_geoObjectType_stddev_samp_fields';
+  linewidth?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Streaming cursor of the table "components_geoObjectType" */
+export type Components_GeoObjectType_Stream_Cursor_Input = {
+  /** Stream column input with initial value */
+  initial_value: Components_GeoObjectType_Stream_Cursor_Value_Input;
+  /** cursor ordering */
+  ordering?: InputMaybe<Cursor_Ordering>;
+};
+
+/** Initial value of the column from where the streaming should start */
+export type Components_GeoObjectType_Stream_Cursor_Value_Input = {
+  defaultStroke?: InputMaybe<Scalars['String']['input']>;
+  label?: InputMaybe<Scalars['String']['input']>;
+  linewidth?: InputMaybe<Scalars['Int']['input']>;
+  logo?: InputMaybe<Scalars['String']['input']>;
+  metadata?: InputMaybe<Scalars['jsonb']['input']>;
+};
+
+/** aggregate sum on columns */
+export type Components_GeoObjectType_Sum_Fields = {
+  __typename?: 'components_geoObjectType_sum_fields';
+  linewidth?: Maybe<Scalars['Int']['output']>;
+};
+
+/** update columns of table "components.geoObjectType" */
+export type Components_GeoObjectType_Update_Column =
+  /** column name */
+  | 'defaultStroke'
+  /** column name */
+  | 'label'
+  /** column name */
+  | 'linewidth'
+  /** column name */
+  | 'logo'
+  /** column name */
+  | 'metadata';
+
+export type Components_GeoObjectType_Updates = {
+  /** append existing jsonb value of filtered columns with new jsonb value */
+  _append?: InputMaybe<Components_GeoObjectType_Append_Input>;
+  /** delete the field or element with specified path (for JSON arrays, negative integers count from the end) */
+  _delete_at_path?: InputMaybe<Components_GeoObjectType_Delete_At_Path_Input>;
+  /** delete the array element with specified index (negative integers count from the end). throws an error if top level container is not an array */
+  _delete_elem?: InputMaybe<Components_GeoObjectType_Delete_Elem_Input>;
+  /** delete key/value pair or string element. key/value pairs are matched based on their key value */
+  _delete_key?: InputMaybe<Components_GeoObjectType_Delete_Key_Input>;
+  /** increments the numeric columns with given value of the filtered values */
+  _inc?: InputMaybe<Components_GeoObjectType_Inc_Input>;
+  /** prepend existing jsonb value of filtered columns with new jsonb value */
+  _prepend?: InputMaybe<Components_GeoObjectType_Prepend_Input>;
+  /** sets the columns of the filtered rows to the given values */
+  _set?: InputMaybe<Components_GeoObjectType_Set_Input>;
+  /** filter the rows which have to be updated */
+  where: Components_GeoObjectType_Bool_Exp;
+};
+
+/** aggregate var_pop on columns */
+export type Components_GeoObjectType_Var_Pop_Fields = {
+  __typename?: 'components_geoObjectType_var_pop_fields';
+  linewidth?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate var_samp on columns */
+export type Components_GeoObjectType_Var_Samp_Fields = {
+  __typename?: 'components_geoObjectType_var_samp_fields';
+  linewidth?: Maybe<Scalars['Float']['output']>;
+};
+
+/** aggregate variance on columns */
+export type Components_GeoObjectType_Variance_Fields = {
+  __typename?: 'components_geoObjectType_variance_fields';
+  linewidth?: Maybe<Scalars['Float']['output']>;
+};
+
 /** ordering argument of a cursor */
 export type Cursor_Ordering =
   /** ascending ordering of the cursor */
@@ -1551,6 +1832,10 @@ export type Mutation_Root = {
   delete_components_componentType_by_pk?: Maybe<Components_ComponentType>;
   /** delete single row from the table: "components.component" */
   delete_components_component_by_pk?: Maybe<Components_Component>;
+  /** delete data from the table: "components.geoObjectType" */
+  delete_components_geoObjectType?: Maybe<Components_GeoObjectType_Mutation_Response>;
+  /** delete single row from the table: "components.geoObjectType" */
+  delete_components_geoObjectType_by_pk?: Maybe<Components_GeoObjectType>;
   /** delete data from the table: "test" */
   delete_test?: Maybe<Test_Mutation_Response>;
   /** delete single row from the table: "test" */
@@ -1575,6 +1860,10 @@ export type Mutation_Root = {
   insert_components_componentType_one?: Maybe<Components_ComponentType>;
   /** insert a single row into the table: "components.component" */
   insert_components_component_one?: Maybe<Components_Component>;
+  /** insert data into the table: "components.geoObjectType" */
+  insert_components_geoObjectType?: Maybe<Components_GeoObjectType_Mutation_Response>;
+  /** insert a single row into the table: "components.geoObjectType" */
+  insert_components_geoObjectType_one?: Maybe<Components_GeoObjectType>;
   /** insert data into the table: "test" */
   insert_test?: Maybe<Test_Mutation_Response>;
   /** insert a single row into the table: "test" */
@@ -1605,6 +1894,12 @@ export type Mutation_Root = {
   update_components_component_by_pk?: Maybe<Components_Component>;
   /** update multiples rows of table: "components.component" */
   update_components_component_many?: Maybe<Array<Maybe<Components_Component_Mutation_Response>>>;
+  /** update data of the table: "components.geoObjectType" */
+  update_components_geoObjectType?: Maybe<Components_GeoObjectType_Mutation_Response>;
+  /** update single row of the table: "components.geoObjectType" */
+  update_components_geoObjectType_by_pk?: Maybe<Components_GeoObjectType>;
+  /** update multiples rows of table: "components.geoObjectType" */
+  update_components_geoObjectType_many?: Maybe<Array<Maybe<Components_GeoObjectType_Mutation_Response>>>;
   /** update data of the table: "test" */
   update_test?: Maybe<Test_Mutation_Response>;
   /** update single row of the table: "test" */
@@ -1659,6 +1954,18 @@ export type Mutation_RootDelete_Components_ComponentType_By_PkArgs = {
 /** mutation root */
 export type Mutation_RootDelete_Components_Component_By_PkArgs = {
   id: Scalars['uuid']['input'];
+};
+
+
+/** mutation root */
+export type Mutation_RootDelete_Components_GeoObjectTypeArgs = {
+  where: Components_GeoObjectType_Bool_Exp;
+};
+
+
+/** mutation root */
+export type Mutation_RootDelete_Components_GeoObjectType_By_PkArgs = {
+  label: Scalars['String']['input'];
 };
 
 
@@ -1737,6 +2044,20 @@ export type Mutation_RootInsert_Components_ComponentType_OneArgs = {
 export type Mutation_RootInsert_Components_Component_OneArgs = {
   object: Components_Component_Insert_Input;
   on_conflict?: InputMaybe<Components_Component_On_Conflict>;
+};
+
+
+/** mutation root */
+export type Mutation_RootInsert_Components_GeoObjectTypeArgs = {
+  objects: Array<Components_GeoObjectType_Insert_Input>;
+  on_conflict?: InputMaybe<Components_GeoObjectType_On_Conflict>;
+};
+
+
+/** mutation root */
+export type Mutation_RootInsert_Components_GeoObjectType_OneArgs = {
+  object: Components_GeoObjectType_Insert_Input;
+  on_conflict?: InputMaybe<Components_GeoObjectType_On_Conflict>;
 };
 
 
@@ -1879,6 +2200,38 @@ export type Mutation_RootUpdate_Components_Component_ManyArgs = {
 
 
 /** mutation root */
+export type Mutation_RootUpdate_Components_GeoObjectTypeArgs = {
+  _append?: InputMaybe<Components_GeoObjectType_Append_Input>;
+  _delete_at_path?: InputMaybe<Components_GeoObjectType_Delete_At_Path_Input>;
+  _delete_elem?: InputMaybe<Components_GeoObjectType_Delete_Elem_Input>;
+  _delete_key?: InputMaybe<Components_GeoObjectType_Delete_Key_Input>;
+  _inc?: InputMaybe<Components_GeoObjectType_Inc_Input>;
+  _prepend?: InputMaybe<Components_GeoObjectType_Prepend_Input>;
+  _set?: InputMaybe<Components_GeoObjectType_Set_Input>;
+  where: Components_GeoObjectType_Bool_Exp;
+};
+
+
+/** mutation root */
+export type Mutation_RootUpdate_Components_GeoObjectType_By_PkArgs = {
+  _append?: InputMaybe<Components_GeoObjectType_Append_Input>;
+  _delete_at_path?: InputMaybe<Components_GeoObjectType_Delete_At_Path_Input>;
+  _delete_elem?: InputMaybe<Components_GeoObjectType_Delete_Elem_Input>;
+  _delete_key?: InputMaybe<Components_GeoObjectType_Delete_Key_Input>;
+  _inc?: InputMaybe<Components_GeoObjectType_Inc_Input>;
+  _prepend?: InputMaybe<Components_GeoObjectType_Prepend_Input>;
+  _set?: InputMaybe<Components_GeoObjectType_Set_Input>;
+  pk_columns: Components_GeoObjectType_Pk_Columns_Input;
+};
+
+
+/** mutation root */
+export type Mutation_RootUpdate_Components_GeoObjectType_ManyArgs = {
+  updates: Array<Components_GeoObjectType_Updates>;
+};
+
+
+/** mutation root */
 export type Mutation_RootUpdate_TestArgs = {
   _inc?: InputMaybe<Test_Inc_Input>;
   _set?: InputMaybe<Test_Set_Input>;
@@ -1976,6 +2329,12 @@ export type Query_Root = {
   components_component_aggregate: Components_Component_Aggregate;
   /** fetch data from the table: "components.component" using primary key columns */
   components_component_by_pk?: Maybe<Components_Component>;
+  /** fetch data from the table: "components.geoObjectType" */
+  components_geoObjectType: Array<Components_GeoObjectType>;
+  /** fetch aggregated fields from the table: "components.geoObjectType" */
+  components_geoObjectType_aggregate: Components_GeoObjectType_Aggregate;
+  /** fetch data from the table: "components.geoObjectType" using primary key columns */
+  components_geoObjectType_by_pk?: Maybe<Components_GeoObjectType>;
   /** fetch data from the table: "test" */
   test: Array<Test>;
   /** fetch aggregated fields from the table: "test" */
@@ -2063,6 +2422,29 @@ export type Query_RootComponents_Component_AggregateArgs = {
 
 export type Query_RootComponents_Component_By_PkArgs = {
   id: Scalars['uuid']['input'];
+};
+
+
+export type Query_RootComponents_GeoObjectTypeArgs = {
+  distinct_on?: InputMaybe<Array<Components_GeoObjectType_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Components_GeoObjectType_Order_By>>;
+  where?: InputMaybe<Components_GeoObjectType_Bool_Exp>;
+};
+
+
+export type Query_RootComponents_GeoObjectType_AggregateArgs = {
+  distinct_on?: InputMaybe<Array<Components_GeoObjectType_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Components_GeoObjectType_Order_By>>;
+  where?: InputMaybe<Components_GeoObjectType_Bool_Exp>;
+};
+
+
+export type Query_RootComponents_GeoObjectType_By_PkArgs = {
+  label: Scalars['String']['input'];
 };
 
 
@@ -2160,6 +2542,14 @@ export type Subscription_Root = {
   components_component_by_pk?: Maybe<Components_Component>;
   /** fetch data from the table in a streaming manner: "components.component" */
   components_component_stream: Array<Components_Component>;
+  /** fetch data from the table: "components.geoObjectType" */
+  components_geoObjectType: Array<Components_GeoObjectType>;
+  /** fetch aggregated fields from the table: "components.geoObjectType" */
+  components_geoObjectType_aggregate: Components_GeoObjectType_Aggregate;
+  /** fetch data from the table: "components.geoObjectType" using primary key columns */
+  components_geoObjectType_by_pk?: Maybe<Components_GeoObjectType>;
+  /** fetch data from the table in a streaming manner: "components.geoObjectType" */
+  components_geoObjectType_stream: Array<Components_GeoObjectType>;
   /** fetch data from the table: "test" */
   test: Array<Test>;
   /** fetch aggregated fields from the table: "test" */
@@ -2274,6 +2664,36 @@ export type Subscription_RootComponents_Component_StreamArgs = {
   batch_size: Scalars['Int']['input'];
   cursor: Array<InputMaybe<Components_Component_Stream_Cursor_Input>>;
   where?: InputMaybe<Components_Component_Bool_Exp>;
+};
+
+
+export type Subscription_RootComponents_GeoObjectTypeArgs = {
+  distinct_on?: InputMaybe<Array<Components_GeoObjectType_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Components_GeoObjectType_Order_By>>;
+  where?: InputMaybe<Components_GeoObjectType_Bool_Exp>;
+};
+
+
+export type Subscription_RootComponents_GeoObjectType_AggregateArgs = {
+  distinct_on?: InputMaybe<Array<Components_GeoObjectType_Select_Column>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order_by?: InputMaybe<Array<Components_GeoObjectType_Order_By>>;
+  where?: InputMaybe<Components_GeoObjectType_Bool_Exp>;
+};
+
+
+export type Subscription_RootComponents_GeoObjectType_By_PkArgs = {
+  label: Scalars['String']['input'];
+};
+
+
+export type Subscription_RootComponents_GeoObjectType_StreamArgs = {
+  batch_size: Scalars['Int']['input'];
+  cursor: Array<InputMaybe<Components_GeoObjectType_Stream_Cursor_Input>>;
+  where?: InputMaybe<Components_GeoObjectType_Bool_Exp>;
 };
 
 
@@ -3083,7 +3503,7 @@ export type GetComponentsForBoardQueryVariables = Exact<{
 }>;
 
 
-export type GetComponentsForBoardQuery = { __typename?: 'query_root', components: Array<{ __typename?: 'components_component', id: string, componentType: string, children?: unknown | null, metadata?: unknown | null, x: any, x1: any, x2: any, y: any, y1: any, y2: any, fill: string, width: any, height: any, iconStroke?: string | null, stroke?: string | null, linewidth?: any | null, strokeType?: string | null, textColor?: string | null }> };
+export type GetComponentsForBoardQuery = { __typename?: 'query_root', components: Array<{ __typename?: 'components_component', id: string, componentType: string, objectClass: string, children?: unknown | null, metadata?: unknown | null, x: any, x1: any, x2: any, y: any, y1: any, y2: any, fill: string, width: any, height: any, iconStroke?: string | null, stroke?: string | null, linewidth?: any | null, strokeType?: string | null, textColor?: string | null }> };
 
 export type GetComponentInfoQueryQueryVariables = Exact<{
   id?: InputMaybe<Scalars['uuid']['input']>;
@@ -3125,7 +3545,7 @@ export type GetComponentsForBoardSubscriptionSubscriptionVariables = Exact<{
 }>;
 
 
-export type GetComponentsForBoardSubscriptionSubscription = { __typename?: 'subscription_root', components: Array<{ __typename?: 'components_component', id: string, componentType: string, children?: unknown | null, metadata?: unknown | null, x: any, x1: any, x2: any, y: any, y1: any, y2: any, fill: string, width: any, height: any, iconStroke?: string | null, stroke?: string | null, linewidth?: any | null, strokeType?: string | null }> };
+export type GetComponentsForBoardSubscriptionSubscription = { __typename?: 'subscription_root', components: Array<{ __typename?: 'components_component', id: string, componentType: string, objectClass: string, children?: unknown | null, metadata?: unknown | null, x: any, x1: any, x2: any, y: any, y1: any, y2: any, fill: string, width: any, height: any, iconStroke?: string | null, stroke?: string | null, linewidth?: any | null, strokeType?: string | null }> };
 
 
 export const UpdateComponentInfoDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"updateComponentInfo"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"updateObj"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"components_component_set_input"}},"defaultValue":{"kind":"ObjectValue","fields":[]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"update_components_component_by_pk"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"pk_columns"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}},{"kind":"Argument","name":{"kind":"Name","value":"_set"},"value":{"kind":"Variable","name":{"kind":"Name","value":"updateObj"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<UpdateComponentInfoMutation, UpdateComponentInfoMutationVariables>;
@@ -3140,10 +3560,10 @@ export const UpdateBoardVisibilityDocument = {"kind":"Document","definitions":[{
 export const UpdateUserRevisitCountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"updateUserRevisitCount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"lastVisit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"timestamptz"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"update_users_user_revisits_by_pk"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"pk_columns"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"user_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userId"}}}]}},{"kind":"Argument","name":{"kind":"Name","value":"_inc"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"count"},"value":{"kind":"StringValue","value":"1","block":false}}]}},{"kind":"Argument","name":{"kind":"Name","value":"_set"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"last_visit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"lastVisit"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"user_id"}},{"kind":"Field","name":{"kind":"Name","value":"last_visit"}}]}}]}}]} as unknown as DocumentNode<UpdateUserRevisitCountMutation, UpdateUserRevisitCountMutationVariables>;
 export const MyQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"MyQuery"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"users"},"name":{"kind":"Name","value":"users_user"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"id"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<MyQueryQuery, MyQueryQueryVariables>;
 export const GetComponentTypesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getComponentTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"componentTypes"},"name":{"kind":"Name","value":"components_componentType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"logo"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}}]}}]}}]} as unknown as DocumentNode<GetComponentTypesQuery, GetComponentTypesQueryVariables>;
-export const GetComponentsForBoardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getComponentsForBoard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"components"},"name":{"kind":"Name","value":"components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"boardId"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}},{"kind":"Field","name":{"kind":"Name","value":"children"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"x"}},{"kind":"Field","name":{"kind":"Name","value":"x1"}},{"kind":"Field","name":{"kind":"Name","value":"x2"}},{"kind":"Field","name":{"kind":"Name","value":"y"}},{"kind":"Field","name":{"kind":"Name","value":"y1"}},{"kind":"Field","name":{"kind":"Name","value":"y2"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"iconStroke"}},{"kind":"Field","name":{"kind":"Name","value":"stroke"}},{"kind":"Field","name":{"kind":"Name","value":"linewidth"}},{"kind":"Field","name":{"kind":"Name","value":"strokeType"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}}]}}]}}]} as unknown as DocumentNode<GetComponentsForBoardQuery, GetComponentsForBoardQueryVariables>;
+export const GetComponentsForBoardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getComponentsForBoard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"components"},"name":{"kind":"Name","value":"components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"boardId"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}},{"kind":"Field","name":{"kind":"Name","value":"objectClass"}},{"kind":"Field","name":{"kind":"Name","value":"children"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"x"}},{"kind":"Field","name":{"kind":"Name","value":"x1"}},{"kind":"Field","name":{"kind":"Name","value":"x2"}},{"kind":"Field","name":{"kind":"Name","value":"y"}},{"kind":"Field","name":{"kind":"Name","value":"y1"}},{"kind":"Field","name":{"kind":"Name","value":"y2"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"iconStroke"}},{"kind":"Field","name":{"kind":"Name","value":"stroke"}},{"kind":"Field","name":{"kind":"Name","value":"linewidth"}},{"kind":"Field","name":{"kind":"Name","value":"strokeType"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}}]}}]}}]} as unknown as DocumentNode<GetComponentsForBoardQuery, GetComponentsForBoardQueryVariables>;
 export const GetComponentInfoQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getComponentInfoQuery"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"component"},"name":{"kind":"Name","value":"components_component_by_pk"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"stroke"}},{"kind":"Field","name":{"kind":"Name","value":"linewidth"}},{"kind":"Field","name":{"kind":"Name","value":"strokeType"}},{"kind":"Field","name":{"kind":"Name","value":"x"}},{"kind":"Field","name":{"kind":"Name","value":"y"}},{"kind":"Field","name":{"kind":"Name","value":"x1"}},{"kind":"Field","name":{"kind":"Name","value":"y1"}},{"kind":"Field","name":{"kind":"Name","value":"x2"}},{"kind":"Field","name":{"kind":"Name","value":"y2"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}},{"kind":"Field","name":{"kind":"Name","value":"children"}},{"kind":"Field","name":{"kind":"Name","value":"updatedBy"}},{"kind":"Field","name":{"kind":"Name","value":"iconStroke"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}}]}}]}}]} as unknown as DocumentNode<GetComponentInfoQueryQuery, GetComponentInfoQueryQueryVariables>;
 export const GetBoardComponentsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getBoardComponents"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"components"},"name":{"kind":"Name","value":"components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"boardId"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}}]}}]}}]} as unknown as DocumentNode<GetBoardComponentsQuery, GetBoardComponentsQueryVariables>;
 export const UserDetailsSubscriptionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"userDetailsSubscription"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"users"},"name":{"kind":"Name","value":"users_user"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"id"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<UserDetailsSubscriptionSubscription, UserDetailsSubscriptionSubscriptionVariables>;
 export const GetBoardComponentsSubscriptionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"getBoardComponentsSubscription"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"components"},"name":{"kind":"Name","value":"components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"boardId"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}}]}}]}}]} as unknown as DocumentNode<GetBoardComponentsSubscriptionSubscription, GetBoardComponentsSubscriptionSubscriptionVariables>;
 export const GetComponentInfoSubscriptionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"getComponentInfoSubscription"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"component"},"name":{"kind":"Name","value":"components_component_by_pk"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"stroke"}},{"kind":"Field","name":{"kind":"Name","value":"linewidth"}},{"kind":"Field","name":{"kind":"Name","value":"strokeType"}},{"kind":"Field","name":{"kind":"Name","value":"x"}},{"kind":"Field","name":{"kind":"Name","value":"y"}},{"kind":"Field","name":{"kind":"Name","value":"x1"}},{"kind":"Field","name":{"kind":"Name","value":"y1"}},{"kind":"Field","name":{"kind":"Name","value":"x2"}},{"kind":"Field","name":{"kind":"Name","value":"y2"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}},{"kind":"Field","name":{"kind":"Name","value":"children"}},{"kind":"Field","name":{"kind":"Name","value":"updatedBy"}},{"kind":"Field","name":{"kind":"Name","value":"iconStroke"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}}]}}]}}]} as unknown as DocumentNode<GetComponentInfoSubscriptionSubscription, GetComponentInfoSubscriptionSubscriptionVariables>;
-export const GetComponentsForBoardSubscriptionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"getComponentsForBoardSubscription"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"components"},"name":{"kind":"Name","value":"components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"boardId"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}},{"kind":"Field","name":{"kind":"Name","value":"children"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"x"}},{"kind":"Field","name":{"kind":"Name","value":"x1"}},{"kind":"Field","name":{"kind":"Name","value":"x2"}},{"kind":"Field","name":{"kind":"Name","value":"y"}},{"kind":"Field","name":{"kind":"Name","value":"y1"}},{"kind":"Field","name":{"kind":"Name","value":"y2"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"iconStroke"}},{"kind":"Field","name":{"kind":"Name","value":"stroke"}},{"kind":"Field","name":{"kind":"Name","value":"linewidth"}},{"kind":"Field","name":{"kind":"Name","value":"strokeType"}}]}}]}}]} as unknown as DocumentNode<GetComponentsForBoardSubscriptionSubscription, GetComponentsForBoardSubscriptionSubscriptionVariables>;
+export const GetComponentsForBoardSubscriptionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"getComponentsForBoardSubscription"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"components"},"name":{"kind":"Name","value":"components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"boardId"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}},{"kind":"Field","name":{"kind":"Name","value":"objectClass"}},{"kind":"Field","name":{"kind":"Name","value":"children"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"x"}},{"kind":"Field","name":{"kind":"Name","value":"x1"}},{"kind":"Field","name":{"kind":"Name","value":"x2"}},{"kind":"Field","name":{"kind":"Name","value":"y"}},{"kind":"Field","name":{"kind":"Name","value":"y1"}},{"kind":"Field","name":{"kind":"Name","value":"y2"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"iconStroke"}},{"kind":"Field","name":{"kind":"Name","value":"stroke"}},{"kind":"Field","name":{"kind":"Name","value":"linewidth"}},{"kind":"Field","name":{"kind":"Name","value":"strokeType"}}]}}]}}]} as unknown as DocumentNode<GetComponentsForBoardSubscriptionSubscription, GetComponentsForBoardSubscriptionSubscriptionVariables>;

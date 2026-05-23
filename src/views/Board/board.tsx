@@ -58,6 +58,10 @@ import {
     MOBILE_VIEWPORT_KEY_PREFIX,
     VIEWPORT_TTL_MS,
     DEFAULT_TEXT_SIZE,
+    GEO_DRAW_MODE_KEY,
+    GEO_DRAW_TYPE_KEY,
+    GEO_DRAW_PROPS_KEY,
+    GEO_POINT_PLACE_MODE_KEY,
 } from '../../constants/misc'
 import { useDrawingModes } from '../../hooks/useDrawingModes'
 import { useElementDefaults } from '../../hooks/useElementDefaults'
@@ -1143,6 +1147,13 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         localStorage.removeItem(TEXT_DRAW_MODE_KEY)
         localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)
         localStorage.removeItem(PENDING_SHAPE_PROPS_KEY)
+        // Abort any in-progress geo draw (multi-click area/route, point place)
+        // and tell the canvas to drop its preview vertices.
+        localStorage.removeItem(GEO_DRAW_MODE_KEY)
+        localStorage.removeItem(GEO_DRAW_TYPE_KEY)
+        localStorage.removeItem(GEO_DRAW_PROPS_KEY)
+        localStorage.removeItem(GEO_POINT_PLACE_MODE_KEY)
+        window.dispatchEvent(new CustomEvent('cancelGeoDraw', {}))
         setIsArrowDrawMode(false)
         setIsTextDrawMode(false)
         // Detach selectionController so its hover listener stops overriding the cursor
@@ -1224,6 +1235,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
 
     const contextValueForSidebar = {
         scaleToDisplay: props.scaleToDisplay,
+        geoObjectsEnabled: props.geoObjectsEnabled,
         boardId,
         isPersisted,
         persistBoard,

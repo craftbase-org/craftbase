@@ -9,6 +9,17 @@ import { generateUUID } from '../../utils/misc'
 import { useBoardContext } from '../../views/Board/board'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 import type { ComponentRecord } from '../../types/board'
+import {
+    GEO_TYPE_DEFAULTS,
+    DEFAULT_PIN_SVG,
+    DEFAULT_GEO_RESIST,
+    DEFAULT_GEO_RING_RADIUS,
+    GEO_DRAW_MODE_KEY,
+    GEO_DRAW_TYPE_KEY,
+    GEO_DRAW_PROPS_KEY,
+    GEO_POINT_PLACE_MODE_KEY,
+    LAST_ADDED_ELEMENT_ID_KEY,
+} from '../../constants/misc'
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
@@ -200,6 +211,87 @@ const PrimarySidebar = (): ReactElement => {
         enableTextDrawMode()
     }
 
+    // Point: single click-to-place. Pre-create the element off-screen (like the
+    // text/arrow flow) then let the canvas position it on the next click.
+    const handlePointElement = (): void => {
+        togglePencilMode(false)
+        togglePointer(false)
+
+        const userId = localStorage.getItem('userId')
+        const generateId = generateUUID()
+        const geoDef = GEO_TYPE_DEFAULTS.point
+
+        const shapeData: ComponentRecord = {
+            id: generateId,
+            componentType: 'point',
+            objectClass: 'geo',
+            linewidth: geoDef.linewidth,
+            strokeType: null,
+            stroke: geoDef.stroke,
+            children: {},
+            x: -9999,
+            y: -9999,
+            x1: 0,
+            x2: 0,
+            y1: 0,
+            y2: 0,
+            boardId,
+            boardName: null,
+            radius: null,
+            iconStroke: null,
+            isDummy: null,
+            createdAt: null,
+            metadata: {
+                svgIcon: DEFAULT_PIN_SVG,
+                resist: DEFAULT_GEO_RESIST,
+                ringRadius: DEFAULT_GEO_RING_RADIUS,
+            },
+            width: DEFAULT_GEO_RING_RADIUS * 2,
+            height: DEFAULT_GEO_RING_RADIUS * 2,
+            fill: 'transparent',
+            textColor: null,
+            updatedBy: userId,
+        }
+
+        updateLastAddedElement(shapeData)
+        localStorage.setItem(GEO_POINT_PLACE_MODE_KEY, 'true')
+        localStorage.setItem(LAST_ADDED_ELEMENT_ID_KEY, generateId)
+        addToLocalComponentStore(
+            shapeData.id,
+            shapeData.componentType,
+            shapeData
+        )
+        const root = document.getElementById('main-two-root')
+        if (root) root.style.cursor = 'crosshair'
+    }
+
+    // Area / Route: multi-click vertex placement. Don't pre-create — stash the
+    // base props and let the canvas collect vertices and build on finish.
+    const handleGeoMultiClick = (label: 'area' | 'route'): void => {
+        togglePencilMode(false)
+        togglePointer(false)
+
+        const geoDef = GEO_TYPE_DEFAULTS[label]
+        const baseProps = {
+            componentType: label,
+            objectClass: 'geo' as const,
+            stroke: geoDef.stroke,
+            linewidth: geoDef.linewidth,
+            strokeType: null,
+            fill: 'transparent',
+            boardId,
+            boardName: null,
+            textColor: null,
+            updatedBy: localStorage.getItem('userId'),
+        }
+
+        localStorage.setItem(GEO_DRAW_MODE_KEY, 'true')
+        localStorage.setItem(GEO_DRAW_TYPE_KEY, label)
+        localStorage.setItem(GEO_DRAW_PROPS_KEY, JSON.stringify(baseProps))
+        const root = document.getElementById('main-two-root')
+        if (root) root.style.cursor = 'crosshair'
+    }
+
     const addElement = (label: string): void => {
         cancelPendingElement()
         if (label !== 'rubber') setRubberModeInBoard(false)
@@ -224,6 +316,13 @@ const PrimarySidebar = (): ReactElement => {
                 break
             case 'text':
                 handleTextElement()
+                break
+            case 'point':
+                handlePointElement()
+                break
+            case 'area':
+            case 'route':
+                handleGeoMultiClick(label)
                 break
             default: {
                 togglePencilMode(false)
