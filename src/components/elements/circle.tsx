@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import type { ReactElement } from 'react'
-import { useBoardContext } from '../../views/Board/board'
+import { useBoardContext } from '../../views/Board/boardContext'
 
 import CircleFactory from '../../factory/circle'
 import { strokeTypeToDashes } from '../../utils/misc'

@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react'
 import type { ReactElement } from 'react'
-import { useBoardContext } from '../../views/Board/board'
+import { useBoardContext } from '../../views/Board/boardContext'
 
 import RouteFactory from '../../factory/route'
+import { computeCounterScale } from '../../utils/counterScale'
+import { DEFAULT_GEO_RESIST } from '../../constants/misc'
 
 // See circle.tsx for the rationale on the loose prop bag.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,12 +13,19 @@ type ElementProps = any
 type ShapeLike = any
 
 function Route(props: ElementProps): ReactElement {
-    const { isPencilMode, isArrowDrawMode, isArrowSelected } = useBoardContext()
+    const { isPencilMode, isArrowDrawMode, isArrowSelected, zuiInBoard } =
+        useBoardContext()
 
     const groupRef = useRef<ShapeLike>(null)
     const shapeRef = useRef<ShapeLike>(null)
 
     const two = props.twoJSInstance
+    // metadata for route is the vertex array, so `.resist` is undefined and we
+    // fall back to the default — same expression point.tsx uses.
+    const resist = props.metadata?.resist ?? DEFAULT_GEO_RESIST
+    // Logical (unscaled) stroke width. We counter-scale this on zoom rather
+    // than the whole group, so the polyline geometry stays glued to the world.
+    const baseLinewidth = props.linewidth ?? 2.5
 
     useEffect(() => {
         const prevX = props.x
@@ -37,6 +46,18 @@ function Route(props: ElementProps): ReactElement {
         } else {
             groupRef.current = group
             shapeRef.current = path
+
+            // Seed the stroke-width counter-scale from the current camera so the
+            // line is legible before the first zoom event fires. Only linewidth
+            // resists the zoom — the geometry stays glued to the world (unlike
+            // point.tsx, which counter-scales the whole group).
+            const initialScale =
+                (zuiInBoard as ShapeLike)?.zui?.scale ?? two?.scene?.scale
+            if (initialScale) {
+                path.linewidth =
+                    baseLinewidth * computeCounterScale(initialScale, resist)
+            }
+
             two.update()
 
             const groupEl = document.getElementById(group.id)
@@ -55,6 +76,29 @@ function Route(props: ElementProps): ReactElement {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
+    // Counter-scale only the stroke width on every camera change so the route
+    // stays legible when the world zooms out, while the geometry stays glued to
+    // its coordinates. Reads scale from the event each fire — no stale closure
+    // (see the React + Two.js stale-closure note in CLAUDE.md).
+    useEffect(() => {
+        const onZoom = (e: Event): void => {
+            const group = groupRef.current
+            const path = shapeRef.current
+            if (!group || !path) return
+            const scale = (e as CustomEvent<{ scale: number }>).detail?.scale
+            if (!scale) return
+            // Logical width lives on elementData (kept in sync by the property
+            // panel); fall back to the mount-time base.
+            const base = group.elementData?.linewidth ?? baseLinewidth
+            path.linewidth = base * computeCounterScale(scale, resist)
+            two.update()
+        }
+        window.addEventListener('zoomChanged', onZoom as EventListener)
+        return (): void => {
+            window.removeEventListener('zoomChanged', onZoom as EventListener)
+        }
+    }, [two, resist, baseLinewidth])
 
     useEffect(() => {
         const group = groupRef.current

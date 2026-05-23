@@ -6,12 +6,13 @@ import ShapesToolbar from './shapesToolbar'
 import { GET_COMPONENT_TYPES } from '../../schema/queries'
 import SpinnerWithSize from '../common/spinnerWithSize'
 import { generateUUID } from '../../utils/misc'
-import { useBoardContext } from '../../views/Board/board'
+import { useBoardContext } from '../../views/Board/boardContext'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 import type { ComponentRecord } from '../../types/board'
 import {
     GEO_TYPE_DEFAULTS,
-    DEFAULT_PIN_SVG,
+    POINT_CATEGORIES,
+    DEFAULT_POINT_CATEGORY,
     DEFAULT_GEO_RESIST,
     DEFAULT_GEO_RING_RADIUS,
     GEO_DRAW_MODE_KEY,
@@ -213,13 +214,21 @@ const PrimarySidebar = (): ReactElement => {
 
     // Point: single click-to-place. Pre-create the element off-screen (like the
     // text/arrow flow) then let the canvas position it on the next click.
-    const handlePointElement = (): void => {
+    const handlePointElement = (categoryArg?: string): void => {
         togglePencilMode(false)
         togglePointer(false)
 
         const userId = localStorage.getItem('userId')
         const generateId = generateUUID()
         const geoDef = GEO_TYPE_DEFAULTS.point
+        // Category is chosen up front from the point drawer (defaults to the
+        // generic pin). It drives the pin's fill/icon — stroke/fill mirror the
+        // category color for any legacy reads.
+        const category =
+            categoryArg && POINT_CATEGORIES[categoryArg]
+                ? categoryArg
+                : DEFAULT_POINT_CATEGORY
+        const cat = POINT_CATEGORIES[category]!
 
         const shapeData: ComponentRecord = {
             id: generateId,
@@ -227,7 +236,7 @@ const PrimarySidebar = (): ReactElement => {
             objectClass: 'geo',
             linewidth: geoDef.linewidth,
             strokeType: null,
-            stroke: geoDef.stroke,
+            stroke: cat.bg,
             children: {},
             x: -9999,
             y: -9999,
@@ -242,13 +251,14 @@ const PrimarySidebar = (): ReactElement => {
             isDummy: null,
             createdAt: null,
             metadata: {
-                svgIcon: DEFAULT_PIN_SVG,
+                category,
+                svgIcon: cat.svgIcon,
                 resist: DEFAULT_GEO_RESIST,
                 ringRadius: DEFAULT_GEO_RING_RADIUS,
             },
             width: DEFAULT_GEO_RING_RADIUS * 2,
             height: DEFAULT_GEO_RING_RADIUS * 2,
-            fill: 'transparent',
+            fill: cat.bg,
             textColor: null,
             updatedBy: userId,
         }
@@ -292,7 +302,7 @@ const PrimarySidebar = (): ReactElement => {
         if (root) root.style.cursor = 'crosshair'
     }
 
-    const addElement = (label: string): void => {
+    const addElement = (label: string, category?: string): void => {
         cancelPendingElement()
         if (label !== 'rubber') setRubberModeInBoard(false)
         if (label !== 'pan') togglePanMode(false)
@@ -318,7 +328,7 @@ const PrimarySidebar = (): ReactElement => {
                 handleTextElement()
                 break
             case 'point':
-                handlePointElement()
+                handlePointElement(category)
                 break
             case 'area':
             case 'route':

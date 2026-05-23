@@ -19,7 +19,7 @@ import React, {
 import Two from 'two.js'
 
 import { ZUI } from 'two.js/extras/jsm/zui'
-import { useBoardContext } from './views/Board/board'
+import { useBoardContext } from './views/Board/boardContext'
 import { useMediaQueryUtils } from './constants/exportHooks'
 
 import {
@@ -210,6 +210,12 @@ function addZUI(
     let isSinglePanning = false
     let panLastX = 0
     let panLastY = 0
+    // Desktop pan-mode: grab-and-drag with the mouse translates the surface
+    // (mirrors the single-finger touch pan above). Set on mousedown while pan
+    // mode is active, cleared on mouseup.
+    let isMousePanning = false
+    let mousePanLastX = 0
+    let mousePanLastY = 0
     let dragging = false
     let isResizeEvent = false
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -425,8 +431,10 @@ function addZUI(
             finalShapeData as unknown as ComponentRecord
         )
         setSelectedComponentInBoard(null)
-        setPointerElement('pointer')
+        // Reset cursor first: when geo is enabled setPointerElement re-activates
+        // pan, which sets its own 'grab' cursor that should win.
         setRootCursor('auto')
+        setPointerElement('pointer')
     }
 
     window.addEventListener('cancelGeoDraw', () => {
@@ -868,8 +876,9 @@ function addZUI(
     hoverCircle.opacity = 0
 
     function hoverDetectMove(e: MouseEvent) {
-        // No arrow-endpoint hover while drawing/placing a geo object.
+        // No arrow-endpoint hover while panning or drawing/placing a geo object.
         if (
+            isMousePanning ||
             geoDrawType ||
             localStorage.getItem(GEO_POINT_PLACE_MODE_KEY) === 'true'
         ) {
@@ -924,6 +933,22 @@ function addZUI(
     }
 
     function mousedown(e: MouseEvent) {
+        // Pan-mode (desktop): grab-and-drag translates the surface instead of
+        // selecting/drawing. Runs before everything else so a click on a shape
+        // pans rather than selecting it. Mirrors the single-finger touch pan.
+        if (isPanMode()) {
+            isMousePanning = true
+            mousePanLastX = e.clientX
+            mousePanLastY = e.clientY
+            const root = document.getElementById('main-two-root')
+            if (root) root.classList.add('panning')
+            // Drag on window so a release outside the canvas still ends the pan
+            // (and dragging keeps tracking past the canvas edge).
+            window.addEventListener('mousemove', mousemove, false)
+            window.addEventListener('mouseup', mouseup, false)
+            return
+        }
+
         // initialize shape definition
         const lastAddedElementId = localStorage.getItem(
             LAST_ADDED_ELEMENT_ID_KEY
@@ -1472,6 +1497,25 @@ function addZUI(
     }
 
     function mousemove(e: MouseEvent) {
+        // Pan-mode (desktop): translate the surface by the per-frame mouse
+        // delta. Mirrors the single-finger touch pan in touchmove.
+        if (isMousePanning) {
+            const dx = e.clientX - mousePanLastX
+            const dy = e.clientY - mousePanLastY
+            mousePanLastX = e.clientX
+            mousePanLastY = e.clientY
+            if (dx !== 0 || dy !== 0) {
+                zui.translateSurface(dx, dy)
+                two.update()
+                onCameraChangeRef?.current?.({
+                    scale: two.scene.scale,
+                    tx: two.scene.translation.x,
+                    ty: two.scene.translation.y,
+                })
+            }
+            return
+        }
+
         // Multi-click geo draw: rubber-band the preview line to the cursor.
         if (geoDrawType) {
             const s = toSurface(e)
@@ -1790,6 +1834,18 @@ function addZUI(
     }
 
     function mouseup(e: MouseEvent) {
+        // Pan-mode (desktop): end the grab-drag, restore the grab cursor and
+        // detach the on-demand listeners. Persist the viewport like the wheel.
+        if (isMousePanning) {
+            isMousePanning = false
+            const root = document.getElementById('main-two-root')
+            if (root) root.classList.remove('panning')
+            window.removeEventListener('mousemove', mousemove, false)
+            window.removeEventListener('mouseup', mouseup, false)
+            scheduleViewportSave()
+            return
+        }
+
         switch (scenario) {
             case SCENARIO_ARROW_DRAW: {
                 if (arrowDrawElement) {
@@ -2124,8 +2180,28 @@ function addZUI(
         domElement.removeEventListener('mouseup', mouseup, false)
     }
 
+    // Debounced persist of the current camera (pan + zoom) so a reload restores
+    // the viewport. Shared by the wheel and the desktop pan-drag.
+    function scheduleViewportSave() {
+        if (!props.boardId) return
+        if (viewportSaveTimer) clearTimeout(viewportSaveTimer)
+        viewportSaveTimer = setTimeout(() => {
+            localStorage.setItem(
+                `${VIEWPORT_KEY_PREFIX}${props.boardId}`,
+                JSON.stringify({
+                    tx: two.scene.translation.x,
+                    ty: two.scene.translation.y,
+                    scale: two.scene.scale,
+                    savedAt: Date.now(),
+                })
+            )
+        }, 300)
+    }
+
     function mousewheel(e: WheelEvent) {
-        if (e.shiftKey === true || e.metaKey === true) {
+        // Pan mode treats a plain wheel/scroll as zoom (no modifier needed);
+        // otherwise the wheel pans the surface and shift/meta zooms.
+        if (e.shiftKey === true || e.metaKey === true || isPanMode()) {
             let dy =
                 ((e as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY ||
                     -e.deltaY) / 1000
@@ -2145,20 +2221,7 @@ function addZUI(
             ty: two.scene.translation.y,
         })
 
-        if (props.boardId) {
-            if (viewportSaveTimer) clearTimeout(viewportSaveTimer)
-            viewportSaveTimer = setTimeout(() => {
-                localStorage.setItem(
-                    `${VIEWPORT_KEY_PREFIX}${props.boardId}`,
-                    JSON.stringify({
-                        tx: two.scene.translation.x,
-                        ty: two.scene.translation.y,
-                        scale: two.scene.scale,
-                        savedAt: Date.now(),
-                    })
-                )
-            }, 300)
-        }
+        scheduleViewportSave()
     }
 
     // --- Touch handlers ---
@@ -2508,11 +2571,25 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         setArrowDrawModeInBoard,
         setTextDrawModeInBoard,
         setCurrentElementInBoard,
+        togglePanMode,
+        geoObjectsEnabled,
         undoLastAction,
         redoLastAction,
         enableTextDrawMode,
         createTextAtSurface,
     } = useBoardContext()
+
+    // addZUI's post-draw resets funnel a 'pointer' through setPointerElement.
+    // With geo objects enabled the home tool is pan (pointer is hidden), so
+    // re-activate pan instead of stranding the user in hidden select mode.
+    const resetToHomeTool = (element: CurrentElement | null): void => {
+        if (element === 'pointer' && geoObjectsEnabled) {
+            togglePanMode(true)
+            setCurrentElementInBoard('pan')
+            return
+        }
+        setCurrentElementInBoard(element)
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [twoJSInstance, setTwoJSInstance] = useState<any>(null)
@@ -2578,7 +2655,7 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             setSelectedComponentInBoard,
             () => setArrowDrawModeInBoard(false),
             () => setTextDrawModeInBoard(false),
-            setCurrentElementInBoard,
+            resetToHomeTool,
             updateComponentBulkPropertiesInLocalStore,
             deleteComponentFromLocalStore,
             isPencilModeRef,

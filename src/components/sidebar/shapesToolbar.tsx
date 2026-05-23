@@ -5,10 +5,15 @@ import {
     geoElementData,
     type PrimaryElement,
 } from '../../utils/constants'
-import { useBoardContext } from '../../views/Board/board'
+import { useBoardContext } from '../../views/Board/boardContext'
 import UndoIcon from '../../assets/undo_amber.svg?react'
 import RedoIcon from '../../assets/redo.svg?react'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
+import {
+    POINT_CATEGORIES,
+    DEFAULT_POINT_CATEGORY,
+    sizedCategoryIcon,
+} from '../../constants/misc'
 
 const allElementsRaw = staticPrimaryElementData.flatMap(
     (section) => section.elements
@@ -31,7 +36,7 @@ const flattenShapesForDesktop = (
     )
 
 interface ShapesToolbarProps {
-    addElement: (label: string) => void
+    addElement: (label: string, category?: string) => void
 }
 
 interface DrawerAnchor {
@@ -49,22 +54,59 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
         historyLog,
         bucketLog,
         geoObjectsEnabled,
+        selectedComponent,
+        applyProperty,
     } = useBoardContext()
     const { isMobile } = useMediaQueryUtils()
     const [openDrawer, setOpenDrawer] = useState<string | null>(null)
     const [drawerAnchor, setDrawerAnchor] = useState<DrawerAnchor | null>(null)
     const drawerRef = useRef<HTMLDivElement | null>(null)
+    // Last category chosen for *new* points (so the drawer reflects the user's
+    // pick across placements). A selected point's own category takes priority
+    // when the drawer is opened with one focused.
+    const [pointCategory, setPointCategory] = useState<string>(
+        DEFAULT_POINT_CATEGORY
+    )
+
+    // When a point is selected, the same drawer recolors it in place (via
+    // applyProperty) instead of starting a new draw. Read its current category
+    // so the active chip reflects the selection.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const selectedElementData = (selectedComponent as any)?.group?.data
+        ?.elementData
+    const isPointSelected = selectedElementData?.componentType === 'point'
+    const activePointCategory = isPointSelected
+        ? (selectedElementData?.metadata?.category ?? DEFAULT_POINT_CATEGORY)
+        : pointCategory
+
+    // With geo objects enabled, pan is the default/home tool, but the pointer
+    // stays available so points can be selected (to edit category / tooltip);
+    // otherwise the usual pointer/select default.
+    const homeTool = geoObjectsEnabled ? 'pan' : 'pointer'
 
     const allElements = (
         isMobile ? allElementsRaw : flattenShapesForDesktop(allElementsRaw)
     )
-        .filter((el) => (isMobile ? true : !el.mobileOnly))
+        .filter((el) => {
+            // Pan is normally mobile-only; surface it on desktop too when geo
+            // objects are enabled so the default tool is reachable.
+            if (el.mobileOnly) {
+                return (
+                    isMobile ||
+                    (geoObjectsEnabled && el.elementName === 'pan')
+                )
+            }
+            return true
+        })
         // Geo tools (point/area/route) appear alongside the shape tools only
         // when the consumer opts in via the geoObjectsEnabled Board prop.
         .concat(geoObjectsEnabled ? geoElementData : [])
 
     useEffect(() => {
-        setCurrentElementInBoard('pointer')
+        // Pan needs activating (addElement) to become the live mode; pointer is
+        // the board's resting state, so a highlight is enough.
+        if (geoObjectsEnabled) addElement('pan')
+        setCurrentElementInBoard(homeTool)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
@@ -151,6 +193,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                     const Icon = element.elementIcon
                     const isActive =
                         currentElement === element.elementName ||
+                        openDrawer === element.elementName ||
                         (element.hasDrawer &&
                             element.drawerData.some(
                                 (d) => d.elementName === currentElement
@@ -171,7 +214,23 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                                 }
                             `}
                             onClick={(e): void => {
-                                if (element.hasDrawer) {
+                                // Point opens a category drawer rather than
+                                // drawing immediately — the chosen category
+                                // seeds the new point (or recolors a selected
+                                // one). Don't touch currentElement here so a
+                                // focused point stays selected for re-skinning.
+                                if (element.elementName === 'point') {
+                                    const rect =
+                                        e.currentTarget.getBoundingClientRect()
+                                    setDrawerAnchor({
+                                        left: rect.left,
+                                        top: rect.bottom,
+                                        rectTop: rect.top,
+                                    })
+                                    setOpenDrawer(
+                                        openDrawer === 'point' ? null : 'point'
+                                    )
+                                } else if (element.hasDrawer) {
                                     const rect =
                                         e.currentTarget.getBoundingClientRect()
                                     setDrawerAnchor({
@@ -188,7 +247,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                                     )
                                     setCurrentElementInBoard(
                                         isToggleClose
-                                            ? 'pointer'
+                                            ? homeTool
                                             : element.elementName
                                     )
                                 } else {
@@ -266,6 +325,77 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                                     aria-label={item.elementDisplayName}
                                 />
                             </div>
+                        )
+                    })}
+                </div>
+            )}
+
+            {/* Point categories — a swatch row beneath the toolbar. Picking one
+                seeds the next placed point, or recolors the focused point. */}
+            {openDrawer === 'point' && drawerAnchor && (
+                <div
+                    className={`fixed bg-sidebar shadow-card rounded-card flex items-center flex-row
+                        ${isMobile ? 'px-1 py-1 gap-1 border-b-4 border-accent-dark' : 'px-2 py-1 gap-1.5 border-t-4 border-accent-dark'}`}
+                    style={
+                        isMobile
+                            ? {
+                                  bottom:
+                                      window.innerHeight -
+                                      drawerAnchor.rectTop +
+                                      6,
+                                  left: drawerAnchor.left,
+                                  zIndex: 11,
+                              }
+                            : {
+                                  top: drawerAnchor.top + 6,
+                                  left: drawerAnchor.left,
+                                  zIndex: 11,
+                              }
+                    }
+                >
+                    {Object.values(POINT_CATEGORIES).map((cat) => {
+                        const isActive = activePointCategory === cat.id
+                        return (
+                            <button
+                                key={cat.id}
+                                title={cat.label}
+                                aria-label={cat.label}
+                                className={`${btnSize} flex items-center justify-center rounded-lg cursor-pointer transition-transform duration-150 hover:scale-105 ${
+                                    isActive ? 'scale-105' : ''
+                                }`}
+                                style={{
+                                    background: cat.bg,
+                                    border: cat.border
+                                        ? `2px solid ${cat.border}`
+                                        : 'none',
+                                    boxShadow: isActive
+                                        ? '0 0 0 2px #E8C87A'
+                                        : '2px 2px 0 #C4B89A',
+                                }}
+                                onClick={(): void => {
+                                    if (isPointSelected) {
+                                        // Recolor the focused point in place.
+                                        applyProperty?.('pointCategory', cat.id)
+                                    } else {
+                                        // Seed + arm a fresh point placement.
+                                        setPointCategory(cat.id)
+                                        addElement('point', cat.id)
+                                        setCurrentElementInBoard('point')
+                                    }
+                                    setOpenDrawer(null)
+                                }}
+                            >
+                                <span
+                                    className="flex items-center justify-center pointer-events-none"
+                                    // Category icons are pre-colored SVG strings.
+                                    dangerouslySetInnerHTML={{
+                                        __html: sizedCategoryIcon(
+                                            cat.svgIcon,
+                                            isMobile ? 16 : 18
+                                        ),
+                                    }}
+                                />
+                            </button>
                         )
                     })}
                 </div>

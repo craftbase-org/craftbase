@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import type { ReactElement } from 'react'
 import interact from 'interactjs'
 import { useImmer } from 'use-immer'
-import { useBoardContext } from '../../views/Board/board'
+import { useBoardContext } from '../../views/Board/boardContext'
 
 import { elementOnBlurHandler } from '../../utils/misc'
 import getEditComponents from '../utils/editWrapper'

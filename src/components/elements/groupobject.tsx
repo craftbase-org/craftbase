@@ -5,7 +5,7 @@ import type { ReactElement } from 'react'
 const factoryModules: Record<string, () => Promise<any>> =
     import.meta.glob('../../factory/*.ts')
 import Two from 'two.js'
-import { useBoardContext } from '../../views/Board/board'
+import { useBoardContext } from '../../views/Board/boardContext'
 import getEditComponents from '../utils/editWrapper'
 import { elementOnBlurHandler } from '../../utils/misc'
 

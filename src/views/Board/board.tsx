@@ -2,8 +2,6 @@ import React, {
     useState,
     useEffect,
     useRef,
-    useContext,
-    createContext,
     type ReactNode,
 } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
@@ -27,6 +25,8 @@ import Canvas from '../../newCanvas'
 import ZoomControls from '../../components/ZoomControls'
 import Sidebar from '../../components/sidebar/primary'
 import ElementPropertiesToolbar from '../../components/sidebar/elementProperties'
+import PointTooltip from '../../components/elements/pointTooltip'
+import ClusterLayer from '../../components/elements/clusterLayer'
 import controlsIcon from '../../assets/controls.svg'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
@@ -80,10 +80,12 @@ import type {
     ComponentStore,
     CameraChangeEvent,
 } from '../../types/board'
+import { BoardContext, useBoardContext } from './boardContext'
 
-export const BoardContext = createContext<BoardContextValue | undefined>(
-    undefined
-)
+// Re-exported so existing importers (`from '.../views/Board/board'`) and the
+// public lib.ts surface keep working — the canonical definition now lives in
+// the stable boardContext module (see the comment there for the HMR rationale).
+export { BoardContext, useBoardContext }
 
 // Strips __typename fields injected by Apollo before sending data back to Hasura
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -295,8 +297,15 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     // Clear stale interaction flags from localStorage on mount so a page refresh
     // never triggers SCENARIO_DRAW_SHAPE / SCENARIO_ARROW_DRAW / etc. on the
     // first mousedown. These keys are only meaningful within a single page session.
+    //
+    // This parent effect runs AFTER the child shapesToolbar effect that sets the
+    // pan default, so the sweep above (which clears PAN_MODE_KEY) would otherwise
+    // wipe it out — leaving pan highlighted but inert. Re-activate it here so the
+    // pan default actually takes effect when geo objects are enabled.
     useEffect(() => {
         clearDrawModesFromStorage()
+        if (props.geoObjectsEnabled) togglePanMode(true)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     // Sweep viewport entries older than VIEWPORT_TTL_MS or missing savedAt.
@@ -1236,6 +1245,8 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     const contextValueForSidebar = {
         scaleToDisplay: props.scaleToDisplay,
         geoObjectsEnabled: props.geoObjectsEnabled,
+        pointClusteringEnabled: props.pointClusteringEnabled,
+        clusterPoints: props.clusterPoints,
         boardId,
         isPersisted,
         persistBoard,
@@ -1356,6 +1367,8 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                         onCameraChange={props.onCameraChange}
                         renderBackground={props.renderBackground}
                     />
+                    <PointTooltip />
+                    <ClusterLayer />
                     {!isMobile && <ZoomControls />}
                 </div>
             </BoardContext.Provider>
@@ -1381,14 +1394,6 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             />
         </>
     )
-}
-
-export const useBoardContext = (): BoardContextValue => {
-    const ctx = useContext(BoardContext)
-    if (!ctx) {
-        throw new Error('useBoardContext must be called inside <Board />')
-    }
-    return ctx
 }
 
 export default BoardViewPage

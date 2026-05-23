@@ -58,6 +58,37 @@ export interface CameraChangeEvent {
     ty: number
 }
 
+// --- Point clustering (consumer-driven) --------------------------------
+
+/** One point handed to the clustering callback. */
+export interface PointScreenInfo {
+    /** Component id (matches the DOM node's data-component-id). */
+    id: string
+    /** World/surface coordinates. */
+    x: number
+    y: number
+    /** Viewport pixel center of the pin. */
+    screenX: number
+    screenY: number
+    /** metadata.category, if any. */
+    category?: string
+}
+
+/** A cluster the consumer wants craftbase to render in place of its points. */
+export interface Cluster {
+    /** Stable id for React keys / hit-testing. */
+    id: string
+    /** Viewport pixel center where the cluster marker is drawn. */
+    screenX: number
+    screenY: number
+    /** Number to show on the badge. */
+    count: number
+    /** Points absorbed by this cluster — craftbase hides their pins. */
+    pointIds: string[]
+    /** Marker styling: dark (default) or the warm accent variant. */
+    variant?: 'default' | 'warm'
+}
+
 export interface BoardProps {
     /** Fired on ZUI camera updates. See CLAUDE.md "Extension points over forks". */
     onCameraChange?: (event: CameraChangeEvent) => void
@@ -71,6 +102,23 @@ export interface BoardProps {
      * standalone craftbase app is unaffected. Used by craftmaps.
      */
     geoObjectsEnabled?: boolean
+    /**
+     * Opt-in feature flag: cluster nearby points into a single marker. craftbase
+     * only knows the screen camera, not real-world meters, so the actual grouping
+     * is delegated to `clusterPoints` (e.g. craftmaps groups points within 100m
+     * using its map projection). No-op when off or when no callback is supplied.
+     */
+    pointClusteringEnabled?: boolean
+    /**
+     * Consumer-supplied clustering. Given every point's world + screen position
+     * and the current camera, return the clusters to render — craftbase draws a
+     * marker per cluster and hides the absorbed `pointIds`. Required for
+     * clustering to do anything; see `pointClusteringEnabled`.
+     */
+    clusterPoints?: (
+        points: PointScreenInfo[],
+        camera: CameraChangeEvent
+    ) => Cluster[]
 }
 
 // --- Context value ------------------------------------------------------
@@ -181,6 +229,8 @@ export interface BoardContextValue {
     // Consumer extension points (forwarded from BoardProps)
     scaleToDisplay?: BoardProps['scaleToDisplay']
     geoObjectsEnabled?: BoardProps['geoObjectsEnabled']
+    pointClusteringEnabled?: BoardProps['pointClusteringEnabled']
+    clusterPoints?: BoardProps['clusterPoints']
 }
 
 // --- Utility exports ---------------------------------------------------

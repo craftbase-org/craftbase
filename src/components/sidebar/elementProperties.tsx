@@ -1,6 +1,6 @@
 import React, { Fragment, useEffect, useMemo, useState } from 'react'
 
-import { useBoardContext } from '../../views/Board/board'
+import { useBoardContext } from '../../views/Board/boardContext'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 import ColorPicker from '../utils/colorPicker'
 import OpacitySlider from '../utils/opacitySlider'
@@ -28,8 +28,8 @@ const SETS = {
     TEXT: ['textColor', 'textSize', 'textFont', 'opacity'],
     // Geo objects: stroke-centric. Area's fill is auto-derived from stroke, so
     // no fill control — but its outline still takes width/type like a route.
-    // Point exposes only its ring/icon color.
-    GEO_POINT: ['stroke'],
+    // Point has no edit-area set: its category is chosen from the point drawer
+    // in the shapes toolbar (resolveSetKey returns null for points).
     GEO_AREA: ['stroke', 'strokeWidth', 'strokeType'],
     GEO_ROUTE: ['stroke', 'strokeWidth', 'strokeType'],
     RECT_WITH_TEXT: [
@@ -64,7 +64,6 @@ const SET_LABELS = {
     TEXT: 'Text',
     RECT_WITH_TEXT: 'Shape',
     GROUP: 'Group',
-    GEO_POINT: 'Point',
     GEO_AREA: 'Area',
     GEO_ROUTE: 'Route',
 }
@@ -102,8 +101,9 @@ function resolveSetKey({
         const elementType =
             selectedComponent?.group?.data?.elementData?.componentType
         // Geo objects checked first: area/route are path-typed and would
-        // otherwise fall into the SHAPE branch below.
-        if (elementType === 'point') return 'GEO_POINT'
+        // otherwise fall into the SHAPE branch below. Points have no edit-area
+        // panel — their category is set from the toolbar drawer.
+        if (elementType === 'point') return null
         if (elementType === 'area') return 'GEO_AREA'
         if (elementType === 'route') return 'GEO_ROUTE'
         // rectangle/diamond/circle all carry text the same way — show the
@@ -143,7 +143,7 @@ function resolveSetKey({
     // Geo draw modes: the toolbar tool is active but nothing is selected yet.
     // Surface the geo property panel so stroke edits seed the next draw — the
     // same way pencil mode shows the pencil panel before the first stroke.
-    if (currentElement === 'point') return 'GEO_POINT'
+    // Point is excluded: its category lives in the toolbar drawer, not here.
     if (currentElement === 'area') return 'GEO_AREA'
     if (currentElement === 'route') return 'GEO_ROUTE'
     return 'SHAPE'

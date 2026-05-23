@@ -6,7 +6,7 @@ import Button from '../common/button'
 import Modal from '../common/modal'
 import ShareIcon from '../../assets/share-android.svg'
 import CopyIcon from '../../assets/copy.svg'
-import { useBoardContext } from '../../views/Board/board'
+import { useBoardContext } from '../../views/Board/boardContext'
 import { UPDATE_BOARD_VISIBILITY } from '../../schema/mutations'
 
 const ShareLinkPopup = (): ReactElement => {
