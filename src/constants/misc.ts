@@ -29,6 +29,15 @@ export const isGeoType = (type: string | null | undefined): boolean =>
     type === geoObjectTypes.area ||
     type === geoObjectTypes.route
 
+// Standalone text element types: 'newText' (whiteboard) and 'geoText' (the
+// zoom-resistant map variant). They render identically and share every text
+// code path (properties toolbar, group apply, history revert, clipboard) — the
+// only difference is geoText's per-frame counter-scale. Use this everywhere a
+// "is this standalone text?" decision is made so both stay in lockstep.
+export const isStandaloneTextType = (
+    type: string | null | undefined
+): boolean => type === 'newText' || type === 'geoText'
+
 // Draw mode localStorage keys
 export const ARROW_DRAW_MODE_KEY = 'arrowDrawMode'
 export const TEXT_DRAW_MODE_KEY = 'textDrawMode'

@@ -165,7 +165,7 @@ export interface BoardContextValue {
     setTextDrawModeInBoard: (value: boolean) => void
     setRubberModeInBoard: (value: boolean) => void
     cancelPendingElement: () => void
-    enableTextDrawMode: () => void
+    enableTextDrawMode: (componentType?: 'newText' | 'geoText') => void
     createTextAtSurface: (x: number, y: number) => void
     updateLastAddedElement: (element: unknown) => void
 

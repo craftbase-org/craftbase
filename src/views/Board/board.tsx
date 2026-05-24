@@ -62,6 +62,7 @@ import {
     GEO_DRAW_TYPE_KEY,
     GEO_DRAW_PROPS_KEY,
     GEO_POINT_PLACE_MODE_KEY,
+    DEFAULT_GEO_RESIST,
 } from '../../constants/misc'
 import { useDrawingModes } from '../../hooks/useDrawingModes'
 import { useElementDefaults } from '../../hooks/useElementDefaults'
@@ -567,7 +568,10 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     const buildTextShapeData = (
         id: string,
         x: number,
-        y: number
+        y: number,
+        // 'newText' is the standard whiteboard text; 'geoText' is the
+        // zoom-resistant map variant (counter-scales like a point pin).
+        componentType: 'newText' | 'geoText' = 'newText'
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ): any | null => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -596,7 +600,10 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             (sizesMap as any)[defaultTextSize] ?? typeItem.metadata?.fontSize
         return {
             id,
-            componentType: 'newText',
+            componentType,
+            // geoText is anchored to the map, so flag it geo (mirrors point/
+            // area/route) and seed the counter-scale resist it reads on mount.
+            ...(componentType === 'geoText' && { objectClass: 'geo' }),
             linewidth: defaultLinewidth,
             strokeType: defaultStrokeType,
             children: {},
@@ -605,6 +612,9 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                 ...(fontSizePx !== undefined && { fontSize: fontSizePx }),
                 ...(defaultTextFontFamily && {
                     textFontFamily: defaultTextFontFamily,
+                }),
+                ...(componentType === 'geoText' && {
+                    resist: DEFAULT_GEO_RESIST,
                 }),
                 opacity: defaultOpacity ?? 1,
             },
@@ -622,18 +632,20 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
 
     // One-shot text-draw mode: cursor → crosshair, next mousedown on canvas
     // places the pending text element via SCENARIO_TEXT_DRAW in newCanvas.js.
-    const enableTextDrawMode = () => {
+    const enableTextDrawMode = (
+        componentType: 'newText' | 'geoText' = 'newText'
+    ) => {
         togglePencilMode(false)
         togglePointer(false)
         const id = generateUUID()
-        const shapeData = buildTextShapeData(id, -9999, -9999)
+        const shapeData = buildTextShapeData(id, -9999, -9999, componentType)
         if (!shapeData) return
         updateLastAddedElement(shapeData)
         setRootCursor('crosshair')
         localStorage.setItem(TEXT_DRAW_MODE_KEY, 'true')
         localStorage.setItem(LAST_ADDED_ELEMENT_ID_KEY, id)
         setTextDrawModeInBoard(true)
-        addToLocalComponentStore(id, 'newText', shapeData)
+        addToLocalComponentStore(id, componentType, shapeData)
     }
 
     // Place a text element at the given surface coords and immediately open

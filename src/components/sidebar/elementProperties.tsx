@@ -6,6 +6,7 @@ import ColorPicker from '../utils/colorPicker'
 import OpacitySlider from '../utils/opacitySlider'
 import { TEXT_SIZES_ARRAY, fillEssentialShades } from '../../utils/constants'
 import { MIXED, inspectGroupValues } from '../../utils/groupInspect'
+import { isStandaloneTextType } from '../../constants/misc'
 
 const STROKE_TYPES = [
     { label: '—', value: 'solid' },
@@ -125,7 +126,7 @@ function resolveSetKey({
         )
             return 'SHAPE'
         if (shapeType === 'arrowLine') return 'ARROW'
-        if (shapeType === 'newText') return 'TEXT'
+        if (isStandaloneTextType(shapeType)) return 'TEXT'
         // Diamond is a custom Path; the elementData carries the type.
         if (
             elementType === 'diamond' ||
@@ -134,7 +135,7 @@ function resolveSetKey({
         )
             return 'SHAPE'
         if (elementType === 'arrowLine') return 'ARROW'
-        if (elementType === 'newText') return 'TEXT'
+        if (isStandaloneTextType(elementType)) return 'TEXT'
         if (elementType === 'pencil') return 'PENCIL'
         return 'SHAPE'
     }
@@ -205,7 +206,7 @@ function readEffectiveValues({
 
     // For rectangle-with-text + plain text, the text properties live in
     // different places. Resolve here so the rest is symmetric.
-    const isText = selectedComponent?.shape?.type === 'newText'
+    const isText = isStandaloneTextType(selectedComponent?.shape?.type)
     const textNode = isText ? shapeData : textData
 
     const textSizeNumeric = textNode?.size

@@ -165,7 +165,10 @@ function addZUI(
     setSelectedComponentInBoard: (component: SelectedComponent | null) => void,
     setArrowDrawModeOff: () => void,
     setTextDrawModeOff: () => void,
-    setPointerElement: (element: CurrentElement | null) => void,
+    setPointerElement: (
+        element: CurrentElement | null,
+        options?: { select?: boolean }
+    ) => void,
     updateComponentBulkPropertiesInLocalStore: (
         id: string,
         update: Partial<ComponentRecord>,
@@ -381,7 +384,7 @@ function addZUI(
 
         if (verts.length < GEO_MIN_VERTICES[geoDrawType]) {
             cancelGeoDraw()
-            setPointerElement('pointer')
+            setPointerElement('pointer', { select: true })
             return
         }
 
@@ -431,10 +434,10 @@ function addZUI(
             finalShapeData as unknown as ComponentRecord
         )
         setSelectedComponentInBoard(null)
-        // Reset cursor first: when geo is enabled setPointerElement re-activates
-        // pan, which sets its own 'grab' cursor that should win.
+        // After finishing an area/route draw, land in pointer/select mode so the
+        // shape can be tweaked immediately (instead of pan, the geo home tool).
         setRootCursor('auto')
-        setPointerElement('pointer')
+        setPointerElement('pointer', { select: true })
     }
 
     window.addEventListener('cancelGeoDraw', () => {
@@ -972,6 +975,11 @@ function addZUI(
         ) {
             let evt = new CustomEvent('clearSelector', {})
             window.dispatchEvent(evt)
+            // clearSelector only detaches the visual selector; the React
+            // selectedComponent stays set, which keeps the point tooltip
+            // pinned. Clear it too so the tooltip dismisses immediately when
+            // the user clicks bare canvas.
+            setSelectedComponentInBoard(null)
         }
 
         // Reset scenario to prevent stale state from a previous interaction
@@ -1134,7 +1142,7 @@ function addZUI(
                 }
 
                 setSelectedComponentInBoard(null)
-                setPointerElement('pointer')
+                setPointerElement('pointer', { select: true })
                 setRootCursor('auto')
                 break
             }
@@ -1923,7 +1931,9 @@ function addZUI(
 
                 textDrawElement = null
                 setTextDrawModeOff()
-                setPointerElement('pointer')
+                // In geo mode the only text tool is geoText; land in pointer so
+                // the placed text can be selected (no effect when geo is off).
+                setPointerElement('pointer', { select: true })
                 setRootCursor('auto')
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
@@ -2580,10 +2590,21 @@ const Canvas: React.FC<CanvasProps> = (props) => {
     } = useBoardContext()
 
     // addZUI's post-draw resets funnel a 'pointer' through setPointerElement.
-    // With geo objects enabled the home tool is pan (pointer is hidden), so
-    // re-activate pan instead of stranding the user in hidden select mode.
-    const resetToHomeTool = (element: CurrentElement | null): void => {
+    // With geo objects enabled the home tool is pan, so a generic reset
+    // re-activates pan instead of stranding the user in select mode. The
+    // exception is finishing a geo draw (point/area/route): we want the user
+    // dropped straight into pointer/select so the just-placed object can be
+    // tweaked — callers signal that with { select: true }.
+    const resetToHomeTool = (
+        element: CurrentElement | null,
+        options?: { select?: boolean }
+    ): void => {
         if (element === 'pointer' && geoObjectsEnabled) {
+            if (options?.select) {
+                togglePanMode(false)
+                setCurrentElementInBoard('pointer')
+                return
+            }
             togglePanMode(true)
             setCurrentElementInBoard('pan')
             return

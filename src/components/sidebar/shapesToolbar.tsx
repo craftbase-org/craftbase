@@ -19,6 +19,20 @@ const allElementsRaw = staticPrimaryElementData.flatMap(
     (section) => section.elements
 )
 
+// Whiteboard-only tools hidden once geo objects are enabled — the geo workflow
+// uses point/area/route + the zoom-resistant geoText instead. 'shapes' is the
+// mobile drawer; rectangle/circle/diamond are its desktop-flattened children.
+// 'text' is replaced by 'geoText' (see geoElementData).
+const GEO_HIDDEN_TOOLS = new Set([
+    'shapes',
+    'rectangle',
+    'circle',
+    'diamond',
+    'arrowLine',
+    'pencil',
+    'text',
+])
+
 const flattenShapesForDesktop = (
     elements: PrimaryElement[]
 ): PrimaryElement[] =>
@@ -84,23 +98,41 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
     // otherwise the usual pointer/select default.
     const homeTool = geoObjectsEnabled ? 'pan' : 'pointer'
 
-    const allElements = (
-        isMobile ? allElementsRaw : flattenShapesForDesktop(allElementsRaw)
-    )
-        .filter((el) => {
-            // Pan is normally mobile-only; surface it on desktop too when geo
-            // objects are enabled so the default tool is reachable.
-            if (el.mobileOnly) {
-                return (
-                    isMobile ||
-                    (geoObjectsEnabled && el.elementName === 'pan')
-                )
-            }
-            return true
-        })
-        // Geo tools (point/area/route) appear alongside the shape tools only
-        // when the consumer opts in via the geoObjectsEnabled Board prop.
-        .concat(geoObjectsEnabled ? geoElementData : [])
+    const allElements = (() => {
+        const list = (
+            isMobile ? allElementsRaw : flattenShapesForDesktop(allElementsRaw)
+        )
+            .filter((el) => {
+                // Pan is normally mobile-only; surface it on desktop too when
+                // geo objects are enabled so the default tool is reachable.
+                if (el.mobileOnly) {
+                    return (
+                        isMobile ||
+                        (geoObjectsEnabled && el.elementName === 'pan')
+                    )
+                }
+                return true
+            })
+            // Whiteboard shape tools are hidden in geo mode in favour of the
+            // geo toolset (point/area/route/geoText).
+            .filter(
+                (el) =>
+                    !geoObjectsEnabled || !GEO_HIDDEN_TOOLS.has(el.elementName)
+            )
+            // Geo tools (point/area/route/geoText) appear alongside the shape
+            // tools only when the consumer opts in via the geoObjectsEnabled
+            // Board prop.
+            .concat(geoObjectsEnabled ? geoElementData : [])
+
+        // The eraser (rubber) always sits last in the toolbar order, after any
+        // geo tools appended above.
+        const rubberIdx = list.findIndex((el) => el.elementName === 'rubber')
+        if (rubberIdx !== -1) {
+            const [rubber] = list.splice(rubberIdx, 1)
+            list.push(rubber!)
+        }
+        return list
+    })()
 
     useEffect(() => {
         // Pan needs activating (addElement) to become the live mode; pointer is

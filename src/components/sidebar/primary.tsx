@@ -195,7 +195,9 @@ const PrimarySidebar = (): ReactElement => {
         )
     }
 
-    const handleTextElement = (): void => {
+    const handleTextElement = (
+        componentType: 'newText' | 'geoText' = 'newText'
+    ): void => {
         const savingEl = document.getElementById('show-saving-loader')
         if (savingEl) {
             savingEl.style.opacity = '1'
@@ -209,7 +211,7 @@ const PrimarySidebar = (): ReactElement => {
             }
         }, 100)
 
-        enableTextDrawMode()
+        enableTextDrawMode(componentType)
     }
 
     // Point: single click-to-place. Pre-create the element off-screen (like the
@@ -326,6 +328,11 @@ const PrimarySidebar = (): ReactElement => {
                 break
             case 'text':
                 handleTextElement()
+                break
+            case 'geoText':
+                // Same one-shot click-to-place flow as text, but tagged so the
+                // canvas renders the zoom-resistant geoText component.
+                handleTextElement('geoText')
                 break
             case 'point':
                 handlePointElement(category)

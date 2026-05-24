@@ -249,6 +249,16 @@ export const geoElementData: PrimaryElement[] = [
         noAction: false,
         drawerData: [],
     },
+    {
+        // Zoom-resistant text for maps — counter-scales on zoom like a point
+        // pin (see geoText.tsx). Replaces the standard Text tool in geo mode.
+        elementName: 'geoText',
+        elementDisplayName: 'Text',
+        elementIcon: TextIcon,
+        hasDrawer: false,
+        noAction: false,
+        drawerData: [],
+    },
 ]
 
 export interface TextSizeEntry {
