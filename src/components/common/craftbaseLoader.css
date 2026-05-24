@@ -1,0 +1,101 @@
+/* Craftbase startup loader — Variant A (sketch draw-on).
+   Pure CSS so it can also be inlined into #root in index.html and paint
+   before the JS bundle loads. Keep this in sync with that inline copy. */
+
+.cb-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    background-color: #f5f0e8;
+    background-image: radial-gradient(circle, #c4b89a 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+.cb-loader .cb-mark {
+    width: 72px;
+    height: 72px;
+    overflow: visible;
+}
+
+.cb-loader .cb-mark polyline {
+    fill: none;
+    stroke: #c9a84c;
+    stroke-width: 2.5;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+    stroke-dasharray: 11;
+    stroke-dashoffset: 11;
+    animation: cbDraw 2.2s ease-in-out infinite;
+}
+.cb-loader .cb-mark polyline:nth-child(2) {
+    animation-delay: 0.18s;
+}
+.cb-loader .cb-mark polyline:nth-child(3) {
+    animation-delay: 0.36s;
+}
+
+@keyframes cbDraw {
+    0% {
+        stroke-dashoffset: 11;
+    }
+    40% {
+        stroke-dashoffset: 0;
+    }
+    70% {
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dashoffset: -11;
+    }
+}
+
+.cb-loader .cb-wordmark {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: 0.5px;
+    color: #1a1612;
+}
+
+.cb-loader .cb-caption {
+    margin-top: -10px;
+    font-family: 'Geist', system-ui, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    color: #8c7e6a;
+}
+.cb-loader .cb-caption::after {
+    content: '';
+    animation: cbDots 1.4s steps(4, end) infinite;
+}
+
+@keyframes cbDots {
+    0% {
+        content: '';
+    }
+    25% {
+        content: '.';
+    }
+    50% {
+        content: '..';
+    }
+    75% {
+        content: '...';
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cb-loader .cb-mark polyline {
+        animation: none;
+        stroke-dashoffset: 0;
+    }
+    .cb-loader .cb-caption::after {
+        animation: none;
+        content: '...';
+    }
+}

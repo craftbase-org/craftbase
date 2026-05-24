@@ -21,8 +21,6 @@
         <link rel="manifest" href="/manifest.json" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
             href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&display=swap"
             rel="stylesheet"
@@ -49,10 +47,118 @@
                 }
             }
         </script>
+        <!-- Inline startup loader (Variant A). Paints before the JS bundle
+             loads; React replaces #root on first commit. Keep in sync with
+             src/components/common/craftbaseLoader.css -->
+        <style>
+            #cb-boot {
+                position: fixed;
+                inset: 0;
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 22px;
+                background-color: #f5f0e8;
+                background-image: radial-gradient(
+                    circle,
+                    #c4b89a 1px,
+                    transparent 1px
+                );
+                background-size: 24px 24px;
+            }
+            #cb-boot svg {
+                width: 72px;
+                height: 72px;
+                overflow: visible;
+            }
+            #cb-boot polyline {
+                fill: none;
+                stroke: #c9a84c;
+                stroke-width: 2.5;
+                stroke-linecap: square;
+                stroke-linejoin: miter;
+                stroke-dasharray: 11;
+                stroke-dashoffset: 11;
+                animation: cbBootDraw 2.2s ease-in-out infinite;
+            }
+            #cb-boot polyline:nth-child(2) {
+                animation-delay: 0.18s;
+            }
+            #cb-boot polyline:nth-child(3) {
+                animation-delay: 0.36s;
+            }
+            @keyframes cbBootDraw {
+                0% {
+                    stroke-dashoffset: 11;
+                }
+                40% {
+                    stroke-dashoffset: 0;
+                }
+                70% {
+                    stroke-dashoffset: 0;
+                }
+                100% {
+                    stroke-dashoffset: -11;
+                }
+            }
+            #cb-boot .cb-wordmark {
+                font-family: 'Fraunces', Georgia, serif;
+                font-weight: 600;
+                font-size: 22px;
+                letter-spacing: 0.5px;
+                color: #1a1612;
+            }
+            #cb-boot .cb-caption {
+                margin-top: -10px;
+                font-size: 13px;
+                letter-spacing: 0.3px;
+                color: #8c7e6a;
+            }
+            #cb-boot .cb-caption::after {
+                content: '';
+                animation: cbBootDots 1.4s steps(4, end) infinite;
+            }
+            @keyframes cbBootDots {
+                0% {
+                    content: '';
+                }
+                25% {
+                    content: '.';
+                }
+                50% {
+                    content: '..';
+                }
+                75% {
+                    content: '...';
+                }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                #cb-boot polyline {
+                    animation: none;
+                    stroke-dashoffset: 0;
+                }
+                #cb-boot .cb-caption::after {
+                    animation: none;
+                    content: '...';
+                }
+            }
+        </style>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
-        <div id="root"></div>
+        <div id="root">
+            <div id="cb-boot" role="status" aria-label="Loading Craftbase">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <polyline points="4,9 4,4 9,4" />
+                    <polyline points="15,4 20,4 20,9" />
+                    <polyline points="4,15 4,20 9,20" />
+                </svg>
+                <div class="cb-wordmark">Craftbase</div>
+                <div class="cb-caption">setting up your canvas</div>
+            </div>
+        </div>
         <script type="module" src="/src/index.js"></script>
     </body>
 </html>

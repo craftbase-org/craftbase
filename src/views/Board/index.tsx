@@ -3,8 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@apollo/client'
 
 import ErrorBoundary from './errorBoundary'
-import Spinner from '../../components/common/spinner'
-import SpinnerWithSize from '../../components/common/spinnerWithSize'
+import CraftbaseLoader from '../../components/common/craftbaseLoader'
 import { GET_COMPONENTS_FOR_BOARD_QUERY } from '../../schema/queries'
 import './index.css'
 import type { BoardProps } from '../../types/board'
@@ -29,12 +28,10 @@ const BoardViewContainer: React.FC<BoardProps> = (props) => {
     })
 
     return (
-        <Suspense fallback={<Spinner />}>
+        <Suspense fallback={<CraftbaseLoader />}>
             <ErrorBoundary>
                 {isPersisted && loading ? (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <SpinnerWithSize loaderSize="lg" />
-                    </div>
+                    <CraftbaseLoader caption="loading your board" />
                 ) : (
                     <BoardViewPage {...props} />
                 )}

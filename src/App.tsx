@@ -17,6 +17,7 @@ import BoardViewContainer from './views/Board'
 import HomePageViewContainer from './views/Home'
 import SupportViewContainer from './views/Support'
 import PrivacyViewContainer from './views/Privacy'
+import CraftbaseLoader from './components/common/craftbaseLoader'
 
 import routes from './routes'
 import { INSERT_USER_ONE } from './schema/mutations'
@@ -131,7 +132,7 @@ function AppInit({ children }: { children: React.ReactNode }) {
         }
     }, [])
 
-    if (!userReady) return null
+    if (!userReady) return <CraftbaseLoader />
 
     return <>{children}</>
 }
