@@ -26,6 +26,19 @@
     cursor: crosshair !important;
 }
 
+/* Pan mode: the whole canvas (and shapes within) shows a grab cursor so the
+   per-shape pointer rule doesn't win; it becomes grabbing while dragging. */
+.pan-mode-active,
+.pan-mode-active .dragger-picker,
+.pan-mode-active text {
+    cursor: grab !important;
+}
+.pan-mode-active.panning,
+.pan-mode-active.panning .dragger-picker,
+.pan-mode-active.panning text {
+    cursor: grabbing !important;
+}
+
 .rounded-50-percent {
     border-radius: 50%;
 }

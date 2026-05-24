@@ -62,7 +62,14 @@ export interface ApplyGroupPropertyDeps {
 }
 
 const ACCEPTS: Record<GroupPropertyKey, Set<string>> = {
-    fill: new Set(['rectangle', 'circle', 'diamond', 'frame', 'newText']),
+    fill: new Set([
+        'rectangle',
+        'circle',
+        'diamond',
+        'frame',
+        'newText',
+        'geoText',
+    ]),
     stroke: new Set([
         'rectangle',
         'circle',
@@ -97,13 +104,32 @@ const ACCEPTS: Record<GroupPropertyKey, Set<string>> = {
         'frame',
         'arrowLine',
         'newText',
+        'geoText',
     ]),
     // rectangle, diamond AND circle all carry text the same way (see
     // applyShapeText / the *-with-text components), so a group text edit
     // must reach every one of them.
-    textColor: new Set(['newText', 'rectangle', 'diamond', 'circle']),
-    textSize: new Set(['newText', 'rectangle', 'diamond', 'circle']),
-    textFontFamily: new Set(['newText', 'rectangle', 'diamond', 'circle']),
+    textColor: new Set([
+        'newText',
+        'geoText',
+        'rectangle',
+        'diamond',
+        'circle',
+    ]),
+    textSize: new Set([
+        'newText',
+        'geoText',
+        'rectangle',
+        'diamond',
+        'circle',
+    ]),
+    textFontFamily: new Set([
+        'newText',
+        'geoText',
+        'rectangle',
+        'diamond',
+        'circle',
+    ]),
 }
 
 function findSceneElement(two: TwoLike, id: string): ShapeLike | undefined {
@@ -316,7 +342,7 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
             }
 
             if (propertyKey === 'textColor') {
-                if (type === 'newText') {
+                if (type === 'newText' || type === 'geoText') {
                     const sceneTexts = sceneEl
                         ? findTextNodesInside(sceneEl)
                         : []

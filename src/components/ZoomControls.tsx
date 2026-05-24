@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ReactElement } from 'react'
-import { useBoardContext } from '../views/Board/board'
+import { useBoardContext } from '../views/Board/boardContext'
 import zoomInIcon from '../assets/zoom-in.svg'
 import zoomOutIcon from '../assets/zoom-out.svg'
 

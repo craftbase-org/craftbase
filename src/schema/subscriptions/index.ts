@@ -76,6 +76,7 @@ export const GET_COMPONENTS_FOR_BOARD_SUBSCRIPTION: TypedDocumentNode<
         ) {
             id
             componentType
+            objectClass
             children
             metadata
             x

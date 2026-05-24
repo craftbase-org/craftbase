@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import type { ReactElement } from 'react'
-import { useBoardContext } from '../../views/Board/board'
+import { useBoardContext } from '../../views/Board/boardContext'
 
 import ElementFactory from '../../factory/rectangle'
 import { strokeTypeToDashes } from '../../utils/misc'

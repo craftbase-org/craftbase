@@ -2,8 +2,6 @@ import React, {
     useState,
     useEffect,
     useRef,
-    useContext,
-    createContext,
     type ReactNode,
 } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
@@ -27,6 +25,8 @@ import Canvas from '../../newCanvas'
 import ZoomControls from '../../components/ZoomControls'
 import Sidebar from '../../components/sidebar/primary'
 import ElementPropertiesToolbar from '../../components/sidebar/elementProperties'
+import PointTooltip from '../../components/elements/pointTooltip'
+import ClusterLayer from '../../components/elements/clusterLayer'
 import controlsIcon from '../../assets/controls.svg'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
@@ -58,6 +58,11 @@ import {
     MOBILE_VIEWPORT_KEY_PREFIX,
     VIEWPORT_TTL_MS,
     DEFAULT_TEXT_SIZE,
+    GEO_DRAW_MODE_KEY,
+    GEO_DRAW_TYPE_KEY,
+    GEO_DRAW_PROPS_KEY,
+    GEO_POINT_PLACE_MODE_KEY,
+    DEFAULT_GEO_RESIST,
 } from '../../constants/misc'
 import { useDrawingModes } from '../../hooks/useDrawingModes'
 import { useElementDefaults } from '../../hooks/useElementDefaults'
@@ -76,10 +81,12 @@ import type {
     ComponentStore,
     CameraChangeEvent,
 } from '../../types/board'
+import { BoardContext, useBoardContext } from './boardContext'
 
-export const BoardContext = createContext<BoardContextValue | undefined>(
-    undefined
-)
+// Re-exported so existing importers (`from '.../views/Board/board'`) and the
+// public lib.ts surface keep working — the canonical definition now lives in
+// the stable boardContext module (see the comment there for the HMR rationale).
+export { BoardContext, useBoardContext }
 
 // Strips __typename fields injected by Apollo before sending data back to Hasura
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -291,8 +298,15 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     // Clear stale interaction flags from localStorage on mount so a page refresh
     // never triggers SCENARIO_DRAW_SHAPE / SCENARIO_ARROW_DRAW / etc. on the
     // first mousedown. These keys are only meaningful within a single page session.
+    //
+    // This parent effect runs AFTER the child shapesToolbar effect that sets the
+    // pan default, so the sweep above (which clears PAN_MODE_KEY) would otherwise
+    // wipe it out — leaving pan highlighted but inert. Re-activate it here so the
+    // pan default actually takes effect when geo objects are enabled.
     useEffect(() => {
         clearDrawModesFromStorage()
+        if (props.geoObjectsEnabled) togglePanMode(true)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     // Sweep viewport entries older than VIEWPORT_TTL_MS or missing savedAt.
@@ -554,7 +568,10 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     const buildTextShapeData = (
         id: string,
         x: number,
-        y: number
+        y: number,
+        // 'newText' is the standard whiteboard text; 'geoText' is the
+        // zoom-resistant map variant (counter-scales like a point pin).
+        componentType: 'newText' | 'geoText' = 'newText'
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ): any | null => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -583,7 +600,10 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             (sizesMap as any)[defaultTextSize] ?? typeItem.metadata?.fontSize
         return {
             id,
-            componentType: 'newText',
+            componentType,
+            // geoText is anchored to the map, so flag it geo (mirrors point/
+            // area/route) and seed the counter-scale resist it reads on mount.
+            ...(componentType === 'geoText' && { objectClass: 'geo' }),
             linewidth: defaultLinewidth,
             strokeType: defaultStrokeType,
             children: {},
@@ -592,6 +612,9 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                 ...(fontSizePx !== undefined && { fontSize: fontSizePx }),
                 ...(defaultTextFontFamily && {
                     textFontFamily: defaultTextFontFamily,
+                }),
+                ...(componentType === 'geoText' && {
+                    resist: DEFAULT_GEO_RESIST,
                 }),
                 opacity: defaultOpacity ?? 1,
             },
@@ -609,18 +632,20 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
 
     // One-shot text-draw mode: cursor → crosshair, next mousedown on canvas
     // places the pending text element via SCENARIO_TEXT_DRAW in newCanvas.js.
-    const enableTextDrawMode = () => {
+    const enableTextDrawMode = (
+        componentType: 'newText' | 'geoText' = 'newText'
+    ) => {
         togglePencilMode(false)
         togglePointer(false)
         const id = generateUUID()
-        const shapeData = buildTextShapeData(id, -9999, -9999)
+        const shapeData = buildTextShapeData(id, -9999, -9999, componentType)
         if (!shapeData) return
         updateLastAddedElement(shapeData)
         setRootCursor('crosshair')
         localStorage.setItem(TEXT_DRAW_MODE_KEY, 'true')
         localStorage.setItem(LAST_ADDED_ELEMENT_ID_KEY, id)
         setTextDrawModeInBoard(true)
-        addToLocalComponentStore(id, 'newText', shapeData)
+        addToLocalComponentStore(id, componentType, shapeData)
     }
 
     // Place a text element at the given surface coords and immediately open
@@ -1143,6 +1168,13 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         localStorage.removeItem(TEXT_DRAW_MODE_KEY)
         localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)
         localStorage.removeItem(PENDING_SHAPE_PROPS_KEY)
+        // Abort any in-progress geo draw (multi-click area/route, point place)
+        // and tell the canvas to drop its preview vertices.
+        localStorage.removeItem(GEO_DRAW_MODE_KEY)
+        localStorage.removeItem(GEO_DRAW_TYPE_KEY)
+        localStorage.removeItem(GEO_DRAW_PROPS_KEY)
+        localStorage.removeItem(GEO_POINT_PLACE_MODE_KEY)
+        window.dispatchEvent(new CustomEvent('cancelGeoDraw', {}))
         setIsArrowDrawMode(false)
         setIsTextDrawMode(false)
         // Detach selectionController so its hover listener stops overriding the cursor
@@ -1224,6 +1256,9 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
 
     const contextValueForSidebar = {
         scaleToDisplay: props.scaleToDisplay,
+        geoObjectsEnabled: props.geoObjectsEnabled,
+        pointClusteringEnabled: props.pointClusteringEnabled,
+        clusterPoints: props.clusterPoints,
         boardId,
         isPersisted,
         persistBoard,
@@ -1344,6 +1379,8 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                         onCameraChange={props.onCameraChange}
                         renderBackground={props.renderBackground}
                     />
+                    <PointTooltip />
+                    <ClusterLayer />
                     {!isMobile && <ZoomControls />}
                 </div>
             </BoardContext.Provider>
@@ -1369,14 +1406,6 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             />
         </>
     )
-}
-
-export const useBoardContext = (): BoardContextValue => {
-    const ctx = useContext(BoardContext)
-    if (!ctx) {
-        throw new Error('useBoardContext must be called inside <Board />')
-    }
-    return ctx
 }
 
 export default BoardViewPage
