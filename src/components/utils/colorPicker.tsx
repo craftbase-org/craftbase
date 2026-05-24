@@ -7,6 +7,25 @@ import { MIXED } from '../../utils/groupInspect'
 const STORAGE_KEY = 'craftbase_saved_colors'
 const MAX_SAVED = 8
 
+// Checkerboard shown behind a transparent swatch so it reads as "no paint"
+// instead of rendering invisibly.
+const TRANSPARENT_SWATCH_BG =
+    'repeating-conic-gradient(#C4B89A 0% 25%, #F5F0E8 0% 50%) 0 0 / 8px 8px'
+
+// True for any rgba()/hsla() color with alpha 0.
+const isTransparentColor = (color?: string | null): boolean => {
+    if (!color) return false
+    const inner = /(?:rgba|hsla)\(([^)]+)\)/i.exec(color)?.[1]
+    if (!inner) return false
+    const parts = inner.split(',').map((s) => s.trim())
+    return parts.length === 4 && parseFloat(parts[3] ?? '1') === 0
+}
+
+// Background style for a swatch/preview: checkerboard for transparent,
+// the color itself otherwise, falling back to a transparent box.
+const swatchBackground = (color?: string | null): string =>
+    isTransparentColor(color) ? TRANSPARENT_SWATCH_BG : (color ?? 'transparent')
+
 const loadSavedColors = (): string[] => {
     try {
         const stored = localStorage.getItem(STORAGE_KEY)
@@ -30,6 +49,9 @@ export interface ColorPickerProps {
     currentColor?: string
     isExpanded?: boolean
     onToggleExpand?: () => void
+    // Quick-access swatch row. Defaults to the shared essentialShades; the
+    // Fill picker passes fillEssentialShades to surface a transparent option.
+    essentialColors?: string[]
 }
 
 const ColorPicker = ({
@@ -38,13 +60,16 @@ const ColorPicker = ({
     currentColor,
     isExpanded,
     onToggleExpand,
+    essentialColors = essentialShades,
 }: ColorPickerProps): ReactElement => {
     const [localExpanded, setLocalExpanded] = useState(false)
     const [savedColors, setSavedColors] = useState<string[]>(loadSavedColors)
     const [removingColor, setRemovingColor] = useState<string | null>(null)
     const isMixed = currentColor === MIXED
     const [hexInput, setHexInput] = useState(
-        isMixed ? '' : (currentColor?.replace(/^#/, '') ?? '')
+        isMixed || isTransparentColor(currentColor)
+            ? ''
+            : (currentColor?.replace(/^#/, '') ?? '')
     )
 
     // Support both controlled (isExpanded prop) and uncontrolled (local state) modes.
@@ -54,7 +79,7 @@ const ColorPicker = ({
         onToggleExpand ?? ((): void => setLocalExpanded((p) => !p))
 
     useEffect(() => {
-        if (currentColor === MIXED) {
+        if (currentColor === MIXED || isTransparentColor(currentColor)) {
             setHexInput('')
             return
         }
@@ -92,12 +117,16 @@ const ColorPicker = ({
     }
 
     const hasColor = !!currentColor && !isMixed
+    const isTransparent = isTransparentColor(currentColor)
     const mixedSwatchBg =
         'repeating-linear-gradient(45deg, #C4B89A 0 4px, #F5F0E8 4px 8px)'
 
     const swatchStyle = (color: string): CSSProperties => ({
-        background: color,
-        border: color === '#FFFFFF' ? '1.5px solid #1A1612' : 'none',
+        background: swatchBackground(color),
+        border:
+            color === '#FFFFFF' || isTransparentColor(color)
+                ? '1.5px solid #1A1612'
+                : 'none',
         outline: currentColor === color ? '2px solid #C48B0A' : 'none',
         outlineOffset: '1.5px',
     })
@@ -123,11 +152,13 @@ const ColorPicker = ({
                         style={{
                             background: isMixed
                                 ? mixedSwatchBg
-                                : hasColor
-                                  ? currentColor
-                                  : 'transparent',
+                                : isTransparent
+                                  ? TRANSPARENT_SWATCH_BG
+                                  : hasColor
+                                    ? currentColor
+                                    : 'transparent',
                             border:
-                                hasColor || isMixed
+                                (hasColor && !isTransparent) || isMixed
                                     ? 'none'
                                     : '1.5px solid #1A1612',
                         }}
@@ -135,9 +166,11 @@ const ColorPicker = ({
                     <span className="font-mono">
                         {isMixed
                             ? 'Mixed'
-                            : hasColor
-                              ? currentColor.toUpperCase()
-                              : 'None'}
+                            : isTransparent
+                              ? 'Transparent'
+                              : hasColor
+                                ? currentColor.toUpperCase()
+                                : 'None'}
                     </span>
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                         <path
@@ -169,7 +202,7 @@ const ColorPicker = ({
                                     style={{
                                         background: isMixed
                                             ? mixedSwatchBg
-                                            : (currentColor ?? 'transparent'),
+                                            : swatchBackground(currentColor),
                                         border: '2px solid #C48B0A',
                                     }}
                                 />
@@ -180,8 +213,10 @@ const ColorPicker = ({
                                     <div className="text-[11px] font-semibold text-[#1A1612] font-mono truncate">
                                         {isMixed
                                             ? 'Mixed'
-                                            : (currentColor?.toUpperCase() ??
-                                              '—')}
+                                            : isTransparent
+                                              ? 'Transparent'
+                                              : (currentColor?.toUpperCase() ??
+                                                '—')}
                                     </div>
                                 </div>
                                 <button
@@ -298,8 +333,9 @@ const ColorPicker = ({
                                 <div
                                     className="w-5 h-5 rounded-[4px] flex-shrink-0 border border-[#C4B89A]"
                                     style={{
-                                        background:
-                                            currentColor ?? 'transparent',
+                                        background: swatchBackground(
+                                            currentColor
+                                        ),
                                     }}
                                 />
                                 <div className="flex-1 flex items-center bg-[#FFFCF5] border border-[#C4B89A] rounded-[5px] px-2 py-1 gap-1">
@@ -335,16 +371,18 @@ const ColorPicker = ({
             </AnimatePresence>
 
             <div className="flex items-center gap-1">
-                {essentialShades.map((color) => (
+                {essentialColors.map((color) => (
                     <button
                         key={color}
                         onClick={(): void => handleColorSelect(color)}
-                        title={color}
+                        title={
+                            isTransparentColor(color) ? 'Transparent' : color
+                        }
                         className="mr-1 w-5 h-5 rounded-full flex-shrink-0 transition-transform hover:scale-110"
                         style={{
-                            background: color,
+                            background: swatchBackground(color),
                             border:
-                                color === '#FFFFFF'
+                                color === '#FFFFFF' || isTransparentColor(color)
                                     ? '1.5px solid #1A1612'
                                     : 'none',
                             outline:

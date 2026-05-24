@@ -126,10 +126,15 @@ Reusable React UI components.
     - Other: `groupobject.tsx`
 
 - **`sidebar/`**: Left sidebar UI
-    - `primary.tsx` - Main sidebar component
-    - `defaults.tsx` - Defaults section sidebar (where default stroke width and stroke type can be applied)
+    - `primary.tsx` - Main sidebar component; applies the current element defaults (`linewidth`, `strokeType`, `stroke`) to newly created components
+    - `elementProperties.tsx` - Unified element-properties toolbar shown for the current selection. The `SETS` map declares which property sections (`fill`, `stroke`, `strokeWidth`, `strokeType`, `opacity`, `textColor`, `textSize`, `textFont`) render per element kind (`SHAPE`, `ARROW`, `PENCIL`, `TEXT`, `RECT_WITH_TEXT`, `GROUP`); `resolveSetKey()` picks the active set. This replaced the old standalone `defaults.tsx`
+    - `shapesToolbar.tsx` - Shape picker toolbar (+ undo/redo); flattens the shapes drawer into a flat list for desktop
+    - `menuDrawer.tsx` - Hamburger menu drawer (nav links, modal triggers)
     - `shareLinkPopup.tsx` - Share functionality popup
     - `userDetailsPopup.tsx` - User information popup
+    - `sidebar.css` - Sidebar styles
+
+  **Element defaults vs. selected-shape edits:** `src/utils/applyProperty.ts` (`createApplyProperty`) is the single mutation path behind `elementProperties.tsx`. Every property change (1) updates the matching default via `useElementDefaults` setters, then (2) if a shape is selected, applies the same change to that shape. So editing a property with nothing selected just sets the default; editing with a shape selected sets both. Defaults store `null` for `strokeType: 'solid'` (matching what `primary.tsx` feeds new shapes); DB rows store the literal `'solid'`/`'dashed'`/`'dotted'`.
 
 - **`common/`**: Shared utility components
     - `button.tsx` - Base button component
@@ -234,14 +239,14 @@ Global stylesheets.
 
 ## React Context
 
-The **BoardContext** (created in `src/views/Board/board.js`) provides:
+The **BoardContext** (created in `src/views/Board/board.tsx`) provides:
 
 - Component store state
 - Selected component state
 - Two.js instance
 - Pencil mode state (from `useDrawingModes` hook)
 - Toolbar visibility (from `useMobileToolbarPanels` hook)
-- Pencil/stroke defaults (from `usePencilDefaults` hook)
+- Element defaults — stroke/fill/text (from `useElementDefaults` hook)
 - Undo/history functions — `recordToHistoryLog`, `undoLastAction` (from `useComponentHistory` hook)
 - GraphQL mutation functions
 - `boardId`, `isPersisted`, `persistBoard`, `backgroundBoardId` (canvas-first UX)
@@ -249,13 +254,13 @@ The **BoardContext** (created in `src/views/Board/board.js`) provides:
 
 Child components access this context via `useContext(BoardContext)`.
 
-### Hook composition in board.js
+### Hook composition in board.tsx
 
-`board.js` composes several custom hooks in this order (order matters — each may depend on the previous):
+`board.tsx` composes several custom hooks in this order (order matters — each may depend on the previous):
 
 1. `useDrawingModes()` — draw mode state and setters
-2. `useMobileToolbarPanels({ isPencilMode, isMobile, selectedComponent })` — panel visibility
-3. `usePencilDefaults({ toggleToolbar, setSelectedComponent })` — defaults and their setters
+2. `useMobileToolbarPanels({ isMobile, selectedComponent })` — panel visibility
+3. `useElementDefaults()` — element defaults (stroke/fill/text) and their setters
 4. `useLocalDraftPersistence({ ..., onStorageLimitRef })` — draft persistence + quota modal
 5. `useComponentHistory({ ... })` — undo stack
 

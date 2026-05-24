@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { MutableRefObject } from 'react'
-import { GROUP_COMPONENT } from '../constants/misc'
+import { GROUP_COMPONENT, isStandaloneTextType } from '../constants/misc'
 import { generateUUID } from '../utils/misc'
 import { cloneElementData, getShapeTextNodes } from '../utils/canvasUtils'
 import type { ComponentRecord } from '../types/board'
@@ -129,7 +129,7 @@ export function useCanvasClipboard({
                         item.y2 = parseInt(String(line.vertices[1].y))
                     }
                 }
-                if (elementData.componentType === 'newText') {
+                if (isStandaloneTextType(elementData.componentType)) {
                     // Multiline standalone text is a stack of Two.Text line
                     // nodes (line 1 + satellites) in the same group;
                     // children[0] alone is only line 1. Reconstruct the raw
@@ -216,7 +216,9 @@ export function useCanvasClipboard({
                     newItem.y2 = dy
                 }
                 if (
-                    src.componentType === 'pencil' &&
+                    (src.componentType === 'pencil' ||
+                        src.componentType === 'area' ||
+                        src.componentType === 'route') &&
                     Array.isArray(src.metadata)
                 ) {
                     const dx = px - src.x

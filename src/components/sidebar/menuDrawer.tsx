@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import routes from '../../routes'
-import { useBoardContext } from '../../views/Board/board'
+import { useBoardContext } from '../../views/Board/boardContext'
 import Modal from '../common/modal'
 import Button from '../common/button'
 

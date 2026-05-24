@@ -11,6 +11,10 @@ import EraserIcon from '../wireframeAssets/eraser.svg?react'
 import RightArrowIcon from '../assets/right_arrow.svg?react'
 import PanIcon from '../assets/pan.svg?react'
 
+import PinIcon from '../wireframeAssets/pin.svg?react'
+import PolygonIcon from '../wireframeAssets/polygon.svg?react'
+import PolylineIcon from '../wireframeAssets/polyline.svg?react'
+
 type SvgComponent = FunctionComponent<SVGProps<SVGSVGElement>>
 
 export const color_blue = '#0052CC'
@@ -92,12 +96,27 @@ export const allColorShades: string[] = [
     '#97A0AF',
 ]
 
+// Fully transparent fill ("none"). Browsers accept rgba() in SVG
+// presentation attributes, so Two.js renders this as no paint.
+export const TRANSPARENT_FILL = 'rgba(0,0,0,0.0)'
+
 export const essentialShades: string[] = [
     '#FFFFFF',
     '#000000',
     '#FF5630',
     '#FFAB00',
     '#36B37E',
+    '#0065FF',
+]
+
+// Fill picker only — transparent ("no fill") first, replacing the green that
+// the shared essentialShades keeps for stroke/text.
+export const fillEssentialShades: string[] = [
+    TRANSPARENT_FILL,
+    '#FFFFFF',
+    '#000000',
+    '#FF5630',
+    '#FFAB00',
     '#0065FF',
 ]
 
@@ -200,6 +219,45 @@ export const staticPrimaryElementData: PrimarySection[] = [
                 drawerData: [],
             },
         ],
+    },
+]
+
+// Geo tools (point / area / route). Surfaced in the toolbar only when the
+// consumer passes `geoObjectsEnabled` — appended alongside the shape tools.
+export const geoElementData: PrimaryElement[] = [
+    {
+        elementName: 'point',
+        elementDisplayName: 'Point',
+        elementIcon: PinIcon,
+        hasDrawer: false,
+        noAction: false,
+        drawerData: [],
+    },
+    {
+        elementName: 'area',
+        elementDisplayName: 'Area',
+        elementIcon: PolygonIcon,
+        hasDrawer: false,
+        noAction: false,
+        drawerData: [],
+    },
+    {
+        elementName: 'route',
+        elementDisplayName: 'Route',
+        elementIcon: PolylineIcon,
+        hasDrawer: false,
+        noAction: false,
+        drawerData: [],
+    },
+    {
+        // Zoom-resistant text for maps — counter-scales on zoom like a point
+        // pin (see geoText.tsx). Replaces the standard Text tool in geo mode.
+        elementName: 'geoText',
+        elementDisplayName: 'Text',
+        elementIcon: TextIcon,
+        hasDrawer: false,
+        noAction: false,
+        drawerData: [],
     },
 ]
 

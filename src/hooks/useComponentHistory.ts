@@ -11,7 +11,7 @@ import {
     applyShapeText,
 } from '../utils/canvasUtils'
 import { lineHeightFor } from '../utils/textLayout'
-import { DRAFT_STORAGE_KEY } from '../constants/misc'
+import { DRAFT_STORAGE_KEY, isStandaloneTextType } from '../constants/misc'
 import type { ComponentRecord, ComponentStore } from '../types/board'
 
 // Two.js scene-group shapes are typed loosely until the canvas internals
@@ -124,8 +124,9 @@ function applyPropertyToTwoJSGroup(
     // line nodes — text props must hit EVERY node, not just children[0].
     // Empty for non-text shapes, so this stays a no-op there.
     const textNodes: ShapeLike[] = getShapeTextNodes(group)
-    const isStandaloneText =
-        group.elementData?.componentType === 'newText'
+    const isStandaloneText = isStandaloneTextType(
+        group.elementData?.componentType
+    )
 
     switch (name) {
         case 'fill':
@@ -368,9 +369,9 @@ export function useComponentHistory({
         const m = meta as Record<string, any>
         const ct = group.elementData?.componentType
 
-        if (ct === 'newText') {
+        if (isStandaloneTextType(ct)) {
             // Standalone multiline text is a stack of Two.Text nodes owned by
-            // the newText component (extraLineNodesRef). Rebuilding them from
+            // the newText/geoText component (extraLineNodesRef). Rebuilding them from
             // here would desync that ref and orphan nodes on the next edit, so
             // let the component re-stack through its own path instead.
             if (typeof m.content !== 'string') return

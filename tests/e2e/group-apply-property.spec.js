@@ -35,11 +35,13 @@ import {
  *     element.
  */
 
-// Colours picked from essentialShades (always-rendered swatch row in the
-// collapsed ColorPicker) so we can click them by their `title` attribute
-// without expanding the picker. None equal the seeded defaults
-// (shape fill #FFFFFF, text fill #3A342C).
-const FILL_COLOR = '#36B37E'
+// Colours picked from the always-rendered swatch row in the collapsed
+// ColorPicker so we can click them by their `title` attribute without
+// expanding the picker. None equal the seeded defaults (shape fill #FFFFFF,
+// text fill #3A342C). NOTE: the Fill picker uses fillEssentialShades (which
+// dropped green #36B37E for a transparent swatch), while stroke/text use the
+// shared essentialShades — so FILL_COLOR must come from fillEssentialShades.
+const FILL_COLOR = '#FFAB00'
 const STROKE_COLOR = '#0065FF'
 const TEXT_COLOR = '#FF5630'
 

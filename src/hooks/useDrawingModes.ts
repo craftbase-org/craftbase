@@ -193,7 +193,9 @@ export function useDrawingModes(): DrawingModesApi {
         if (!root) return
         const active = isPencilMode || isArrowDrawMode || isRubberMode
         root.classList.toggle('draw-mode-active', active)
-    }, [isPencilMode, isArrowDrawMode, isRubberMode])
+        // Pan mode shows a grab cursor across the canvas (see common.css).
+        root.classList.toggle('pan-mode-active', isPanMode)
+    }, [isPencilMode, isArrowDrawMode, isRubberMode, isPanMode])
 
     const clearDrawModesFromStorage = (): void => {
         localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)

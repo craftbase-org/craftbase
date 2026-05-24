@@ -15,6 +15,7 @@ type ComponentType =
     | 'diamond'
     | 'frame'
     | 'newText'
+    | 'geoText'
     | 'arrowLine'
     | 'pencil'
     | 'divider'
@@ -71,7 +72,14 @@ interface DefaultsForInspect {
 // Mirrors the acceptance map in applyGroupProperty.ts. Kept in sync manually
 // — this is small and changes rarely.
 const ACCEPTS: Record<InspectableProperty, Set<string>> = {
-    fill: new Set(['rectangle', 'circle', 'diamond', 'frame', 'newText']),
+    fill: new Set([
+        'rectangle',
+        'circle',
+        'diamond',
+        'frame',
+        'newText',
+        'geoText',
+    ]),
     stroke: new Set([
         'rectangle',
         'circle',
@@ -104,10 +112,29 @@ const ACCEPTS: Record<InspectableProperty, Set<string>> = {
         'frame',
         'arrowLine',
         'newText',
+        'geoText',
     ]),
-    textColor: new Set(['newText', 'rectangle', 'diamond', 'circle']),
-    textSize: new Set(['newText', 'rectangle', 'diamond', 'circle']),
-    textFontFamily: new Set(['newText', 'rectangle', 'diamond', 'circle']),
+    textColor: new Set([
+        'newText',
+        'geoText',
+        'rectangle',
+        'diamond',
+        'circle',
+    ]),
+    textSize: new Set([
+        'newText',
+        'geoText',
+        'rectangle',
+        'diamond',
+        'circle',
+    ]),
+    textFontFamily: new Set([
+        'newText',
+        'geoText',
+        'rectangle',
+        'diamond',
+        'circle',
+    ]),
 }
 
 function readChildValue(child: ChildEntry, key: InspectableProperty): unknown {
@@ -128,7 +155,11 @@ function readChildValue(child: ChildEntry, key: InspectableProperty): unknown {
         case 'opacity':
             return meta?.opacity ?? 1
         case 'textColor':
-            if (child.componentType === 'newText') return child.textColor
+            if (
+                child.componentType === 'newText' ||
+                child.componentType === 'geoText'
+            )
+                return child.textColor
             return meta?.textFill
         case 'textSize':
             return meta?.textFontSize
