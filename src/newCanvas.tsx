@@ -957,11 +957,37 @@ function addZUI(
             LAST_ADDED_ELEMENT_ID_KEY
         )
 
-        // Controller handle check — runs before the bare-canvas clearSelector
-        // dispatch and the DOM path walk. Corner handles can extend slightly
-        // beyond the element's SVG bounds, so relying on path-walking would
-        // miss clicks that land in the handle's radius but outside the shape.
-        if (selectionController.currentGroup) {
+        // While a draw/placement tool is armed, a mousedown starts a NEW element —
+        // it must never be reinterpreted as a resize of the current selection.
+        // This matters now that finishing a draw auto-selects the element: drawing
+        // a second shape next to the first would otherwise grab the first shape's
+        // resize handle. Detach the lingering selection so its box doesn't hang
+        // over the new draw (the new element auto-selects again on mouseup).
+        const inCreateMode =
+            isDrawing === true ||
+            localStorage.getItem(ARROW_DRAW_MODE_KEY) === 'true' ||
+            localStorage.getItem(TEXT_DRAW_MODE_KEY) === 'true' ||
+            localStorage.getItem(GEO_POINT_PLACE_MODE_KEY) === 'true' ||
+            localStorage.getItem(GEO_DRAW_MODE_KEY) === 'true' ||
+            localStorage.getItem(PENDING_SHAPE_TYPE_KEY) !== null
+
+        if (inCreateMode) {
+            // Starting a new element clears any prior selection indicators so
+            // only the just-drawn element ends up looking selected: the
+            // controller box (shapes) and the endpoint circles of every arrow
+            // (arrows aren't controller-managed, so detach() can't clear them).
+            if (selectionController.currentGroup) selectionController.detach()
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            two.scene.children.forEach((child: any) => {
+                if (child?.elementData?.componentType === 'arrowLine') {
+                    setArrowEndpointsVisible(child, false)
+                }
+            })
+        } else if (selectionController.currentGroup) {
+            // Controller handle check — runs before the bare-canvas clearSelector
+            // dispatch and the DOM path walk. Corner handles can extend slightly
+            // beyond the element's SVG bounds, so relying on path-walking would
+            // miss clicks that land in the handle's radius but outside the shape.
             const hit = selectionController.hitTest(e.clientX, e.clientY)
             if (hit) {
                 selectionController.beginInteraction(e, hit)
@@ -1888,9 +1914,34 @@ function addZUI(
                     }
 
                     updateToGlobalState(newShapeData, {})
-                }
 
-                setSelectedComponentInBoard(null)
+                    // Auto-select the freshly drawn arrow so its endpoint
+                    // handles and the edit toolbar appear immediately — a
+                    // visual cue that the arrow is editable. Arrows aren't in
+                    // SHAPE_ADAPTERS (no resize box), so build the toolbar
+                    // state directly, mirroring the click-select path.
+                    const arrowGroup = arrowDrawElement
+                    const arrowLineShape = arrowGroup.children[0]
+                    setArrowEndpointsVisible(arrowGroup, true)
+                    setSelectedComponentInBoard({
+                        element: {
+                            [arrowLineShape.id]: arrowLineShape,
+                            [arrowGroup.id]: arrowGroup,
+                        },
+                        group: { id: arrowGroup.id, data: arrowGroup },
+                        shape: {
+                            type: arrowGroup.elementData?.componentType,
+                            id: arrowLineShape.id,
+                            data: arrowLineShape,
+                        },
+                        text: { data: {} },
+                        icon: { data: {} },
+                    })
+                    // Paint the now-visible endpoint handles.
+                    two.update()
+                } else {
+                    setSelectedComponentInBoard(null)
+                }
 
                 arrowDrawElement = null
                 setArrowDrawModeOff()
@@ -1974,19 +2025,22 @@ function addZUI(
                 )
 
                 // React renders the element asynchronously; poll until it appears in two.scene.children,
-                // then remove the preview so there is no blank gap between preview removal and final render
-                const removePreview = () => {
+                // then remove the preview so there is no blank gap between preview removal and final render.
+                // Once the real group exists, auto-select it so the resize box and the edit toolbar appear
+                // immediately — a visual cue to new users that the freshly drawn shape is editable.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const finishPlacement = (el?: any) => {
                     if (capturedPreview) {
                         two.remove(capturedPreview)
                         two.update()
                     }
+                    if (el) selectionController.attach(el)
                 }
-                pollUntilElement(two, finalId, removePreview, {
+                pollUntilElement(two, finalId, finishPlacement, {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     condition: (el: any) => !!el.children?.[0],
-                    onTimeout: removePreview,
+                    onTimeout: () => finishPlacement(),
                 })
-                setSelectedComponentInBoard(null)
 
                 drawOrigin = null
                 drawCurrentCoords = null

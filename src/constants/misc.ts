@@ -187,6 +187,10 @@ export const DRAFT_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
 export const BACKGROUND_BOARD_STORAGE_KEY = 'craftbase_background_board_id'
 export const STORAGE_QUOTA_ERROR_NAME = 'QuotaExceededError'
 
+// First-visit welcome sketch: once dismissed (user added their first element),
+// never seed again for this browser profile.
+export const WELCOME_DISMISSED_KEY = 'craftbase_welcome_dismissed'
+
 // Canvas rendering constants
 export const HOVER_THRESHOLD = 15
 export const HOVER_COLOR = 'rgba(196, 144, 26, 0.7)'

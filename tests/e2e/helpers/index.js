@@ -41,6 +41,12 @@ export async function setupLocalBoard(page) {
 
     await page.addInitScript(() => {
         localStorage.setItem('userId', 'test-user-id')
+        // Disable the first-visit welcome sketch for e2e: its seeded elements
+        // would inflate element counts and its entrance animation would race
+        // assertions. Setting the dismissal flag makes the board load as a
+        // returning visitor (empty canvas). Mirrors WELCOME_DISMISSED_KEY in
+        // src/constants/misc.ts.
+        localStorage.setItem('craftbase_welcome_dismissed', '1')
     })
 
     await page.goto('/')
@@ -115,7 +121,7 @@ export async function drawRectangle(page, coords) {
  * pre-action count), then returns the most recently added one. Used by the
  * shape-creation helpers that go through the actual toolbar click.
  */
-async function waitForNewElement(page, countBefore, { timeout = 5_000 } = {}) {
+async function waitForNewElement(page, countBefore, { timeout } = {}) {
     await page.waitForFunction(
         (before) =>
             document.querySelectorAll('[data-component-id]').length > before,
@@ -320,7 +326,7 @@ export async function clickPointerTool(page) {
 export async function dragSelectArea(
     page,
     { startX, startY, endX, endY },
-    { timeout = 5_000 } = {}
+    { timeout } = {}
 ) {
     await page.mouse.move(startX, startY)
     await page.mouse.down()
@@ -359,7 +365,7 @@ export async function addTextToRectangle(page, rectHandle, text) {
     const cy = box.y + box.height / 2
 
     await page.mouse.dblclick(cx, cy)
-    await page.waitForSelector('.temp-input-area', { timeout: 5_000 })
+    await page.waitForSelector('.temp-input-area')
     await page.fill('.temp-input-area', text)
     await page.keyboard.press('Tab')
 
@@ -367,7 +373,6 @@ export async function addTextToRectangle(page, rectHandle, text) {
     const groupId = await rectHandle.getAttribute('id')
     await page.waitForFunction(
         (id) => document.getElementById(id)?.querySelector('text') !== null,
-        groupId,
-        { timeout: 5_000 }
+        groupId
     )
 }

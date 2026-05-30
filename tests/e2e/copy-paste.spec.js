@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './helpers/test.js'
 import {
     setupLocalBoard,
     drawShape,
@@ -58,8 +58,7 @@ test.describe('Copy-paste', () => {
         await page.keyboard.press('Meta+v')
 
         await page.waitForFunction(
-            () => document.querySelectorAll('[data-component-id]').length >= 2,
-            { timeout: 5_000 }
+            () => document.querySelectorAll('[data-component-id]').length >= 2
         )
 
         const originalId = await rectHandle.getAttribute('id')
@@ -105,8 +104,7 @@ test.describe('Copy-paste', () => {
         await page.keyboard.press('Meta+v')
 
         await page.waitForFunction(
-            () => document.querySelectorAll('[data-component-id]').length >= 2,
-            { timeout: 5_000 }
+            () => document.querySelectorAll('[data-component-id]').length >= 2
         )
 
         const originalId = await rectHandle.getAttribute('id')
@@ -152,8 +150,7 @@ test.describe('Copy-paste', () => {
         await page.keyboard.press('Meta+v')
 
         await page.waitForFunction(
-            () => document.querySelectorAll('[data-component-id]').length >= 2,
-            { timeout: 5_000 }
+            () => document.querySelectorAll('[data-component-id]').length >= 2
         )
 
         const originalId = await circleHandle.getAttribute('id')
@@ -227,8 +224,7 @@ test.describe('Copy-paste', () => {
                     ?.querySelector('ellipse, path, circle')
                 return node?.getAttribute('fill') === color
             },
-            { id: originalId, color: NEW_FILL },
-            { timeout: 5_000 }
+            { id: originalId, color: NEW_FILL }
         )
 
         // Click off the shape to deselect, so Cmd+V pastes via the canvas
@@ -246,8 +242,7 @@ test.describe('Copy-paste', () => {
         await page.keyboard.press('Meta+v')
 
         await page.waitForFunction(
-            () => document.querySelectorAll('[data-component-id]').length >= 2,
-            { timeout: 5_000 }
+            () => document.querySelectorAll('[data-component-id]').length >= 2
         )
 
         const allGroups = await page.$$('[data-component-id]')

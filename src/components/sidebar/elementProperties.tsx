@@ -76,7 +76,6 @@ interface ResolveSetKeyOptions {
     selectedComponent: any
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     selectedGroup: any
-    isArrowDrawMode: boolean
     isTextDrawMode: boolean
     // Active tool from the toolbar (e.g. 'route'/'area'/'point' while a geo
     // draw is in progress, before any vertex/element is selected).
@@ -88,7 +87,6 @@ function resolveSetKey({
     isPencilMode,
     selectedComponent,
     selectedGroup,
-    isArrowDrawMode,
     isTextDrawMode,
     currentElement,
 }: ResolveSetKeyOptions): string | null {
@@ -139,7 +137,9 @@ function resolveSetKey({
         if (elementType === 'pencil') return 'PENCIL'
         return 'SHAPE'
     }
-    if (isArrowDrawMode) return 'ARROW'
+    // Arrow intentionally has no armed-mode panel: the ARROW toolbar appears
+    // only once a drawn arrow is selected (handled above), so merely picking the
+    // arrow tool doesn't surface the edit toolbar.
     if (isTextDrawMode) return 'TEXT'
     // Geo draw modes: the toolbar tool is active but nothing is selected yet.
     // Surface the geo property panel so stroke edits seed the next draw — the
@@ -147,7 +147,11 @@ function resolveSetKey({
     // Point is excluded: its category lives in the toolbar drawer, not here.
     if (currentElement === 'area') return 'GEO_AREA'
     if (currentElement === 'route') return 'GEO_ROUTE'
-    return 'SHAPE'
+    // No selection and no active tool — hide the panel. Defaults still apply
+    // to the next-created shape (the `useElementDefaults` state is unchanged);
+    // users edit them by selecting a shape, which auto-syncs the default per
+    // createApplyProperty.
+    return null
 }
 
 interface ReadEffectiveValuesOptions {
@@ -405,7 +409,6 @@ const ElementPropertiesToolbar = () => {
 
     const {
         isPencilMode,
-        isArrowDrawMode,
         isTextDrawMode,
         isRubberMode,
         selectedComponent,
@@ -433,7 +436,6 @@ const ElementPropertiesToolbar = () => {
                 isPencilMode,
                 selectedComponent,
                 selectedGroup,
-                isArrowDrawMode,
                 isTextDrawMode,
                 currentElement,
             }),
@@ -442,7 +444,6 @@ const ElementPropertiesToolbar = () => {
             isPencilMode,
             selectedComponent,
             selectedGroup,
-            isArrowDrawMode,
             isTextDrawMode,
             currentElement,
         ]

@@ -119,6 +119,13 @@ export interface BoardProps {
         points: PointScreenInfo[],
         camera: CameraChangeEvent
     ) => Cluster[]
+    /**
+     * Opt-in: seed a small onboarding sketch on the first visit (no draft
+     * restored, no prior dismissal). Dismissed the moment the user creates
+     * their first element. Default off — craftmaps and other map-backed
+     * consumers should leave this off and supply their own onboarding.
+     */
+    welcomeSketch?: boolean
 }
 
 // --- Context value ------------------------------------------------------
