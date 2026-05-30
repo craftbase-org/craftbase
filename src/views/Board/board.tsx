@@ -552,15 +552,40 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         localStorage.setItem(WELCOME_DISMISSED_KEY, '1')
 
         const sweepStore = (): void => {
+            const two = twoJSInstanceRef.current
             const next = { ...stateRefForComponentStore.current }
             welcomeIds.forEach((id) => {
                 delete next[id]
+                // The exit tween only fades opacity to 0; the node stays in the
+                // Two.js scene and remains hit-testable. Remove it outright so a
+                // dismissed welcome element (e.g. the "Drag me" rect) can't be
+                // clicked after the user draws. The element's React wrapper never
+                // unmounts, so nothing else removes it from the scene.
+                if (two) {
+                    const el = two.scene.children.find(
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (child: any) => child?.elementData?.id === id
+                    )
+                    if (el) two.remove(el)
+                }
                 window.dispatchEvent(
                     new CustomEvent('elementRemoved', { detail: { id } })
                 )
             })
             stateRefForComponentStore.current = next
             setComponentStore(next)
+            if (two) {
+                try {
+                    two.update()
+                } catch {
+                    // See CLAUDE.md "Two.js scene.subtractions Pitfall": if the
+                    // render throws, the bad subtraction stays queued and every
+                    // later two.update() repeats the crash. Clear it so the
+                    // canvas keeps rendering.
+                    two.scene.subtractions.length = 0
+                    two.scene._flagSubtractions = false
+                }
+            }
         }
 
         playWelcomeSketchExit(twoJSInstanceRef.current, welcomeIds, sweepStore)
