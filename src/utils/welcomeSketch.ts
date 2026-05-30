@@ -12,6 +12,7 @@
 // visible center, with one anchor near the bottom-left zoom controls.
 
 import { generateUUID } from './misc'
+import { pollUntilElement } from './canvasUtils'
 import type { ComponentRecord, ComponentStore } from '../types/board'
 
 const SKETCH_OPACITY = 0.45
@@ -23,6 +24,9 @@ interface WelcomeMetadata {
     [key: string]: unknown
     isWelcome: true
     opacity: number
+    // Marks the one element that types itself in first; the rest of the sketch
+    // is held back until it finishes. See playWelcomeSketchEntrance.
+    welcomeRole?: 'headline'
     // Standalone-text fields (read by NewText factory)
     content?: string
     fontSize?: number
@@ -45,7 +49,8 @@ function makeText(
     x: number,
     y: number,
     content: string,
-    fontSize: number
+    fontSize: number,
+    fill: string = 'transparent'
 ): ComponentRecord {
     return {
         id: generateUUID(),
@@ -58,7 +63,7 @@ function makeText(
         y2: 0,
         width: 220,
         height: 40,
-        fill: 'transparent',
+        fill,
         stroke: null,
         linewidth: null,
         strokeType: null,
@@ -77,6 +82,23 @@ function makeText(
         updatedBy: null,
         createdAt: null,
     }
+}
+
+/**
+ * A standalone-text element tagged as the sketch's headline — the one piece
+ * that types itself in (character-by-character) before the rest of the sketch
+ * is revealed. See playWelcomeSketchEntrance.
+ */
+function makeHeadline(
+    boardId: string,
+    x: number,
+    y: number,
+    content: string,
+    fontSize: number
+): ComponentRecord {
+    const rec = makeText(boardId, x, y, content, fontSize)
+    ;(rec.metadata as WelcomeMetadata).welcomeRole = 'headline'
+    return rec
 }
 
 function makeRect(
@@ -140,7 +162,7 @@ function makeRectWithText(
         y2: 0,
         width,
         height,
-        fill: '#ffffff',
+        fill: 'transparent',
         stroke: SKETCH_STROKE,
         linewidth: 2,
         strokeType: 'solid',
@@ -174,7 +196,8 @@ function makeArrow(
     y1: number,
     x2: number,
     y2: number,
-    strokeType: StrokeType = 'solid'
+    strokeType: StrokeType = 'solid',
+    fill: string = 'transparent'
 ): ComponentRecord {
     return {
         id: generateUUID(),
@@ -187,7 +210,7 @@ function makeArrow(
         y2,
         width: 0,
         height: 0,
-        fill: 'transparent',
+        fill,
         stroke: SKETCH_STROKE,
         linewidth: 2,
         strokeType,
@@ -231,9 +254,11 @@ function buildMobileWelcomeSketch(
     const cx = Math.round(width / 2)
 
     const elements: ComponentRecord[] = [
-        // Subhead — two compact lines near the top, centered.
-        makeText(boardId, cx - 110, 60, 'A minimal whiteboard.', 22),
-        makeText(boardId, cx - 80, 95, 'Start drawing →', 20),
+        // Subhead — two compact lines in the upper-left, sitting well inside
+        // the corner. Both lines type themselves in (top line first), then the
+        // rest of the sketch follows.
+        makeHeadline(boardId, 72, 132, 'A minimal whiteboard.', 22),
+        makeHeadline(boardId, 72, 164, 'Start drawing →', 20),
 
         // Rect-with-text centered. "Tap me" since drag-on-touch is two-finger.
         makeRectWithText(boardId, cx, 220, 150, 80, 'Tap me', 22),
@@ -245,7 +270,13 @@ function buildMobileWelcomeSketch(
         // Group origin centered horizontally; arrowhead lands just above the
         // toolbar row.
         makeArrow(boardId, cx, height - 250, 0, 0, 0, 170, 'dashed'),
-        makeText(boardId, cx - 60, height - 280, '↓ Pick a shape', 18),
+        makeText(
+            boardId,
+            cx - 60,
+            height - 280,
+            '↓ Pick a shape OR draw with pencil',
+            18
+        ),
     ]
 
     return Object.fromEntries(elements.map((el) => [el.id, el]))
@@ -266,9 +297,11 @@ function buildLargeWelcomeSketch(
     const cy = Math.round(height / 2)
 
     const elements: ComponentRecord[] = [
-        // Subhead — two-line sketch text near the visible center.
-        makeText(boardId, cx - 160, cy - 220, 'A minimal whiteboard.', 32),
-        makeText(boardId, cx - 140, cy - 180, 'Start drawing →', 28),
+        // Subhead — two-line sketch text in the upper-left region, sitting well
+        // inside the corner and clear of the top-center shapes toolbar. Both
+        // lines type themselves in (top line first), then the rest follows.
+        makeHeadline(boardId, 150, 175, 'A minimal whiteboard.', 32),
+        makeHeadline(boardId, 150, 215, 'Start drawing →', 28),
 
         // Rect-with-text: the rectangle carries its "Drag me" label via
         // metadata (hasText + textContent), matching the existing
@@ -276,10 +309,19 @@ function buildLargeWelcomeSketch(
         makeRectWithText(boardId, cx - 200, cy + 20, 180, 100, 'Drag me', 26),
 
         // Arrow pointing UP toward the top shapes toolbar + label below it.
-        // Group anchored to the right of the rect; arrowhead lands near the
-        // toolbar row (~y=80 in screen space).
-        makeArrow(boardId, cx + 120, cy - 100, 0, 0, 0, -(cy - 180), 'dashed'),
-        makeText(boardId, cx + 60, cy - 80, '↑ Pick a shape', 24),
+        // Anchored at screen center so it sits above the centered label below;
+        // arrowhead lands near the toolbar row (~y=80 in screen space).
+        makeArrow(boardId, cx, cy - 110, 0, 0, 0, -(cy - 180), 'dashed'),
+        // Label horizontally centered on screen. Text is left-aligned, so its
+        // origin sits ~half the rendered width left of center. Vertical position
+        // is unchanged.
+        makeText(
+            boardId,
+            cx - 150,
+            cy - 80,
+            '↑ Pick a shape OR draw with pencil',
+            24
+        ),
 
         // Standalone label — no arrow. Double-click is a canvas-wide action.
         makeText(
@@ -323,4 +365,286 @@ export function buildWelcomeSketch(
 export function isWelcomeComponent(comp: ComponentRecord | undefined): boolean {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return !!(comp?.metadata as any)?.isWelcome
+}
+
+// ── Soft-land entrance / lift-off exit ──
+// The welcome sketch animates in and out by mutating each Two.js node directly
+// (`.translation.y`, `.opacity`) and calling `two.update()` per frame. We go
+// node-direct (not CSS, not store-driven) because the canvas runs manual
+// updates with no continuous play loop, and element components freeze their
+// props at mount — store values won't re-flow on their own.
+//
+// Entrance: each element starts a few px above its resting Y and transparent,
+// then eases down + fades to its resting opacity, cascading in source order.
+// Exit: each element fades to 0 while drifting up a touch ("lifts off"), then
+// the caller sweeps it from the store.
+
+/** px each element starts above its resting Y before it "lands". */
+const ENTRANCE_DROP = 26
+/** ms for a single element to travel from primed → resting. */
+const ENTRANCE_DURATION = 540
+/** ms offset between successive elements (the cascade). */
+const ENTRANCE_STAGGER = 85
+
+/** px each element drifts upward as it fades out. */
+const EXIT_LIFT = 16
+/** ms for a single element to fade from resting → gone. */
+const EXIT_DURATION = 360
+/** ms offset between successive elements on the way out. */
+const EXIT_STAGGER = 30
+
+/** ms beat before each headline line starts "writing". */
+const TYPE_START_DELAY = 220
+/** characters "written" per second. */
+const TYPE_CPS = 26
+/** floor so a short line still reads as written, not flashed. */
+const TYPE_MIN_DURATION = 700
+/** ms beat after the last headline line finishes before the rest reveals. */
+const POST_TYPE_HOLD = 180
+
+function easeOutCubic(t: number): number {
+    return 1 - Math.pow(1 - t, 3)
+}
+
+function clamp01(t: number): number {
+    return Math.min(1, Math.max(0, t))
+}
+
+// A standalone-text element's writeable node is its group's first child
+// carrying a string `.value` (the Two.Text holding line 1).
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function findTextNode(group: any): any {
+    return group?.children?.find?.((c: any) => typeof c?.value === 'string')
+}
+
+// Blank a headline line so it doesn't flash its full text before its turn to be
+// written. Opacity is left at rest — an empty string simply shows nothing.
+function blankTextNode(two: any, group: any): void {
+    const textNode = findTextNode(group)
+    if (textNode) {
+        textNode.value = ''
+        two.update()
+    }
+}
+
+// Reveal a standalone-text node character-by-character, mimicking the example's
+// path `ending` draw — but Two.Text has no `ending`, so we grow its `.value`
+// substring instead (the writeable equivalent for type). `full` is passed in
+// (not read off the node) because the node is blanked ahead of its turn.
+function typewriteNode(
+    two: any,
+    group: any,
+    full: string,
+    onDone: () => void
+): void {
+    const textNode = findTextNode(group)
+    const total = full.length
+    if (!textNode || total === 0) {
+        onDone()
+        return
+    }
+    const duration = Math.max(TYPE_MIN_DURATION, (total / TYPE_CPS) * 1000)
+
+    textNode.value = ''
+    two.update()
+
+    const start = performance.now() + TYPE_START_DELAY
+    const step = (now: number): void => {
+        const t = clamp01((now - start) / duration)
+        const next = full.slice(0, Math.round(total * t))
+        if (next !== textNode.value) {
+            textNode.value = next
+            two.update()
+        }
+        if (t < 1) requestAnimationFrame(step)
+        else onDone()
+    }
+    requestAnimationFrame(step)
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+interface NodeTween {
+    fromY: number
+    toY: number
+    fromOpacity: number
+    toOpacity: number
+    duration: number
+    delay?: number
+    onDone?: () => void
+}
+
+// Per-node generation token. Each new tween bumps the node's token; an
+// in-flight tween whose token no longer matches bails on its next frame. This
+// is what lets an exit cleanly supersede a still-running entrance on the same
+// element without the two loops fighting over `.opacity`.
+const ANIM_TOKEN = '__welcomeAnimToken'
+let animSeq = 0
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function tweenNode(two: any, el: any, tween: NodeTween): void {
+    const { fromY, toY, fromOpacity, toOpacity, duration, delay = 0 } = tween
+    const token = ++animSeq
+    el[ANIM_TOKEN] = token
+    const start = performance.now() + delay
+
+    // Prime to the start state immediately so there's no first-frame flash of
+    // the renderer's resting values.
+    el.translation.y = fromY
+    el.opacity = fromOpacity
+    two.update()
+
+    const step = (now: number): void => {
+        if (el[ANIM_TOKEN] !== token) return // superseded by a newer tween
+        const t = Math.min(1, Math.max(0, (now - start) / duration))
+        const e = easeOutCubic(t)
+        el.translation.y = fromY + (toY - fromY) * e
+        el.opacity = fromOpacity + (toOpacity - fromOpacity) * e
+        two.update()
+        if (t < 1) requestAnimationFrame(step)
+        else tween.onDone?.()
+    }
+    requestAnimationFrame(step)
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
+ * Animate the welcome sketch in, in two beats:
+ *   1. Each headline-tagged line types itself in, character-by-character, one
+ *      after another in source order.
+ *   2. Once the last line finishes, every other element soft-lands in a
+ *      staggered cascade.
+ *
+ * The rest of the sketch is held hidden (opacity 0) until beat 1 completes, so
+ * the headlines write onto an otherwise empty canvas. Safe to call once right
+ * after the sketch is seeded — each element is polled for until its Two.js node
+ * mounts, so timing against React's async render is handled internally. With no
+ * tagged headline, every element simply soft-lands together.
+ */
+export function playWelcomeSketchEntrance(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    two: any,
+    store: ComponentStore
+): void {
+    if (!two) return
+    const ids = Object.keys(store).filter((id) => isWelcomeComponent(store[id]))
+    if (ids.length === 0) return
+
+    const headlineIds = ids.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (id) => (store[id]?.metadata as any)?.welcomeRole === 'headline'
+    )
+    const restIds = ids.filter((id) => !headlineIds.includes(id))
+
+    // Landers for the rest run only after the headlines are written. Elements
+    // may mount before or after that moment, so each fires now or is queued.
+    let headlinesDone = headlineIds.length === 0
+    const queued: Array<() => void> = []
+    const runOrQueue = (land: () => void): void => {
+        if (headlinesDone) land()
+        else queued.push(land)
+    }
+
+    restIds.forEach((id, index) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pollUntilElement(two, id, (el: any) => {
+            const restY: number = el.translation.y
+            const restOpacity: number = el.opacity ?? 1
+            // Hold hidden until it's this element's turn to land.
+            el.opacity = 0
+            two.update()
+            runOrQueue(() =>
+                tweenNode(two, el, {
+                    fromY: restY - ENTRANCE_DROP,
+                    toY: restY,
+                    fromOpacity: 0,
+                    toOpacity: restOpacity,
+                    duration: ENTRANCE_DURATION,
+                    delay: index * ENTRANCE_STAGGER,
+                })
+            )
+        })
+    })
+
+    // Blank every headline line up front so none flash their full text while an
+    // earlier line is still being written.
+    headlineIds.forEach((id) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pollUntilElement(two, id, (group: any) => blankTextNode(two, group))
+    })
+
+    // Type the headline lines one after another, then release the rest.
+    const typeLine = (i: number): void => {
+        if (i >= headlineIds.length) {
+            setTimeout(() => {
+                headlinesDone = true
+                queued.splice(0).forEach((land) => land())
+            }, POST_TYPE_HOLD)
+            return
+        }
+        const id = headlineIds[i] as string
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const full = String((store[id]?.metadata as any)?.content ?? '')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pollUntilElement(two, id, (group: any) => {
+            typewriteNode(two, group, full, () => typeLine(i + 1))
+        })
+    }
+    typeLine(0)
+}
+
+/**
+ * Gently fade + lift the given welcome elements out of the scene, then invoke
+ * `onComplete` once the last one finishes so the caller can sweep them from the
+ * store. Supersedes any in-flight entrance on the same nodes. If nothing is
+ * mounted, `onComplete` still fires (next tick) so the store sweep never stalls.
+ *
+ * Returns the total animation duration (ms) for callers that want to schedule
+ * their own fallback.
+ */
+export function playWelcomeSketchExit(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    two: any,
+    ids: string[],
+    onComplete?: () => void
+): number {
+    const totalDuration =
+        EXIT_DURATION + Math.max(0, ids.length - 1) * EXIT_STAGGER
+
+    if (!two || ids.length === 0) {
+        if (onComplete) requestAnimationFrame(onComplete)
+        return totalDuration
+    }
+
+    let pending = 0
+    let done = false
+    const finishOnce = (): void => {
+        if (done) return
+        done = true
+        onComplete?.()
+    }
+
+    ids.forEach((id, index) => {
+        const el = two.scene.children.find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (child: any) => child?.elementData?.id === id
+        )
+        if (!el) return
+        pending++
+        tweenNode(two, el, {
+            fromY: el.translation.y,
+            toY: el.translation.y - EXIT_LIFT,
+            fromOpacity: el.opacity ?? 1,
+            toOpacity: 0,
+            duration: EXIT_DURATION,
+            delay: index * EXIT_STAGGER,
+            onDone: () => {
+                pending--
+                if (pending === 0) finishOnce()
+            },
+        })
+    })
+
+    // Nothing was actually mounted — don't strand the caller's sweep.
+    if (pending === 0) requestAnimationFrame(finishOnce)
+    return totalDuration
 }
