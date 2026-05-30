@@ -9,6 +9,7 @@ A minimal whiteboard you can open and start drawing on. No signup, no setup, no 
     sketching a few shapes + some pencil strokes, then drop it at the path below.
     A moving picture sells this far better than any paragraph can.
 -->
+
 ![Craftbase demo](./src/assets/craftbase-demo.gif)
 
 ## What it is
@@ -17,7 +18,7 @@ I wanted a whiteboard that gets out of the way. Most tools make you sign in, pic
 
 Things you can do on a board:
 
-- Sketch with shapes (rectangle, circle, diamond), the freehand pencil, arrows and dividers
+- Sketch with shapes (rectangle, circle, diamond), the freehand pencil, arrows or erase with rubber
 - Drop text anywhere, including text that lives inside a shape
 - Pan and zoom around an infinite canvas
 - Style what you draw — stroke, fill, width, dashes, color, opacity
@@ -30,13 +31,13 @@ A fair warning: I work on this mostly on weekends, so expect the occasional bug 
 
 ## Craftbase as an embeddable whiteboard
 
-Craftbase isn't only the app at craftbase.org. The `Board` is a self-contained, embeddable whiteboard component, and other apps consume it as a library. The first one is **craftmaps**, which mounts a Craftbase board behind a Mapbox basemap so you can sketch freehand on top of a real map — draw a route, circle a neighborhood, annotate a place — and have it stay anchored as you pan and zoom.
+Craftbase isn't only the app at craftbase.org. The `Board` is a self-contained, embeddable whiteboard component, and other apps consume it as a library.
 
 If you want to embed a canvas in your own app, the public surface lives in `src/lib.ts` (`Board`, `BoardContext`, the hooks, bootstrap helpers). `Board` takes optional extension props like `renderBackground`, `onCameraChange`, and `scaleToDisplay` so you can layer your own content underneath and react to the camera without forking anything.
 
 ## How it's built
 
-![Architecture](https://raw.githubusercontent.com/craftbase-org/craftbase/refs/heads/main/src/assets/craftbase_frontend_architecture.png)
+![Architecture](.src/assets/craftbase_frontend_architecture.png)
 
 Craftbase renders its canvas with [two.js](https://github.com/jonobr1/two.js), a lovely 2D scene-graph library by [Jono Brandel](https://github.com/jonobr1). Two.js draws the scene; React drives the UI and state around it.
 
