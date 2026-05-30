@@ -37,7 +37,7 @@ If you want to embed a canvas in your own app, the public surface lives in `src/
 
 ## How it's built
 
-![Architecture](.src/assets/craftbase_frontend_architecture.png)
+![Architecture](./src/assets/craftbase_frontend_architecture.png)
 
 Craftbase renders its canvas with [two.js](https://github.com/jonobr1/two.js), a lovely 2D scene-graph library by [Jono Brandel](https://github.com/jonobr1). Two.js draws the scene; React drives the UI and state around it.
 
