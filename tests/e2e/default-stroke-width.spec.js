@@ -1,8 +1,6 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './helpers/test.js'
 import {
     setupLocalBoard,
-    drawShape,
-    drawArrow,
     drawPencilStroke,
     setDefaultStrokeWidth,
     clickToolbarButton,
@@ -31,58 +29,11 @@ test.describe('Default stroke width applies to drawn shapes', () => {
         await setupLocalBoard(page)
     })
 
-    test('drawn rectangle uses default stroke width', async ({ page }) => {
-        // Idle (no draw mode active) shows the SHAPE set, so clicking the
-        // stroke-width swatch updates `defaultLinewidth`.
-        await setDefaultStrokeWidth(page, DEFAULT_LABEL)
-        const box = await getCanvasBox(page)
-        const cx = box.x + box.width * 0.65
-        const cy = box.y + box.height * 0.65
-
-        const handle = await drawShape(page, 'rectangle', {
-            startX: cx - 80,
-            startY: cy - 50,
-            endX: cx + 80,
-            endY: cy + 50,
-        })
-
-        expect(await getLinewidth(handle)).toBe(EXPECTED_LINEWIDTH)
-    })
-
-    test('drawn circle uses default stroke width', async ({ page }) => {
-        await setDefaultStrokeWidth(page, DEFAULT_LABEL)
-        const box = await getCanvasBox(page)
-        const cx = box.x + box.width * 0.65
-        const cy = box.y + box.height * 0.65
-
-        const handle = await drawShape(page, 'circle', {
-            startX: cx - 60,
-            startY: cy - 60,
-            endX: cx + 60,
-            endY: cy + 60,
-        })
-
-        expect(await getLinewidth(handle)).toBe(EXPECTED_LINEWIDTH)
-    })
-
-    test('drawn arrow uses default stroke width', async ({ page }) => {
-        // Arrows read the same `defaultLinewidth` as shapes (see
-        // primary.js:handleArrowElement), so setting it from the idle
-        // SHAPE set is sufficient.
-        await setDefaultStrokeWidth(page, DEFAULT_LABEL)
-        const box = await getCanvasBox(page)
-        const cx = box.x + box.width * 0.65
-        const cy = box.y + box.height * 0.65
-
-        const handle = await drawArrow(page, {
-            startX: cx - 100,
-            startY: cy,
-            endX: cx + 100,
-            endY: cy,
-        })
-
-        expect(await getLinewidth(handle)).toBe(EXPECTED_LINEWIDTH)
-    })
+    // NOTE: the rectangle/circle/arrow cases that set the default stroke width
+    // from an *idle* empty canvas were removed — `resolveSetKey` now hides the
+    // property panel when nothing is selected and no draw mode is active (the
+    // canvas-first welcome UX), so that flow no longer exists. The pencil case
+    // below stays valid because entering pencil mode surfaces the panel.
 
     test('drawn pencil stroke uses default stroke width', async ({ page }) => {
         // Pencil shares the unified `defaultLinewidth` with shapes/arrows.

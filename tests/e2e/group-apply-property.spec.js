@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './helpers/test.js'
 import {
     setupLocalBoard,
     getCanvasBox,
@@ -172,7 +172,7 @@ async function selectGroup(page, layout) {
         endY: by + 2 * ROW + H + 60,
     })
     expect(groupHandle).not.toBeNull()
-    await page.waitForSelector('#floating-toolbar', { timeout: 5_000 })
+    await page.waitForSelector('#floating-toolbar')
 }
 
 /**
@@ -187,8 +187,7 @@ async function deselectGroup(page, layout) {
         () =>
             document.querySelectorAll('[data-label="groupobject_coord"]')
                 .length === 0,
-        null,
-        { timeout: 5_000 }
+        null
     )
 }
 

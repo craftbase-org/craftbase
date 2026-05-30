@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './helpers/test.js'
 import {
     setupLocalBoard,
     placeText,
@@ -71,12 +71,12 @@ async function createMultilineText(page, content = 'AAAAA\nBBBBB') {
     const handle = await placeText(page, { x: cx, y: cy })
 
     const editor = page.locator('.temp-input-area')
-    await editor.waitFor({ state: 'visible', timeout: 5_000 })
+    await editor.waitFor({ state: 'visible' })
     await editor.fill(content)
     await page.keyboard.press('Tab')
     // Editor must be fully closed before any copy — the clipboard handler
     // bails when the active element is a textarea.
-    await expect(editor).toHaveCount(0, { timeout: 5_000 })
+    await expect(editor).toHaveCount(0)
     // Poll via the stable Playwright handle (the Two.js DOM id churns on
     // re-render, so getElementById(staleId) is flaky).
     await expect.poll(() => lineCountOf(handle)).toBeGreaterThanOrEqual(2)
@@ -92,7 +92,6 @@ async function selectText(page, handle, emptyX, emptyY) {
     await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2)
     await page.locator('#floating-toolbar').waitFor({
         state: 'visible',
-        timeout: 5_000,
     })
 }
 
@@ -262,10 +261,10 @@ test.describe('Multiline standalone text', () => {
         const b = await handle.boundingBox()
         await page.mouse.dblclick(b.x + b.width / 2, b.y + b.height / 2)
         const editor = page.locator('.temp-input-area')
-        await editor.waitFor({ state: 'visible', timeout: 5_000 })
+        await editor.waitFor({ state: 'visible' })
         await editor.fill('AAAAA\nCCCCC')
         await page.keyboard.press('Enter')
-        await expect(editor).toHaveCount(0, { timeout: 5_000 })
+        await expect(editor).toHaveCount(0)
 
         await expect.poll(() => lineCountOf(handle)).toBe(2)
         expect(await contentOf(handle)).toBe('AAAAA CCCCC')
@@ -309,10 +308,10 @@ test.describe('Shape-with-text undo', () => {
         const rb = await rectHandle.boundingBox()
         await page.mouse.dblclick(rb.x + rb.width / 2, rb.y + rb.height / 2)
         const editor = page.locator('.temp-input-area')
-        await editor.waitFor({ state: 'visible', timeout: 5_000 })
+        await editor.waitFor({ state: 'visible' })
         await editor.fill('AAAAA\nCCCCC')
         await page.keyboard.press('Enter')
-        await expect(editor).toHaveCount(0, { timeout: 5_000 })
+        await expect(editor).toHaveCount(0)
 
         await expect.poll(() => readGroupText(rectHandle)).toBe('AAAAA CCCCC')
 

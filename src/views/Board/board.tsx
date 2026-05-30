@@ -63,7 +63,13 @@ import {
     GEO_DRAW_PROPS_KEY,
     GEO_POINT_PLACE_MODE_KEY,
     DEFAULT_GEO_RESIST,
+    WELCOME_DISMISSED_KEY,
 } from '../../constants/misc'
+import {
+    isWelcomeComponent,
+    playWelcomeSketchEntrance,
+    playWelcomeSketchExit,
+} from '../../utils/welcomeSketch'
 import { useDrawingModes } from '../../hooks/useDrawingModes'
 import { useElementDefaults } from '../../hooks/useElementDefaults'
 import { useMobileToolbarPanels } from '../../hooks/useMobileToolbarPanels'
@@ -197,6 +203,11 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef<ComponentStore>({})
+    // Guards the one-shot welcome-sketch soft-land entrance.
+    const welcomeEntrancePlayedRef = useRef(false)
+    // Guards the one-shot welcome-sketch exit so a burst of first adds only
+    // fades the sketch out once.
+    const welcomeDismissInFlightRef = useRef(false)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const twoJSInstanceRef = useRef<any>(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -265,6 +276,8 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         backgroundBoardIdRef,
         setBackgroundBoardId,
         onStorageLimitRef,
+        welcomeSketch: props.welcomeSketch,
+        isMobile,
     })
 
     const {
@@ -417,6 +430,22 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         stateRefForComponentStore.current = componentStore
     }, [componentStore])
 
+    // One-shot soft-land entrance for the welcome sketch. Fires once the seeded
+    // welcome elements are in the store AND the Two.js instance is live; the
+    // animation polls per-element for its mounted node, so this only needs to
+    // catch the first time both conditions hold.
+    useEffect(() => {
+        if (welcomeEntrancePlayedRef.current) return
+        const two = twoJSInstanceRef.current
+        if (!two) return
+        const hasWelcome = Object.values(componentStore).some((comp) =>
+            isWelcomeComponent(comp)
+        )
+        if (!hasWelcome) return
+        welcomeEntrancePlayedRef.current = true
+        playWelcomeSketchEntrance(two, componentStore)
+    }, [componentStore, twoJSInstance])
+
     // NOTE: the persisted-board loading gate lives in the parent
     // (views/Board/index.tsx). Never add a conditional `return` here — this
     // component runs hundreds of hooks below this point and an early return
@@ -504,6 +533,64 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         }
     }
 
+    // Gently fades + lifts the welcome-sketch elements out, then clears them
+    // from the store, on the user's first real interaction. The exit tween runs
+    // node-direct via the same primitive as the soft-land entrance (and
+    // supersedes it if still in flight); the store sweep is gated on the tween
+    // finishing so elements aren't yanked mid-fade. Guarded so a burst of first
+    // adds only triggers one dismissal.
+    const dismissWelcomeSketch = (): void => {
+        if (welcomeDismissInFlightRef.current) return
+        const welcomeIds = Object.keys(
+            stateRefForComponentStore.current
+        ).filter((id) =>
+            isWelcomeComponent(stateRefForComponentStore.current[id])
+        )
+        if (welcomeIds.length === 0) return
+
+        welcomeDismissInFlightRef.current = true
+        localStorage.setItem(WELCOME_DISMISSED_KEY, '1')
+
+        const sweepStore = (): void => {
+            const two = twoJSInstanceRef.current
+            const next = { ...stateRefForComponentStore.current }
+            welcomeIds.forEach((id) => {
+                delete next[id]
+                // The exit tween only fades opacity to 0; the node stays in the
+                // Two.js scene and remains hit-testable. Remove it outright so a
+                // dismissed welcome element (e.g. the "Drag me" rect) can't be
+                // clicked after the user draws. The element's React wrapper never
+                // unmounts, so nothing else removes it from the scene.
+                if (two) {
+                    const el = two.scene.children.find(
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (child: any) => child?.elementData?.id === id
+                    )
+                    if (el) two.remove(el)
+                }
+                window.dispatchEvent(
+                    new CustomEvent('elementRemoved', { detail: { id } })
+                )
+            })
+            stateRefForComponentStore.current = next
+            setComponentStore(next)
+            if (two) {
+                try {
+                    two.update()
+                } catch {
+                    // See CLAUDE.md "Two.js scene.subtractions Pitfall": if the
+                    // render throws, the bad subtraction stays queued and every
+                    // later two.update() repeats the crash. Clear it so the
+                    // canvas keeps rendering.
+                    two.scene.subtractions.length = 0
+                    two.scene._flagSubtractions = false
+                }
+            }
+        }
+
+        playWelcomeSketchExit(twoJSInstanceRef.current, welcomeIds, sweepStore)
+    }
+
     // Records ADD action, updates store and syncs to DB
     const addToLocalComponentStore = (
         id: string,
@@ -526,6 +613,13 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             ...safeInfo
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } = (componentInfo ?? {}) as any
+
+        // User's first real element dismisses the onboarding sketch. Welcome
+        // elements are seeded via setComponentStore directly (never through
+        // this path), so any add here is by definition "real" user content.
+        if (!isWelcomeComponent(safeInfo as ComponentRecord)) {
+            dismissWelcomeSketch()
+        }
 
         // Trigger background board creation on first interaction
         ensureBackgroundBoard()
@@ -856,6 +950,8 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             // from undo/redo restore paths and would abort the whole bulk
             // insert with a NOT NULL violation on componentType.
             .filter(([, comp]) => (comp as ComponentRecord)?.componentType)
+            // Welcome-sketch seeds are onboarding scaffolding — never share them.
+            .filter(([, comp]) => !isWelcomeComponent(comp as ComponentRecord))
             .map(([, comp]) => {
                 const {
                     relativeX: _rX,

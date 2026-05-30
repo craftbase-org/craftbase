@@ -6,8 +6,13 @@ import {
     BACKGROUND_BOARD_STORAGE_KEY,
     STORAGE_QUOTA_ERROR_NAME,
     GROUP_COMPONENT,
+    WELCOME_DISMISSED_KEY,
 } from '../constants/misc'
 import type { ComponentStore } from '../types/board'
+import {
+    buildWelcomeSketch,
+    isWelcomeComponent,
+} from '../utils/welcomeSketch'
 
 export interface LocalDraftPersistenceOptions {
     isPersisted: boolean
@@ -17,6 +22,14 @@ export interface LocalDraftPersistenceOptions {
     backgroundBoardIdRef: MutableRefObject<string | null>
     setBackgroundBoardId: Dispatch<SetStateAction<string | null>>
     onStorageLimitRef?: MutableRefObject<(() => void) | null>
+    /** Opt-in onboarding seed; see BoardProps.welcomeSketch. */
+    welcomeSketch?: boolean
+    /**
+     * Forwarded to `buildWelcomeSketch` to pick the mobile vs. large-screen
+     * layout. The mobile layout points "Pick a shape" at the bottom-left
+     * toolbar instead of the top-center one and drops the zoom arrow.
+     */
+    isMobile?: boolean
 }
 
 export interface LocalDraftPersistenceApi {
@@ -42,6 +55,8 @@ export function useLocalDraftPersistence({
     backgroundBoardIdRef,
     setBackgroundBoardId,
     onStorageLimitRef,
+    welcomeSketch,
+    isMobile,
 }: LocalDraftPersistenceOptions): LocalDraftPersistenceApi {
     const [showStorageLimitModal, setShowStorageLimitModal] = useState(false)
     const [storageLimitBoardUrl, setStorageLimitBoardUrl] = useState<
@@ -59,6 +74,7 @@ export function useLocalDraftPersistence({
             setBackgroundBoardId(savedBgBoardId)
         }
 
+        let restoredDraft = false
         try {
             const draft = localStorage.getItem(DRAFT_STORAGE_KEY)
             if (draft) {
@@ -70,7 +86,10 @@ export function useLocalDraftPersistence({
                             ([, v]) => v?.componentType !== GROUP_COMPONENT
                         )
                     ) as ComponentStore
-                    setComponentStore(safeComponents)
+                    if (Object.keys(safeComponents).length > 0) {
+                        setComponentStore(safeComponents)
+                        restoredDraft = true
+                    }
                 } else {
                     localStorage.removeItem(DRAFT_STORAGE_KEY)
                     localStorage.removeItem(BACKGROUND_BOARD_STORAGE_KEY)
@@ -79,6 +98,23 @@ export function useLocalDraftPersistence({
         } catch {
             localStorage.removeItem(DRAFT_STORAGE_KEY)
             localStorage.removeItem(BACKGROUND_BOARD_STORAGE_KEY)
+        }
+
+        // First-visit welcome seed: only when opt-in flag is set, no draft was
+        // restored, and the user has not previously dismissed the sketch on
+        // this browser profile.
+        if (
+            welcomeSketch &&
+            !restoredDraft &&
+            !localStorage.getItem(WELCOME_DISMISSED_KEY)
+        ) {
+            setComponentStore(
+                buildWelcomeSketch(localBoardId, {
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    isMobile,
+                })
+            )
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -93,11 +129,17 @@ export function useLocalDraftPersistence({
         }
         draftSaveTimerRef.current = setTimeout(() => {
             try {
+                // Skip groupobject (transient) AND welcome-sketch seeds — the
+                // sketch is onboarding scaffolding that must never persist
+                // into the user's draft.
                 const componentsToSave = Object.fromEntries(
                     Object.entries(componentStore).filter(
-                        ([, v]) => v?.componentType !== GROUP_COMPONENT
+                        ([, v]) =>
+                            v?.componentType !== GROUP_COMPONENT &&
+                            !isWelcomeComponent(v)
                     )
                 ) as ComponentStore
+                if (Object.keys(componentsToSave).length === 0) return
                 localStorage.setItem(
                     DRAFT_STORAGE_KEY,
                     JSON.stringify({

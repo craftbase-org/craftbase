@@ -94,8 +94,13 @@ const MenuDrawer = (): ReactElement => {
         <>
             <div
                 ref={refNode}
-                className="relative bg-sidebar border border-border-panel shadow-card rounded-card"
-                style={{ position: 'fixed', top: '8px', left: '10px', zIndex: 10 }}
+                className="relative bg-card-bg border border-border-panel shadow-card rounded-card"
+                style={{
+                    position: 'fixed',
+                    top: '8px',
+                    left: '10px',
+                    zIndex: 10,
+                }}
             >
                 <div
                     title="Menu"

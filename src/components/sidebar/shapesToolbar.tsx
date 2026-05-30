@@ -162,7 +162,8 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
     const iconSize = isMobile ? 'w-4 h-4' : 'w-5 h-5'
 
     const shapeDrawerElements =
-        allElements.find((el) => el.elementName === openDrawer)?.drawerData ?? []
+        allElements.find((el) => el.elementName === openDrawer)?.drawerData ??
+        []
 
     const undoButton = (
         <div
@@ -205,7 +206,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                 so the bottom row stays uncrowded. Desktop keeps them inline. */}
             {isMobile && (
                 <div
-                    className="fixed bg-sidebar border border-border-panel shadow-card rounded-card flex items-center flex-row px-1 py-1 gap-0.5"
+                    className="fixed bg-card-bg border border-border-panel shadow-card rounded-card flex items-center flex-row px-1 py-1 gap-0.5"
                     style={{ bottom: '64px', left: '10px', zIndex: 10 }}
                 >
                     {undoButton}
@@ -213,7 +214,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                 </div>
             )}
             <div
-                className={`fixed bg-sidebar border border-border-panel shadow-card rounded-card flex items-center flex-row
+                className={`fixed bg-card-bg border border-border-panel shadow-card rounded-card flex items-center flex-row
                     ${isMobile ? 'px-1 py-1 gap-0.5' : 'top-2 left-1/2 px-2 py-1 gap-1'}`}
                 style={
                     isMobile
