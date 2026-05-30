@@ -63,7 +63,9 @@ import {
     GEO_DRAW_PROPS_KEY,
     GEO_POINT_PLACE_MODE_KEY,
     DEFAULT_GEO_RESIST,
+    WELCOME_DISMISSED_KEY,
 } from '../../constants/misc'
+import { isWelcomeComponent } from '../../utils/welcomeSketch'
 import { useDrawingModes } from '../../hooks/useDrawingModes'
 import { useElementDefaults } from '../../hooks/useElementDefaults'
 import { useMobileToolbarPanels } from '../../hooks/useMobileToolbarPanels'
@@ -265,6 +267,8 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         backgroundBoardIdRef,
         setBackgroundBoardId,
         onStorageLimitRef,
+        welcomeSketch: props.welcomeSketch,
+        isMobile,
     })
 
     const {
@@ -504,6 +508,53 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         }
     }
 
+    // Fades welcome-sketch elements out and clears them from the store on the
+    // user's first real interaction. Best-effort SVG opacity transition for
+    // mounted groups; unmounted ones are silently swept on store update.
+    const dismissWelcomeSketch = (): void => {
+        const welcomeIds = Object.keys(
+            stateRefForComponentStore.current
+        ).filter((id) =>
+            isWelcomeComponent(stateRefForComponentStore.current[id])
+        )
+        if (welcomeIds.length === 0) return
+
+        localStorage.setItem(WELCOME_DISMISSED_KEY, '1')
+
+        const two = twoJSInstanceRef.current
+        const scene = two?.scene
+        if (scene) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const walk = (node: any): void => {
+                const nodeId = node?.data?.elementData?.id
+                if (nodeId && welcomeIds.includes(nodeId)) {
+                    const el = node?._renderer?.elem as SVGElement | undefined
+                    if (el) {
+                        el.style.transition = 'opacity 350ms ease-out'
+                        el.style.opacity = '0'
+                    }
+                }
+                const kids = node?.children
+                if (kids && typeof kids.forEach === 'function') {
+                    kids.forEach(walk)
+                }
+            }
+            walk(scene)
+        }
+
+        setTimeout(() => {
+            const next = { ...stateRefForComponentStore.current }
+            welcomeIds.forEach((id) => {
+                delete next[id]
+                window.dispatchEvent(
+                    new CustomEvent('elementRemoved', { detail: { id } })
+                )
+            })
+            stateRefForComponentStore.current = next
+            setComponentStore(next)
+        }, 400)
+    }
+
     // Records ADD action, updates store and syncs to DB
     const addToLocalComponentStore = (
         id: string,
@@ -526,6 +577,13 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             ...safeInfo
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } = (componentInfo ?? {}) as any
+
+        // User's first real element dismisses the onboarding sketch. Welcome
+        // elements are seeded via setComponentStore directly (never through
+        // this path), so any add here is by definition "real" user content.
+        if (!isWelcomeComponent(safeInfo as ComponentRecord)) {
+            dismissWelcomeSketch()
+        }
 
         // Trigger background board creation on first interaction
         ensureBackgroundBoard()
@@ -856,6 +914,8 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             // from undo/redo restore paths and would abort the whole bulk
             // insert with a NOT NULL violation on componentType.
             .filter(([, comp]) => (comp as ComponentRecord)?.componentType)
+            // Welcome-sketch seeds are onboarding scaffolding — never share them.
+            .filter(([, comp]) => !isWelcomeComponent(comp as ComponentRecord))
             .map(([, comp]) => {
                 const {
                     relativeX: _rX,

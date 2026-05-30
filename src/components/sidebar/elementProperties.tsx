@@ -147,7 +147,11 @@ function resolveSetKey({
     // Point is excluded: its category lives in the toolbar drawer, not here.
     if (currentElement === 'area') return 'GEO_AREA'
     if (currentElement === 'route') return 'GEO_ROUTE'
-    return 'SHAPE'
+    // No selection and no active tool — hide the panel. Defaults still apply
+    // to the next-created shape (the `useElementDefaults` state is unchanged);
+    // users edit them by selecting a shape, which auto-syncs the default per
+    // createApplyProperty.
+    return null
 }
 
 interface ReadEffectiveValuesOptions {

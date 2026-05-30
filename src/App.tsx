@@ -151,7 +151,9 @@ class App extends Component {
                             <Routes>
                                 <Route
                                     path={routes.index}
-                                    element={<BoardViewContainer />}
+                                    element={
+                                        <BoardViewContainer welcomeSketch />
+                                    }
                                 />
                                 <Route
                                     path={routes.board}
