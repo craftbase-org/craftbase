@@ -1,61 +1,91 @@
-## Welcome
+# Craftbase
 
-Thanks for reading this README of craftbase app.
+A minimal whiteboard you can open and start drawing on. No signup, no setup, no empty-state tutorial to click through — the canvas is just there waiting.
 
-Craftbase is minimal whiteboard tool where user(s) can brainstorm using various objects such as shapes, pencil and to name a few, with themselves as well share it with other users.
+**Try it: [craftbase.org](https://craftbase.org)**
 
-Currently, the live sharing feature is internally disabled but I am working on adding feature flag for it. Once it's enabled, you can live share it with your other colleagues/peers/friends and collaborate together.
+<!--
+    Demo GIF goes here. Record a short loop (10–15s) of opening the board and
+    sketching a few shapes + some pencil strokes, then drop it at the path below.
+    A moving picture sells this far better than any paragraph can.
+-->
+![Craftbase demo](./src/assets/craftbase-demo.gif)
 
-My attempt is to make it as simple to spin up a board and start whiteboarding right away. No signup/signin required.
+## What it is
 
-Please expect some bugs and glitches as I am working on it (mostly on weekends). Feel free to raise GH issue whether is feature, suggestion or bug related to craftbase.
+I wanted a whiteboard that gets out of the way. Most tools make you sign in, pick a template, or learn their toolbar before you can think. Craftbase opens straight onto a blank canvas — you draw shapes, scribble with the pencil, drop some text, connect things with arrows, and that's the whole pitch. You're brainstorming within a couple of seconds of the page loading.
 
-## Craftbase and its architecture
+Things you can do on a board:
+
+- Sketch with shapes (rectangle, circle, diamond), the freehand pencil, arrows and dividers
+- Drop text anywhere, including text that lives inside a shape
+- Pan and zoom around an infinite canvas
+- Style what you draw — stroke, fill, width, dashes, color, opacity
+- Undo your way back out of mistakes
+- Share a board with a link
+
+Live collaboration is built but currently turned off behind a flag while I finish hardening it. Once it's on, you'll be able to share a board and draw on it together in real time.
+
+A fair warning: I work on this mostly on weekends, so expect the occasional bug or rough edge. If you hit one — or have an idea, or just want a feature — please [open an issue](https://github.com/craftbase-org/craftbase/issues). I read all of them.
+
+## Craftbase as an embeddable whiteboard
+
+Craftbase isn't only the app at craftbase.org. The `Board` is a self-contained, embeddable whiteboard component, and other apps consume it as a library. The first one is **craftmaps**, which mounts a Craftbase board behind a Mapbox basemap so you can sketch freehand on top of a real map — draw a route, circle a neighborhood, annotate a place — and have it stay anchored as you pan and zoom.
+
+If you want to embed a canvas in your own app, the public surface lives in `src/lib.ts` (`Board`, `BoardContext`, the hooks, bootstrap helpers). `Board` takes optional extension props like `renderBackground`, `onCameraChange`, and `scaleToDisplay` so you can layer your own content underneath and react to the camera without forking anything.
+
+## How it's built
 
 ![Architecture](https://raw.githubusercontent.com/craftbase-org/craftbase/refs/heads/main/src/assets/craftbase_frontend_architecture.png)
 
-Craftbase underneath uses [two.js](https://github.com/jonobr1/two.js) library to render scene graph which is developed by awesome [Jono brandel](https://github.com/jonobr1)
+Craftbase renders its canvas with [two.js](https://github.com/jonobr1/two.js), a lovely 2D scene-graph library by [Jono Brandel](https://github.com/jonobr1). Two.js draws the scene; React drives the UI and state around it.
 
-The craftbase has "Board" as it's main primary concept which holds the specific responsiblity of rendering the canvas, components and utilities. The heirarchy looks like : Board -> Canvas -> ElementRenderer -> Component Element -> Component Factory
+The central concept is the **Board**. It owns the canvas, the sidebar, and the floating toolbar. Rendering flows down a small chain:
 
-Board represents the Canvas, primary sidebar and floating toolbar (soon to be). Canvas is where the logic of rendering the components in 2d space is present. Each component has it's factory from which the template code is generated as output and provided to "component element" which hooks with react functional component and it attaches some event listeners to specific component.
+```
+Board → Canvas → ElementRenderer → Component Element → Component Factory
+```
 
-The user interaction controls such as mouse , drag , zoom and pan are part of Canvas. All these interactions are able to make the board lively as if user was whiteboarding on it.
+Canvas holds the 2D rendering logic and all the interaction handling — mouse, drag, zoom, pan — which is what makes a board feel alive to draw on. Each kind of element (a shape, an arrow, a pencil stroke) has a **factory** that produces its template definition, and a matching React **component** that mounts it into the scene and wires up its event listeners.
 
-## Run/develop locally
+State is shared through React Context (`BoardContext`) rather than a global store. The stack is React + TypeScript, Vite for the build, Two.js for rendering, and Apollo + Hasura (GraphQL) for the backend.
 
-This craftbase repo is containing the frontend code and the other repo under same org is containing the backend code (craftbase-hasura)
+## Running it locally
 
-You need to setup both the projects (frontend and backend) locally in order to successfully run craftbase application server in your machine.
+Craftbase is the frontend. The backend lives in a separate repo, [craftbase-hasura](https://github.com/craftbase-org/craftbase-hasura), under the same org. You'll need both running to use the full app locally.
 
 ### Backend
 
-Head over to the readme.md of the [craftbase-hasura](https://github.com/craftbase-org/craftbase-hasura) and follow the instructions to setup backend of the craftbase locally.
+Follow the setup steps in the [craftbase-hasura README](https://github.com/craftbase-org/craftbase-hasura) to get the backend running.
 
 ### Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Clone this repo and install dependencies:
 
-So you'll need to clone the repository and run `yarn` first to install the dependencies. You can also run `npm install` depending on your choice since it will have it's own lock file for peer and core dependencies.
+```bash
+yarn
+```
 
-Then, create `.env` file in root of the project directory and copy the contents from .envexample into that.
+Create a `.env` file in the project root and copy the contents of `.envexample` into it.
 
-Finally, to run the frontend server, you can run `yarn start` which will start the server on default port of 3000.
+Then start the dev server:
 
-#### `yarn start`
+```bash
+yarn start
+```
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+This runs Vite and serves the app at [http://localhost:5173](http://localhost:5173). The page hot-reloads as you edit, and type/lint errors show up in your terminal.
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+Other useful scripts:
 
-#### `yarn build`
+```bash
+yarn build       # production build into ./dist
+yarn preview     # serve the production build locally
+yarn typecheck   # tsc --noEmit
+yarn test        # unit tests (vitest)
+yarn test:e2e    # end-to-end tests (playwright)
+```
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Contributing
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Issues and pull requests are welcome — features, suggestions, and bug reports all count. It's a weekend project, so I appreciate the patience and the company.
