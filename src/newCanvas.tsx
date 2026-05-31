@@ -141,6 +141,12 @@ type SetOnGroupHandlerFn = (obj: any) => void
  */
 
 let isDrawing: boolean = false
+// True only while a pencil stroke is mid-flight (mousedown → mouseup). An
+// in-progress stroke isn't committed to the history log until mouseup, so
+// undo/redo must be blocked during this window — otherwise Ctrl+Z would pop the
+// previously committed element and the redo stack gets clobbered when the
+// current stroke commits, losing that earlier element for good.
+let isPencilStrokeActive: boolean = false
 let defaultLinewidthValue: number = 1
 let defaultStrokeTypeValue: string | null = null
 let defaultStrokeColorValue: string = PENCIL_DEFAULT_COLOR
@@ -1283,6 +1289,10 @@ function addZUI(
                 domElement.addEventListener('mousemove', mousemove, false)
                 domElement.addEventListener('mouseup', mouseup, false)
 
+                // Stroke is now mid-flight — block undo/redo until mouseup
+                // commits it (see isPencilStrokeActive declaration).
+                isPencilStrokeActive = true
+
                 // Single growing curved path for live preview — matches the
                 // final factory render so there's no visual jump on mouseup.
                 pencilGroup = two.makeGroup()
@@ -2064,6 +2074,9 @@ function addZUI(
                 domElement.removeEventListener('mouseup', mouseup, false)
                 break
             case SCENARIO_PENCIL_MODE: {
+                // Gesture is over — re-enable undo/redo before the stroke is
+                // committed to the store/history just below.
+                isPencilStrokeActive = false
                 const capturedPencilGroup = pencilGroup
                 pencilGroup = null
                 pencilPath = null
@@ -2858,6 +2871,9 @@ const Canvas: React.FC<CanvasProps> = (props) => {
 
     useEffect(() => {
         isPencilModeRef.current = props.isPencilMode
+        // Toggling the pencil tool means no stroke is in flight — clear the
+        // guard so a missed mouseup can't leave undo blocked indefinitely.
+        isPencilStrokeActive = false
         const root = document.getElementById('main-two-root')
         if (props.isPencilMode === true) {
             isDrawing = true
@@ -3011,6 +3027,11 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         const onUndoRedoKeyDown = (evt: KeyboardEvent) => {
             if (evt.key.toLowerCase() === 'z' && (evt.ctrlKey || evt.metaKey)) {
                 evt.preventDefault()
+                // Don't undo/redo mid-stroke — the in-progress pencil stroke
+                // isn't in history yet, so undoing here would pop the wrong
+                // (previously committed) element. User must finish the stroke
+                // first. See isPencilStrokeActive.
+                if (isPencilStrokeActive) return
                 if (evt.shiftKey) {
                     redoLastAction()
                 } else {
