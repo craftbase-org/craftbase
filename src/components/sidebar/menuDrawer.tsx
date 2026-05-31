@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import routes from '../../routes'
 import { useBoardContext } from '../../views/Board/boardContext'
+import { downloadViewportAsImage } from '../../utils/exportViewport'
 import Modal from '../common/modal'
 import Button from '../common/button'
 
@@ -63,10 +64,36 @@ const TrashIcon = (): ReactElement => (
     </svg>
 )
 
+const DownloadIcon = (): ReactElement => (
+    <svg
+        width="14"
+        height="14"
+        viewBox="0 0 14 14"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        <path
+            d="M7 1.5v7M4 5.5L7 8.5l3-3"
+            stroke="#8C7E6A"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <path
+            d="M2 9.5v1.5a1 1 0 001 1h8a1 1 0 001-1V9.5"
+            stroke="#8C7E6A"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </svg>
+)
+
 const MenuDrawer = (): ReactElement => {
     const refNode = useRef<HTMLDivElement | null>(null)
     const [showMenu, setShowMenu] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
+    const [isExporting, setIsExporting] = useState(false)
     const { clearBoard } = useBoardContext()
 
     useEffect(() => {
@@ -83,6 +110,18 @@ const MenuDrawer = (): ReactElement => {
     const handleClearClick = (): void => {
         setShowMenu(false)
         setShowConfirm(true)
+    }
+
+    const handleDownloadClick = async (): Promise<void> => {
+        setShowMenu(false)
+        try {
+            setIsExporting(true)
+            await downloadViewportAsImage()
+        } catch (err) {
+            console.error('Failed to export viewport as image', err)
+        } finally {
+            setIsExporting(false)
+        }
     }
 
     const handleConfirmClear = (): void => {
@@ -227,6 +266,25 @@ const MenuDrawer = (): ReactElement => {
                             </svg>
                             <span>Privacy</span>
                         </Link>
+
+                        <div className="h-px bg-border-panel mx-2 mt-1 mb-1" />
+
+                        <button
+                            className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                hover:bg-accent/30 rounded cursor-pointer
+                                transition-colors ease-in-out duration-150
+                                disabled:opacity-50 disabled:cursor-default"
+                            style={{ width: 'calc(100% - 8px)' }}
+                            onClick={handleDownloadClick}
+                            disabled={isExporting}
+                        >
+                            <DownloadIcon />
+                            <span>
+                                {isExporting
+                                    ? 'Preparing image…'
+                                    : 'Download as image'}
+                            </span>
+                        </button>
 
                         <div className="h-px bg-border-panel mx-2 mt-1 mb-1" />
 
