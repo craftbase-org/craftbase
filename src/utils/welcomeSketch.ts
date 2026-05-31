@@ -257,7 +257,7 @@ function buildMobileWelcomeSketch(
         // Subhead — two compact lines in the upper-left, sitting well inside
         // the corner. Both lines type themselves in (top line first), then the
         // rest of the sketch follows.
-        makeHeadline(boardId, 72, 132, 'A minimal whiteboard.', 22),
+        makeHeadline(boardId, 72, 132, 'A minimal "infinite" whiteboard.', 22),
         makeHeadline(boardId, 72, 164, 'Start drawing →', 20),
 
         // Rect-with-text centered. "Tap me" since drag-on-touch is two-finger.
@@ -300,7 +300,7 @@ function buildLargeWelcomeSketch(
         // Subhead — two-line sketch text in the upper-left region, sitting well
         // inside the corner and clear of the top-center shapes toolbar. Both
         // lines type themselves in (top line first), then the rest follows.
-        makeHeadline(boardId, 150, 175, 'A minimal whiteboard.', 32),
+        makeHeadline(boardId, 150, 175, 'A minimal "infinite" whiteboard.', 32),
         makeHeadline(boardId, 150, 215, 'Start drawing →', 28),
 
         // Rect-with-text: the rectangle carries its "Drag me" label via
