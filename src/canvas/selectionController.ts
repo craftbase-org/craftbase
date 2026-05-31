@@ -62,8 +62,15 @@ const SHAPE_ADAPTERS: Record<string, ShapeAdapter> = {
     diamond: DEFAULT_ADAPTER,
 }
 
-const HANDLE_BASE_PX = 10
-const CORNER_BASE_PX = 25
+// Handle dot diameter in *screen* px, stepped across 3 zoom ranges so the dots
+// stay stable instead of rescaling continuously with zoom.
+function handleScreenPx(scale: number): number {
+    if (scale < 0.5) return 8
+    if (scale < 2) return 11
+    return 14
+}
+const HANDLE_HIT_SLOP_MOUSE = 3
+const HANDLE_HIT_SLOP_TOUCH = 8
 const MIN_SCALE_DIMENSION = 20
 const SELECTION_PADDING = 5
 
@@ -324,6 +331,10 @@ export default class SelectionController {
 
         this._bringToFront()
         this.ui.visible = true
+        // Per-shape `.dragger-picker { cursor: pointer }` (common.css) sits on
+        // the SVG node directly under the cursor and beats the root's inline
+        // cursor. This class lets CSS show `move` over the selected shape body.
+        this.domElement.classList.add('shape-selected')
         this.syncToTarget()
         this.two.update()
 
@@ -345,6 +356,7 @@ export default class SelectionController {
         this.currentTextChild = null
         this.currentTextLayer = null
         this.ui.visible = false
+        this.domElement.classList.remove('shape-selected')
         this.domElement.style.cursor = ''
         this.two.update()
         this.callbacks.onDeselect()
@@ -363,7 +375,10 @@ export default class SelectionController {
 
         const scale = this.zui.scale || 1
         this.box.linewidth = 1.5 / scale
-        const handleSize = Math.min(HANDLE_BASE_PX / scale, HANDLE_BASE_PX * 1.25)
+        // Two.Points render with sizeAttenuation=false, so `size` is already a
+        // screen-px value (the renderer divides out the scene scale). Set it
+        // directly — no /scale — else the dots inflate when zoomed out.
+        const handleSize = handleScreenPx(scale)
         this.endpoints.size = handleSize
         this.midEndpoints.size = handleSize
 
@@ -401,23 +416,26 @@ export default class SelectionController {
 
         const surface = this.zui.clientToSurface(clientX, clientY)
         const scale = this.zui.scale || 1
-        const rotateLimit = HANDLE_BASE_PX / scale
-        const scaleLimit = CORNER_BASE_PX / scale
+        // Grab radius is tied to the visible dot (half its diameter) plus a few
+        // px of slop, so resize only fires on the dot — not in a bloated zone
+        // around it. Constant in screen px at any zoom.
+        const hitRadiusPx = handleScreenPx(scale) / 2 + this._hitSlopPx()
+        const hitLimit = hitRadiusPx / scale
 
         const isRect =
             this.currentGroup?.elementData?.componentType === 'rectangle'
         if (isRect) {
-            const midEdge = this._atMidEdge(surface, scaleLimit)
+            const midEdge = this._atMidEdge(surface, hitLimit)
             if (midEdge) return { mode: 'scale', corner: midEdge }
         }
 
-        const corner = this._atCorner(surface, scaleLimit)
+        const corner = this._atCorner(surface, hitLimit)
         if (!corner) return null
 
         const isOnInnerRing = this._withinCornerRadius(
             surface,
             corner,
-            rotateLimit
+            hitLimit
         )
         const mode = isOnInnerRing && this.rotationEnabled ? 'rotate' : 'scale'
         return { mode, corner }
@@ -480,6 +498,31 @@ export default class SelectionController {
     ): boolean {
         const p = this._vertexToSurface(corner.point)
         return distSq(point.x, point.y, p.x, p.y) < limit * limit
+    }
+
+    // Touch arrives as synthetic mouse events, so the device pointer type is the
+    // only signal available — coarse (finger) pointers get a more forgiving slop.
+    private _hitSlopPx(): number {
+        const coarse =
+            typeof window !== 'undefined' &&
+            window.matchMedia?.('(pointer: coarse)')?.matches
+        return coarse ? HANDLE_HIT_SLOP_TOUCH : HANDLE_HIT_SLOP_MOUSE
+    }
+
+    // Is the surface point inside the selection box body (the drag zone)? Uses
+    // the same rotation convention as _vertexToSurface, derotated into box space.
+    private _withinBody(point: { x: number; y: number }): boolean {
+        const rot = this.ui.rotation || 0
+        const dx = point.x - this.ui.position.x
+        const dy = point.y - this.ui.position.y
+        const cos = Math.cos(-rot)
+        const sin = Math.sin(-rot)
+        const lx = dx * cos - dy * sin
+        const ly = dx * sin + dy * cos
+        return (
+            Math.abs(lx) <= this.box.width / 2 &&
+            Math.abs(ly) <= this.box.height / 2
+        )
     }
 
     // ---------- Interaction lifecycle ----------
@@ -560,7 +603,15 @@ export default class SelectionController {
             if (this.interaction) return
             const hit = this.hitTest(ev.clientX, ev.clientY)
             if (!hit) {
-                this.domElement.style.cursor = ''
+                // Over the shape body → move (4-way arrow drag cue); empty
+                // canvas → default.
+                const surface = this.zui.clientToSurface(
+                    ev.clientX,
+                    ev.clientY
+                )
+                this.domElement.style.cursor = this._withinBody(surface)
+                    ? 'move'
+                    : ''
                 return
             }
             if (hit.mode === 'rotate') {

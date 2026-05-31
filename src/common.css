@@ -17,6 +17,14 @@
     cursor: pointer;
 }
 
+/* A selected shape's body is a drag zone — show the 4-way move cursor over it.
+   More specific than the bare .dragger-picker rule, so it wins; draw/pan modes
+   still override via their !important rules. Resize handles aren't
+   .dragger-picker, so they keep the directional resize cursor from the root. */
+.shape-selected .dragger-picker {
+    cursor: move;
+}
+
 /* While a draw mode (pencil/arrow/rubber) is active, the canvas-wide
    crosshair cursor must not be overridden by per-shape rules. */
 .draw-mode-active .dragger-picker {
