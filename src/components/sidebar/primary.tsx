@@ -59,7 +59,6 @@ const PrimarySidebar = (): ReactElement => {
         defaultStrokeType,
         defaultFill,
         defaultStrokeColor,
-        defaultOpacity,
         defaultTextFontFamily,
     } = useBoardContext()
     const [hintText, setHintText] = useState(
@@ -128,7 +127,7 @@ const PrimarySidebar = (): ReactElement => {
                         createdAt: null,
                         metadata: {
                             ...((item.metadata as Record<string, unknown>) ?? {}),
-                            opacity: defaultOpacity ?? 1,
+                            opacity: 1,
                             ...(defaultTextFontFamily && {
                                 textFontFamily: defaultTextFontFamily,
                             }),
@@ -167,7 +166,7 @@ const PrimarySidebar = (): ReactElement => {
                 isDummy: null,
                 createdAt: null,
                 metadata: {
-                    opacity: defaultOpacity ?? 1,
+                    opacity: 1,
                     ...(defaultTextFontFamily && {
                         textFontFamily: defaultTextFontFamily,
                     }),
@@ -406,7 +405,7 @@ const PrimarySidebar = (): ReactElement => {
                                         string,
                                         unknown
                                     >) ?? {}),
-                                    opacity: defaultOpacity ?? 1,
+                                    opacity: 1,
                                     ...(defaultTextFontFamily && {
                                         textFontFamily: defaultTextFontFamily,
                                     }),
@@ -456,7 +455,7 @@ const PrimarySidebar = (): ReactElement => {
                         isDummy: null,
                         createdAt: null,
                         metadata: {
-                            opacity: defaultOpacity ?? 1,
+                            opacity: 1,
                             ...(defaultTextFontFamily && {
                                 textFontFamily: defaultTextFontFamily,
                             }),

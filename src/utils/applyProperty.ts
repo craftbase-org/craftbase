@@ -73,7 +73,12 @@ export function createApplyProperty(deps: ApplyPropertyDeps) {
     return function applyProperty(
         propertyKey: PropertyKey | string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        value: any
+        value: any,
+        // `preview` applies the change to the live Two.js scene only, skipping
+        // the store/history/default writes — used for continuous slider drags so
+        // the element updates in real time without spamming the undo stack. The
+        // final value is committed normally (no preview) on release.
+        opts?: { preview?: boolean }
     ): void {
         const {
             selectedComponent,
@@ -88,23 +93,26 @@ export function createApplyProperty(deps: ApplyPropertyDeps) {
             setDefaultStrokeColor,
             setDefaultLinewidth,
             setDefaultStrokeType,
-            setDefaultOpacity,
             setDefaultTextColor,
             setDefaultTextSize,
             setDefaultTextFontFamily,
         } = deps
 
-        // 1. Update the matching default.
-        if (propertyKey === 'fill') setDefaultFill(value)
-        else if (propertyKey === 'stroke') setDefaultStrokeColor(value)
-        else if (propertyKey === 'linewidth') setDefaultLinewidth(value)
-        else if (propertyKey === 'strokeType')
-            setDefaultStrokeType(value === 'solid' ? null : value)
-        else if (propertyKey === 'opacity') setDefaultOpacity(value)
-        else if (propertyKey === 'textColor') setDefaultTextColor(value)
-        else if (propertyKey === 'textSize') setDefaultTextSize(value)
-        else if (propertyKey === 'textFontFamily')
-            setDefaultTextFontFamily(value)
+        // 1. Update the matching default. Opacity is deliberately excluded — it
+        // is a per-element property only and must never persist as a default,
+        // otherwise drawing a new shape after dimming one (e.g. to 0%) would
+        // produce an invisible shape. Skipped entirely in preview mode.
+        if (!opts?.preview) {
+            if (propertyKey === 'fill') setDefaultFill(value)
+            else if (propertyKey === 'stroke') setDefaultStrokeColor(value)
+            else if (propertyKey === 'linewidth') setDefaultLinewidth(value)
+            else if (propertyKey === 'strokeType')
+                setDefaultStrokeType(value === 'solid' ? null : value)
+            else if (propertyKey === 'textColor') setDefaultTextColor(value)
+            else if (propertyKey === 'textSize') setDefaultTextSize(value)
+            else if (propertyKey === 'textFontFamily')
+                setDefaultTextFontFamily(value)
+        }
 
         // 2. If nothing is selected, we're done.
         if (!selectedComponent) return
@@ -232,13 +240,32 @@ export function createApplyProperty(deps: ApplyPropertyDeps) {
                 strokeType: dbValue,
             })
         } else if (propertyKey === 'opacity') {
-            if (shapeData) shapeData.opacity = value
-            const existingMeta = elementData?.metadata ?? {}
-            const updatedMeta = { ...existingMeta, opacity: value }
-            if (elementData) elementData.metadata = updatedMeta
-            updateComponentBulkPropertiesInLocalStore(id, {
-                metadata: updatedMeta,
-            })
+            // Apply opacity at the GROUP level, not the shape leaf. The leaf
+            // path is double-referenced in group.children (the *-with-text
+            // components unshift the factory's already-added shape), which
+            // leaves leaf-level opacity flags unprocessed on render — so a leaf
+            // write only appears after the next full repaint (e.g. on deselect).
+            // The group's own opacity always repaints, and it uniformly dims the
+            // shape plus any embedded text-layer nodes in one shot.
+            const groupObj = selectedComponent?.group?.data
+            if (groupObj) groupObj.opacity = value
+            // Neutralize any leaf/text opacity so it doesn't compound with the
+            // group's (e.g. shapes mounted before this change carried leaf-level
+            // opacity).
+            if (shapeData) shapeData.opacity = 1
+            getShapeTextNodes(selectedComponent?.group?.data).forEach(
+                (n) => (n.opacity = 1)
+            )
+            // Preview = live drag: mutate the scene only, defer the
+            // store/history write to the commit on release.
+            if (!opts?.preview) {
+                const existingMeta = elementData?.metadata ?? {}
+                const updatedMeta = { ...existingMeta, opacity: value }
+                if (elementData) elementData.metadata = updatedMeta
+                updateComponentBulkPropertiesInLocalStore(id, {
+                    metadata: updatedMeta,
+                })
+            }
         }
 
         twoJSInstance?.update()

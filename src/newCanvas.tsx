@@ -2342,7 +2342,19 @@ function addZUI(
                     lastTouch.clientY
                 )
 
-            if (!handleHit) {
+            // A multi-element group uses the older objectSelector path (not
+            // selectionController), so handleHit is false for it. Without this,
+            // the clearSelector below hides the group's dashed box the instant
+            // the drag begins on mobile. Skip the clear when the finger lands on
+            // the group object so its selector stays visible through the drag.
+            const groupHit = (
+                document.elementFromPoint(
+                    lastTouch.clientX,
+                    lastTouch.clientY
+                ) as Element | null
+            )?.closest('[data-label="groupobject_coord"]')
+
+            if (!handleHit && !groupHit) {
                 // Clear any previous selection before processing the new tap.
                 // On desktop this happens via focus/blur, but synthetic mouse events
                 // don't transfer browser focus on mobile, so we do it explicitly here

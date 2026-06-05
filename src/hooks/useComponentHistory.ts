@@ -760,6 +760,18 @@ export function useComponentHistory({
     // Only UPDATE_VERTICES and UPDATE_BULK need extra capture — for
     // ADD/DELETE/BATCH the original entry already contains everything redo needs.
     const captureNextState = (entry: HistoryEntry): HistoryEntry => {
+        if (entry.action === 'ADD') {
+            // The ADD entry's componentInfo is snapshotted at create time. For
+            // arrows (and any element whose post-create geometry is applied with
+            // skipHistory), that snapshot is stale — e.g. an arrow is pre-created
+            // off-screen at -9999 with zero-length vertices, then drawn later.
+            // Re-read the live store here (still present, since undo's
+            // applyRemove runs after this) so redo re-inserts the final geometry.
+            const current = stateRefForComponentStore.current[entry.id]
+            return current
+                ? { ...entry, componentInfo: { ...current } }
+                : entry
+        }
         if (entry.action === 'UPDATE_VERTICES') {
             const current = stateRefForComponentStore.current[entry.id]
             return {

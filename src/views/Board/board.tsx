@@ -711,7 +711,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                 ...(componentType === 'geoText' && {
                     resist: DEFAULT_GEO_RESIST,
                 }),
-                opacity: defaultOpacity ?? 1,
+                opacity: 1,
             },
             x: Math.trunc(x),
             y: Math.trunc(y),

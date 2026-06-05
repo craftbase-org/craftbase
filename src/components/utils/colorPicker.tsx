@@ -135,7 +135,7 @@ const ColorPicker = ({
         <Fragment>
             <div className="flex items-center justify-between mb-2">
                 {title && (
-                    <span className="text-[11px] text-[#8a7d6b] uppercase tracking-[0.06em] font-medium">
+                    <span className="text-xs text-ink-muted font-normal">
                         {title}
                     </span>
                 )}

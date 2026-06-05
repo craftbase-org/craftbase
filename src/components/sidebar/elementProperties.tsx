@@ -516,7 +516,7 @@ const ElementPropertiesToolbar = () => {
     const sections = SETS[setKey as keyof typeof SETS]
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handle =
-        (key: string) =>
+        (key: string, opts?: { preview?: boolean }) =>
         (val: any): void => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             setValues((prev: any) => ({ ...prev, [key]: val }))
@@ -533,13 +533,13 @@ const ElementPropertiesToolbar = () => {
                             ? entry.mobileValue
                             : entry.value
                         : val
-                    applyGroupProperty?.(key, numeric)
+                    applyGroupProperty?.(key, numeric, opts)
                 } else {
-                    applyGroupProperty?.(key, val)
+                    applyGroupProperty?.(key, val, opts)
                 }
                 return
             }
-            applyProperty?.(key, val)
+            applyProperty?.(key, val, opts)
         }
 
     return (
@@ -652,11 +652,10 @@ const ElementPropertiesToolbar = () => {
                     <OpacitySlider
                         currentOpacity={values.opacity}
                         handleOnDrag={(arr): void =>
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            setValues((prev: any) => ({
-                                ...prev,
-                                opacity: arr[0],
-                            }))
+                            // Live preview while dragging: applies to the scene
+                            // only (no store/history write) so the element fades
+                            // in real time. The release (handleOnChange) commits.
+                            handle('opacity', { preview: true })(arr[0])
                         }
                         handleOnChange={(arr) => handle('opacity')(arr[0])}
                     />

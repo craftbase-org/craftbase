@@ -61,7 +61,15 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                 if (!element.elementData) return
                 if (childrenIdsOfTheGroup.includes(element.elementData.id)) {
                     foundOriginalCount++
-                    element.opacity = 1
+                    // Restore the element's own (group-level) opacity rather than
+                    // forcing 1 — it was hidden at 0 while the group was selected,
+                    // and per-element opacity now lives on the group. metadata may
+                    // be a pencil vertex array, so guard the `.opacity` read.
+                    const elMeta = element.elementData.metadata
+                    element.opacity =
+                        elMeta && !Array.isArray(elMeta)
+                            ? (elMeta.opacity ?? 1)
+                            : 1
 
                     if (!groupMoved) {
                         return

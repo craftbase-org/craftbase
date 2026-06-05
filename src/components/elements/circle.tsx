@@ -34,10 +34,11 @@ function Circle(props: ElementProps): ReactElement {
         })
         const { group, circle } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        circle.opacity = props.metadata?.opacity ?? 1
+        const opacityValue = props.metadata?.opacity ?? 1
 
         if (props.parentGroup) {
             const parentGroup = props.parentGroup
+            circle.opacity = opacityValue
             circle.translation.x = props.properties.x
             circle.translation.y = props.properties.y
             parentGroup.add(circle)
@@ -56,6 +57,10 @@ function Circle(props: ElementProps): ReactElement {
                 props.width || circle.width || 100,
                 meta
             )
+
+            // Group-level opacity so shape + embedded text dim uniformly and
+            // actually repaint (see rectangle.tsx for the unshift rationale).
+            group.opacity = opacityValue
 
             two.update()
 

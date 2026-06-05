@@ -205,8 +205,16 @@ export interface BoardContextValue {
     stateRefForComponentStore: MutableRefObject<ComponentStore>
 
     // Property application
-    applyProperty: (name: string, value: unknown) => void
-    applyGroupProperty: (name: string, value: unknown) => void
+    applyProperty: (
+        name: string,
+        value: unknown,
+        opts?: { preview?: boolean }
+    ) => void
+    applyGroupProperty: (
+        name: string,
+        value: unknown,
+        opts?: { preview?: boolean }
+    ) => void
 
     // Element defaults (read sites: ElementPropertiesToolbar, primary sidebar, factories)
     defaultFill: string
