@@ -12,6 +12,7 @@ import React, {
     useEffect,
     useState,
     useRef,
+    useCallback,
     Suspense,
     type MutableRefObject,
     type ReactNode,
@@ -78,6 +79,8 @@ import { growShapeToFitText, usableTextWidth } from './utils/shapeTextFit'
 import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
 import { createDiamondPath } from './factory/diamond'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
+import { exportSelectionAsSvg } from './utils/exportSelectionAsSvg'
+import CanvasContextMenu from './components/canvasContextMenu'
 import {
     ElementRenderWrapper,
     GroupRenderWrapper,
@@ -2685,6 +2688,10 @@ const Canvas: React.FC<CanvasProps> = (props) => {
     const [zuiInstance, setZuiInstance] = useState<any>(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [onGroup, setOnGroup] = useState<any>(null)
+    // Right-click / two-finger context menu position (null = closed).
+    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(
+        null
+    )
     const [componentsToRender, setComponentsToRender] = useState<
         React.ComponentType[]
     >([])
@@ -3067,6 +3074,56 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         }
     }, [undoLastAction, redoLastAction, enableTextDrawMode])
 
+    // Export the active selection (marquee group or single element) as a
+    // standalone .svg. getSelectedGroup() unifies both selection mechanisms.
+    const exportActiveSelection = useCallback(async () => {
+        const group = zuiInstanceRef.current?.getSelectedGroup?.()
+        if (!group) return
+        try {
+            await exportSelectionAsSvg(group)
+        } catch (err) {
+            console.warn('Export selection as SVG failed', err)
+        }
+    }, [])
+
+    // Right-click (mouse) and two-finger trackpad tap both fire the native
+    // 'contextmenu' event. Suppress the OS menu; if something is selected, open
+    // our menu at the cursor. Cmd/Ctrl+Shift+D triggers the same export.
+    useEffect(() => {
+        const root = document.getElementById('main-two-root')
+        if (!root) return
+
+        const onContextMenu = (evt: MouseEvent) => {
+            evt.preventDefault()
+            const group = zuiInstanceRef.current?.getSelectedGroup?.()
+            if (group) {
+                setCtxMenu({ x: evt.clientX, y: evt.clientY })
+            } else {
+                setCtxMenu(null)
+            }
+        }
+
+        const onExportKeyDown = (evt: KeyboardEvent) => {
+            if (
+                evt.key.toLowerCase() !== 'd' ||
+                !(evt.ctrlKey || evt.metaKey) ||
+                !evt.shiftKey
+            )
+                return
+            const tag = document.activeElement?.tagName
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return
+            evt.preventDefault()
+            void exportActiveSelection()
+        }
+
+        root.addEventListener('contextmenu', onContextMenu)
+        window.addEventListener('keydown', onExportKeyDown)
+        return () => {
+            root.removeEventListener('contextmenu', onContextMenu)
+            window.removeEventListener('keydown', onExportKeyDown)
+        }
+    }, [exportActiveSelection])
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const setOnGroupHandler = (obj: any) => {
         setOnGroup(obj)
@@ -3229,6 +3286,17 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                     <Component />
                 </Suspense>
             ))}
+            {ctxMenu && (
+                <CanvasContextMenu
+                    x={ctxMenu.x}
+                    y={ctxMenu.y}
+                    onClose={() => setCtxMenu(null)}
+                    onExportSvg={() => {
+                        setCtxMenu(null)
+                        void exportActiveSelection()
+                    }}
+                />
+            )}
         </>
     )
 }

@@ -59,6 +59,9 @@ export interface ElementDefaultsApi extends ElementDefaultsState {
     setDefaultTextColorInBoard: (val: string) => void
     setDefaultTextSizeInBoard: (val: TextSizeLabel) => void
     setDefaultTextFontFamilyInBoard: (val: string) => void
+    // Restore every default to its factory value (used by "clear canvas" so a
+    // leaked default like linewidth:0 doesn't carry over to the next drawing).
+    resetDefaults: () => void
 }
 
 export function useElementDefaults(): ElementDefaultsApi {
@@ -137,6 +140,19 @@ export function useElementDefaults(): ElementDefaultsApi {
     const setDefaultTextFontFamilyInBoard = (val: string): void =>
         setDefaultTextFontFamily(val)
 
+    // Reset all defaults to INITIAL_DEFAULTS. The persistence effect above then
+    // rewrites localStorage to the factory values on the resulting state change.
+    const resetDefaults = (): void => {
+        setDefaultFill(INITIAL_DEFAULTS.defaultFill)
+        setDefaultStrokeColor(INITIAL_DEFAULTS.defaultStrokeColor)
+        setDefaultLinewidth(INITIAL_DEFAULTS.defaultLinewidth)
+        setDefaultStrokeType(INITIAL_DEFAULTS.defaultStrokeType)
+        setDefaultOpacity(INITIAL_DEFAULTS.defaultOpacity)
+        setDefaultTextColor(INITIAL_DEFAULTS.defaultTextColor)
+        setDefaultTextSize(INITIAL_DEFAULTS.defaultTextSize)
+        setDefaultTextFontFamily(INITIAL_DEFAULTS.defaultTextFontFamily)
+    }
+
     return {
         defaultFill,
         defaultStrokeColor,
@@ -162,5 +178,6 @@ export function useElementDefaults(): ElementDefaultsApi {
         setDefaultTextColorInBoard,
         setDefaultTextSizeInBoard,
         setDefaultTextFontFamilyInBoard,
+        resetDefaults,
     }
 }

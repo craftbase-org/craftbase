@@ -257,6 +257,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         // board-facing setters (kept for any external callers)
         setDefaultLinewidthInBoard,
         setDefaultStrokeTypeInBoard,
+        resetDefaults,
     } = useElementDefaults()
 
     const onStorageLimitRef = useRef<(() => Promise<void>) | null>(null)
@@ -1053,6 +1054,9 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         twoJSInstanceRef.current?.update()
         setComponentStore({})
         clearHistory(isPersisted)
+        // Reset element defaults to factory values so a previously-set default
+        // (e.g. linewidth:0) doesn't leak into shapes drawn after clearing.
+        resetDefaults()
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
