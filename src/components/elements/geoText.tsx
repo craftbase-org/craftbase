@@ -14,7 +14,10 @@ import {
 import { lineHeightFor } from '../../utils/textLayout'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 import { computeCounterScale } from '../../utils/counterScale'
-import { DEFAULT_GEO_RESIST } from '../../constants/misc'
+import {
+    DEFAULT_GEO_RESIST,
+    DEFAULT_TEXT_FONT_FAMILY,
+} from '../../constants/misc'
 
 // GeoText is a clone of NewText (it reuses the same NewTextFactory for
 // rendering) with one extra behavior: like a point pin, the whole group is
@@ -367,7 +370,7 @@ function GeoText(props: ElementProps): ReactElement {
             input.style.padding = `${vertPad}px 8px`
             input.style.color = twoText.fill || '#3A342C'
             input.style.fontSize = `${cssFontSize}px`
-            input.style.fontFamily = twoText.family || 'Caveat'
+            input.style.fontFamily = twoText.family || DEFAULT_TEXT_FONT_FAMILY
             input.style.fontWeight = twoText.weight || 'normal'
             input.style.lineHeight = `${lineH}px`
             input.style.letterSpacing = '0px'
@@ -390,7 +393,8 @@ function GeoText(props: ElementProps): ReactElement {
             measureSpan.style.visibility = 'hidden'
             measureSpan.style.whiteSpace = 'pre'
             measureSpan.style.fontSize = `${cssFontSize}px`
-            measureSpan.style.fontFamily = twoText.family || 'Caveat'
+            measureSpan.style.fontFamily =
+                twoText.family || DEFAULT_TEXT_FONT_FAMILY
             measureSpan.style.fontWeight = twoText.weight || 'normal'
             measureSpan.style.lineHeight = `${lineH}px`
             measureSpan.style.letterSpacing = '0px'

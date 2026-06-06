@@ -4,11 +4,15 @@
 // rasterizer and any standalone .svg consumer have no access to the document's
 // loaded fonts, so without embedding, canvas text falls back to a system font.
 
+import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
+
 export const SVG_NS = 'http://www.w3.org/2000/svg'
 
-// Fonts used for canvas text. --font-sketch: 'Caveat' (App.css). Embedded so
-// exported text matches the screen instead of falling back to a system font.
-const FONT_FAMILIES = ['Caveat']
+// Fonts used for canvas text, embedded so exported text matches the screen
+// instead of falling back to a system font. Only the Regular 400 weight is
+// requested (canvas text is always 400) — and the default font (Caveat Brush)
+// ships a single weight, so requesting a range would 400 the whole CSS fetch.
+const FONT_FAMILIES = [DEFAULT_TEXT_FONT_FAMILY]
 
 /**
  * Inline the Google web font(s) as base64 inside a <style> in the given SVG.
@@ -17,7 +21,7 @@ const FONT_FAMILIES = ['Caveat']
 export async function embedFonts(svg: SVGSVGElement): Promise<void> {
     try {
         const family = FONT_FAMILIES.map(
-            (f) => `family=${encodeURIComponent(f)}:wght@400..700`
+            (f) => `family=${encodeURIComponent(f)}:wght@400`
         ).join('&')
         const cssUrl = `https://fonts.googleapis.com/css2?${family}&display=swap`
         const cssResp = await fetch(cssUrl)

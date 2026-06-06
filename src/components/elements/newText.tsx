@@ -12,6 +12,8 @@ import {
     MOBILE_TEXT_SIZES_OBJECT,
 } from '../../utils/constants'
 import { lineHeightFor } from '../../utils/textLayout'
+import { htmlToBulletText } from '../../utils/htmlToBulletText'
+import { DEFAULT_TEXT_FONT_FAMILY } from '../../constants/misc'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -337,7 +339,7 @@ function NewText(props: ElementProps): ReactElement {
             input.style.padding = `${vertPad}px 8px`
             input.style.color = twoText.fill || '#3A342C'
             input.style.fontSize = `${cssFontSize}px`
-            input.style.fontFamily = twoText.family || 'Caveat'
+            input.style.fontFamily = twoText.family || DEFAULT_TEXT_FONT_FAMILY
             input.style.fontWeight = twoText.weight || 'normal'
             input.style.lineHeight = `${lineH}px`
             input.style.letterSpacing = '0px'
@@ -360,7 +362,8 @@ function NewText(props: ElementProps): ReactElement {
             measureSpan.style.visibility = 'hidden'
             measureSpan.style.whiteSpace = 'pre'
             measureSpan.style.fontSize = `${cssFontSize}px`
-            measureSpan.style.fontFamily = twoText.family || 'Caveat'
+            measureSpan.style.fontFamily =
+                twoText.family || DEFAULT_TEXT_FONT_FAMILY
             measureSpan.style.fontWeight = twoText.weight || 'normal'
             measureSpan.style.lineHeight = `${lineH}px`
             measureSpan.style.letterSpacing = '0px'
@@ -394,6 +397,30 @@ function NewText(props: ElementProps): ReactElement {
             autoSizeAndCenter()
 
             input.addEventListener('input', autoSizeAndCenter)
+
+            // Pasting a bulleted list from a rich-text source (Docs, Notion,
+            // Notes) into this plain textarea would otherwise drop the bullet
+            // markers — the source's `text/plain` projection omits them. Read
+            // the `text/html` flavor and rebuild `• `-prefixed lines so list
+            // structure survives the paste.
+            input.addEventListener('paste', (event: ClipboardEvent) => {
+                const html = event.clipboardData?.getData('text/html')
+                if (!html) return
+                const converted = htmlToBulletText(html)
+                if (converted == null) return
+
+                event.preventDefault()
+                const start = input.selectionStart ?? input.value.length
+                const end = input.selectionEnd ?? input.value.length
+                input.value =
+                    input.value.slice(0, start) +
+                    converted +
+                    input.value.slice(end)
+                const caret = start + converted.length
+                input.selectionStart = caret
+                input.selectionEnd = caret
+                autoSizeAndCenter()
+            })
 
             input.onfocus = function (): void {
                 const bRect = blockRect()

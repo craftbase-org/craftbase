@@ -377,6 +377,7 @@ const FontFamilyRow = ({
     const families = [
         { label: 'Caveat', family: 'Caveat' },
         { label: 'Geist', family: 'Geist' },
+        { label: 'Caveat Brush', family: 'Caveat Brush' },
     ]
     return (
         <div className="pt-3 px-2">

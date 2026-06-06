@@ -1,4 +1,7 @@
-import { LINE_HEIGHT_MULTIPLIER } from '../constants/misc'
+import {
+    LINE_HEIGHT_MULTIPLIER,
+    DEFAULT_TEXT_FONT_FAMILY,
+} from '../constants/misc'
 
 // Shared text wrapping + measurement used by the shape components, the canvas
 // text editor, and the resize controller so a single algorithm decides how a
@@ -18,7 +21,7 @@ export interface FontSpec {
 // Build a CSS `font` shorthand for a 2D canvas context. Kept in sync with the
 // editor's measure-span styling in newCanvas.tsx (weight family at `size`px).
 export function buildCssFont({ family, size, weight }: FontSpec): string {
-    return `${weight ?? 'normal'} ${size}px ${family || 'Caveat'}`
+    return `${weight ?? 'normal'} ${size}px ${family || DEFAULT_TEXT_FONT_FAMILY}`
 }
 
 // Line height (surface units) for a given font size. Reused for the editor

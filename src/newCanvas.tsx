@@ -50,6 +50,7 @@ import {
     GEO_DRAW_PROPS_KEY,
     GEO_POINT_PLACE_MODE_KEY,
     GEO_MIN_VERTICES,
+    DEFAULT_TEXT_FONT_FAMILY,
 } from './constants/misc'
 import Spinner from './components/common/spinner'
 
@@ -630,7 +631,7 @@ function addZUI(
             input.style.padding = `${vertPad}px 8px`
             input.style.color = textStyle.fill || '#3A342C'
             input.style.fontSize = `${cssFontSize}px`
-            input.style.fontFamily = textStyle.family || 'Caveat'
+            input.style.fontFamily = textStyle.family || DEFAULT_TEXT_FONT_FAMILY
             input.style.fontWeight = String(textStyle.weight ?? 'normal')
             input.style.lineHeight = `${lineH}px`
             input.style.letterSpacing = '0px'
@@ -685,7 +686,8 @@ function addZUI(
             measureSpan.style.overflowWrap = 'anywhere'
             measureSpan.style.width = `${usableScreenW}px`
             measureSpan.style.fontSize = `${cssFontSize}px`
-            measureSpan.style.fontFamily = textStyle.family || 'Caveat'
+            measureSpan.style.fontFamily =
+                textStyle.family || DEFAULT_TEXT_FONT_FAMILY
             measureSpan.style.fontWeight = String(textStyle.weight ?? 'normal')
             measureSpan.style.lineHeight = `${lineH}px`
             measureSpan.style.letterSpacing = '0px'

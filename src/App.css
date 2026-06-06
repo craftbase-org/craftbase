@@ -1,8 +1,9 @@
 :root {
     --font-ui: 'Geist', system-ui, sans-serif;
     --font-display: 'Fraunces', Georgia, serif;
-    --font-sketch: 'Caveat', cursive;
+    --font-sketch: 'Caveat Brush';
     --font-mono: 'Geist Mono', monospace;
+    --font-caveat-brush: 'Caveat Brush', cursive;
 
     --color-canvas: #f5f0e8;
     --color-sidebar: #ede8dc;
@@ -16,6 +17,12 @@
     --color-ink-muted: #8c7e6a;
     --color-border-panel: #d4c9b4;
     --color-border-card: #c4b89a;
+}
+
+.caveat-brush-regular {
+    font-family: 'Caveat Brush', cursive;
+    font-weight: 400;
+    font-style: normal;
 }
 
 body {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
+import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
 
 const STORAGE_KEY = 'craftbase:elementDefaults'
 
@@ -26,7 +27,7 @@ const INITIAL_DEFAULTS: ElementDefaultsState = {
     defaultOpacity: 1,
     defaultTextColor: '#1A1612',
     defaultTextSize: 'M',
-    defaultTextFontFamily: 'Caveat',
+    defaultTextFontFamily: DEFAULT_TEXT_FONT_FAMILY,
 }
 
 function loadFromStorage(): ElementDefaultsState {

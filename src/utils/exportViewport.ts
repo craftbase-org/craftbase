@@ -10,6 +10,7 @@
 // download it as PNG.
 
 import { SVG_NS, embedFonts } from './svgExportShared'
+import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
 
 const CANVAS_BG = '#f5f0e8' // --color-canvas (App.css)
 const DOT_COLOR = '#c4b89a' // radial-gradient dot color (App.css)
@@ -98,7 +99,7 @@ function appendWatermark(
     text.setAttribute('x', String(width - 16))
     text.setAttribute('y', String(height - 14))
     text.setAttribute('text-anchor', 'end')
-    text.setAttribute('font-family', 'Caveat')
+    text.setAttribute('font-family', DEFAULT_TEXT_FONT_FAMILY)
     text.setAttribute('font-size', '20')
     text.setAttribute('fill', '#8C7E6A')
     text.setAttribute('fill-opacity', '0.8')

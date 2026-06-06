@@ -174,9 +174,18 @@ function applyPropertyToTwoJSGroup(
                 Object.entries(value as Record<string, unknown>).forEach(
                     ([k, v]) => {
                         if (k === 'opacity') {
-                            // Opacity lives on the leaf shape (children[0]) by
-                            // codebase convention; matches applyGroupProperty.
-                            shape.opacity = v
+                            // Opacity is applied at the GROUP level (see
+                            // applyProperty and the *-with-text components) so
+                            // the shape + text dim uniformly and repaint
+                            // reliably. Reset the leaf/text so they don't
+                            // compound with the group's opacity.
+                            group.opacity = v
+                            shape.opacity = 1
+                            if (textNodes.length > 0) {
+                                textNodes.forEach(
+                                    (n: ShapeLike) => (n.opacity = 1)
+                                )
+                            }
                         } else if (
                             k === 'textFontSize' ||
                             k === 'fontSize'

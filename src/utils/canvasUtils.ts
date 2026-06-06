@@ -1,4 +1,7 @@
-import { SHAPE_DEFAULT_STROKE } from '../constants/misc'
+import {
+    SHAPE_DEFAULT_STROKE,
+    DEFAULT_TEXT_FONT_FAMILY,
+} from '../constants/misc'
 import { generateUUID } from './misc'
 import { lineHeightFor, measureTextWidth, type FontSpec } from './textLayout'
 import { reflowTextForShape } from './shapeTextFit'
@@ -368,7 +371,8 @@ export function shapeTextStyleFromMeta(meta: ShapeLike): {
     style: ShapeTextStyle
     font: FontSpec
 } {
-    const family = meta?.textFontFamily || meta?.textFamily || 'Caveat'
+    const family =
+        meta?.textFontFamily || meta?.textFamily || DEFAULT_TEXT_FONT_FAMILY
     const size = meta?.textFontSize || 24
     const weight = meta?.textWeight || 'normal'
     return {

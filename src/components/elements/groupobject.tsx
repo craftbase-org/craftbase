@@ -8,6 +8,7 @@ import Two from 'two.js'
 import { useBoardContext } from '../../views/Board/boardContext'
 import getEditComponents from '../utils/editWrapper'
 import { elementOnBlurHandler } from '../../utils/misc'
+import { DEFAULT_TEXT_FONT_FAMILY } from '../../constants/misc'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -377,7 +378,9 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                     twoText.alignment = 'center'
                     twoText.baseline = meta.textBaseLine || 'middle'
                     twoText.family =
-                        meta.textFontFamily || meta.textFamily || 'Caveat'
+                        meta.textFontFamily ||
+                        meta.textFamily ||
+                        DEFAULT_TEXT_FONT_FAMILY
                     coreObject.add(twoText)
                 }
 

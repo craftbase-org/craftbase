@@ -28,7 +28,7 @@ module.exports = {
         fontFamily: {
             ui: ['Geist', 'system-ui', 'sans-serif'],
             display: ['Fraunces', 'Georgia', 'serif'],
-            sketch: ['Caveat', 'cursive'],
+            sketch: ['Caveat Brush', 'cursive'],
             mono: ['Geist Mono', 'monospace'], // added — for coordinates, hex values, dimension chips
         },
         // borderWidth: {
