@@ -1,4 +1,5 @@
 import Main from './main'
+import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
 
 export interface NewTextMetadata {
     content?: string
@@ -23,7 +24,7 @@ export default class NewTextFactory extends Main<NewTextProperties> {
         const {
             content = '',
             fontSize = 36,
-            textFontFamily = 'Caveat',
+            textFontFamily = DEFAULT_TEXT_FONT_FAMILY,
         } = this.properties?.metadata ?? {}
 
         // Use native Two.js text instead of a foreignObject wrapper

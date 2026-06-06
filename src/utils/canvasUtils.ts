@@ -1,4 +1,7 @@
-import { SHAPE_DEFAULT_STROKE } from '../constants/misc'
+import {
+    SHAPE_DEFAULT_STROKE,
+    DEFAULT_TEXT_FONT_FAMILY,
+} from '../constants/misc'
 import { generateUUID } from './misc'
 import { lineHeightFor, measureTextWidth, type FontSpec } from './textLayout'
 import { reflowTextForShape } from './shapeTextFit'
@@ -276,7 +279,15 @@ export function getShapeTextNodes(group: ShapeLike): ShapeLike[] {
     const layer = findShapeTextLayer(group)
     const source = layer ? layer.children : group?.children
     if (!source) return []
-    return source.filter(
+    // `source` is a Two.js `Children` collection (a custom Array subclass with
+    // no Symbol.species). Calling `.filter` on it directly routes through
+    // `ArraySpeciesCreate(new Children(0))`, whose constructor mishandles the
+    // numeric length and seeds the result with a spurious `0`. When there are
+    // no text nodes that `0` survives, so the filter returns `[0]` instead of
+    // `[]` — and any caller dereferencing the result (`n.opacity`, `n.fill`)
+    // throws `Cannot create property … on number '0'`. Copy to a plain array
+    // first so the filter is well-behaved and returns `[]` for text-less shapes.
+    return Array.from(source as ArrayLike<ShapeLike>).filter(
         (c: ShapeLike) => typeof c?.value === 'string'
     )
 }
@@ -360,7 +371,8 @@ export function shapeTextStyleFromMeta(meta: ShapeLike): {
     style: ShapeTextStyle
     font: FontSpec
 } {
-    const family = meta?.textFontFamily || meta?.textFamily || 'Caveat'
+    const family =
+        meta?.textFontFamily || meta?.textFamily || DEFAULT_TEXT_FONT_FAMILY
     const size = meta?.textFontSize || 24
     const weight = meta?.textWeight || 'normal'
     return {

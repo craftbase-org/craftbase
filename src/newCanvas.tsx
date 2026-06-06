@@ -12,6 +12,7 @@ import React, {
     useEffect,
     useState,
     useRef,
+    useCallback,
     Suspense,
     type MutableRefObject,
     type ReactNode,
@@ -49,6 +50,7 @@ import {
     GEO_DRAW_PROPS_KEY,
     GEO_POINT_PLACE_MODE_KEY,
     GEO_MIN_VERTICES,
+    DEFAULT_TEXT_FONT_FAMILY,
 } from './constants/misc'
 import Spinner from './components/common/spinner'
 
@@ -78,6 +80,8 @@ import { growShapeToFitText, usableTextWidth } from './utils/shapeTextFit'
 import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
 import { createDiamondPath } from './factory/diamond'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
+import { exportSelectionAsSvg } from './utils/exportSelectionAsSvg'
+import CanvasContextMenu from './components/canvasContextMenu'
 import {
     ElementRenderWrapper,
     GroupRenderWrapper,
@@ -627,7 +631,7 @@ function addZUI(
             input.style.padding = `${vertPad}px 8px`
             input.style.color = textStyle.fill || '#3A342C'
             input.style.fontSize = `${cssFontSize}px`
-            input.style.fontFamily = textStyle.family || 'Caveat'
+            input.style.fontFamily = textStyle.family || DEFAULT_TEXT_FONT_FAMILY
             input.style.fontWeight = String(textStyle.weight ?? 'normal')
             input.style.lineHeight = `${lineH}px`
             input.style.letterSpacing = '0px'
@@ -682,7 +686,8 @@ function addZUI(
             measureSpan.style.overflowWrap = 'anywhere'
             measureSpan.style.width = `${usableScreenW}px`
             measureSpan.style.fontSize = `${cssFontSize}px`
-            measureSpan.style.fontFamily = textStyle.family || 'Caveat'
+            measureSpan.style.fontFamily =
+                textStyle.family || DEFAULT_TEXT_FONT_FAMILY
             measureSpan.style.fontWeight = String(textStyle.weight ?? 'normal')
             measureSpan.style.lineHeight = `${lineH}px`
             measureSpan.style.letterSpacing = '0px'
@@ -2339,7 +2344,19 @@ function addZUI(
                     lastTouch.clientY
                 )
 
-            if (!handleHit) {
+            // A multi-element group uses the older objectSelector path (not
+            // selectionController), so handleHit is false for it. Without this,
+            // the clearSelector below hides the group's dashed box the instant
+            // the drag begins on mobile. Skip the clear when the finger lands on
+            // the group object so its selector stays visible through the drag.
+            const groupHit = (
+                document.elementFromPoint(
+                    lastTouch.clientX,
+                    lastTouch.clientY
+                ) as Element | null
+            )?.closest('[data-label="groupobject_coord"]')
+
+            if (!handleHit && !groupHit) {
                 // Clear any previous selection before processing the new tap.
                 // On desktop this happens via focus/blur, but synthetic mouse events
                 // don't transfer browser focus on mobile, so we do it explicitly here
@@ -2685,6 +2702,10 @@ const Canvas: React.FC<CanvasProps> = (props) => {
     const [zuiInstance, setZuiInstance] = useState<any>(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [onGroup, setOnGroup] = useState<any>(null)
+    // Right-click / two-finger context menu position (null = closed).
+    const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(
+        null
+    )
     const [componentsToRender, setComponentsToRender] = useState<
         React.ComponentType[]
     >([])
@@ -3067,6 +3088,56 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         }
     }, [undoLastAction, redoLastAction, enableTextDrawMode])
 
+    // Export the active selection (marquee group or single element) as a
+    // standalone .svg. getSelectedGroup() unifies both selection mechanisms.
+    const exportActiveSelection = useCallback(async () => {
+        const group = zuiInstanceRef.current?.getSelectedGroup?.()
+        if (!group) return
+        try {
+            await exportSelectionAsSvg(group)
+        } catch (err) {
+            console.warn('Export selection as SVG failed', err)
+        }
+    }, [])
+
+    // Right-click (mouse) and two-finger trackpad tap both fire the native
+    // 'contextmenu' event. Suppress the OS menu; if something is selected, open
+    // our menu at the cursor. Cmd/Ctrl+Shift+D triggers the same export.
+    useEffect(() => {
+        const root = document.getElementById('main-two-root')
+        if (!root) return
+
+        const onContextMenu = (evt: MouseEvent) => {
+            evt.preventDefault()
+            const group = zuiInstanceRef.current?.getSelectedGroup?.()
+            if (group) {
+                setCtxMenu({ x: evt.clientX, y: evt.clientY })
+            } else {
+                setCtxMenu(null)
+            }
+        }
+
+        const onExportKeyDown = (evt: KeyboardEvent) => {
+            if (
+                evt.key.toLowerCase() !== 'd' ||
+                !(evt.ctrlKey || evt.metaKey) ||
+                !evt.shiftKey
+            )
+                return
+            const tag = document.activeElement?.tagName
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return
+            evt.preventDefault()
+            void exportActiveSelection()
+        }
+
+        root.addEventListener('contextmenu', onContextMenu)
+        window.addEventListener('keydown', onExportKeyDown)
+        return () => {
+            root.removeEventListener('contextmenu', onContextMenu)
+            window.removeEventListener('keydown', onExportKeyDown)
+        }
+    }, [exportActiveSelection])
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const setOnGroupHandler = (obj: any) => {
         setOnGroup(obj)
@@ -3229,6 +3300,17 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                     <Component />
                 </Suspense>
             ))}
+            {ctxMenu && (
+                <CanvasContextMenu
+                    x={ctxMenu.x}
+                    y={ctxMenu.y}
+                    onClose={() => setCtxMenu(null)}
+                    onExportSvg={() => {
+                        setCtxMenu(null)
+                        void exportActiveSelection()
+                    }}
+                />
+            )}
         </>
     )
 }

@@ -9,14 +9,13 @@
 // stamp a screen-space watermark, then draw the SVG onto a <canvas> and
 // download it as PNG.
 
-const SVG_NS = 'http://www.w3.org/2000/svg'
+import { SVG_NS, embedFonts } from './svgExportShared'
+import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
+
 const CANVAS_BG = '#f5f0e8' // --color-canvas (App.css)
 const DOT_COLOR = '#c4b89a' // radial-gradient dot color (App.css)
 const DOT_TILE = 24 // background-size: 24px 24px (App.css)
 const WATERMARK_TEXT = 'Made with craftbase.org'
-// Fonts used for canvas text. --font-sketch: 'Caveat' (App.css). Embedded so
-// rasterized text matches the screen instead of falling back to a system font.
-const FONT_FAMILIES = ['Caveat']
 const MAX_DPR = 2 // cap device-pixel scaling to bound output file size
 
 /**
@@ -100,67 +99,13 @@ function appendWatermark(
     text.setAttribute('x', String(width - 16))
     text.setAttribute('y', String(height - 14))
     text.setAttribute('text-anchor', 'end')
-    text.setAttribute('font-family', 'Caveat')
+    text.setAttribute('font-family', DEFAULT_TEXT_FONT_FAMILY)
     text.setAttribute('font-size', '20')
     text.setAttribute('fill', '#8C7E6A')
     text.setAttribute('fill-opacity', '0.8')
     text.textContent = WATERMARK_TEXT
     // Last child → drawn on top of everything.
     svg.appendChild(text)
-}
-
-/**
- * Inline the Google web font(s) as base64 inside a <style> in the clone. The
- * SVG→<canvas> rasterizer renders in an isolated context with no access to the
- * document's loaded fonts, so without this, canvas text falls back to a system
- * font. Best-effort: any failure leaves the SVG unmodified.
- */
-async function embedFonts(svg: SVGSVGElement): Promise<void> {
-    try {
-        const family = FONT_FAMILIES.map(
-            (f) => `family=${encodeURIComponent(f)}:wght@400..700`
-        ).join('&')
-        const cssUrl = `https://fonts.googleapis.com/css2?${family}&display=swap`
-        const cssResp = await fetch(cssUrl)
-        if (!cssResp.ok) return
-        let css = await cssResp.text()
-
-        const urls = [...css.matchAll(/url\((https:\/\/[^)]+)\)/g)].map(
-            (m) => m[1] as string
-        )
-        const uniqueUrls = [...new Set(urls)]
-        await Promise.all(
-            uniqueUrls.map(async (url) => {
-                const dataUri = await fetchAsDataUri(url)
-                if (dataUri) css = css.split(url).join(dataUri)
-            })
-        )
-
-        const style = document.createElementNS(SVG_NS, 'style')
-        style.textContent = css
-        svg.insertBefore(style, svg.firstChild)
-    } catch (err) {
-        // Non-fatal: keep going without embedded fonts.
-        console.warn('Font embedding failed; exporting with fallback font', err)
-    }
-}
-
-/** Fetch a font binary and return a base64 data URI, or null on failure. */
-async function fetchAsDataUri(url: string): Promise<string | null> {
-    try {
-        const resp = await fetch(url)
-        if (!resp.ok) return null
-        const buf = await resp.arrayBuffer()
-        const mime = resp.headers.get('content-type') || 'font/woff2'
-        let binary = ''
-        const bytes = new Uint8Array(buf)
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i] as number)
-        }
-        return `data:${mime};base64,${btoa(binary)}`
-    } catch {
-        return null
-    }
 }
 
 /** Draw the serialized SVG onto a HiDPI canvas and trigger a PNG download. */

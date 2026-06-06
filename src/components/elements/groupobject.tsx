@@ -8,6 +8,7 @@ import Two from 'two.js'
 import { useBoardContext } from '../../views/Board/boardContext'
 import getEditComponents from '../utils/editWrapper'
 import { elementOnBlurHandler } from '../../utils/misc'
+import { DEFAULT_TEXT_FONT_FAMILY } from '../../constants/misc'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -61,7 +62,15 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                 if (!element.elementData) return
                 if (childrenIdsOfTheGroup.includes(element.elementData.id)) {
                     foundOriginalCount++
-                    element.opacity = 1
+                    // Restore the element's own (group-level) opacity rather than
+                    // forcing 1 — it was hidden at 0 while the group was selected,
+                    // and per-element opacity now lives on the group. metadata may
+                    // be a pencil vertex array, so guard the `.opacity` read.
+                    const elMeta = element.elementData.metadata
+                    element.opacity =
+                        elMeta && !Array.isArray(elMeta)
+                            ? (elMeta.opacity ?? 1)
+                            : 1
 
                     if (!groupMoved) {
                         return
@@ -369,7 +378,9 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                     twoText.alignment = 'center'
                     twoText.baseline = meta.textBaseLine || 'middle'
                     twoText.family =
-                        meta.textFontFamily || meta.textFamily || 'Caveat'
+                        meta.textFontFamily ||
+                        meta.textFamily ||
+                        DEFAULT_TEXT_FONT_FAMILY
                     coreObject.add(twoText)
                 }
 

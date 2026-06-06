@@ -1,5 +1,13 @@
 export const offsetHeight = 0
 export const GROUP_COMPONENT = 'groupobject'
+
+// Default canvas text font (single source of truth). Kept in sync with the
+// `--font-sketch` / `--font-caveat-brush` vars in App.css, the Tailwind
+// `sketch` token, and the Google Fonts <link> in index.html. Every canvas-text
+// fallback (`family || DEFAULT_TEXT_FONT_FAMILY`) references this so the default
+// lives in exactly one place. Only the Regular 400 weight is loaded/used.
+export const DEFAULT_TEXT_FONT_FAMILY = 'Caveat Brush'
+
 export const RUBBER_MODE_KEY = 'rubberMode'
 export const VIEWPORT_KEY_PREFIX = 'craftbase_viewport_'
 export const MOBILE_VIEWPORT_KEY_PREFIX = 'craftbase_mobile_viewport_'

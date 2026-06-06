@@ -174,9 +174,18 @@ function applyPropertyToTwoJSGroup(
                 Object.entries(value as Record<string, unknown>).forEach(
                     ([k, v]) => {
                         if (k === 'opacity') {
-                            // Opacity lives on the leaf shape (children[0]) by
-                            // codebase convention; matches applyGroupProperty.
-                            shape.opacity = v
+                            // Opacity is applied at the GROUP level (see
+                            // applyProperty and the *-with-text components) so
+                            // the shape + text dim uniformly and repaint
+                            // reliably. Reset the leaf/text so they don't
+                            // compound with the group's opacity.
+                            group.opacity = v
+                            shape.opacity = 1
+                            if (textNodes.length > 0) {
+                                textNodes.forEach(
+                                    (n: ShapeLike) => (n.opacity = 1)
+                                )
+                            }
                         } else if (
                             k === 'textFontSize' ||
                             k === 'fontSize'
@@ -760,6 +769,18 @@ export function useComponentHistory({
     // Only UPDATE_VERTICES and UPDATE_BULK need extra capture — for
     // ADD/DELETE/BATCH the original entry already contains everything redo needs.
     const captureNextState = (entry: HistoryEntry): HistoryEntry => {
+        if (entry.action === 'ADD') {
+            // The ADD entry's componentInfo is snapshotted at create time. For
+            // arrows (and any element whose post-create geometry is applied with
+            // skipHistory), that snapshot is stale — e.g. an arrow is pre-created
+            // off-screen at -9999 with zero-length vertices, then drawn later.
+            // Re-read the live store here (still present, since undo's
+            // applyRemove runs after this) so redo re-inserts the final geometry.
+            const current = stateRefForComponentStore.current[entry.id]
+            return current
+                ? { ...entry, componentInfo: { ...current } }
+                : entry
+        }
         if (entry.action === 'UPDATE_VERTICES') {
             const current = stateRefForComponentStore.current[entry.id]
             return {
