@@ -57,8 +57,12 @@ import Spinner from './components/common/spinner'
 const elementModules = import.meta.glob('./components/elements/*.tsx')
 
 import Loader from './components/utils/loader'
-import SelectionController from './canvas/selectionController'
+import SelectionController, {
+    PORT_GAP,
+    SELECTION_PADDING,
+} from './canvas/selectionController'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from './utils/updateVertices'
+import { getShapePortPoint } from './utils/shapePorts'
 import { generateUUID } from './utils/misc'
 import {
     velocityToLinewidth,
@@ -515,6 +519,15 @@ function addZUI(
         },
         commit: (id, patch) => {
             updateComponentBulkPropertiesInLocalStore(id, patch)
+            // Resize ended — persist any connectors whose ports tracked the
+            // shape so their new tail/head survive a reload.
+            const g = selectionController.currentGroup
+            if (g) persistBoundArrows(g)
+        },
+        onTransform: (group) => {
+            // Live-follow during scale/rotate: drag bound connectors with the
+            // shape's edges.
+            reanchorArrowsForShape(group)
         },
         onDelete: (group) => {
             const id = group?.elementData?.id
@@ -988,6 +1001,171 @@ function addZUI(
         lastHoveredCircleGroup = found ?? null
     }
 
+    // Outward offset (surface units) from a shape's edge to its floated
+    // selection port, matching where selectionController draws the port dot:
+    // the box padding plus the screen-constant port gap divided out by zoom.
+    const portGapSurface = (): number =>
+        SELECTION_PADDING + PORT_GAP / (zui.scale || 1)
+
+    // Pull a connector arrow out of a selection port. Mirrors the toolbar's
+    // arrow-create flow (off-screen arrowLine in the store, then drive it via
+    // SCENARIO_ARROW_DRAW), except the tail is pinned to the port's surface
+    // anchor instead of the next mousedown's cursor, and the drag starts
+    // immediately so the user only has to drop the head. The tail's binding
+    // (tailShapeId/tailEdge) is recorded so it re-anchors when the shape moves.
+    function startPortConnector(
+        anchor: { x: number; y: number },
+        tailShapeId: string | undefined,
+        tailEdge: string
+    ) {
+        const arrowId = generateUUID()
+        const userId = localStorage.getItem('userId')
+        const arrowData = {
+            id: arrowId,
+            componentType: 'arrowLine',
+            linewidth: defaultLinewidthValue,
+            strokeType: defaultStrokeTypeValue,
+            stroke: defaultStrokeColorValue ?? '#3A342C',
+            children: {},
+            x: -9999,
+            y: -9999,
+            x1: 0,
+            x2: 0,
+            y1: 0,
+            y2: 0,
+            boardId: props.boardId,
+            boardName: null,
+            radius: null,
+            iconStroke: null,
+            isDummy: null,
+            createdAt: null,
+            metadata: { opacity: 1 },
+            width: 100,
+            height: 0,
+            fill: 'transparent',
+            textColor: null,
+            updatedBy: userId,
+            // Connection binding — tail pinned to the source shape's edge port.
+            tailShapeId: tailShapeId ?? null,
+            tailEdge,
+            headShapeId: null,
+            headEdge: null,
+        }
+        addToLocalComponentStore(
+            arrowId,
+            'arrowLine',
+            arrowData as unknown as ComponentRecord
+        )
+
+        // Drop the source shape's selection box so it doesn't linger over the
+        // new connector while dragging.
+        selectionController.detach()
+
+        scenario = SCENARIO_ARROW_DRAW
+        domElement.addEventListener('mousemove', mousemove, false)
+        domElement.addEventListener('mouseup', mouseup, false)
+        setRootCursor('crosshair')
+
+        // The arrowLine React element mounts lazily — poll until it appears,
+        // then pin the tail to the port anchor and collapse the head onto it so
+        // the upcoming mousemove stretches it from the port.
+        pollUntilElement(
+            two,
+            arrowId,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (el: any) => {
+                arrowDrawElement = el
+                arrowDrawElement.position.x = anchor.x
+                arrowDrawElement.position.y = anchor.y
+
+                const line = arrowDrawElement.children[0]
+                const pointCircle1Group = arrowDrawElement.children[1]
+                const pointCircle2Group = arrowDrawElement.children[2]
+
+                updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
+                updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
+                two.update()
+            },
+            { maxRetries: 30 }
+        )
+    }
+
+    // Re-anchor every connector bound to `group`: recompute its tail (and/or
+    // head) so the bound endpoint stays glued to the shape's edge port. Called
+    // live during a shape drag so the connector follows in real time. The arrow
+    // group's own position stays put — only the bound vertex moves, which keeps
+    // the free endpoint fixed in surface space.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function reanchorArrowsForShape(group: any) {
+        const shapeId = group?.elementData?.id
+        if (!shapeId) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        two.scene.children.forEach((child: any) => {
+            if (child?.elementData?.componentType !== 'arrowLine') return
+            const ed = child.elementData
+            const line = child.children?.[0]
+            if (!line) return
+            if (ed.tailShapeId === shapeId && ed.tailEdge) {
+                const p = getShapePortPoint(group, ed.tailEdge, portGapSurface())
+                updateX1Y1Vertices(
+                    Two,
+                    line,
+                    p.x - child.position.x,
+                    p.y - child.position.y,
+                    child.children[1],
+                    two
+                )
+            }
+            if (ed.headShapeId === shapeId && ed.headEdge) {
+                const p = getShapePortPoint(group, ed.headEdge, portGapSurface())
+                updateX2Y2Vertices(
+                    Two,
+                    line,
+                    p.x - child.position.x,
+                    p.y - child.position.y,
+                    child.children[2],
+                    two
+                )
+            }
+        })
+    }
+
+    // Persist the (already re-anchored) vertices of connectors bound to `group`
+    // so the new tail/head survive a reload. Mirrors the arrow-draw commit:
+    // prevX === position.x means the x,y branch is a no-op (the arrow group never
+    // moves), and isLineCircle drives the x1/y1/x2/y2 write.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function persistBoundArrows(group: any) {
+        const shapeId = group?.elementData?.id
+        if (!shapeId) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        two.scene.children.forEach((child: any) => {
+            if (child?.elementData?.componentType !== 'arrowLine') return
+            const ed = child.elementData
+            if (ed.tailShapeId !== shapeId && ed.headShapeId !== shapeId) return
+            const line = child.children?.[0]
+            if (!line) return
+            updateToGlobalState(
+                {
+                    id: ed.id,
+                    prevX: parseInt(child.position.x),
+                    prevY: parseInt(child.position.y),
+                    isLineCircle: true,
+                    parentData: child,
+                    data: {
+                        x: parseInt(child.position.x),
+                        y: parseInt(child.position.y),
+                        x1: parseInt(line.vertices[0].x),
+                        y1: parseInt(line.vertices[0].y),
+                        x2: parseInt(line.vertices[1].x),
+                        y2: parseInt(line.vertices[1].y),
+                    },
+                },
+                {}
+            )
+        })
+    }
+
     function mousedown(e: MouseEvent) {
         // Pan-mode (desktop): grab-and-drag translates the surface instead of
         // selecting/drawing. Runs before everything else so a click on a shape
@@ -1037,6 +1215,27 @@ function addZUI(
                 }
             })
         } else if (selectionController.currentGroup) {
+            // Port check first: a click on a connection port pulls out a
+            // connector arrow (tail pinned to the port) instead of selecting or
+            // resizing. Ports sit outside the box, so they never overlap the
+            // resize handles below.
+            const portHit = selectionController.hitTestPort(
+                e.clientX,
+                e.clientY
+            )
+            if (portHit) {
+                const sourceGroup = selectionController.currentGroup
+                const tailShapeId = sourceGroup?.elementData?.id
+                // Pin the tail to the floated selection port (edge + padding +
+                // port gap) so the connector visually starts at the port dot.
+                const anchor = getShapePortPoint(
+                    sourceGroup,
+                    portHit.edge,
+                    portGapSurface()
+                )
+                startPortConnector(anchor, tailShapeId, portHit.edge)
+                return
+            }
             // Controller handle check — runs before the bare-canvas clearSelector
             // dispatch and the DOM path walk. Corner handles can extend slightly
             // beyond the element's SVG bounds, so relying on path-walking would
@@ -1900,6 +2099,9 @@ function addZUI(
                         else {
                             shape.position.x += dx / zui.scale
                             shape.position.y += dy / zui.scale
+                            // Drag any connector tails/heads pinned to this
+                            // shape's ports along with it.
+                            reanchorArrowsForShape(shape)
                         }
                     } else if (shape.elementData.isGroupSelector) {
                         // this blocks falls for the case when user has clicked and
@@ -2236,53 +2438,125 @@ function addZUI(
                             shape.opacity = 0
                             shape.siblingCircle.opacity = 0
 
-                            oldShapeData = { ...shape.elementData }
+                            const vertexObj = {
+                                x1: parseInt(shape.lineData.vertices[0].x),
+                                y1: parseInt(shape.lineData.vertices[0].y),
+                                x2: parseInt(shape.lineData.vertices[1].x),
+                                y2: parseInt(shape.lineData.vertices[1].y),
+                            }
 
-                            newShapeData = Object.assign(
-                                {},
-                                shape.elementData,
-                                {
-                                    data: {
-                                        x1: parseInt(
-                                            shape.lineData.vertices[0].x
-                                        ),
-                                        y1: parseInt(
-                                            shape.lineData.vertices[0].y
-                                        ),
-                                        x2: parseInt(
-                                            shape.lineData.vertices[1].x
-                                        ),
-                                        y2: parseInt(
-                                            shape.lineData.vertices[1].y
-                                        ),
-                                    },
-                                }
-                            )
+                            // Manually moving a port-bound endpoint detaches it.
+                            // Fold the binding clear into the SAME bulk update as
+                            // the vertices so a single undo restores both the
+                            // position and the tailShapeId/tailEdge binding.
+                            const arrowGroup = shape.lineData?.parent
+                            const ed = arrowGroup?.elementData
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const detachObj: Record<string, any> = {}
+                            if (
+                                shape.direction === 'left' &&
+                                ed &&
+                                (ed.tailShapeId || ed.tailEdge)
+                            ) {
+                                detachObj.tailShapeId = null
+                                detachObj.tailEdge = null
+                                ed.tailShapeId = null
+                                ed.tailEdge = null
+                            } else if (
+                                shape.direction === 'right' &&
+                                ed &&
+                                (ed.headShapeId || ed.headEdge)
+                            ) {
+                                detachObj.headShapeId = null
+                                detachObj.headEdge = null
+                                ed.headShapeId = null
+                                ed.headEdge = null
+                            }
 
-                            updateToGlobalState(newShapeData, oldShapeData)
+                            if (
+                                ed?.id &&
+                                Object.keys(detachObj).length > 0
+                            ) {
+                                // One UPDATE_BULK carries vertices + binding so
+                                // undo reverts the whole detach in a single step.
+                                updateComponentBulkPropertiesInLocalStore(
+                                    ed.id,
+                                    { ...vertexObj, ...detachObj }
+                                )
+                            } else {
+                                oldShapeData = { ...shape.elementData }
+                                newShapeData = Object.assign(
+                                    {},
+                                    shape.elementData,
+                                    { data: vertexObj }
+                                )
+                                updateToGlobalState(newShapeData, oldShapeData)
+                            }
                         } else {
                             shape.elementData.x = shape.translation.x
                             shape.elementData.y = shape.translation.y
 
-                            oldShapeData = { ...shape.elementData }
+                            // Dragging a connector's BODY moves both endpoints
+                            // off their ports, so it detaches any bindings —
+                            // otherwise a later shape move would snap the tail
+                            // back. Clear them live and fold into the same
+                            // position update so one undo reverts the whole move.
+                            const ed = shape.elementData
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const arrowDetach: Record<string, any> = {}
+                            if (ed.componentType === 'arrowLine') {
+                                if (ed.tailShapeId || ed.tailEdge) {
+                                    arrowDetach.tailShapeId = null
+                                    arrowDetach.tailEdge = null
+                                    ed.tailShapeId = null
+                                    ed.tailEdge = null
+                                }
+                                if (ed.headShapeId || ed.headEdge) {
+                                    arrowDetach.headShapeId = null
+                                    arrowDetach.headEdge = null
+                                    ed.headShapeId = null
+                                    ed.headEdge = null
+                                }
+                            }
 
-                            newShapeData = Object.assign(
-                                {},
-                                shape.elementData,
-                                {
-                                    data: {
+                            if (Object.keys(arrowDetach).length > 0) {
+                                // One UPDATE_BULK: position + binding clear.
+                                updateComponentBulkPropertiesInLocalStore(
+                                    ed.id,
+                                    {
                                         x: parseInt(shape.translation.x),
                                         y: parseInt(shape.translation.y),
-                                    },
-                                }
-                            )
+                                        ...arrowDetach,
+                                    }
+                                )
+                            } else {
+                                oldShapeData = { ...shape.elementData }
 
-                            if (
-                                shape.elementData.componentType !==
-                                'groupobject'
-                            ) {
-                                updateToGlobalState(newShapeData, oldShapeData)
+                                newShapeData = Object.assign(
+                                    {},
+                                    shape.elementData,
+                                    {
+                                        data: {
+                                            x: parseInt(shape.translation.x),
+                                            y: parseInt(shape.translation.y),
+                                        },
+                                    }
+                                )
+
+                                if (
+                                    shape.elementData.componentType !==
+                                    'groupobject'
+                                ) {
+                                    updateToGlobalState(
+                                        newShapeData,
+                                        oldShapeData
+                                    )
+                                }
                             }
+
+                            // Save the connectors that followed this shape so
+                            // their new tail/head positions survive a reload.
+                            persistBoundArrows(shape)
                         }
                     }
                 }
