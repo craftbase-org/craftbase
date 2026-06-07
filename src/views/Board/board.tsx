@@ -615,6 +615,23 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } = (componentInfo ?? {}) as any
 
+        // Assign a z-order position so the element renders deterministically
+        // (and survives a refresh). New elements go on top: max(position)+1.
+        // Computed from the synchronous ref — not `componentStore` state —
+        // so back-to-back adds (rapid drawing, multi-paste) get increasing
+        // positions instead of colliding. A pre-set position is preserved so
+        // undo-of-delete and clipboard paste keep their original stacking.
+        if (safeInfo.position == null) {
+            const maxPos = Object.values(
+                stateRefForComponentStore.current
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ).reduce((m: number, c: any) => {
+                const p = c?.position
+                return Number.isFinite(p) ? Math.max(m, p) : m
+            }, 0)
+            safeInfo.position = maxPos + 1
+        }
+
         // User's first real element dismisses the onboarding sketch. Welcome
         // elements are seeded via setComponentStore directly (never through
         // this path), so any add here is by definition "real" user content.
