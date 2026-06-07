@@ -2,6 +2,7 @@ import React, {
     useState,
     useEffect,
     useRef,
+    useCallback,
     type ReactNode,
 } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
@@ -203,6 +204,19 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     const { isDesktop, isMobile, isLaptop, isTablet } = useMediaQueryUtils()
 
     const stateRefForComponentStore = useRef<ComponentStore>({})
+    // newCanvas owns reorderSelected (it needs reconcileZOrder + the live zui
+    // selection). It populates this ref on mount; the context exposes a stable
+    // wrapper so the properties toolbar can trigger reordering too. No-op until
+    // Canvas mounts.
+    const reorderSelectedRef = useRef<
+        ((op: 'front' | 'forward' | 'backward' | 'back') => void) | null
+    >(null)
+    const reorderSelected = useCallback(
+        (op: 'front' | 'forward' | 'backward' | 'back'): void => {
+            reorderSelectedRef.current?.(op)
+        },
+        []
+    )
     // Guards the one-shot welcome-sketch soft-land entrance.
     const welcomeEntrancePlayedRef = useRef(false)
     // Guards the one-shot welcome-sketch exit so a burst of first adds only
@@ -1413,6 +1427,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         applyProperty,
         selectedGroup,
         applyGroupProperty,
+        reorderSelected,
         // Defaults — read by ElementPropertiesToolbar, also still exposed
         // individually so legacy primary.js / Canvas reads keep working.
         defaultFill,
@@ -1495,6 +1510,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                         }
                         onCameraChange={props.onCameraChange}
                         renderBackground={props.renderBackground}
+                        reorderSelectedRef={reorderSelectedRef}
                     />
                     <PointTooltip />
                     <ClusterLayer />

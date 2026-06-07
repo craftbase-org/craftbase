@@ -224,6 +224,11 @@ export interface BoardContextValue {
         opts?: { preview?: boolean }
     ) => void
 
+    // Z-order of the currently-selected element. Bridged up from newCanvas via
+    // a ref (the implementation lives there alongside reconcileZOrder); a no-op
+    // until Canvas has mounted and populated it.
+    reorderSelected: (op: 'front' | 'forward' | 'backward' | 'back') => void
+
     // Element defaults (read sites: ElementPropertiesToolbar, primary sidebar, factories)
     defaultFill: string
     defaultStrokeColor: string

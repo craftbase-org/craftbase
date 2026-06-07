@@ -4,10 +4,10 @@ import type { ReactElement, FunctionComponent, SVGProps } from 'react'
 import Portal from './common/portal'
 import { isMac } from '../utils/misc'
 import LayersIcon from '../assets/layers.svg?react'
-import ChevronUpIcon from '../assets/chevron-up.svg?react'
-import ChevronsUpIcon from '../assets/chevrons-up.svg?react'
-import ChevronDownIcon from '../assets/chevron-down.svg?react'
-import ChevronsDownIcon from '../assets/chevrons-down.svg?react'
+import BringToFrontIcon from '../assets/bring-to-front.svg?react'
+import BringForwardIcon from '../assets/bring-forward.svg?react'
+import SendBackwardIcon from '../assets/send-backward.svg?react'
+import SendToBackIcon from '../assets/send-to-back.svg?react'
 import ChevronRightIcon from '../assets/chevron-right.svg?react'
 
 export type ReorderOp = 'front' | 'forward' | 'backward' | 'back'
@@ -59,25 +59,25 @@ const REORDER_ITEMS: ReorderItem[] = [
         op: 'front',
         label: 'Bring to Front',
         shortcut: fmtShortcut(']', { cmd: true }),
-        Icon: ChevronsUpIcon,
+        Icon: BringToFrontIcon,
     },
     {
         op: 'forward',
         label: 'Bring Forward',
         shortcut: fmtShortcut(']'),
-        Icon: ChevronUpIcon,
+        Icon: BringForwardIcon,
     },
     {
         op: 'backward',
         label: 'Send Backward',
         shortcut: fmtShortcut('['),
-        Icon: ChevronDownIcon,
+        Icon: SendBackwardIcon,
     },
     {
         op: 'back',
         label: 'Send to Back',
         shortcut: fmtShortcut('[', { cmd: true }),
-        Icon: ChevronsDownIcon,
+        Icon: SendToBackIcon,
     },
 ]
 

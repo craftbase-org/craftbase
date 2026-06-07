@@ -109,6 +109,12 @@ interface CanvasProps {
     defaultTextSize: number
     onCameraChange?: (event: CameraChangeEvent) => void
     renderBackground?: () => ReactNode
+    // Bridge: Canvas owns reorderSelected (needs reconcileZOrder + live zui
+    // selection); it publishes the function here so board.tsx can expose a
+    // stable wrapper through BoardContext for the properties toolbar.
+    reorderSelectedRef?: MutableRefObject<
+        ((op: 'front' | 'forward' | 'backward' | 'back') => void) | null
+    >
 }
 
 // Shape of the handle addZUI returns and Canvas stores in state. The
@@ -3326,6 +3332,16 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             reconcileZOrder,
         ]
     )
+
+    // Publish reorderSelected up to board.tsx so the properties toolbar can
+    // trigger it through BoardContext (see the reorderSelectedRef bridge).
+    useEffect(() => {
+        const ref = props.reorderSelectedRef
+        if (ref) ref.current = reorderSelected
+        return () => {
+            if (ref) ref.current = null
+        }
+    }, [props.reorderSelectedRef, reorderSelected])
 
     // Right-click (mouse) and two-finger trackpad tap both fire the native
     // 'contextmenu' event. Suppress the OS menu; if something is selected, open
