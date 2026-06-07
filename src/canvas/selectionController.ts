@@ -313,6 +313,17 @@ export default class SelectionController {
         }
     }
 
+    /**
+     * Public re-assert of the selection overlay to the top of the scene.
+     * Called by the z-order reconcile after it re-sorts element groups, so the
+     * selection box never gets buried beneath a just-reordered element. No-op
+     * when nothing is selected.
+     */
+    bringSelectionToFront(): void {
+        if (!this.currentGroup) return
+        this._bringToFront()
+    }
+
     attach(group: GroupLike, shape?: ShapeLike): boolean {
         const type = group?.elementData?.componentType
         const adapter = SHAPE_ADAPTERS[type]

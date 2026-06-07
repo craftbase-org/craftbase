@@ -46,6 +46,14 @@ export interface ComponentRecord {
     isDummy: boolean | null
     updatedBy: string | null
     createdAt: number | null
+    /**
+     * Z-order key (back→front). Lower draws first (behind), higher draws on
+     * top — matching Two.js `scene.children` where index 0 is the back. New
+     * elements get `max(position)+1` (assigned in addToLocalComponentStore).
+     * Optional/nullable: legacy DB rows and directly-seeded records (e.g. the
+     * welcome sketch) may omit it; the z-order reconcile treats absent as 0.
+     */
+    position?: number | null
 }
 
 export type ComponentStore = Record<string, ComponentRecord>
@@ -215,6 +223,11 @@ export interface BoardContextValue {
         value: unknown,
         opts?: { preview?: boolean }
     ) => void
+
+    // Z-order of the currently-selected element. Bridged up from newCanvas via
+    // a ref (the implementation lives there alongside reconcileZOrder); a no-op
+    // until Canvas has mounted and populated it.
+    reorderSelected: (op: 'front' | 'forward' | 'backward' | 'back') => void
 
     // Element defaults (read sites: ElementPropertiesToolbar, primary sidebar, factories)
     defaultFill: string

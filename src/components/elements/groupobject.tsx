@@ -15,6 +15,37 @@ type ElementProps = any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ShapeLike = any
 
+// Child element factories load asynchronously, so group.add() can fire out of
+// array order on first grouping. Re-sort the group's children by their stored
+// z-order `position` (back→front) after every add so the within-group stacking
+// always matches the canvas — independent of load timing. The transparent
+// selector rectangle (no elementData) is pinned to the back. group.children
+// .sort fires Two.js's 'order' event so the SVG <g> nodes physically reorder.
+const orderGroupChildrenByZ = (group: ShapeLike): void => {
+    group.children.sort((a: ShapeLike, b: ShapeLike) => {
+        const aHas = !!a?.elementData
+        const bHas = !!b?.elementData
+        if (aHas !== bHas) return aHas ? 1 : -1
+        const pa = Number.isFinite(a?.elementData?.position)
+            ? a.elementData.position
+            : 0
+        const pb = Number.isFinite(b?.elementData?.position)
+            ? b.elementData.position
+            : 0
+        if (pa !== pb) return pa - pb
+        const ca = Number.isFinite(a?.elementData?.createdAt)
+            ? a.elementData.createdAt
+            : 0
+        const cb = Number.isFinite(b?.elementData?.createdAt)
+            ? b.elementData.createdAt
+            : 0
+        if (ca !== cb) return ca - cb
+        return String(a?.elementData?.id ?? '').localeCompare(
+            String(b?.elementData?.id ?? '')
+        )
+    })
+}
+
 function GroupedObjectWrapper(props: ElementProps): ReactElement {
     const {
         addToLocalComponentStore,
@@ -387,6 +418,7 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                 coreObject.elementData = item
 
                 group.add(coreObject)
+                orderGroupChildrenByZ(group)
                 two.update()
             })
         }

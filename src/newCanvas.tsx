@@ -80,6 +80,7 @@ import { growShapeToFitText, usableTextWidth } from './utils/shapeTextFit'
 import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
 import { createDiamondPath } from './factory/diamond'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
+import type { HistoryEntry } from './hooks/useComponentHistory'
 import { exportSelectionAsSvg } from './utils/exportSelectionAsSvg'
 import CanvasContextMenu from './components/canvasContextMenu'
 import {
@@ -108,6 +109,12 @@ interface CanvasProps {
     defaultTextSize: number
     onCameraChange?: (event: CameraChangeEvent) => void
     renderBackground?: () => ReactNode
+    // Bridge: Canvas owns reorderSelected (needs reconcileZOrder + live zui
+    // selection); it publishes the function here so board.tsx can expose a
+    // stable wrapper through BoardContext for the properties toolbar.
+    reorderSelectedRef?: MutableRefObject<
+        ((op: 'front' | 'forward' | 'backward' | 'back') => void) | null
+    >
 }
 
 // Shape of the handle addZUI returns and Canvas stores in state. The
@@ -158,6 +165,40 @@ let defaultStrokeColorValue: string = PENCIL_DEFAULT_COLOR
 // useEffect so the once-bound addZUI DOM handlers read the latest value
 // (same stale-closure escape hatch as defaultLinewidthValue).
 let defaultTextSizeValue: number = DEFAULT_TEXT_SIZE
+
+// --- z-order reconcile helpers ------------------------------------------
+//
+// The persistable element groups inside `two.scene.children` are the ones we
+// reorder. Everything else (selection-box overlay, preview dots/lines, the
+// transient `groupobject` group) must be left untouched. An element group is
+// identified by carrying `elementData.id` that maps to a live store record and
+// is not the transient GROUP_COMPONENT. The selection overlay is a plain group
+// with no `elementData`, so it's excluded automatically.
+const isReorderableElementChild = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    child: any,
+    store: ComponentStore
+): boolean => {
+    const id = child?.elementData?.id
+    if (!id) return false
+    if (child.elementData.componentType === GROUP_COMPONENT) return false
+    return Object.prototype.hasOwnProperty.call(store, id)
+}
+
+// Stable ordering key for a record: position asc (back→front), tie-broken by
+// createdAt then id so legacy/duplicate positions still sort deterministically
+// (and neighbour-swap stays meaningful). Used by both the reconcile comparator
+// and the reorder handlers so they agree on "the element above/below".
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const compareByZOrder = (a: any, b: any): number => {
+    const pa = Number.isFinite(a?.position) ? a.position : 0
+    const pb = Number.isFinite(b?.position) ? b.position : 0
+    if (pa !== pb) return pa - pb
+    const ca = Number.isFinite(a?.createdAt) ? a.createdAt : 0
+    const cb = Number.isFinite(b?.createdAt) ? b.createdAt : 0
+    if (ca !== cb) return ca - cb
+    return String(a?.id ?? '').localeCompare(String(b?.id ?? ''))
+}
 
 function addZUI(
     props: CanvasProps,
@@ -631,7 +672,8 @@ function addZUI(
             input.style.padding = `${vertPad}px 8px`
             input.style.color = textStyle.fill || '#3A342C'
             input.style.fontSize = `${cssFontSize}px`
-            input.style.fontFamily = textStyle.family || DEFAULT_TEXT_FONT_FAMILY
+            input.style.fontFamily =
+                textStyle.family || DEFAULT_TEXT_FONT_FAMILY
             input.style.fontWeight = String(textStyle.weight ?? 'normal')
             input.style.lineHeight = `${lineH}px`
             input.style.letterSpacing = '0px'
@@ -2648,6 +2690,8 @@ function addZUI(
             selectionController.currentGroup ||
             activeGroupRef.current ||
             lastSelectedShape,
+        bringSelectionToFront: () =>
+            selectionController.bringSelectionToFront(),
     }
 }
 
@@ -2669,6 +2713,7 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         geoObjectsEnabled,
         undoLastAction,
         redoLastAction,
+        recordBatchToHistoryLog,
         enableTextDrawMode,
         createTextAtSurface,
     } = useBoardContext()
@@ -2863,6 +2908,112 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         }
     }, [])
 
+    // Handle for an in-flight z-order reconcile poll so a new store change can
+    // cancel a stale one instead of stacking rAF loops.
+    const zOrderPollRef = useRef<number | null>(null)
+
+    // Deterministically re-sort the element groups inside two.scene.children by
+    // their store `position` (back→front). Element mounting is async (React.lazy
+    // + Suspense), so groups land in the scene in unpredictable order — this is
+    // the single source of truth that fixes the post-refresh z-order. Reads live
+    // state from refs (stale-closure rule); idempotent and safe to re-run.
+    const reconcileZOrder = useCallback(() => {
+        const two = twoJSInstance
+        const store = stateRefForComponentStore.current
+        if (!two?.scene || !store) return
+        const scene = two.scene
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const children = scene.children as any[]
+
+        // Build the desired final order: element groups sorted by their store
+        // position (back→front) dropped back into the index slots they already
+        // occupy, while non-element children (selection box, previews) keep
+        // their slots. A rank map gives a *total* order — returning 0 for
+        // mixed pairs would break sort's transitivity contract and could
+        // mis-order elements separated by an overlay.
+        const sortedEls = children
+            .filter((c) => isReorderableElementChild(c, store))
+            .sort((a, b) =>
+                compareByZOrder(
+                    store[a.elementData.id],
+                    store[b.elementData.id]
+                )
+            )
+        let e = 0
+        const desired = children.map((c) =>
+            isReorderableElementChild(c, store) ? sortedEls[e++] : c
+        )
+        const rank = new Map<unknown, number>()
+        desired.forEach((c, i) => rank.set(c, i))
+
+        // Collection.sort fires the 'order' event that flags the SVG renderer
+        // to physically reorder the <g> nodes — a bare splice would NOT.
+        children.sort((a, b) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0))
+
+        // The just-sorted elements may have buried the selection overlay — lift
+        // it back on top so the active selection box stays visible.
+        zuiInstanceRef.current?.bringSelectionToFront?.()
+
+        try {
+            two.update()
+        } catch (err) {
+            // A concurrent mount/cleanup could leave a stale subtraction queued;
+            // clear it so future updates don't keep retrying the broken op (see
+            // the scene.subtractions pitfall in CLAUDE.md).
+            console.warn('reconcileZOrder two.update failed', err)
+            scene.subtractions.length = 0
+            scene._flagSubtractions = false
+        }
+    }, [twoJSInstance])
+
+    // Element groups appear in the scene over several frames as their lazy
+    // chunks resolve. Poll a few frames, reconciling each tick, until every
+    // expected element group is present (or a frame cap as a safety stop).
+    const startZOrderReconcilePoll = useCallback(() => {
+        if (zOrderPollRef.current !== null) {
+            cancelAnimationFrame(zOrderPollRef.current)
+            zOrderPollRef.current = null
+        }
+        const two = twoJSInstance
+        const store = stateRefForComponentStore.current
+        if (!two?.scene || !store) return
+
+        // Expected = store records that are reorderable AND map to a known
+        // element module (others are skipped by handleSetComponentsToRender).
+        const expected = Object.values(store).filter(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (r: any) =>
+                r?.componentType !== GROUP_COMPONENT &&
+                !!elementModules[
+                    `./components/elements/${r?.componentType}.tsx`
+                ]
+        ).length
+
+        let frame = 0
+        const MAX_FRAMES = 90
+        const tick = (): void => {
+            zOrderPollRef.current = null
+            reconcileZOrder()
+            const present = (two.scene.children as unknown[]).filter((c) =>
+                isReorderableElementChild(c, store)
+            ).length
+            frame += 1
+            if (present < expected && frame < MAX_FRAMES) {
+                zOrderPollRef.current = requestAnimationFrame(tick)
+            }
+        }
+        zOrderPollRef.current = requestAnimationFrame(tick)
+    }, [twoJSInstance, reconcileZOrder])
+
+    useEffect(
+        () => () => {
+            if (zOrderPollRef.current !== null) {
+                cancelAnimationFrame(zOrderPollRef.current)
+            }
+        },
+        []
+    )
+
     useEffect(() => {
         stateRefForComponentStore.current = props.componentStore
         if (twoJSInstance !== null && zuiInstance !== null) {
@@ -2879,6 +3030,9 @@ const Canvas: React.FC<CanvasProps> = (props) => {
 
         if (Object.values(props.componentStore).length > 0 && twoJSInstance) {
             handleSetComponentsToRender(Object.values(props.componentStore))
+            // Re-assert deterministic z-order once the (async) element mounts
+            // settle — this is what fixes the post-refresh ordering bug.
+            startZOrderReconcilePoll()
         }
     }, [props.componentStore])
 
@@ -2940,8 +3094,15 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             const newChildren: any[] = []
             const selectedComponentArr: string[] = []
 
+            // Iterate in global z-order (position asc = back→front) so the
+            // group's internal child order mirrors the canvas stacking. The
+            // group adds children in array order (groupobject.tsx) where
+            // index 0 is the backmost, so feeding them sorted keeps grouped
+            // elements visually consistent with their ungrouped positions.
             const allComponentCoords = stateRefForComponentStore.current
-                ? Object.values(stateRefForComponentStore.current)
+                ? Object.values(stateRefForComponentStore.current).sort(
+                      compareByZOrder
+                  )
                 : []
             allComponentCoords.forEach((item) => {
                 if (
@@ -3100,6 +3261,88 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         }
     }, [])
 
+    // Change the z-order of the currently-selected element. We move by *index*
+    // in the deterministic sorted order, then renumber every row to a dense,
+    // distinct position (0..n-1). The old approach swapped position *values*,
+    // which silently no-ops whenever neighbours tie — and most legacy rows share
+    // position 0 (position is only assigned to newly-created elements), so once a
+    // shape stepped into the 0-block it could never come back. Renumbering
+    // self-heals that degeneracy; only rows whose position actually changes are
+    // written, so steady-state single-step moves touch just the couple that
+    // shifted. The whole renumber is recorded as one BATCH = one undo step.
+    const reorderSelected = useCallback(
+        (op: 'front' | 'forward' | 'backward' | 'back') => {
+            const store = stateRefForComponentStore.current
+            if (!store) return
+            const id =
+                zuiInstanceRef.current?.getSelectedGroup?.()?.elementData?.id
+            if (!id || !store[id]) return
+
+            const sorted = Object.values(store)
+                .filter((r) => r.componentType !== GROUP_COMPONENT)
+                .sort(compareByZOrder)
+            const n = sorted.length
+            if (n === 0) return
+            const idx = sorted.findIndex((r) => r.id === id)
+            if (idx === -1) return
+
+            // Target slot for the selected element in the final back→front order.
+            const target =
+                op === 'front'
+                    ? n - 1
+                    : op === 'back'
+                      ? 0
+                      : op === 'forward'
+                        ? idx + 1
+                        : idx - 1 // backward
+            if (target < 0 || target > n - 1 || target === idx) return // at edge
+
+            // Rebuild the order with the selected element moved to `target`.
+            const newOrder = sorted.slice()
+            const [moved] = newOrder.splice(idx, 1)
+            if (!moved) return
+            newOrder.splice(target, 0, moved)
+
+            // Assign dense distinct positions; write + record only what changed.
+            const batch: HistoryEntry[] = []
+            newOrder.forEach((r, i) => {
+                const prev = Number.isFinite(r.position)
+                    ? (r.position as number)
+                    : 0
+                if (prev === i) return
+                updateComponentBulkPropertiesInLocalStore(
+                    r.id,
+                    { position: i },
+                    true
+                )
+                batch.push({
+                    action: 'UPDATE_BULK',
+                    id: r.id,
+                    prevProps: { position: prev },
+                    bulkObj: { position: i },
+                })
+            })
+            if (batch.length > 0) recordBatchToHistoryLog(batch)
+
+            reconcileZOrder()
+        },
+        [
+            updateComponentBulkPropertiesInLocalStore,
+            recordBatchToHistoryLog,
+            reconcileZOrder,
+        ]
+    )
+
+    // Publish reorderSelected up to board.tsx so the properties toolbar can
+    // trigger it through BoardContext (see the reorderSelectedRef bridge).
+    useEffect(() => {
+        const ref = props.reorderSelectedRef
+        if (ref) ref.current = reorderSelected
+        return () => {
+            if (ref) ref.current = null
+        }
+    }, [props.reorderSelectedRef, reorderSelected])
+
     // Right-click (mouse) and two-finger trackpad tap both fire the native
     // 'contextmenu' event. Suppress the OS menu; if something is selected, open
     // our menu at the cursor. Cmd/Ctrl+Shift+D triggers the same export.
@@ -3130,13 +3373,50 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             void exportActiveSelection()
         }
 
+        // Reorder shortcuts:
+        //   [ / ]    → backward / forward (one step)
+        //   ⌘[ / ⌘]  → to back / to front
+        // We deliberately avoid ⌘⇧[/⌘⇧] here: on macOS Chrome those are the
+        // reserved "switch tab" accelerators (native app-menu key equivalents)
+        // and preventDefault() can't cancel them — the page never wins. Detect
+        // brackets via code OR key so non-US layouts resolve too. Only hijack
+        // the key when a shape is actually selected, so bare [ /] stay inert and
+        // ⌘[ /⌘] keep their browser history-nav behaviour on an empty selection.
+        const onReorderKeyDown = (evt: KeyboardEvent) => {
+            if (evt.shiftKey || evt.altKey) return
+            const isRight =
+                evt.code === 'BracketRight' ||
+                evt.key === ']' ||
+                evt.key === '}'
+            const isLeft =
+                evt.code === 'BracketLeft' || evt.key === '[' || evt.key === '{'
+            if (!isRight && !isLeft) return
+            const el = document.activeElement as HTMLElement | null
+            const tag = el?.tagName
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable)
+                return
+            if (!zuiInstanceRef.current?.getSelectedGroup?.()) return
+            evt.preventDefault()
+            const withCmd = evt.metaKey || evt.ctrlKey
+            const op: 'front' | 'forward' | 'backward' | 'back' = isRight
+                ? withCmd
+                    ? 'front'
+                    : 'forward'
+                : withCmd
+                  ? 'back'
+                  : 'backward'
+            reorderSelected(op)
+        }
+
         root.addEventListener('contextmenu', onContextMenu)
         window.addEventListener('keydown', onExportKeyDown)
+        window.addEventListener('keydown', onReorderKeyDown)
         return () => {
             root.removeEventListener('contextmenu', onContextMenu)
             window.removeEventListener('keydown', onExportKeyDown)
+            window.removeEventListener('keydown', onReorderKeyDown)
         }
-    }, [exportActiveSelection])
+    }, [exportActiveSelection, reorderSelected])
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const setOnGroupHandler = (obj: any) => {
@@ -3308,6 +3588,10 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                     onExportSvg={() => {
                         setCtxMenu(null)
                         void exportActiveSelection()
+                    }}
+                    onReorder={(op) => {
+                        setCtxMenu(null)
+                        reorderSelected(op)
                     }}
                 />
             )}
