@@ -55,3 +55,59 @@ export function getShapePortPoint(
 
     return { x: cx + ox, y: cy + oy }
 }
+
+// The four edges a connector can dock to, in the same order the selection
+// controller floats its port dots.
+export const PORT_EDGES: PortEdge[] = [
+    'n-resize',
+    'e-resize',
+    's-resize',
+    'w-resize',
+]
+
+export interface PortCandidate {
+    group: GroupLike
+    shapeId: string | undefined
+    edge: PortEdge
+    // Surface-space anchor of the port (already offset outward by `gap`).
+    point: { x: number; y: number }
+    // Surface-space distance from the query point to this port.
+    distance: number
+}
+
+// Radar search used while a connector is being drawn: among the candidate
+// `groups`, find the edge port closest to `point` that sits within `threshold`
+// surface units. Only rectangles expose ports (mirrors the selection
+// controller's `isRect` gate); `excludeShapeId` drops the connector's own
+// source shape so it can't dock back onto itself. Returns null when no port is
+// in range.
+export function findNearestPort(
+    groups: GroupLike[],
+    point: { x: number; y: number },
+    threshold: number,
+    gap = 0,
+    excludeShapeId?: string | null
+): PortCandidate | null {
+    const thresholdSq = threshold * threshold
+    let best: PortCandidate | null = null
+    let bestSq = thresholdSq
+
+    for (const group of groups) {
+        if (group?.elementData?.componentType !== 'rectangle') continue
+        const shapeId = group?.elementData?.id
+        if (excludeShapeId && shapeId === excludeShapeId) continue
+
+        for (const edge of PORT_EDGES) {
+            const p = getShapePortPoint(group, edge, gap)
+            const dx = p.x - point.x
+            const dy = p.y - point.y
+            const d2 = dx * dx + dy * dy
+            if (d2 > bestSq) continue
+            bestSq = d2
+            best = { group, shapeId, edge, point: p, distance: 0 }
+        }
+    }
+
+    if (best) best.distance = Math.sqrt(bestSq)
+    return best
+}

@@ -75,6 +75,19 @@ export const SELECTION_PADDING = 5
 // Screen-px gap between the selection box border and the connection ports.
 // Exported so connector anchoring (newCanvas) can pin tails to the same spot.
 export const PORT_GAP = 10
+// Screen-px radius within which a dragging connector head "snaps" a nearby
+// port into its radar and lights its glow. Exported so newCanvas can run the
+// same proximity test the glow is keyed off.
+export const PORT_RADAR_RADIUS = 26
+
+// --- Port "radar" glow (amber pulsing ring shown over a landable port) ---
+// Base radius (screen px) of the glow; the glow group counter-scales to zoom.
+const GLOW_BASE_RADIUS = 9
+// One expand-and-fade ping every this many ms.
+const GLOW_PERIOD_MS = 1100
+// Amber palette for the glow.
+const GLOW_RING_COLOR = '#E0A22B'
+const GLOW_CORE_COLOR = '#F2C150'
 
 interface ToolbarState {
     element: Record<string, ShapeLike>
@@ -197,6 +210,21 @@ export default class SelectionController {
     // box. Hovering a port reveals this outward-pointing arrow — the affordance
     // for "open a path to connect". Ports are NOT resize handles.
     portArrow!: ShapeLike
+
+    // Radar glow shown over the nearest landable port while a connector is being
+    // drawn. Lives at scene level (not inside `ui`) so it survives `detach()`,
+    // which fires when a connector pulls out of the source shape.
+    portGlow!: ShapeLike
+    private _glowRing!: ShapeLike
+    private _glowCore!: ShapeLike
+    private _glowRaf: number | null = null
+    private _glowStart = 0
+
+    // Dashed amber skeleton drawn around the shape whose port is the current
+    // radar target — signals "the connector will attach to THIS shape". Shown
+    // and hidden together with `portGlow`.
+    nearbyPortExpectedShape!: ShapeLike
+
     private _halfW = 0
     private _halfH = 0
     private _hoveredPort: string | null = null
@@ -276,11 +304,63 @@ export default class SelectionController {
         ui.add(box, endpoints, portHandles, portArrow)
         this.two.add(ui)
 
+        // Glow + target skeleton live at scene level (not in `ui`) so they can
+        // highlight any shape's port — including while the source shape's
+        // selection is detached mid-draw. The skeleton is added before the glow
+        // so the glow dot renders on top of the outline.
+        const nearbyPortExpectedShape = this._buildNearbyPortShape()
+        this.two.add(nearbyPortExpectedShape)
+        const portGlow = this._buildPortGlow()
+        this.two.add(portGlow)
+
         this.ui = ui
         this.box = box
         this.endpoints = endpoints
         this.portHandles = portHandles
         this.portArrow = portArrow
+        this.portGlow = portGlow
+        this.nearbyPortExpectedShape = nearbyPortExpectedShape
+    }
+
+    // A dashed amber rectangle outline (no fill) that wraps the radar-target
+    // shape. Positioned/sized per-frame by `_showNearbyPortShape` to match the
+    // candidate shape's bounds; counter-scaled so the stroke stays crisp.
+    private _buildNearbyPortShape(): ShapeLike {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rect = new (Two as any).Rectangle(0, 0, 0, 0)
+        rect.noFill()
+        rect.stroke = GLOW_RING_COLOR
+        rect.linewidth = 1.5
+        rect.dashes = [6, 4]
+        rect.visible = false
+        return rect
+    }
+
+    // An amber "radar ping": a steady translucent core plus an expanding ring
+    // that the animation loop grows and fades. Built in glow-local space and
+    // counter-scaled to the zoom so it stays a constant screen size.
+    private _buildPortGlow(): ShapeLike {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Circle = (Two as any).Circle
+
+        const core = new Circle(0, 0, GLOW_BASE_RADIUS)
+        core.fill = GLOW_CORE_COLOR
+        core.opacity = 0.3
+        core.noStroke()
+
+        const ring = new Circle(0, 0, GLOW_BASE_RADIUS)
+        ring.noFill()
+        ring.stroke = GLOW_RING_COLOR
+        ring.linewidth = 2
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g = new (Two as any).Group()
+        g.add(core, ring)
+        g.visible = false
+
+        this._glowCore = core
+        this._glowRing = ring
+        return g
     }
 
     // A small outward-pointing arrow icon (shaft + chevron head) drawn in
@@ -354,7 +434,12 @@ export default class SelectionController {
             window.removeEventListener('keydown', this._onKeyDown, false)
         }
         this._detachPointerStream()
+        this._stopGlowAnim()
         this.two.remove(this.ui)
+        if (this.portGlow) this.two.remove(this.portGlow)
+        if (this.nearbyPortExpectedShape) {
+            this.two.remove(this.nearbyPortExpectedShape)
+        }
     }
 
     canHandle(group: GroupLike): boolean {
@@ -541,6 +626,132 @@ export default class SelectionController {
             this.portArrow.visible = false
         }
         this.two.update()
+    }
+
+    // ---------- Port radar glow ----------
+
+    // Light (or move) the radar glow over a landable port at `surface` (its
+    // floated anchor, in surface coords). Idempotent per position; starts the
+    // pulse loop the first time it becomes visible. Pass `targetGroup` (the
+    // shape that owns the port) to also draw the dashed skeleton around it. Call
+    // `hidePortGlow` once the head leaves every port's range.
+    showPortGlow(
+        surface: { x: number; y: number },
+        targetGroup?: ShapeLike
+    ): void {
+        if (!this.portGlow) return
+        const scale = this.zui.scale || 1
+        this.portGlow.position.set(surface.x, surface.y)
+        this.portGlow.scale = 1 / scale
+        if (targetGroup) this._showNearbyPortShape(targetGroup)
+        this._bringToSceneFront(this.nearbyPortExpectedShape)
+        this._bringToSceneFront(this.portGlow)
+        if (!this.portGlow.visible) {
+            this.portGlow.visible = true
+            this._glowStart =
+                typeof performance !== 'undefined' ? performance.now() : 0
+            // Prime a full-opacity frame so the glow appears instantly — the
+            // previous ping may have stopped mid-fade, leaving the ring at ~0
+            // opacity, which would otherwise render blank for one frame.
+            this._glowRing.radius = GLOW_BASE_RADIUS
+            this._glowRing.opacity = 1
+            this._glowCore.opacity = 0.3
+        }
+        // Always ensure the pulse loop is alive. This is robust to a prior run
+        // that stopped while `visible` stayed latched, or a swallowed render
+        // error that left `_glowRaf` dangling — otherwise the glow would light
+        // exactly once and never animate again.
+        if (this._glowRaf === null) this._startGlowAnim()
+    }
+
+    hidePortGlow(): void {
+        const wasVisible = this.portGlow?.visible
+        const hadShape = this.nearbyPortExpectedShape?.visible
+        if (!wasVisible && !hadShape) return
+        if (this.portGlow) this.portGlow.visible = false
+        if (this.nearbyPortExpectedShape) {
+            this.nearbyPortExpectedShape.visible = false
+        }
+        this._stopGlowAnim()
+        this.two.update()
+    }
+
+    // Wrap the radar-target shape with the dashed skeleton, matching its
+    // centre, size (+ selection padding) and rotation. Counter-scales the
+    // stroke/dashes so they stay crisp at any zoom.
+    private _showNearbyPortShape(group: ShapeLike): void {
+        const rect = this.nearbyPortExpectedShape
+        if (!rect) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const shape = (group as any)?.children?.[0]
+        const w = shape?.width ?? group?.elementData?.width ?? 0
+        const h = shape?.height ?? group?.elementData?.height ?? 0
+        if (!w || !h) {
+            rect.visible = false
+            return
+        }
+        const scale = this.zui.scale || 1
+        const pad = SELECTION_PADDING
+        rect.width = w + pad * 2
+        rect.height = h + pad * 2
+        rect.translation.set(group.translation.x, group.translation.y)
+        rect.rotation = group.rotation || 0
+        rect.linewidth = 1.5 / scale
+        rect.dashes = [6 / scale, 4 / scale]
+        rect.visible = true
+    }
+
+    // rAF loop so the ping keeps animating even when the cursor holds still over
+    // a port. Self-cancels when the glow is hidden. `_glowRaf` is cleared at the
+    // TOP of each tick so that even if `two.update()` throws (the documented
+    // scene.subtractions hazard), the loop can be restarted by the next
+    // `showPortGlow` instead of being wedged forever.
+    private _startGlowAnim(): void {
+        const tick = (): void => {
+            this._glowRaf = null
+            if (!this.portGlow || !this.portGlow.visible) return
+            const now =
+                typeof performance !== 'undefined' ? performance.now() : 0
+            const cycles = (now - this._glowStart) / GLOW_PERIOD_MS
+            const t = cycles - Math.floor(cycles) // 0..1, loops each period
+            // Expanding ring that fades as it grows — the "ping".
+            this._glowRing.radius = GLOW_BASE_RADIUS * (1 + t * 1.4)
+            this._glowRing.opacity = 1 - t
+            // Core breathes gently so the port stays alive between pings.
+            this._glowCore.opacity =
+                0.24 + 0.12 * (0.5 + 0.5 * Math.sin(cycles * Math.PI * 2))
+            try {
+                this.two.update()
+            } catch {
+                // A transient renderer hiccup must not kill the pulse loop.
+            }
+            this._glowRaf = requestAnimationFrame(tick)
+        }
+        this._glowRaf = requestAnimationFrame(tick)
+    }
+
+    private _stopGlowAnim(): void {
+        if (this._glowRaf !== null) {
+            cancelAnimationFrame(this._glowRaf)
+            this._glowRaf = null
+        }
+    }
+
+    // Push a scene-level overlay element to the top of the draw order so it
+    // isn't buried by shapes/connectors. Re-adds it if it somehow left the
+    // scene. Shared by the glow and the nearby-port skeleton.
+    private _bringToSceneFront(el: ShapeLike): void {
+        if (!el) return
+        const scene = this.two.scene
+        const idx = scene.children.indexOf(el)
+        if (idx === -1) {
+            this.two.add(el)
+            return
+        }
+        if (idx !== scene.children.length - 1) {
+            scene.children.splice(idx, 1)
+            scene.children.push(el)
+        }
     }
 
     // ---------- Hit testing ----------
