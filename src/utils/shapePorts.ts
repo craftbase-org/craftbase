@@ -56,6 +56,40 @@ export function getShapePortPoint(
     return { x: cx + ox, y: cy + oy }
 }
 
+// Surface-px gap between successive connector tails stacked on the same port.
+// When several connectors leave one port they fan out along the edge by this
+// step instead of all pinning to the exact port point (which bunches them up
+// and hides which tail belongs to which arrow).
+export const PORT_TAIL_STACK_GAP = 5
+
+// Fan a connector endpoint (tail OR head) outward along its port edge so it
+// doesn't sit on top of the other connectors docked at the same port. `index`
+// is this connector's slot among them (0 = the bare port point, no offset).
+// `far` is the connector's OTHER endpoint — the fan direction follows its
+// quadrant relative to the port: left/right (`e`/`w`) ports spread vertically
+// toward the far point's y-side; top/bottom (`n`/`s`) ports spread horizontally
+// toward its x-side. Mirrors the green/blue candidate dots sketched above/below
+// a right-edge port.
+export function getStackedPortPoint(
+    edge: string,
+    port: { x: number; y: number },
+    far: { x: number; y: number },
+    index: number,
+    gap = PORT_TAIL_STACK_GAP
+): { x: number; y: number } {
+    if (index <= 0) return { x: port.x, y: port.y }
+    const offset = index * gap
+    if (edge === 'e-resize' || edge === 'w-resize') {
+        const dir = far.y >= port.y ? 1 : -1
+        return { x: port.x, y: port.y + dir * offset }
+    }
+    if (edge === 'n-resize' || edge === 's-resize') {
+        const dir = far.x >= port.x ? 1 : -1
+        return { x: port.x + dir * offset, y: port.y }
+    }
+    return { x: port.x, y: port.y }
+}
+
 // The four edges a connector can dock to, in the same order the selection
 // controller floats its port dots.
 export const PORT_EDGES: PortEdge[] = [
