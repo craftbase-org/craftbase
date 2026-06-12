@@ -54,6 +54,16 @@ export interface ComponentRecord {
      * welcome sketch) may omit it; the z-order reconcile treats absent as 0.
      */
     position?: number | null
+    /**
+     * Connector binding (arrowLine only): the arrow's tail/head is pinned to a
+     * shape's edge port and re-anchors when that shape moves/resizes. Stores the
+     * bound shape's id and the edge (`n/e/s/w-resize`). Null/absent = free
+     * endpoint; cleared when the user manually drags that endpoint off.
+     */
+    tailShapeId?: string | null
+    tailEdge?: string | null
+    headShapeId?: string | null
+    headEdge?: string | null
 }
 
 export type ComponentStore = Record<string, ComponentRecord>

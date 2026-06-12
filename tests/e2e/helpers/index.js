@@ -144,11 +144,18 @@ async function clickToolbarShape(page, ariaLabel) {
 // Maps a STROKE_WIDTHS label (see STROKE_WIDTHS in
 // src/components/sidebar/elementProperties.js) to the 1-based index of its
 // button inside #stroke-width-section.
-const STROKE_WIDTH_INDEX_BY_LABEL = { '0': 1, '2': 2, '4': 3, '6': 4 }
+const STROKE_WIDTH_INDEX_BY_LABEL = {
+    '0': 1,
+    '1': 2,
+    '2': 3,
+    '4': 4,
+    '6': 5,
+    '8': 6,
+}
 
 /**
  * Clicks the unified element-properties toolbar's Stroke Width button matching
- * the given label ('0' | '2' | '4' | '6'). The buttons are unlabeled visual
+ * the given label ('0' | '1' | '2' | '4' | '6' | '8'). The buttons are unlabeled visual
  * swatches, so we pick by position within #stroke-width-section. All sets
  * (SHAPE / ARROW / PENCIL / RECT_WITH_TEXT) write to the same unified
  * `defaultLinewidth`.
@@ -157,7 +164,7 @@ export async function setDefaultStrokeWidth(page, label) {
     const idx = STROKE_WIDTH_INDEX_BY_LABEL[label]
     if (!idx)
         throw new Error(
-            `Unknown stroke width label: ${label}. Valid: 0, 2, 4, 6.`
+            `Unknown stroke width label: ${label}. Valid: 0, 1, 2, 4, 6, 8.`
         )
     await page.click(`#stroke-width-section button:nth-of-type(${idx})`)
 }

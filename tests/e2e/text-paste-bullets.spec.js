@@ -14,8 +14,7 @@ function safeArea(box) {
 const lineCountOf = (handle) => handle.$$eval('text', (ns) => ns.length)
 
 test.describe('Rich-text paste into canvas text', () => {
-    test.beforeEach(async ({ page, context }) => {
-        await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    test.beforeEach(async ({ page }) => {
         await setupLocalBoard(page)
     })
 
@@ -27,21 +26,37 @@ test.describe('Rich-text paste into canvas text', () => {
         const editor = page.locator('.temp-input-area')
         await editor.waitFor({ state: 'visible' })
         await editor.focus()
-        await page.keyboard.press('Meta+a')
 
-        await page.evaluate(async () => {
+        // Dispatch a synthetic `paste` carrying the `text/html` flavor directly
+        // on the textarea instead of writing to the system clipboard and
+        // pressing Meta+v. Headless CI runners don't reliably populate
+        // event.clipboardData from the OS clipboard on a keyboard paste (the
+        // test passed locally but flaked on the deploy preview with the
+        // unchanged placeholder), whereas a constructed ClipboardEvent feeds
+        // the handler deterministically — and the handler reading text/html is
+        // exactly the behaviour under test.
+        await page.evaluate(() => {
             const html =
                 '<meta charset="utf-8"><ul>' +
                 '<li>First item</li>' +
                 '<li>Second item<ul><li>Nested one</li></ul></li>' +
                 '<li>Third item</li>' +
                 '</ul>'
-            const item = new ClipboardItem({
-                'text/html': new Blob([html], { type: 'text/html' }),
-            })
-            await navigator.clipboard.write([item])
+            const input = document.querySelector('.temp-input-area')
+            if (!input) throw new Error('text editor not found')
+            input.focus()
+            input.selectionStart = 0
+            input.selectionEnd = input.value.length
+            const data = new DataTransfer()
+            data.setData('text/html', html)
+            input.dispatchEvent(
+                new ClipboardEvent('paste', {
+                    clipboardData: data,
+                    bubbles: true,
+                    cancelable: true,
+                })
+            )
         })
-        await page.keyboard.press('Meta+v')
 
         await expect
             .poll(() => editor.inputValue())

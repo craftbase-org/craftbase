@@ -57,8 +57,18 @@ import Spinner from './components/common/spinner'
 const elementModules = import.meta.glob('./components/elements/*.tsx')
 
 import Loader from './components/utils/loader'
-import SelectionController from './canvas/selectionController'
+import SelectionController, {
+    PORT_GAP,
+    PORT_RADAR_RADIUS,
+    SELECTION_PADDING,
+} from './canvas/selectionController'
 import { updateX1Y1Vertices, updateX2Y2Vertices } from './utils/updateVertices'
+import {
+    getShapePortPoint,
+    findNearestPort,
+    getStackedPortPoint,
+    PORT_TAIL_STACK_GAP,
+} from './utils/shapePorts'
 import { generateUUID } from './utils/misc'
 import {
     velocityToLinewidth,
@@ -307,6 +317,30 @@ function addZUI(
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let arrowDrawElement: any = null
+    // Source shape of a port-pulled connector, so the radar excludes its own
+    // ports (a connector can't dock back onto the shape it departed). Null for
+    // free arrows drawn from the toolbar.
+    let arrowDrawTailShapeId: string | null = null
+    // Stacking state for a port-pulled connector: the source port anchor, its
+    // edge, and this connector's slot among the arrows already leaving that port
+    // (0 = first, no fan). The tail is re-fanned every mousemove so its offset
+    // direction tracks whichever quadrant the head is dragged into.
+    let arrowDrawTailPort: {
+        anchor: { x: number; y: number }
+        edge: string
+        index: number
+    } | null = null
+    // Phase-2 magnetic snap: while an arrow endpoint is being dragged and the
+    // radar has it magnetically docked on a port, this holds the would-be
+    // binding. It's recomputed every mousemove frame (null when not docked) and
+    // committed on release — so if the user pulls away before letting go, no
+    // connection is made.
+    let pendingPortConnection: {
+        arrowId: string
+        endpoint: 'head' | 'tail'
+        edge: string
+        shapeId: string
+    } | null = null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let textDrawElement: any = null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -515,6 +549,15 @@ function addZUI(
         },
         commit: (id, patch) => {
             updateComponentBulkPropertiesInLocalStore(id, patch)
+            // Resize ended — persist any connectors whose ports tracked the
+            // shape so their new tail/head survive a reload.
+            const g = selectionController.currentGroup
+            if (g) persistBoundArrows(g)
+        },
+        onTransform: (group) => {
+            // Live-follow during scale/rotate: drag bound connectors with the
+            // shape's edges.
+            reanchorArrowsForShape(group)
         },
         onDelete: (group) => {
             const id = group?.elementData?.id
@@ -988,6 +1031,492 @@ function addZUI(
         lastHoveredCircleGroup = found ?? null
     }
 
+    // Outward offset (surface units) from a shape's edge to its floated
+    // selection port, matching where selectionController draws the port dot:
+    // the box padding plus the screen-constant port gap divided out by zoom.
+    const portGapSurface = (): number =>
+        SELECTION_PADDING + PORT_GAP / (zui.scale || 1)
+
+    // Surface-space step between stacked connector tails (screen-constant, so it
+    // matches the port-dot spacing at the current zoom).
+    const portTailStackGapSurface = (): number =>
+        PORT_TAIL_STACK_GAP / (zui.scale || 1)
+
+    // How many connectors already leave `shapeId`'s `edge` port (tail bound
+    // there). A fresh pull-out takes the next slot, so it fans out beyond them.
+    function countPortConnectors(
+        shapeId: string | undefined,
+        edge: string
+    ): number {
+        if (!shapeId) return 0
+        let n = 0
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        two.scene.children.forEach((c: any) => {
+            const ed = c?.elementData
+            if (
+                ed?.componentType === 'arrowLine' &&
+                ed.tailShapeId === shapeId &&
+                ed.tailEdge === edge
+            ) {
+                n++
+            }
+        })
+        return n
+    }
+
+    // Re-fan a port-bound endpoint (tail = vertex[0], head = vertex[1]): place
+    // it at the stacked offset for this connector's slot, fanning toward the
+    // side its OTHER endpoint currently sits on. `port` is the live port anchor;
+    // the far endpoint is read off the line so the fan direction follows the
+    // drag (or the bound far end after a shape move).
+    function applyStackedEndpoint(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        arrowGroup: any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        line: any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        circle: any,
+        edge: string,
+        port: { x: number; y: number },
+        index: number,
+        endpoint: 'tail' | 'head'
+    ) {
+        const farIdx = endpoint === 'tail' ? 1 : 0
+        const far = {
+            x: arrowGroup.position.x + line.vertices[farIdx].x,
+            y: arrowGroup.position.y + line.vertices[farIdx].y,
+        }
+        const pt = getStackedPortPoint(
+            edge,
+            port,
+            far,
+            index,
+            portTailStackGapSurface()
+        )
+        const relX = pt.x - arrowGroup.position.x
+        const relY = pt.y - arrowGroup.position.y
+        if (endpoint === 'tail') {
+            updateX1Y1Vertices(Two, line, relX, relY, circle, two)
+        } else {
+            updateX2Y2Vertices(Two, line, relX, relY, circle, two)
+        }
+    }
+
+    // Which arrow endpoint a drag is moving — context for the magnetic snap.
+    type PortDragContext = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        arrowGroup: any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        line: any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        circle: any
+        endpoint: 'head' | 'tail'
+    }
+
+    // Radar: while an arrow endpoint is dragging at `probeSurface` (the cursor),
+    // glow + outline the nearest landable port. When `dragContext` is supplied
+    // and a port is in range, also do the one-off magnetic pull — snap that
+    // endpoint onto the port and remember the would-be binding in
+    // `pendingPortConnection` (committed on release). The probe is the cursor,
+    // not the snapped point, so pulling past the threshold releases the magnet
+    // and clears the pending binding — the user is never forced to connect.
+    function updatePortRadar(
+        probeSurface: { x: number; y: number },
+        dragContext: PortDragContext | null = null,
+        excludeShapeId: string | null = arrowDrawTailShapeId
+    ) {
+        const threshold = PORT_RADAR_RADIUS / (zui.scale || 1)
+        const nearest = findNearestPort(
+            two.scene.children,
+            probeSurface,
+            threshold,
+            portGapSurface(),
+            excludeShapeId
+        )
+        if (nearest) {
+            // Pass the candidate group so the controller also outlines the
+            // shape the connector would attach to.
+            selectionController.showPortGlow(nearest.point, nearest.group)
+            if (dragContext && nearest.shapeId) {
+                snapEndpointToPort(dragContext, nearest.point)
+                pendingPortConnection = {
+                    arrowId: dragContext.arrowGroup?.elementData?.id,
+                    endpoint: dragContext.endpoint,
+                    edge: nearest.edge,
+                    shapeId: nearest.shapeId,
+                }
+            }
+        } else {
+            selectionController.hidePortGlow()
+            // Just undocked: the magnet overwrote the endpoint with the port's
+            // absolute position, but the endpoint-drag path advances the vertex
+            // incrementally — so re-place it exactly under the cursor, else it
+            // keeps the dock offset after release. (Harmless for the pull-out
+            // path, which already recomputes the head from the cursor.)
+            if (pendingPortConnection && dragContext) {
+                snapEndpointToPort(dragContext, probeSurface)
+            }
+            pendingPortConnection = null
+        }
+    }
+
+    // Magnetic pull: glue the dragged endpoint to the floated port anchor by
+    // rewriting its line vertex (and endpoint circle) to that surface point.
+    function snapEndpointToPort(
+        ctx: PortDragContext,
+        point: { x: number; y: number }
+    ) {
+        const relX = point.x - ctx.arrowGroup.translation.x
+        const relY = point.y - ctx.arrowGroup.translation.y
+        if (ctx.endpoint === 'head') {
+            updateX2Y2Vertices(Two, ctx.line, relX, relY, ctx.circle, two)
+        } else {
+            updateX1Y1Vertices(Two, ctx.line, relX, relY, ctx.circle, two)
+        }
+    }
+
+    // Commit a magnetic snap that was still active at release: write the
+    // tail/head binding onto the arrow (live + store) so the endpoint stays
+    // glued to the port and re-anchors when that shape later moves. Used by the
+    // pull-out path; the endpoint-drag path folds the same write into its own
+    // bulk update so detach/connect share a single undo step.
+    function applyPendingPortConnection() {
+        const pc = pendingPortConnection
+        if (!pc || !pc.arrowId || !pc.shapeId) return
+        const arrowGroup = two.scene.children.find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (c: any) => c?.elementData?.id === pc.arrowId
+        )
+        const ed = arrowGroup?.elementData
+        if (!ed) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const patch: Record<string, any> = {}
+        if (pc.endpoint === 'head') {
+            ed.headShapeId = pc.shapeId
+            ed.headEdge = pc.edge
+            patch.headShapeId = pc.shapeId
+            patch.headEdge = pc.edge
+        } else {
+            ed.tailShapeId = pc.shapeId
+            ed.tailEdge = pc.edge
+            patch.tailShapeId = pc.shapeId
+            patch.tailEdge = pc.edge
+        }
+        updateComponentBulkPropertiesInLocalStore(pc.arrowId, patch)
+    }
+
+    // Pull a connector arrow out of a selection port. Mirrors the toolbar's
+    // arrow-create flow (off-screen arrowLine in the store, then drive it via
+    // SCENARIO_ARROW_DRAW), except the tail is pinned to the port's surface
+    // anchor instead of the next mousedown's cursor, and the drag starts
+    // immediately so the user only has to drop the head. The tail's binding
+    // (tailShapeId/tailEdge) is recorded so it re-anchors when the shape moves.
+    function startPortConnector(
+        anchor: { x: number; y: number },
+        tailShapeId: string | undefined,
+        tailEdge: string
+    ) {
+        const arrowId = generateUUID()
+        const userId = localStorage.getItem('userId')
+        // Slot among the connectors already leaving this port — drives the fan
+        // so this new tail doesn't bunch onto the existing ones.
+        const tailPortIndex = countPortConnectors(tailShapeId, tailEdge)
+        const arrowData = {
+            id: arrowId,
+            componentType: 'arrowLine',
+            linewidth: defaultLinewidthValue,
+            strokeType: defaultStrokeTypeValue,
+            stroke: defaultStrokeColorValue ?? '#3A342C',
+            children: {},
+            x: -9999,
+            y: -9999,
+            x1: 0,
+            x2: 0,
+            y1: 0,
+            y2: 0,
+            boardId: props.boardId,
+            boardName: null,
+            radius: null,
+            iconStroke: null,
+            isDummy: null,
+            createdAt: null,
+            metadata: { opacity: 1 },
+            width: 100,
+            height: 0,
+            fill: 'transparent',
+            textColor: null,
+            updatedBy: userId,
+            // Connection binding — tail pinned to the source shape's edge port.
+            tailShapeId: tailShapeId ?? null,
+            tailEdge,
+            tailPortIndex,
+            headShapeId: null,
+            headEdge: null,
+        }
+        addToLocalComponentStore(
+            arrowId,
+            'arrowLine',
+            arrowData as unknown as ComponentRecord
+        )
+
+        // Remember the source so the radar won't glow this shape's own ports.
+        arrowDrawTailShapeId = tailShapeId ?? null
+        // Remember the port so each mousemove can re-fan the tail (direction
+        // follows the head's quadrant; magnitude is this connector's slot).
+        arrowDrawTailPort = {
+            anchor: { x: anchor.x, y: anchor.y },
+            edge: tailEdge,
+            index: tailPortIndex,
+        }
+        // Fresh drag — no magnetic dock yet.
+        pendingPortConnection = null
+
+        // Drop the source shape's selection box so it doesn't linger over the
+        // new connector while dragging.
+        selectionController.detach()
+
+        scenario = SCENARIO_ARROW_DRAW
+        domElement.addEventListener('mousemove', mousemove, false)
+        domElement.addEventListener('mouseup', mouseup, false)
+        setRootCursor('crosshair')
+
+        // The arrowLine React element mounts lazily — poll until it appears,
+        // then pin the tail to the port anchor and collapse the head onto it so
+        // the upcoming mousemove stretches it from the port.
+        pollUntilElement(
+            two,
+            arrowId,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (el: any) => {
+                arrowDrawElement = el
+                arrowDrawElement.position.x = anchor.x
+                arrowDrawElement.position.y = anchor.y
+
+                const line = arrowDrawElement.children[0]
+                const pointCircle1Group = arrowDrawElement.children[1]
+                const pointCircle2Group = arrowDrawElement.children[2]
+
+                updateX1Y1Vertices(Two, line, 0, 0, pointCircle1Group, two)
+                updateX2Y2Vertices(Two, line, 0, 0, pointCircle2Group, two)
+                two.update()
+            },
+            { maxRetries: 30 }
+        )
+    }
+
+    // Re-anchor every connector bound to `group`: recompute its tail (and/or
+    // head) so the bound endpoint stays glued to the shape's edge port. Called
+    // live during a shape drag so the connector follows in real time. The arrow
+    // group's own position stays put — only the bound vertex moves, which keeps
+    // the free endpoint fixed in surface space.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function reanchorArrowsForShape(group: any) {
+        const shapeId = group?.elementData?.id
+        if (!shapeId) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        two.scene.children.forEach((child: any) => {
+            if (child?.elementData?.componentType !== 'arrowLine') return
+            const ed = child.elementData
+            const line = child.children?.[0]
+            if (!line) return
+            if (ed.tailShapeId === shapeId && ed.tailEdge) {
+                const p = getShapePortPoint(group, ed.tailEdge, portGapSurface())
+                if (ed.tailPortIndex > 0) {
+                    // Keep the fan offset (direction follows the bound head).
+                    applyStackedEndpoint(
+                        child,
+                        line,
+                        child.children[1],
+                        ed.tailEdge,
+                        p,
+                        ed.tailPortIndex,
+                        'tail'
+                    )
+                } else {
+                    updateX1Y1Vertices(
+                        Two,
+                        line,
+                        p.x - child.position.x,
+                        p.y - child.position.y,
+                        child.children[1],
+                        two
+                    )
+                }
+            }
+            if (ed.headShapeId === shapeId && ed.headEdge) {
+                const p = getShapePortPoint(group, ed.headEdge, portGapSurface())
+                if (ed.headPortIndex > 0) {
+                    // Keep the fan offset (direction follows the bound tail).
+                    applyStackedEndpoint(
+                        child,
+                        line,
+                        child.children[2],
+                        ed.headEdge,
+                        p,
+                        ed.headPortIndex,
+                        'head'
+                    )
+                } else {
+                    updateX2Y2Vertices(
+                        Two,
+                        line,
+                        p.x - child.position.x,
+                        p.y - child.position.y,
+                        child.children[2],
+                        two
+                    )
+                }
+            }
+        })
+    }
+
+    // Persist the (already re-anchored) vertices of connectors bound to `group`
+    // so the new tail/head survive a reload. Mirrors the arrow-draw commit:
+    // prevX === position.x means the x,y branch is a no-op (the arrow group never
+    // moves), and isLineCircle drives the x1/y1/x2/y2 write.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function persistBoundArrows(group: any) {
+        const shapeId = group?.elementData?.id
+        if (!shapeId) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        two.scene.children.forEach((child: any) => {
+            if (child?.elementData?.componentType !== 'arrowLine') return
+            const ed = child.elementData
+            if (ed.tailShapeId !== shapeId && ed.headShapeId !== shapeId) return
+            const line = child.children?.[0]
+            if (!line) return
+            updateToGlobalState(
+                {
+                    id: ed.id,
+                    prevX: parseInt(child.position.x),
+                    prevY: parseInt(child.position.y),
+                    isLineCircle: true,
+                    parentData: child,
+                    data: {
+                        x: parseInt(child.position.x),
+                        y: parseInt(child.position.y),
+                        x1: parseInt(line.vertices[0].x),
+                        y1: parseInt(line.vertices[0].y),
+                        x2: parseInt(line.vertices[1].x),
+                        y2: parseInt(line.vertices[1].y),
+                    },
+                },
+                {}
+            )
+        })
+    }
+
+    // After a connector endpoint settles on a port, re-sort EVERY endpoint
+    // docked at that port (tails pulled out of it AND heads dropped onto it) so
+    // their order matches their far endpoints' order: for side edges (e/w) by
+    // the far end's y, for top/bottom edges (n/s) by its x. Without this the
+    // slot index is frozen when the binding is made, so a later connector whose
+    // far end lands between two earlier ones still stacks past them. The
+    // endpoint whose far end is closest to the port-normal axis keeps the bare
+    // port point (index 0); the rest fan out by side in far-end order.
+    // Re-applies the fan and persists the new vertices + index so a reload
+    // (local mode) keeps the layout.
+    function restackPortConnectors(shapeId: string | undefined, edge: string) {
+        if (!shapeId) return
+        const group = two.scene.children.find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (c: any) => c?.elementData?.id === shapeId
+        )
+        if (!group) return
+        const port = getShapePortPoint(group, edge, portGapSurface())
+        const sideEdge = edge === 'e-resize' || edge === 'w-resize'
+        const center = sideEdge ? port.y : port.x
+
+        type Entry = {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            child: any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            line: any
+            endpoint: 'tail' | 'head'
+            coord: number
+            dist: number
+        }
+        const entries: Entry[] = []
+        // Far endpoint vertex index for ordering: a tail bound here is ordered
+        // by its head (vertex[1]); a head bound here by its tail (vertex[0]).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pushEntry = (child: any, line: any, endpoint: 'tail' | 'head') => {
+            const farIdx = endpoint === 'tail' ? 1 : 0
+            const coord = sideEdge
+                ? child.position.y + line.vertices[farIdx].y
+                : child.position.x + line.vertices[farIdx].x
+            entries.push({
+                child,
+                line,
+                endpoint,
+                coord,
+                dist: Math.abs(coord - center),
+            })
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        two.scene.children.forEach((child: any) => {
+            const ed = child?.elementData
+            if (ed?.componentType !== 'arrowLine') return
+            const line = child.children?.[0]
+            if (!line) return
+            if (ed.tailShapeId === shapeId && ed.tailEdge === edge)
+                pushEntry(child, line, 'tail')
+            if (ed.headShapeId === shapeId && ed.headEdge === edge)
+                pushEntry(child, line, 'head')
+        })
+        if (entries.length === 0) return
+
+        // Closest-to-center first: the nearest takes the bare port (index 0),
+        // the rest fan outward per side, increasing with distance — which keeps
+        // endpoint order aligned with far-end order within each side.
+        entries.sort((a, b) => a.dist - b.dist)
+        let beforeCount = 0
+        let afterCount = 0
+        entries.forEach((entry, i) => {
+            const index =
+                i === 0
+                    ? 0
+                    : entry.coord < center
+                      ? ++beforeCount
+                      : ++afterCount
+            const circle =
+                entry.endpoint === 'tail'
+                    ? entry.child.children[1]
+                    : entry.child.children[2]
+            if (entry.endpoint === 'tail')
+                entry.child.elementData.tailPortIndex = index
+            else entry.child.elementData.headPortIndex = index
+            applyStackedEndpoint(
+                entry.child,
+                entry.line,
+                circle,
+                edge,
+                port,
+                index,
+                entry.endpoint
+            )
+            const patch =
+                entry.endpoint === 'tail'
+                    ? {
+                          x1: parseInt(entry.line.vertices[0].x),
+                          y1: parseInt(entry.line.vertices[0].y),
+                          tailPortIndex: index,
+                      }
+                    : {
+                          x2: parseInt(entry.line.vertices[1].x),
+                          y2: parseInt(entry.line.vertices[1].y),
+                          headPortIndex: index,
+                      }
+            updateComponentBulkPropertiesInLocalStore(
+                entry.child.elementData.id,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                patch as any,
+                // Cosmetic re-layout — don't spawn an undo step per moved arrow.
+                true
+            )
+        })
+    }
+
     function mousedown(e: MouseEvent) {
         // Pan-mode (desktop): grab-and-drag translates the surface instead of
         // selecting/drawing. Runs before everything else so a click on a shape
@@ -1037,6 +1566,27 @@ function addZUI(
                 }
             })
         } else if (selectionController.currentGroup) {
+            // Port check first: a click on a connection port pulls out a
+            // connector arrow (tail pinned to the port) instead of selecting or
+            // resizing. Ports sit outside the box, so they never overlap the
+            // resize handles below.
+            const portHit = selectionController.hitTestPort(
+                e.clientX,
+                e.clientY
+            )
+            if (portHit) {
+                const sourceGroup = selectionController.currentGroup
+                const tailShapeId = sourceGroup?.elementData?.id
+                // Pin the tail to the floated selection port (edge + padding +
+                // port gap) so the connector visually starts at the port dot.
+                const anchor = getShapePortPoint(
+                    sourceGroup,
+                    portHit.edge,
+                    portGapSurface()
+                )
+                startPortConnector(anchor, tailShapeId, portHit.edge)
+                return
+            }
             // Controller handle check — runs before the bare-canvas clearSelector
             // dispatch and the DOM path walk. Corner handles can extend slightly
             // beyond the element's SVG bounds, so relying on path-walking would
@@ -1554,6 +2104,23 @@ function addZUI(
                         ? shape.elementData.lineData
                         : shape.children[0]
 
+                    // Keep a selected arrow's endpoint handles visible. The
+                    // mousedown above hides ALL endpoints (line ~1632); the
+                    // pull-out auto-select and the hover fallback re-show them,
+                    // but a plain body-click never did — leaving the handles
+                    // at opacity 0. Since opacity-0 circles don't fire pointer
+                    // events, a follow-up grab of an endpoint would miss the
+                    // circle, fall through to the null→parent-arrow fallback,
+                    // and become a whole-arrow BODY drag — which detaches the
+                    // arrow's port bindings. Re-showing them here keeps the next
+                    // endpoint grab an endpoint drag, so bindings survive.
+                    if (
+                        groupForToolbar?.elementData?.componentType ===
+                        'arrowLine'
+                    ) {
+                        setArrowEndpointsVisible(groupForToolbar, true)
+                    }
+
                     // First line node of the text layer (or a legacy direct
                     // text child) — gives the toolbar a representative text
                     // node for shape-with-text enablement.
@@ -1651,6 +2218,34 @@ function addZUI(
                         relY,
                         pointCircle2Group,
                         two
+                    )
+
+                    // Fan the tail off the port so stacked connectors don't
+                    // overlap — direction follows the quadrant the head is in.
+                    if (arrowDrawTailPort && arrowDrawTailPort.index > 0) {
+                        applyStackedEndpoint(
+                            arrowDrawElement,
+                            line,
+                            arrowDrawElement.children[1],
+                            arrowDrawTailPort.edge,
+                            arrowDrawTailPort.anchor,
+                            arrowDrawTailPort.index,
+                            'tail'
+                        )
+                    }
+
+                    // Radar sweep + magnetic snap for the head being pulled out.
+                    updatePortRadar(
+                        {
+                            x: arrowDrawElement.position.x + relX,
+                            y: arrowDrawElement.position.y + relY,
+                        },
+                        {
+                            arrowGroup: arrowDrawElement,
+                            line,
+                            circle: pointCircle2Group,
+                            endpoint: 'head',
+                        }
                     )
                 }
                 break
@@ -1895,11 +2490,33 @@ function addZUI(
                                     )
                                 }
                             }
+
+                            // Radar + magnetic snap for the endpoint being
+                            // re-dragged (tail or head, per `direction`). Works
+                            // every time, not just at creation. No source
+                            // exclusion here — an existing arrow's end may dock
+                            // onto any shape in range.
+                            updatePortRadar(
+                                toSurface(e),
+                                {
+                                    arrowGroup: shape.lineData?.parent,
+                                    line: shape.lineData,
+                                    circle: shape,
+                                    endpoint:
+                                        shape.direction === 'left'
+                                            ? 'tail'
+                                            : 'head',
+                                },
+                                null
+                            )
                         }
                         // code block condition to handle normal component's dragging
                         else {
                             shape.position.x += dx / zui.scale
                             shape.position.y += dy / zui.scale
+                            // Drag any connector tails/heads pinned to this
+                            // shape's ports along with it.
+                            reanchorArrowsForShape(shape)
                         }
                     } else if (shape.elementData.isGroupSelector) {
                         // this blocks falls for the case when user has clicked and
@@ -1972,6 +2589,11 @@ function addZUI(
 
                     updateToGlobalState(newShapeData, {})
 
+                    // If the head was magnetically docked on a port at release,
+                    // commit the head→shape binding (the vertices were already
+                    // snapped during the drag).
+                    applyPendingPortConnection()
+
                     // Auto-select the freshly drawn arrow so its endpoint
                     // handles and the edit toolbar appear immediately — a
                     // visual cue that the arrow is editable. Arrows aren't in
@@ -1999,6 +2621,31 @@ function addZUI(
                 } else {
                     setSelectedComponentInBoard(null)
                 }
+
+                // Radar is a draw-time affordance only — clear it on drop.
+                selectionController.hidePortGlow()
+                // Now the endpoints are firmly placed, re-sort every connector on
+                // each touched port so their order matches their far ends' order
+                // (fixes a later connector whose far end lands between earlier
+                // ones from stacking past them). Two ports may be involved: the
+                // source port a tail was pulled from, and the port a head docked
+                // onto (the latter also covers a plain toolbar arrow whose head
+                // lands on a port — no tail source).
+                if (arrowDrawTailShapeId && arrowDrawTailPort) {
+                    restackPortConnectors(
+                        arrowDrawTailShapeId,
+                        arrowDrawTailPort.edge
+                    )
+                }
+                const drawnEd = arrowDrawElement?.elementData
+                if (drawnEd?.headShapeId && drawnEd?.headEdge) {
+                    restackPortConnectors(
+                        drawnEd.headShapeId,
+                        drawnEd.headEdge
+                    )
+                }
+                arrowDrawTailShapeId = null
+                arrowDrawTailPort = null
 
                 arrowDrawElement = null
                 setArrowDrawModeOff()
@@ -2228,61 +2875,243 @@ function addZUI(
                     }
                     setSelectedComponentInBoard(null)
                 } else if (shape?.elementData) {
-                    if (
-                        shape.elementData.x !== shape.translation.x ||
-                        shape.elementData.y !== shape.translation.y
-                    ) {
+                    // Did the element actually move since mousedown? Compare the
+                    // rounded translation against `prevX`/`prevY` captured at
+                    // mousedown (line ~1721, also `parseInt(translation)`).
+                    //
+                    // The old guard compared `elementData.x` against
+                    // `translation.x` directly, but `elementData.x` is stored as
+                    // a parseInt'd integer while `translation.x` keeps the float.
+                    // For a port-pulled connector the position is a fractional
+                    // port anchor, so the two always differed — making a plain
+                    // CLICK on the arrow body read as a "move" and fall into the
+                    // body branch below, which detaches both port bindings.
+                    // Gating on real movement makes a click a no-op.
+                    const prevX = shape.elementData.prevX
+                    const prevY = shape.elementData.prevY
+                    const movedX =
+                        prevX === undefined
+                            ? shape.elementData.x !== shape.translation.x
+                            : parseInt(shape.translation.x) !== prevX
+                    const movedY =
+                        prevY === undefined
+                            ? shape.elementData.y !== shape.translation.y
+                            : parseInt(shape.translation.y) !== prevY
+                    if (movedX || movedY) {
                         if (shape?.elementData?.isLineCircle === true) {
                             shape.opacity = 0
                             shape.siblingCircle.opacity = 0
 
-                            oldShapeData = { ...shape.elementData }
+                            const vertexObj = {
+                                x1: parseInt(shape.lineData.vertices[0].x),
+                                y1: parseInt(shape.lineData.vertices[0].y),
+                                x2: parseInt(shape.lineData.vertices[1].x),
+                                y2: parseInt(shape.lineData.vertices[1].y),
+                            }
 
-                            newShapeData = Object.assign(
-                                {},
-                                shape.elementData,
-                                {
-                                    data: {
-                                        x1: parseInt(
-                                            shape.lineData.vertices[0].x
-                                        ),
-                                        y1: parseInt(
-                                            shape.lineData.vertices[0].y
-                                        ),
-                                        x2: parseInt(
-                                            shape.lineData.vertices[1].x
-                                        ),
-                                        y2: parseInt(
-                                            shape.lineData.vertices[1].y
-                                        ),
-                                    },
+                            // Releasing this endpoint either CONNECTS it (still
+                            // magnetically docked on a port at release) or
+                            // DETACHES it (manual move ending off every port).
+                            // Either way fold the binding write into the SAME
+                            // bulk update as the vertices so one undo reverts
+                            // both position and binding.
+                            const arrowGroup = shape.lineData?.parent
+                            const ed = arrowGroup?.elementData
+                            const draggedEndpoint =
+                                shape.direction === 'left' ? 'tail' : 'head'
+                            // Ports this release touches — the one the dragged
+                            // endpoint was on (it may detach or hop off) plus the
+                            // one it docks onto — re-sorted once the binding is
+                            // settled so the remaining fans stay ordered.
+                            const portsToRestack: {
+                                shapeId: string
+                                edge: string
+                            }[] = []
+                            const recordPort = (
+                                shapeId?: string | null,
+                                edge?: string | null
+                            ) => {
+                                if (
+                                    shapeId &&
+                                    edge &&
+                                    !portsToRestack.some(
+                                        (p) =>
+                                            p.shapeId === shapeId &&
+                                            p.edge === edge
+                                    )
+                                )
+                                    portsToRestack.push({ shapeId, edge })
+                            }
+                            if (ed && draggedEndpoint === 'tail')
+                                recordPort(ed.tailShapeId, ed.tailEdge)
+                            else if (ed && draggedEndpoint === 'head')
+                                recordPort(ed.headShapeId, ed.headEdge)
+                            const connectHere =
+                                !!pendingPortConnection &&
+                                pendingPortConnection.endpoint ===
+                                    draggedEndpoint &&
+                                !!pendingPortConnection.shapeId &&
+                                !!ed &&
+                                pendingPortConnection.arrowId === ed.id
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const bindObj: Record<string, any> = {}
+                            if (connectHere && pendingPortConnection) {
+                                if (draggedEndpoint === 'tail') {
+                                    bindObj.tailShapeId =
+                                        pendingPortConnection.shapeId
+                                    bindObj.tailEdge =
+                                        pendingPortConnection.edge
+                                } else {
+                                    bindObj.headShapeId =
+                                        pendingPortConnection.shapeId
+                                    bindObj.headEdge =
+                                        pendingPortConnection.edge
                                 }
-                            )
+                                if (ed) Object.assign(ed, bindObj)
+                            } else if (
+                                draggedEndpoint === 'tail' &&
+                                ed &&
+                                (ed.tailShapeId || ed.tailEdge)
+                            ) {
+                                bindObj.tailShapeId = null
+                                bindObj.tailEdge = null
+                                bindObj.tailPortIndex = 0
+                                ed.tailShapeId = null
+                                ed.tailEdge = null
+                                ed.tailPortIndex = 0
+                            } else if (
+                                draggedEndpoint === 'head' &&
+                                ed &&
+                                (ed.headShapeId || ed.headEdge)
+                            ) {
+                                bindObj.headShapeId = null
+                                bindObj.headEdge = null
+                                bindObj.headPortIndex = 0
+                                ed.headShapeId = null
+                                ed.headEdge = null
+                                ed.headPortIndex = 0
+                            }
 
-                            updateToGlobalState(newShapeData, oldShapeData)
+                            if (ed?.id && Object.keys(bindObj).length > 0) {
+                                // One UPDATE_BULK carries vertices + binding so
+                                // undo reverts the whole connect/detach in a
+                                // single step.
+                                updateComponentBulkPropertiesInLocalStore(
+                                    ed.id,
+                                    { ...vertexObj, ...bindObj }
+                                )
+                            } else {
+                                oldShapeData = { ...shape.elementData }
+                                newShapeData = Object.assign(
+                                    {},
+                                    shape.elementData,
+                                    { data: vertexObj }
+                                )
+                                updateToGlobalState(newShapeData, oldShapeData)
+                            }
+
+                            // Re-sort the fans on every port this release touched
+                            // (the port just docked onto + any port the endpoint
+                            // left), now the endpoint is firmly placed.
+                            if (connectHere && pendingPortConnection)
+                                recordPort(
+                                    pendingPortConnection.shapeId,
+                                    pendingPortConnection.edge
+                                )
+                            portsToRestack.forEach((p) =>
+                                restackPortConnectors(p.shapeId, p.edge)
+                            )
                         } else {
                             shape.elementData.x = shape.translation.x
                             shape.elementData.y = shape.translation.y
 
-                            oldShapeData = { ...shape.elementData }
+                            // Dragging a connector's BODY moves both endpoints
+                            // off their ports, so it detaches any bindings —
+                            // otherwise a later shape move would snap the tail
+                            // back. Clear them live and fold into the same
+                            // position update so one undo reverts the whole move.
+                            const ed = shape.elementData
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const arrowDetach: Record<string, any> = {}
+                            // Ports the body-drag pulled this connector off of,
+                            // re-sorted afterwards so the remaining fans close up.
+                            const bodyDetachPorts: {
+                                shapeId: string
+                                edge: string
+                            }[] = []
+                            if (ed.componentType === 'arrowLine') {
+                                if (ed.tailShapeId || ed.tailEdge) {
+                                    if (ed.tailShapeId && ed.tailEdge)
+                                        bodyDetachPorts.push({
+                                            shapeId: ed.tailShapeId,
+                                            edge: ed.tailEdge,
+                                        })
+                                    arrowDetach.tailShapeId = null
+                                    arrowDetach.tailEdge = null
+                                    arrowDetach.tailPortIndex = 0
+                                    ed.tailShapeId = null
+                                    ed.tailEdge = null
+                                    ed.tailPortIndex = 0
+                                }
+                                if (ed.headShapeId || ed.headEdge) {
+                                    if (ed.headShapeId && ed.headEdge)
+                                        bodyDetachPorts.push({
+                                            shapeId: ed.headShapeId,
+                                            edge: ed.headEdge,
+                                        })
+                                    arrowDetach.headShapeId = null
+                                    arrowDetach.headEdge = null
+                                    arrowDetach.headPortIndex = 0
+                                    ed.headShapeId = null
+                                    ed.headEdge = null
+                                    ed.headPortIndex = 0
+                                }
+                            }
 
-                            newShapeData = Object.assign(
-                                {},
-                                shape.elementData,
-                                {
-                                    data: {
+                            if (Object.keys(arrowDetach).length > 0) {
+                                // One UPDATE_BULK: position + binding clear.
+                                updateComponentBulkPropertiesInLocalStore(
+                                    ed.id,
+                                    {
                                         x: parseInt(shape.translation.x),
                                         y: parseInt(shape.translation.y),
-                                    },
-                                }
-                            )
+                                        ...arrowDetach,
+                                    }
+                                )
+                            } else {
+                                oldShapeData = { ...shape.elementData }
 
-                            if (
-                                shape.elementData.componentType !==
-                                'groupobject'
-                            ) {
-                                updateToGlobalState(newShapeData, oldShapeData)
+                                newShapeData = Object.assign(
+                                    {},
+                                    shape.elementData,
+                                    {
+                                        data: {
+                                            x: parseInt(shape.translation.x),
+                                            y: parseInt(shape.translation.y),
+                                        },
+                                    }
+                                )
+
+                                if (
+                                    shape.elementData.componentType !==
+                                    'groupobject'
+                                ) {
+                                    updateToGlobalState(
+                                        newShapeData,
+                                        oldShapeData
+                                    )
+                                }
                             }
+
+                            // Save the connectors that followed this shape so
+                            // their new tail/head positions survive a reload.
+                            persistBoundArrows(shape)
+
+                            // Re-close the fans on any port this connector was
+                            // just dragged off of.
+                            bodyDetachPorts.forEach((p) =>
+                                restackPortConnectors(p.shapeId, p.edge)
+                            )
                         }
                     }
                 }
@@ -2294,6 +3123,12 @@ function addZUI(
             .forEach((el) => {
                 el.style.pointerEvents = ''
             })
+
+        // Radar is a drag-time affordance only — clear the glow on any release
+        // (covers the endpoint-drag path; the arrow-draw case clears it too).
+        // The pending snap was already consumed by the case handlers above.
+        selectionController.hidePortGlow()
+        pendingPortConnection = null
 
         shape = {}
         scenario = null
@@ -2925,6 +3760,24 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const children = scene.children as any[]
 
+        // Skip while a transient group selection (marquee selector or the
+        // mounted groupobject) is active. Such a group is NOT reorderable
+        // (isReorderableElementChild excludes GROUP_COMPONENT) and its grouped
+        // originals are hidden (opacity 0) beneath it, so there is nothing
+        // useful to reorder. More importantly, the groupobject mounts its child
+        // elements asynchronously: sorting + two.update() mid-mount can detach
+        // the just-built group node (the scene.subtractions pitfall in
+        // CLAUDE.md), silently destroying the selection. The componentStore
+        // effect re-runs this poll once the group is dismissed and the
+        // originals re-render, so deterministic z-order is still restored then.
+        const hasActiveGroupSelection = children.some(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (c: any) =>
+                c?.elementData?.isGroupSelector === true ||
+                c?.elementData?.componentType === GROUP_COMPONENT
+        )
+        if (hasActiveGroupSelection) return
+
         // Build the desired final order: element groups sorted by their store
         // position (back→front) dropped back into the index slots they already
         // occupy, while non-element children (selection box, previews) keep
@@ -3079,6 +3932,16 @@ const Canvas: React.FC<CanvasProps> = (props) => {
     // on group select use effect hook
     useEffect(() => {
         if (onGroup) {
+            // Cancel any in-flight z-order reconcile poll started by an earlier
+            // store change. The groupobject mounts its children asynchronously;
+            // a reconcile tick that fires in the gap *before* the group node is
+            // in the scene (so reconcileZOrder's group guard can't see it yet)
+            // would sort + two.update() mid-mount and detach the just-built
+            // group (scene.subtractions pitfall), dropping the selection.
+            if (zOrderPollRef.current !== null) {
+                cancelAnimationFrame(zOrderPollRef.current)
+                zOrderPollRef.current = null
+            }
             let e = onGroup
             let x1Coord = e.left
             let x2Coord = e.right

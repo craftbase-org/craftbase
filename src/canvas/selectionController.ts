@@ -5,10 +5,7 @@ import {
     renderShapeTextLayer,
     shapeTextStyleFromMeta,
 } from '../utils/canvasUtils'
-import {
-    reflowTextForShape,
-    minShapeWidthForText,
-} from '../utils/shapeTextFit'
+import { reflowTextForShape, minShapeWidthForText } from '../utils/shapeTextFit'
 
 // Two.js scene shapes carry codebase-specific bookkeeping (elementData,
 // _renderer, etc.) outside the published types. Stay loose here; Stage 12
@@ -72,7 +69,25 @@ function handleScreenPx(scale: number): number {
 const HANDLE_HIT_SLOP_MOUSE = 3
 const HANDLE_HIT_SLOP_TOUCH = 8
 const MIN_SCALE_DIMENSION = 20
-const SELECTION_PADDING = 5
+// Surface-unit padding between the shape edge and the selection box border.
+// Exported so connector anchoring matches where the box (and thus ports) sit.
+export const SELECTION_PADDING = 5
+// Screen-px gap between the selection box border and the connection ports.
+// Exported so connector anchoring (newCanvas) can pin tails to the same spot.
+export const PORT_GAP = 10
+// Screen-px radius within which a dragging connector head "snaps" a nearby
+// port into its radar and lights its glow. Exported so newCanvas can run the
+// same proximity test the glow is keyed off.
+export const PORT_RADAR_RADIUS = 26
+
+// --- Port "radar" glow (amber pulsing ring shown over a landable port) ---
+// Base radius (screen px) of the glow; the glow group counter-scales to zoom.
+const GLOW_BASE_RADIUS = 9
+// One expand-and-fade ping every this many ms.
+const GLOW_PERIOD_MS = 1100
+// Amber palette for the glow.
+const GLOW_RING_COLOR = '#E0A22B'
+const GLOW_CORE_COLOR = '#F2C150'
 
 interface ToolbarState {
     element: Record<string, ShapeLike>
@@ -123,6 +138,9 @@ interface SelectionControllerOptions {
     ) => void
     recordHistory?: () => void
     onDelete?: (group: GroupLike) => void
+    // Fired live while the selection is scaled/rotated so the host can drag
+    // connectors bound to the shape's ports along with the transform.
+    onTransform?: (group: GroupLike) => void
 }
 
 interface HitResult {
@@ -162,7 +180,12 @@ export default class SelectionController {
     callbacks: Required<
         Pick<
             SelectionControllerOptions,
-            'onSelect' | 'onDeselect' | 'commit' | 'recordHistory' | 'onDelete'
+            | 'onSelect'
+            | 'onDeselect'
+            | 'commit'
+            | 'recordHistory'
+            | 'onDelete'
+            | 'onTransform'
         >
     >
 
@@ -180,8 +203,31 @@ export default class SelectionController {
     ui!: ShapeLike
     box!: ShapeLike
     endpoints!: ShapeLike
-    midEndpoints!: ShapeLike
-    midPoints!: ShapeLike[]
+    portHandles!: ShapeLike
+    portPoints!: ShapeLike[]
+
+    // Connection ports sit at each edge midpoint, floated outside the selection
+    // box. Hovering a port reveals this outward-pointing arrow — the affordance
+    // for "open a path to connect". Ports are NOT resize handles.
+    portArrow!: ShapeLike
+
+    // Radar glow shown over the nearest landable port while a connector is being
+    // drawn. Lives at scene level (not inside `ui`) so it survives `detach()`,
+    // which fires when a connector pulls out of the source shape.
+    portGlow!: ShapeLike
+    private _glowRing!: ShapeLike
+    private _glowCore!: ShapeLike
+    private _glowRaf: number | null = null
+    private _glowStart = 0
+
+    // Dashed amber skeleton drawn around the shape whose port is the current
+    // radar target — signals "the connector will attach to THIS shape". Shown
+    // and hidden together with `portGlow`.
+    nearbyPortExpectedShape!: ShapeLike
+
+    private _halfW = 0
+    private _halfH = 0
+    private _hoveredPort: string | null = null
 
     private _onUpdate: (() => void) | null = null
     private _onClearSelector: (() => void) | null = null
@@ -199,6 +245,7 @@ export default class SelectionController {
         commit,
         recordHistory,
         onDelete,
+        onTransform,
     }: SelectionControllerOptions) {
         this.two = two
         this.zui = zui
@@ -209,6 +256,7 @@ export default class SelectionController {
             commit: commit ?? ((): void => {}),
             recordHistory: recordHistory ?? ((): void => {}),
             onDelete: onDelete ?? ((): void => {}),
+            onTransform: onTransform ?? ((): void => {}),
         }
 
         this._buildUi()
@@ -233,7 +281,7 @@ export default class SelectionController {
         endpoints.stroke = '#C4901A'
         endpoints.linewidth = 1.5
 
-        this.midPoints = [
+        this.portPoints = [
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             new (Two as any).Vector(0, 0), // n
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -244,20 +292,114 @@ export default class SelectionController {
             new (Two as any).Vector(0, 0), // w
         ]
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const midEndpoints = new (Two as any).Points(this.midPoints)
-        midEndpoints.size = 10
-        midEndpoints.fill = '#FFFCF5'
-        midEndpoints.stroke = '#C4901A'
-        midEndpoints.linewidth = 1.5
-        midEndpoints.visible = false
+        const portHandles = new (Two as any).Points(this.portPoints)
+        portHandles.size = 10
+        portHandles.fill = '#8C7E6A'
+        // portHandles.stroke = '#C4901A'
+        portHandles.linewidth = 0
+        portHandles.visible = false
 
-        ui.add(box, endpoints, midEndpoints)
+        const portArrow = this._buildPortArrow()
+
+        ui.add(box, endpoints, portHandles, portArrow)
         this.two.add(ui)
+
+        // Glow + target skeleton live at scene level (not in `ui`) so they can
+        // highlight any shape's port — including while the source shape's
+        // selection is detached mid-draw. The skeleton is added before the glow
+        // so the glow dot renders on top of the outline.
+        const nearbyPortExpectedShape = this._buildNearbyPortShape()
+        this.two.add(nearbyPortExpectedShape)
+        const portGlow = this._buildPortGlow()
+        this.two.add(portGlow)
 
         this.ui = ui
         this.box = box
         this.endpoints = endpoints
-        this.midEndpoints = midEndpoints
+        this.portHandles = portHandles
+        this.portArrow = portArrow
+        this.portGlow = portGlow
+        this.nearbyPortExpectedShape = nearbyPortExpectedShape
+    }
+
+    // A dashed amber rectangle outline (no fill) that wraps the radar-target
+    // shape. Positioned/sized per-frame by `_showNearbyPortShape` to match the
+    // candidate shape's bounds; counter-scaled so the stroke stays crisp.
+    private _buildNearbyPortShape(): ShapeLike {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rect = new (Two as any).Rectangle(0, 0, 0, 0)
+        rect.noFill()
+        rect.stroke = GLOW_RING_COLOR
+        rect.linewidth = 1.5
+        rect.dashes = [6, 4]
+        rect.visible = false
+        return rect
+    }
+
+    // An amber "radar ping": a steady translucent core plus an expanding ring
+    // that the animation loop grows and fades. Built in glow-local space and
+    // counter-scaled to the zoom so it stays a constant screen size.
+    private _buildPortGlow(): ShapeLike {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Circle = (Two as any).Circle
+
+        const core = new Circle(0, 0, GLOW_BASE_RADIUS)
+        core.fill = GLOW_CORE_COLOR
+        core.opacity = 0.3
+        core.noStroke()
+
+        const ring = new Circle(0, 0, GLOW_BASE_RADIUS)
+        ring.noFill()
+        ring.stroke = GLOW_RING_COLOR
+        ring.linewidth = 2
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g = new (Two as any).Group()
+        g.add(core, ring)
+        g.visible = false
+
+        this._glowCore = core
+        this._glowRing = ring
+        return g
+    }
+
+    // A small outward-pointing arrow icon (shaft + chevron head) drawn in
+    // box-local space, growing along +x from the origin. It lives as a child of
+    // `ui`, so it inherits the selection's translation/rotation; per-sync we set
+    // `scale = 1/zoom` so it stays a constant screen size. Positioned/rotated by
+    // `_positionPortArrow` to sit just outside whichever edge is hovered.
+    private _buildPortArrow(): ShapeLike {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Anchor = (Two as any).Anchor
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const shaft = new (Two as any).Path(
+            [new Anchor(0, 0), new Anchor(16, 0)],
+            false,
+            false
+        )
+        shaft.noFill()
+        shaft.stroke = '#C4901A'
+        shaft.linewidth = 1.5
+        shaft.cap = 'round'
+        shaft.join = 'round'
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const head = new (Two as any).Path(
+            [new Anchor(12, -4), new Anchor(16, 0), new Anchor(12, 4)],
+            false,
+            false
+        )
+        head.noFill()
+        head.stroke = '#C4901A'
+        head.linewidth = 1.5
+        head.cap = 'round'
+        head.join = 'round'
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g = new (Two as any).Group()
+        g.add(shaft, head)
+        g.visible = false
+        return g
     }
 
     private _bindExternal(): void {
@@ -292,7 +434,12 @@ export default class SelectionController {
             window.removeEventListener('keydown', this._onKeyDown, false)
         }
         this._detachPointerStream()
+        this._stopGlowAnim()
         this.two.remove(this.ui)
+        if (this.portGlow) this.two.remove(this.portGlow)
+        if (this.nearbyPortExpectedShape) {
+            this.two.remove(this.nearbyPortExpectedShape)
+        }
     }
 
     canHandle(group: GroupLike): boolean {
@@ -366,6 +513,8 @@ export default class SelectionController {
         this.currentAdapter = null
         this.currentTextChild = null
         this.currentTextLayer = null
+        this._hoveredPort = null
+        if (this.portArrow) this.portArrow.visible = false
         this.ui.visible = false
         this.domElement.classList.remove('shape-selected')
         this.domElement.style.cursor = ''
@@ -391,7 +540,7 @@ export default class SelectionController {
         // directly — no /scale — else the dots inflate when zoomed out.
         const handleSize = handleScreenPx(scale)
         this.endpoints.size = handleSize
-        this.midEndpoints.size = handleSize
+        this.portHandles.size = handleSize
 
         const { width, height } = this.currentAdapter.getLocalSize(
             this.currentShape
@@ -408,14 +557,200 @@ export default class SelectionController {
 
         const isRect =
             this.currentGroup?.elementData?.componentType === 'rectangle'
-        this.midEndpoints.visible = isRect
+        this.portHandles.visible = isRect
         if (isRect) {
             const hw = (width + pad * 2) / 2
             const hh = (height + pad * 2) / 2
-            this.midPoints[0]!.set(0, -hh)
-            this.midPoints[1]!.set(hw, 0)
-            this.midPoints[2]!.set(0, hh)
-            this.midPoints[3]!.set(-hw, 0)
+            this._halfW = hw
+            this._halfH = hh
+            // Float the connection ports outside the selection box.
+            const portOff = PORT_GAP / scale
+            this.portPoints[0]!.set(0, -hh - portOff)
+            this.portPoints[1]!.set(hw + portOff, 0)
+            this.portPoints[2]!.set(0, hh + portOff)
+            this.portPoints[3]!.set(-hw - portOff, 0)
+            // Keep a visible port arrow glued to the (possibly resized/zoomed)
+            // edge.
+            if (this._hoveredPort && this.portArrow.visible) {
+                this._positionPortArrow(this._hoveredPort)
+            }
+        }
+    }
+
+    // Place + orient the port arrow just outside `edge` and counter-scale it to
+    // a constant screen size.
+    private _positionPortArrow(edge: string): void {
+        if (!this.portArrow) return
+        const scale = this.zui.scale || 1
+        // Sit beyond the port (port gap + port radius + a small margin).
+        const gap = (PORT_GAP + handleScreenPx(scale) / 2 + 6) / scale
+        const hw = this._halfW
+        const hh = this._halfH
+        let x = 0
+        let y = 0
+        let rot = 0
+        switch (edge) {
+            case 'e-resize':
+                x = hw + gap
+                rot = 0
+                break
+            case 's-resize':
+                y = hh + gap
+                rot = Math.PI / 2
+                break
+            case 'w-resize':
+                x = -hw - gap
+                rot = Math.PI
+                break
+            case 'n-resize':
+                y = -hh - gap
+                rot = -Math.PI / 2
+                break
+            default:
+                return
+        }
+        this.portArrow.position.set(x, y)
+        this.portArrow.rotation = rot
+        this.portArrow.scale = 1 / scale
+    }
+
+    // Toggle the hover arrow for `edge` (or hide it when null). Only repaints on
+    // an actual change so it's cheap to call from the mousemove hover stream.
+    private _setHoveredPort(edge: string | null): void {
+        if (this._hoveredPort === edge) return
+        this._hoveredPort = edge
+        if (edge) {
+            this._positionPortArrow(edge)
+            this.portArrow.visible = true
+        } else {
+            this.portArrow.visible = false
+        }
+        this.two.update()
+    }
+
+    // ---------- Port radar glow ----------
+
+    // Light (or move) the radar glow over a landable port at `surface` (its
+    // floated anchor, in surface coords). Idempotent per position; starts the
+    // pulse loop the first time it becomes visible. Pass `targetGroup` (the
+    // shape that owns the port) to also draw the dashed skeleton around it. Call
+    // `hidePortGlow` once the head leaves every port's range.
+    showPortGlow(
+        surface: { x: number; y: number },
+        targetGroup?: ShapeLike
+    ): void {
+        if (!this.portGlow) return
+        const scale = this.zui.scale || 1
+        this.portGlow.position.set(surface.x, surface.y)
+        this.portGlow.scale = 1 / scale
+        if (targetGroup) this._showNearbyPortShape(targetGroup)
+        this._bringToSceneFront(this.nearbyPortExpectedShape)
+        this._bringToSceneFront(this.portGlow)
+        if (!this.portGlow.visible) {
+            this.portGlow.visible = true
+            this._glowStart =
+                typeof performance !== 'undefined' ? performance.now() : 0
+            // Prime a full-opacity frame so the glow appears instantly — the
+            // previous ping may have stopped mid-fade, leaving the ring at ~0
+            // opacity, which would otherwise render blank for one frame.
+            this._glowRing.radius = GLOW_BASE_RADIUS
+            this._glowRing.opacity = 1
+            this._glowCore.opacity = 0.3
+        }
+        // Always ensure the pulse loop is alive. This is robust to a prior run
+        // that stopped while `visible` stayed latched, or a swallowed render
+        // error that left `_glowRaf` dangling — otherwise the glow would light
+        // exactly once and never animate again.
+        if (this._glowRaf === null) this._startGlowAnim()
+    }
+
+    hidePortGlow(): void {
+        const wasVisible = this.portGlow?.visible
+        const hadShape = this.nearbyPortExpectedShape?.visible
+        if (!wasVisible && !hadShape) return
+        if (this.portGlow) this.portGlow.visible = false
+        if (this.nearbyPortExpectedShape) {
+            this.nearbyPortExpectedShape.visible = false
+        }
+        this._stopGlowAnim()
+        this.two.update()
+    }
+
+    // Wrap the radar-target shape with the dashed skeleton, matching its
+    // centre, size (+ selection padding) and rotation. Counter-scales the
+    // stroke/dashes so they stay crisp at any zoom.
+    private _showNearbyPortShape(group: ShapeLike): void {
+        const rect = this.nearbyPortExpectedShape
+        if (!rect) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const shape = (group as any)?.children?.[0]
+        const w = shape?.width ?? group?.elementData?.width ?? 0
+        const h = shape?.height ?? group?.elementData?.height ?? 0
+        if (!w || !h) {
+            rect.visible = false
+            return
+        }
+        const scale = this.zui.scale || 1
+        const pad = SELECTION_PADDING
+        rect.width = w + pad * 2
+        rect.height = h + pad * 2
+        rect.translation.set(group.translation.x, group.translation.y)
+        rect.rotation = group.rotation || 0
+        rect.linewidth = 1.5 / scale
+        rect.dashes = [6 / scale, 4 / scale]
+        rect.visible = true
+    }
+
+    // rAF loop so the ping keeps animating even when the cursor holds still over
+    // a port. Self-cancels when the glow is hidden. `_glowRaf` is cleared at the
+    // TOP of each tick so that even if `two.update()` throws (the documented
+    // scene.subtractions hazard), the loop can be restarted by the next
+    // `showPortGlow` instead of being wedged forever.
+    private _startGlowAnim(): void {
+        const tick = (): void => {
+            this._glowRaf = null
+            if (!this.portGlow || !this.portGlow.visible) return
+            const now =
+                typeof performance !== 'undefined' ? performance.now() : 0
+            const cycles = (now - this._glowStart) / GLOW_PERIOD_MS
+            const t = cycles - Math.floor(cycles) // 0..1, loops each period
+            // Expanding ring that fades as it grows — the "ping".
+            this._glowRing.radius = GLOW_BASE_RADIUS * (1 + t * 1.4)
+            this._glowRing.opacity = 1 - t
+            // Core breathes gently so the port stays alive between pings.
+            this._glowCore.opacity =
+                0.24 + 0.12 * (0.5 + 0.5 * Math.sin(cycles * Math.PI * 2))
+            try {
+                this.two.update()
+            } catch {
+                // A transient renderer hiccup must not kill the pulse loop.
+            }
+            this._glowRaf = requestAnimationFrame(tick)
+        }
+        this._glowRaf = requestAnimationFrame(tick)
+    }
+
+    private _stopGlowAnim(): void {
+        if (this._glowRaf !== null) {
+            cancelAnimationFrame(this._glowRaf)
+            this._glowRaf = null
+        }
+    }
+
+    // Push a scene-level overlay element to the top of the draw order so it
+    // isn't buried by shapes/connectors. Re-adds it if it somehow left the
+    // scene. Shared by the glow and the nearby-port skeleton.
+    private _bringToSceneFront(el: ShapeLike): void {
+        if (!el) return
+        const scene = this.two.scene
+        const idx = scene.children.indexOf(el)
+        if (idx === -1) {
+            this.two.add(el)
+            return
+        }
+        if (idx !== scene.children.length - 1) {
+            scene.children.splice(idx, 1)
+            scene.children.push(el)
         }
     }
 
@@ -433,23 +768,86 @@ export default class SelectionController {
         const hitRadiusPx = handleScreenPx(scale) / 2 + this._hitSlopPx()
         const hitLimit = hitRadiusPx / scale
 
+        // Corners win over edges so the corner-resize/rotate zone isn't shadowed
+        // by the full-edge hit band at the box ends.
+        const corner = this._atCorner(surface, hitLimit)
+        if (corner) {
+            const isOnInnerRing = this._withinCornerRadius(
+                surface,
+                corner,
+                hitLimit
+            )
+            const mode =
+                isOnInnerRing && this.rotationEnabled ? 'rotate' : 'scale'
+            return { mode, corner }
+        }
+
         const isRect =
             this.currentGroup?.elementData?.componentType === 'rectangle'
         if (isRect) {
-            const midEdge = this._atMidEdge(surface, hitLimit)
-            if (midEdge) return { mode: 'scale', corner: midEdge }
+            // Resize lives on the edge band only. Ports are connection points,
+            // not resize handles, so they're intentionally excluded here.
+            const edge = this._atEdge(surface, hitLimit)
+            if (edge) return { mode: 'scale', corner: edge }
         }
 
-        const corner = this._atCorner(surface, hitLimit)
-        if (!corner) return null
+        return null
+    }
 
-        const isOnInnerRing = this._withinCornerRadius(
-            surface,
-            corner,
-            hitLimit
-        )
-        const mode = isOnInnerRing && this.rotationEnabled ? 'rotate' : 'scale'
-        return { mode, corner }
+    // Public port hit test for the canvas: did this client point land on a
+    // connection port? Returns the hovered edge plus the port's anchor in
+    // surface coords (where a pulled-out connector's tail should pin). Null when
+    // nothing is selected or the cursor isn't over a port.
+    hitTestPort(
+        clientX: number,
+        clientY: number
+    ): { edge: string; surface: { x: number; y: number } } | null {
+        if (!this.currentGroup || !this.ui.visible) return null
+        const surface = this.zui.clientToSurface(clientX, clientY)
+        const edge = this._hoveredPortEdge(surface)
+        if (!edge) return null
+        const edgeToIndex: Record<string, number> = {
+            'n-resize': 0,
+            'e-resize': 1,
+            's-resize': 2,
+            'w-resize': 3,
+        }
+        const idx = edgeToIndex[edge]
+        if (idx === undefined) return null
+        const anchor = this._vertexToSurface(this.portPoints[idx]!)
+        return { edge, surface: { x: anchor.x, y: anchor.y } }
+    }
+
+    // Proximity test against the 4 floated connection ports. Gates the port
+    // arrow, which must only appear over a port — not along the rest of the edge.
+    private _atPort(
+        point: { x: number; y: number },
+        limit: number
+    ): CornerHandle | null {
+        const sq = limit * limit
+        const ports: CornerHandle[] = [
+            { name: 'n-resize', point: this.portPoints[0]! },
+            { name: 'e-resize', point: this.portPoints[1]! },
+            { name: 's-resize', point: this.portPoints[2]! },
+            { name: 'w-resize', point: this.portPoints[3]! },
+        ]
+        for (const p of ports) {
+            const surface = this._vertexToSurface(p.point)
+            if (distSq(point.x, point.y, surface.x, surface.y) < sq) return p
+        }
+        return null
+    }
+
+    // Edge name (n/e/s/w-resize) whose port the surface point is hovering, or
+    // null. Rectangle-only; this is what the port arrow keys off of.
+    private _hoveredPortEdge(point: { x: number; y: number }): string | null {
+        if (this.currentGroup?.elementData?.componentType !== 'rectangle') {
+            return null
+        }
+        const scale = this.zui.scale || 1
+        const limit = (handleScreenPx(scale) / 2 + this._hitSlopPx()) / scale
+        const port = this._atPort(point, limit)
+        return port ? port.name : null
     }
 
     private _vertexToSurface(v: { x: number; y: number }): {
@@ -484,20 +882,36 @@ export default class SelectionController {
         return null
     }
 
-    private _atMidEdge(
+    // Full-edge hit test: derotate the surface point into box-local space and
+    // check whether it sits within `limit` of any of the 4 borders (along the
+    // whole edge, not just its midpoint). Corners are handled by `_atCorner`
+    // first, so the band ends overlapping corners don't matter here.
+    private _atEdge(
         point: { x: number; y: number },
         limit: number
     ): CornerHandle | null {
-        const sq = limit * limit
-        const edges: CornerHandle[] = [
-            { name: 'n-resize', point: this.midPoints[0]! },
-            { name: 'e-resize', point: this.midPoints[1]! },
-            { name: 's-resize', point: this.midPoints[2]! },
-            { name: 'w-resize', point: this.midPoints[3]! },
-        ]
-        for (const edge of edges) {
-            const p = this._vertexToSurface(edge.point)
-            if (distSq(point.x, point.y, p.x, p.y) < sq) return edge
+        const rot = this.ui.rotation || 0
+        const dx = point.x - this.ui.position.x
+        const dy = point.y - this.ui.position.y
+        const cos = Math.cos(-rot)
+        const sin = Math.sin(-rot)
+        const lx = dx * cos - dy * sin
+        const ly = dx * sin + dy * cos
+        const hw = this.box.width / 2
+        const hh = this.box.height / 2
+        const withinX = lx >= -hw - limit && lx <= hw + limit
+        const withinY = ly >= -hh - limit && ly <= hh + limit
+        if (withinX && Math.abs(ly + hh) <= limit) {
+            return { name: 'n-resize', point: this.portPoints[0]! }
+        }
+        if (withinY && Math.abs(lx - hw) <= limit) {
+            return { name: 'e-resize', point: this.portPoints[1]! }
+        }
+        if (withinX && Math.abs(ly - hh) <= limit) {
+            return { name: 's-resize', point: this.portPoints[2]! }
+        }
+        if (withinY && Math.abs(lx + hw) <= limit) {
+            return { name: 'w-resize', point: this.portPoints[3]! }
         }
         return null
     }
@@ -540,6 +954,8 @@ export default class SelectionController {
 
     beginInteraction(e: MouseEvent, hit: HitResult | null): boolean {
         if (!this.currentGroup || !hit) return false
+        // The arrow is a hover-only affordance; drop it once a drag begins.
+        this._setHoveredPort(null)
         if (hit.mode === 'scale') return this._beginScale(e, hit.corner)
         if (hit.mode === 'rotate' && this.rotationEnabled) {
             return this._beginRotate(e, hit.corner)
@@ -612,14 +1028,21 @@ export default class SelectionController {
         if (this._onHover) return
         this._onHover = (ev): void => {
             if (this.interaction) return
+            const surface = this.zui.clientToSurface(ev.clientX, ev.clientY)
+            // The arrow is keyed off the port only — not the full-edge resize
+            // band — so it pulls out solely when hovering the port.
+            const portEdge = this._hoveredPortEdge(surface)
+            this._setHoveredPort(portEdge)
+            if (portEdge) {
+                // Port hover signals "open a path to connect" — not resize.
+                this.domElement.style.cursor = 'crosshair'
+                return
+            }
+
             const hit = this.hitTest(ev.clientX, ev.clientY)
             if (!hit) {
                 // Over the shape body → move (4-way arrow drag cue); empty
                 // canvas → default.
-                const surface = this.zui.clientToSurface(
-                    ev.clientX,
-                    ev.clientY
-                )
                 this.domElement.style.cursor = this._withinBody(surface)
                     ? 'move'
                     : ''
@@ -740,9 +1163,7 @@ export default class SelectionController {
         // just its widest single character (1 char/line) — but no further.
         const meta = this.currentGroup?.elementData?.metadata
         const rawText =
-            meta && typeof meta.textContent === 'string'
-                ? meta.textContent
-                : ''
+            meta && typeof meta.textContent === 'string' ? meta.textContent : ''
         const hasShapeText =
             !!this.currentTextLayer && !!meta?.hasText && rawText.length > 0
 
@@ -774,10 +1195,7 @@ export default class SelectionController {
                 reflow.lines,
                 style
             )
-        } else if (
-            Math.abs(newWidth) < minW ||
-            Math.abs(newHeight) < minH
-        ) {
+        } else if (Math.abs(newWidth) < minW || Math.abs(newHeight) < minH) {
             return
         }
 
@@ -843,6 +1261,7 @@ export default class SelectionController {
         this.currentGroup.translation.set(nextX, nextY)
         this.syncToTarget()
         this.two.update()
+        this.callbacks.onTransform(this.currentGroup)
     }
 
     private _rotateMove(e: MouseEvent): void {
@@ -861,6 +1280,7 @@ export default class SelectionController {
             initialRotation + (currentAngle - startAngle)
         this.syncToTarget()
         this.two.update()
+        this.callbacks.onTransform(this.currentGroup)
     }
 
     private _onPointerUp(_e: MouseEvent): void {

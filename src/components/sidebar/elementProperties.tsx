@@ -36,11 +36,16 @@ const STROKE_TYPES = [
     { label: '...', value: 'dotted' },
 ]
 
+// `inner` is the diameter (px) of the inner circle that visually nudges
+// the actual stroke width inside a constant outer ring. `0` renders the
+// "no stroke" state (a diagonal slash) instead of an inner circle.
 const STROKE_WIDTHS = [
-    { label: '0', value: 0, strokeHeight: '0px' },
-    { label: '2', value: 2, strokeHeight: '2px' },
-    { label: '4', value: 4, strokeHeight: '4px' },
-    { label: '6', value: 6, strokeHeight: '6px' },
+    { label: '0', value: 0, inner: 0 },
+    { label: '1', value: 1, inner: 4 },
+    { label: '2', value: 2, inner: 6 },
+    { label: '4', value: 4, inner: 9 },
+    { label: '6', value: 6, inner: 12 },
+    { label: '8', value: 8, inner: 15 },
 ]
 
 // What sections each "set" should render, in display order.
@@ -301,42 +306,52 @@ const StrokeWidthRow = ({
 }) => (
     <div id="stroke-width-section" className="pt-2 px-2">
         <SectionLabel>Stroke Width</SectionLabel>
-        <div className="flex gap-2">
-            {STROKE_WIDTHS.map(({ value: w, strokeHeight }) => {
+        <div className="flex justify-between">
+            {STROKE_WIDTHS.map(({ value: w, inner }) => {
                 const isSelected = value === w
+                const accent = isSelected ? '#C4901A' : '#8C7E6A'
                 return (
                     <button
                         key={w}
                         onClick={() => onChange(w)}
-                        className={`flex-1 w-4 h-6 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
-                            isSelected ? 'bg-accent/20' : 'hover:bg-accent/20'
+                        title={`${w}px`}
+                        className={`w-7 h-7 shrink-0 flex items-center justify-center rounded-full cursor-pointer border-2 transition-all ease-in-out duration-200 ${
+                            isSelected
+                                ? 'border-accent-dark'
+                                : 'border-transparent hover:border-accent-dark/40'
                         }`}
-                        style={{
-                            border: isSelected
-                                ? '2px solid #C4901A'
-                                : '2px solid #C4B89A',
-                        }}
                     >
-                        {w === 0 ? (
-                            <div
-                                className="my-2 w-0.5 h-0.5 rotate-45"
-                                style={{
-                                    background: isSelected
-                                        ? '#C4901A'
-                                        : '#8C7E6A',
-                                }}
-                            />
-                        ) : (
-                            <div
-                                className="w-full my-2 mx-1 rounded-full"
-                                style={{
-                                    height: strokeHeight,
-                                    backgroundColor: isSelected
-                                        ? '#C4901A'
-                                        : '#8C7E6A',
-                                }}
-                            />
-                        )}
+                        {/* outer ring (constant) */}
+                        <div
+                            className="relative flex items-center justify-center rounded-full"
+                            style={{
+                                width: '20px',
+                                height: '20px',
+                                border: `1.5px solid ${accent}`,
+                            }}
+                        >
+                            {w === 0 ? (
+                                /* "no stroke" — diagonal slash across the ring */
+                                <div
+                                    className="absolute rotate-45 rounded-full"
+                                    style={{
+                                        width: '18px',
+                                        height: '1.5px',
+                                        background: accent,
+                                    }}
+                                />
+                            ) : (
+                                /* inner circle nudges the actual stroke width */
+                                <div
+                                    className="rounded-full"
+                                    style={{
+                                        width: `${inner}px`,
+                                        height: `${inner}px`,
+                                        backgroundColor: accent,
+                                    }}
+                                />
+                            )}
+                        </div>
                     </button>
                 )
             })}

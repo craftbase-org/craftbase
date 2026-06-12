@@ -480,6 +480,26 @@ export function useComponentHistory({
                 reapplyTextFromMeta(group, props.metadata)
             }
 
+            // Connector port bindings have no Two.js geometry of their own, so
+            // applyPropertyToTwoJSGroup skips them. Mirror them onto elementData
+            // here so undo/redo of a detach restores (or re-clears) the binding
+            // that port re-anchoring reads.
+            if (group.elementData) {
+                const bindingKeys = [
+                    'tailShapeId',
+                    'tailEdge',
+                    'headShapeId',
+                    'headEdge',
+                ] as const
+                bindingKeys.forEach((k) => {
+                    if (k in props) {
+                        group.elementData[k] = (
+                            props as Record<string, unknown>
+                        )[k]
+                    }
+                })
+            }
+
             two?.update()
 
             if (props.width !== undefined || props.height !== undefined) {
