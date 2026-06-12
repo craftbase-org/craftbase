@@ -3760,6 +3760,24 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const children = scene.children as any[]
 
+        // Skip while a transient group selection (marquee selector or the
+        // mounted groupobject) is active. Such a group is NOT reorderable
+        // (isReorderableElementChild excludes GROUP_COMPONENT) and its grouped
+        // originals are hidden (opacity 0) beneath it, so there is nothing
+        // useful to reorder. More importantly, the groupobject mounts its child
+        // elements asynchronously: sorting + two.update() mid-mount can detach
+        // the just-built group node (the scene.subtractions pitfall in
+        // CLAUDE.md), silently destroying the selection. The componentStore
+        // effect re-runs this poll once the group is dismissed and the
+        // originals re-render, so deterministic z-order is still restored then.
+        const hasActiveGroupSelection = children.some(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (c: any) =>
+                c?.elementData?.isGroupSelector === true ||
+                c?.elementData?.componentType === GROUP_COMPONENT
+        )
+        if (hasActiveGroupSelection) return
+
         // Build the desired final order: element groups sorted by their store
         // position (back→front) dropped back into the index slots they already
         // occupy, while non-element children (selection box, previews) keep
@@ -3914,6 +3932,16 @@ const Canvas: React.FC<CanvasProps> = (props) => {
     // on group select use effect hook
     useEffect(() => {
         if (onGroup) {
+            // Cancel any in-flight z-order reconcile poll started by an earlier
+            // store change. The groupobject mounts its children asynchronously;
+            // a reconcile tick that fires in the gap *before* the group node is
+            // in the scene (so reconcileZOrder's group guard can't see it yet)
+            // would sort + two.update() mid-mount and detach the just-built
+            // group (scene.subtractions pitfall), dropping the selection.
+            if (zOrderPollRef.current !== null) {
+                cancelAnimationFrame(zOrderPollRef.current)
+                zOrderPollRef.current = null
+            }
             let e = onGroup
             let x1Coord = e.left
             let x2Coord = e.right
