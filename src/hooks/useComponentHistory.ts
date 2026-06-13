@@ -852,6 +852,12 @@ export function useComponentHistory({
 
         const updatedBucket = [...bucketLogRef.current, enrichedForRedo]
         writeBucket(updatedBucket)
+
+        // An active group overlay shows static copies of its members, so it
+        // can't reflect an undo that moved/removed them underneath. Signal it to
+        // dismiss (reveal the now-updated real members + drop the overlay). Sent
+        // after applyBatch so members are already at their reverted state.
+        window.dispatchEvent(new CustomEvent('historyApplied'))
     }
 
     const redoLastAction = (): void => {
@@ -892,6 +898,10 @@ export function useComponentHistory({
         delete cleanEntry.nextProps
         const updatedLog = [...historyLogRef.current, cleanEntry as HistoryEntry]
         writeHistory(updatedLog)
+
+        // See undoLastAction: dismiss any active group overlay so it can't show
+        // stale copies of members a redo just moved/re-added.
+        window.dispatchEvent(new CustomEvent('historyApplied'))
     }
 
     const clearHistory = (

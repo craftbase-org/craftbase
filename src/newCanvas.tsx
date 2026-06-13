@@ -3656,6 +3656,7 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         zuiInstanceRef,
         boardId: props.boardId,
         addToLocalComponentStore,
+        recordBatchToHistoryLog,
         renderGroupRef,
     })
 
