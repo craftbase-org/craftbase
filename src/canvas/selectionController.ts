@@ -6,6 +6,7 @@ import {
     shapeTextStyleFromMeta,
 } from '../utils/canvasUtils'
 import { reflowTextForShape, minShapeWidthForText } from '../utils/shapeTextFit'
+import { getConnectorsEnabled } from '../utils/featureFlags'
 
 // Two.js scene shapes carry codebase-specific bookkeeping (elementData,
 // _renderer, etc.) outside the published types. Stay loose here; Stage 12
@@ -557,8 +558,10 @@ export default class SelectionController {
 
         const isRect =
             this.currentGroup?.elementData?.componentType === 'rectangle'
-        this.portHandles.visible = isRect
-        if (isRect) {
+        // Ports only render when the connectors feature flag is on (live).
+        const portsOn = isRect && getConnectorsEnabled()
+        this.portHandles.visible = portsOn
+        if (portsOn) {
             const hw = (width + pad * 2) / 2
             const hh = (height + pad * 2) / 2
             this._halfW = hw
@@ -639,7 +642,7 @@ export default class SelectionController {
         surface: { x: number; y: number },
         targetGroup?: ShapeLike
     ): void {
-        if (!this.portGlow) return
+        if (!this.portGlow || !getConnectorsEnabled()) return
         const scale = this.zui.scale || 1
         this.portGlow.position.set(surface.x, surface.y)
         this.portGlow.scale = 1 / scale
@@ -841,6 +844,9 @@ export default class SelectionController {
     // Edge name (n/e/s/w-resize) whose port the surface point is hovering, or
     // null. Rectangle-only; this is what the port arrow keys off of.
     private _hoveredPortEdge(point: { x: number; y: number }): string | null {
+        // Single chokepoint for both hover (port arrow) and `hitTestPort`
+        // (pull-out). Off when connectors are disabled.
+        if (!getConnectorsEnabled()) return null
         if (this.currentGroup?.elementData?.componentType !== 'rectangle') {
             return null
         }

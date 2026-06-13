@@ -6,6 +6,8 @@ import { useBoardContext } from '../../views/Board/boardContext'
 import { downloadViewportAsImage } from '../../utils/exportViewport'
 import Modal from '../common/modal'
 import Button from '../common/button'
+import SettingsModal from './settingsModal'
+import settingsIcon from '../../assets/settings.svg'
 
 const HamburgerIcon = (): ReactElement => (
     <svg
@@ -93,6 +95,7 @@ const MenuDrawer = (): ReactElement => {
     const refNode = useRef<HTMLDivElement | null>(null)
     const [showMenu, setShowMenu] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
+    const [showSettings, setShowSettings] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
     const { clearBoard } = useBoardContext()
 
@@ -110,6 +113,11 @@ const MenuDrawer = (): ReactElement => {
     const handleClearClick = (): void => {
         setShowMenu(false)
         setShowConfirm(true)
+    }
+
+    const handleSettingsClick = (): void => {
+        setShowMenu(false)
+        setShowSettings(true)
     }
 
     const handleDownloadClick = async (): Promise<void> => {
@@ -272,6 +280,23 @@ const MenuDrawer = (): ReactElement => {
                         <button
                             className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
                                 hover:bg-accent/30 rounded cursor-pointer
+                                transition-colors ease-in-out duration-150"
+                            style={{ width: 'calc(100% - 8px)' }}
+                            onClick={handleSettingsClick}
+                        >
+                            <img
+                                src={settingsIcon}
+                                className="w-3.5 h-3.5"
+                                alt=""
+                            />
+                            <span>Settings</span>
+                        </button>
+
+                        <div className="h-px bg-border-panel mx-2 mt-1 mb-1" />
+
+                        <button
+                            className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                hover:bg-accent/30 rounded cursor-pointer
                                 transition-colors ease-in-out duration-150
                                 disabled:opacity-50 disabled:cursor-default"
                             style={{ width: 'calc(100% - 8px)' }}
@@ -301,6 +326,11 @@ const MenuDrawer = (): ReactElement => {
                     </div>
                 </div>
             </div>
+
+            <SettingsModal
+                open={showSettings}
+                onClose={(): void => setShowSettings(false)}
+            />
 
             <Modal
                 open={showConfirm}

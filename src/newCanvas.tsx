@@ -73,6 +73,10 @@ import {
 } from './utils/shapePorts'
 import { generateUUID } from './utils/misc'
 import {
+    getConnectorsEnabled,
+    subscribeConnectorsEnabled,
+} from './utils/featureFlags'
+import {
     velocityToLinewidth,
     smoothLinewidth,
     simplifyWithLinewidth,
@@ -589,6 +593,15 @@ function addZUI(
     }) as EventListener)
     window.addEventListener('groupBlurred', () => {
         activeGroupRef.current = null
+    })
+
+    // Connectors flag is live-toggleable from Settings. When it flips, re-sync
+    // the current selection box so its edge ports appear/disappear immediately
+    // (rather than waiting for the next transform). If the flag goes off mid
+    // arrow-drag, clear any lingering radar glow too.
+    subscribeConnectorsEnabled((enabled) => {
+        if (!enabled) selectionController.hidePortGlow()
+        selectionController.resync()
     })
 
     function dblclick(e: MouseEvent) {
@@ -1127,6 +1140,8 @@ function addZUI(
         dragContext: PortDragContext | null = null,
         excludeShapeId: string | null = arrowDrawTailShapeId
     ) {
+        // No port snapping/glow while connectors are disabled (live flag).
+        if (!getConnectorsEnabled()) return
         const threshold = PORT_RADAR_RADIUS / (zui.scale || 1)
         const nearest = findNearestPort(
             two.scene.children,
@@ -1313,6 +1328,10 @@ function addZUI(
     // the free endpoint fixed in surface space.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function reanchorArrowsForShape(group: any) {
+        // Bound arrows only track their shape while connectors are enabled. When
+        // off, existing bindings lie dormant (the arrow stays put) rather than
+        // being stripped — flip the flag back on to resume gluing.
+        if (!getConnectorsEnabled()) return
         const shapeId = group?.elementData?.id
         if (!shapeId) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1378,6 +1397,7 @@ function addZUI(
     // moves), and isLineCircle drives the x1/y1/x2/y2 write.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function persistBoundArrows(group: any) {
+        if (!getConnectorsEnabled()) return
         const shapeId = group?.elementData?.id
         if (!shapeId) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
