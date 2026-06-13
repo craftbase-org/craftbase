@@ -5,6 +5,7 @@ import { useBoardContext } from '../../views/Board/boardContext'
 import CircleFactory from '../../factory/circle'
 import { strokeTypeToDashes } from '../../utils/misc'
 import { applyShapeText } from '../../utils/canvasUtils'
+import { perfLog } from '../../utils/perfLog'
 import { componentTypes } from '../../constants/misc'
 
 // Element components receive a fluid prop bag composed of the ComponentRecord
@@ -28,6 +29,13 @@ function Circle(props: ElementProps): ReactElement {
     useEffect(() => {
         const prevX = props.x
         const prevY = props.y
+
+        // [perf] Stage 7 — see rectangle.tsx for the lifecycle map.
+        if (!props.parentGroup) {
+            perfLog('Circle mount: building group (React render → Two.js)', {
+                id: props.id,
+            })
+        }
 
         const elementFactory = new CircleFactory(two, prevX, prevY, {
             ...props,
@@ -73,6 +81,11 @@ function Circle(props: ElementProps): ReactElement {
                     String(props.linewidth ?? '')
                 )
             }
+
+            // [perf] Stage 7b — group in scene, painted at full opacity.
+            perfLog('Circle mount: group in scene, two.update() done', {
+                id: props.id,
+            })
         }
 
         return (): void => {

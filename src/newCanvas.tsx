@@ -54,7 +54,9 @@ import {
 } from './constants/misc'
 import Spinner from './components/common/spinner'
 
-const elementModules = import.meta.glob('./components/elements/*.tsx')
+// Shared lazy-element glob (single source of truth) so the chunk warmed by
+// prefetchElementModule is the exact one React.lazy mounts here.
+import { elementModules } from './elementModules'
 
 import Loader from './components/utils/loader'
 import SelectionController, {
@@ -87,6 +89,7 @@ import {
     shapeTextStyleFromMeta,
 } from './utils/canvasUtils'
 import { growShapeToFitText, usableTextWidth } from './utils/shapeTextFit'
+import { perfLog } from './utils/perfLog'
 import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
 import { createDiamondPath } from './factory/diamond'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
@@ -1839,6 +1842,13 @@ function addZUI(
                     two.update()
                 }
 
+                // [perf] Stage 3 — mousedown: preview shape created at reduced
+                // opacity. This is the dimmed shape the user sees while drawing.
+                perfLog('mousedown: preview shape created (dimmed)', {
+                    drawShapeType,
+                    opacity: DEFAULT_PREVIEW_OPACITY,
+                })
+
                 domElement.addEventListener('mousemove', mousemove, false)
                 domElement.addEventListener('mouseup', mouseup, false)
                 setRootCursor('crosshair')
@@ -2722,11 +2732,23 @@ function addZUI(
                     height: finalHeight,
                 }
 
+                // [perf] Stage 4 — mouseup: gesture done, about to commit to
+                // the React store. Preview is still on screen at this point.
+                perfLog('mouseup: commit start (preview still visible)', {
+                    finalId,
+                    finalWidth,
+                    finalHeight,
+                })
+
                 addToLocalComponentStore(
                     finalId,
                     drawShapeType ?? '',
                     finalShapeData as unknown as ComponentRecord
                 )
+
+                // [perf] Stage 6 — store updated; React render is now scheduled.
+                // The rAF poll below measures how long until the element mounts.
+                perfLog('mouseup: addToLocalComponentStore() returned')
 
                 // React renders the element asynchronously; poll until it appears in two.scene.children,
                 // then remove the preview so there is no blank gap between preview removal and final render.
@@ -2734,11 +2756,21 @@ function addZUI(
                 // immediately — a visual cue to new users that the freshly drawn shape is editable.
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const finishPlacement = (el?: any) => {
+                    // [perf] Stage 8 — element is in two.scene; remove the dimmed
+                    // preview and select the real shape. Gap between Stage 4 and
+                    // here is the visible dimmed-shape / flicker window.
+                    perfLog(
+                        'finishPlacement: poll detected real shape in scene → remove preview + select',
+                        { found: !!el }
+                    )
                     if (capturedPreview) {
                         two.remove(capturedPreview)
                         two.update()
                     }
                     if (el) selectionController.attach(el)
+                    perfLog(
+                        'finishPlacement: done (preview removed, selection attached)'
+                    )
                 }
                 pollUntilElement(two, finalId, finishPlacement, {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any

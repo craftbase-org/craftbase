@@ -32,6 +32,8 @@ import controlsIcon from '../../assets/controls.svg'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
 import { generateUUID, generateRandomUsernames } from '../../utils/misc'
+import { perfLog } from '../../utils/perfLog'
+import { prefetchElementModule } from '../../elementModules'
 import {
     pollUntilElement,
     getShapeTextNodes,
@@ -440,6 +442,31 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         isPersistedRef.current = isPersisted
     }, [isPersisted])
 
+    // Warm the shape element chunks once the board is idle after mount, so even
+    // the very first shape arm finds its chunk already cached (the per-arm
+    // prefetch in primary.tsx covers the rest). Best-effort: gated on idle so
+    // it never competes with initial paint/board-load.
+    useEffect(() => {
+        const warm = (): void => {
+            prefetchElementModule('rectangle')
+            prefetchElementModule('circle')
+            prefetchElementModule('diamond')
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ric = (window as any).requestIdleCallback as
+            | ((cb: () => void, opts?: { timeout: number }) => number)
+            | undefined
+        if (ric) {
+            const handle = ric(warm, { timeout: 3000 })
+            return (): void => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ;(window as any).cancelIdleCallback?.(handle)
+            }
+        }
+        const t = setTimeout(warm, 1500)
+        return (): void => clearTimeout(t)
+    }, [])
+
     useEffect(() => {
         console.log('change in componentStore in Board', componentStore)
         stateRefForComponentStore.current = componentStore
@@ -613,6 +640,13 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         componentInfo: ComponentRecord,
         skipHistory: boolean = false
     ) => {
+        // [perf] Stage 5 — store mutation entry (only traced for draw shapes).
+        const isDrawShape =
+            type === 'rectangle' || type === 'circle' || type === 'diamond'
+        if (isDrawShape) {
+            perfLog('addToLocalComponentStore(): entry', { id, type })
+        }
+
         // groupobject is a transient visual construct and must never be persisted
         if (
             type === GROUP_COMPONENT ||
@@ -670,6 +704,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         }
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
+
+        // [perf] Stage 5b — setComponentStore() called. React will now schedule
+        // a render that mounts the element component (Stage 7).
+        if (isDrawShape) {
+            perfLog('addToLocalComponentStore(): setComponentStore() called')
+        }
 
         if (isPersistedRef.current && safeInfo) {
             insertComponent({ variables: { object: safeInfo } }).catch(
