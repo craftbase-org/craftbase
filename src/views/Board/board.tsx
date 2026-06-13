@@ -32,7 +32,6 @@ import controlsIcon from '../../assets/controls.svg'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
 import { generateUUID, generateRandomUsernames } from '../../utils/misc'
-import { perfLog } from '../../utils/perfLog'
 import { prefetchElementModule } from '../../elementModules'
 import {
     pollUntilElement,
@@ -654,13 +653,6 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         componentInfo: ComponentRecord,
         skipHistory: boolean = false
     ) => {
-        // [perf] Stage 5 — store mutation entry (only traced for draw shapes).
-        const isDrawShape =
-            type === 'rectangle' || type === 'circle' || type === 'diamond'
-        if (isDrawShape) {
-            perfLog('addToLocalComponentStore(): entry', { id, type })
-        }
-
         // groupobject is a transient visual construct and must never be persisted
         if (
             type === GROUP_COMPONENT ||
@@ -718,12 +710,6 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         }
         stateRefForComponentStore.current = updatedComponentStore
         setComponentStore(updatedComponentStore)
-
-        // [perf] Stage 5b — setComponentStore() called. React will now schedule
-        // a render that mounts the element component (Stage 7).
-        if (isDrawShape) {
-            perfLog('addToLocalComponentStore(): setComponentStore() called')
-        }
 
         if (isPersistedRef.current && safeInfo) {
             insertComponent({ variables: { object: safeInfo } }).catch(

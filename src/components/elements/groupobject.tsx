@@ -7,7 +7,6 @@ const factoryModules: Record<string, () => Promise<any>> =
 import Two from 'two.js'
 import { useBoardContext } from '../../views/Board/boardContext'
 import getEditComponents from '../utils/editWrapper'
-import { perfLog } from '../../utils/perfLog'
 import { elementOnBlurHandler } from '../../utils/misc'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../../constants/misc'
 
@@ -392,14 +391,6 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
         const prevX = props.x
         const prevY = props.y
 
-        // [perf] GroupObject mount — this only runs once the groupobject chunk
-        // has loaded. If the chunk was warmed during idle (see board.tsx warm
-        // list), this fires immediately on group-select; if cold, it fires only
-        // after the ~580ms (Slow 4G) fetch — the invisible-then-visible blink.
-        perfLog('GroupObject mount: chunk loaded → building group + selector', {
-            childCount: props.children?.length ?? 0,
-        })
-
         const rectangle = two.makeRectangle(
             0,
             0,
@@ -419,18 +410,14 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
         group.translation.y = parseInt(String(prevY)) || 200
         two.update()
 
-        // [perf] Load every member's FACTORY chunk IN PARALLEL, then add them
-        // all + hide the on-canvas originals in a SINGLE two.update() so the
-        // group-select swap is atomic. The old code loaded factories one-by-one
-        // and added members as each resolved (a per-child two.update each),
-        // while newCanvas hid the originals up-front — leaving a blank frame
-        // (the flicker) between "originals hidden" and "members painted".
-        // Factories are prefetched (board.tsx warm list), so Promise.all
-        // resolves on the next microtask on a warm cache.
-        perfLog('GroupObject mount: selector ready → loading child factories', {
-            childCount: props.children?.length ?? 0,
-        })
-
+        // Load every member's FACTORY chunk IN PARALLEL, then add them all +
+        // hide the on-canvas originals in a SINGLE two.update() so the
+        // group-select swap is atomic. Loading factories one-by-one and adding
+        // members as each resolved (a per-child two.update each), while newCanvas
+        // hid the originals up-front, left a blank frame (the flicker) between
+        // "originals hidden" and "members painted". Factories are prefetched
+        // (board.tsx warm list), so Promise.all resolves on the next microtask
+        // on a warm cache.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const loaders = props.children.map((item: any) => {
             const factoryKey = `../../factory/${item.componentType}.ts`
@@ -442,13 +429,6 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
         })
 
         Promise.all(loaders).then((resolved) => {
-            // [perf] All member factories resolved; build them, add to the
-            // group, then atomically hide the originals in one update below.
-            perfLog(
-                'GroupObject: all child factories resolved → atomic add + hide',
-                { childCount: resolved.filter(Boolean).length }
-            )
-
             resolved.forEach((entry) => {
                 if (!entry) return
                 const { item, mod } = entry

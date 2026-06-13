@@ -5,7 +5,6 @@ import { useBoardContext } from '../../views/Board/boardContext'
 import ElementFactory from '../../factory/rectangle'
 import { strokeTypeToDashes } from '../../utils/misc'
 import { applyShapeText } from '../../utils/canvasUtils'
-import { perfLog } from '../../utils/perfLog'
 import { componentTypes } from '../../constants/misc'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,15 +23,6 @@ function Rectangle(props: ElementProps): ReactElement {
     useEffect(() => {
         const prevX = props.x
         const prevY = props.y
-
-        // [perf] Stage 7 — React mounted the Rectangle component and is now
-        // building the Two.js group. Only top-level draws (no parentGroup) are
-        // the freshly-drawn-shape path we're tracing.
-        if (!props.parentGroup) {
-            perfLog('Rectangle mount: building group (React render → Two.js)', {
-                id: props.id,
-            })
-        }
 
         const elementFactory = new ElementFactory(two, prevX, prevY, {
             ...props,
@@ -78,12 +68,6 @@ function Rectangle(props: ElementProps): ReactElement {
                     String(props.linewidth ?? '')
                 )
             }
-
-            // [perf] Stage 7b — group is in two.scene and two.update() painted
-            // it at full opacity. The poll in mouseup will detect it next frame.
-            perfLog('Rectangle mount: group in scene, two.update() done', {
-                id: props.id,
-            })
         }
 
         return (): void => {

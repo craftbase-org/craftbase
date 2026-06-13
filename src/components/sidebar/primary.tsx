@@ -6,7 +6,6 @@ import ShapesToolbar from './shapesToolbar'
 import { GET_COMPONENT_TYPES } from '../../schema/queries'
 import SpinnerWithSize from '../common/spinnerWithSize'
 import { generateUUID } from '../../utils/misc'
-import { perfStart, perfLog } from '../../utils/perfLog'
 import { prefetchElementModule } from '../../elementModules'
 import { useBoardContext } from '../../views/Board/boardContext'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
@@ -306,14 +305,11 @@ const PrimarySidebar = (): ReactElement => {
     }
 
     const addElement = (label: string, category?: string): void => {
-        // [perf] Stage 1 — the toolbar-select entry point. Reset the timeline
-        // for shape draws so every later milestone is measured from here.
+        // Warm the shape's lazy chunk NOW, while the user moves to the canvas
+        // and drags (~700ms–1s). By mouseup the chunk is cached, so the
+        // component mounts instantly instead of the freshly-drawn shape sitting
+        // dimmed during a first-time network fetch on prod.
         if (DRAW_SHAPE_TYPES.includes(label)) {
-            perfStart(`addElement() toolbar select: ${label}`)
-            // Warm the shape's lazy chunk NOW, while the user moves to the
-            // canvas and drags (~700ms–1s per the perf traces). By mouseup the
-            // chunk is cached, so the component mounts instantly instead of the
-            // freshly-drawn shape sitting dimmed during a first-time fetch.
             prefetchElementModule(label)
         }
         cancelPendingElement()
@@ -493,13 +489,6 @@ const PrimarySidebar = (): ReactElement => {
                     )
                     const root = document.getElementById('main-two-root')
                     if (root) root.style.cursor = 'crosshair'
-                    // [perf] Stage 2 — pending shape armed, cursor crosshair.
-                    // Canvas now waits for mousedown/mouseup to draw it. (Note:
-                    // the hint button above is shown via a 100ms setTimeout.)
-                    perfLog('addElement() armed pendingShape + crosshair', {
-                        label,
-                        id: generateId,
-                    })
                 } else {
                     updateLastAddedElement(shapeData)
                     localStorage.setItem('lastAddedElementId', generateId)
