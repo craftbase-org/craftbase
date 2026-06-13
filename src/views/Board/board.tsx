@@ -442,15 +442,29 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         isPersistedRef.current = isPersisted
     }, [isPersisted])
 
-    // Warm the shape element chunks once the board is idle after mount, so even
-    // the very first shape arm finds its chunk already cached (the per-arm
-    // prefetch in primary.tsx covers the rest). Best-effort: gated on idle so
-    // it never competes with initial paint/board-load.
+    // Warm the core element chunks once the board is idle after mount, so the
+    // first use of any of them finds its chunk already cached (the per-arm
+    // prefetch in primary.tsx still covers the quick-draw race). Best-effort:
+    // gated on idle so it never competes with initial paint/board-load.
+    //
+    // `groupobject` is included because group-selection lazy-loads it on
+    // demand; without warming, the group can't mount until its ~580ms (Slow 4G)
+    // chunk arrives, leaving the selected elements invisible — the group-select
+    // "blink". Geo-only components (point/area/route/geoText/cluster) are left
+    // out; warm them separately if/when geo mode needs it.
     useEffect(() => {
+        const CORE_ELEMENT_CHUNKS = [
+            'rectangle',
+            'circle',
+            'diamond',
+            'arrowLine',
+            'divider',
+            'pencil',
+            'newText',
+            'groupobject',
+        ]
         const warm = (): void => {
-            prefetchElementModule('rectangle')
-            prefetchElementModule('circle')
-            prefetchElementModule('diamond')
+            CORE_ELEMENT_CHUNKS.forEach(prefetchElementModule)
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ric = (window as any).requestIdleCallback as

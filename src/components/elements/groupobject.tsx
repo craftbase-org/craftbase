@@ -7,6 +7,7 @@ const factoryModules: Record<string, () => Promise<any>> =
 import Two from 'two.js'
 import { useBoardContext } from '../../views/Board/boardContext'
 import getEditComponents from '../utils/editWrapper'
+import { perfLog } from '../../utils/perfLog'
 import { elementOnBlurHandler } from '../../utils/misc'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../../constants/misc'
 
@@ -362,6 +363,14 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
         const prevX = props.x
         const prevY = props.y
 
+        // [perf] GroupObject mount — this only runs once the groupobject chunk
+        // has loaded. If the chunk was warmed during idle (see board.tsx warm
+        // list), this fires immediately on group-select; if cold, it fires only
+        // after the ~580ms (Slow 4G) fetch — the invisible-then-visible blink.
+        perfLog('GroupObject mount: chunk loaded → building group + selector', {
+            childCount: props.children?.length ?? 0,
+        })
+
         const rectangle = two.makeRectangle(
             0,
             0,
@@ -381,12 +390,27 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
         group.translation.y = parseInt(String(prevY)) || 200
         two.update()
 
+        // [perf] Second waterfall — each member's FACTORY chunk is lazy-loaded
+        // here (groupobject has its own factory glob). On a cold cache these
+        // fetch one-by-one and members pop in as they resolve, which is the
+        // suspected source of the double-flicker. Watch the gap between this
+        // line and the per-child "factory resolved" logs below.
+        perfLog('GroupObject mount: selector ready → loading child factories', {
+            childCount: props.children?.length ?? 0,
+        })
+
         for (let index = 0; index < props.children.length; index++) {
             const item = props.children[index]
             const factoryKey = `../../factory/${item.componentType}.ts`
             const loader = factoryModules[factoryKey]
             if (typeof loader !== 'function') continue
             loader().then((component) => {
+                // [perf] A member's factory chunk resolved; it's now being
+                // added to the group + the group re-sorts + two.update() fires.
+                perfLog('GroupObject: child factory resolved → add + reorder', {
+                    type: item.componentType,
+                    index,
+                })
                 const componentFactory = new component.default(
                     two,
                     item.x,
