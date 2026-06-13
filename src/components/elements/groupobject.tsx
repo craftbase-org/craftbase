@@ -390,33 +390,42 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
         group.translation.y = parseInt(String(prevY)) || 200
         two.update()
 
-        // [perf] Second waterfall — each member's FACTORY chunk is lazy-loaded
-        // here (groupobject has its own factory glob). On a cold cache these
-        // fetch one-by-one and members pop in as they resolve, which is the
-        // suspected source of the double-flicker. Watch the gap between this
-        // line and the per-child "factory resolved" logs below.
+        // [perf] Load every member's FACTORY chunk IN PARALLEL, then add them
+        // all + hide the on-canvas originals in a SINGLE two.update() so the
+        // group-select swap is atomic. The old code loaded factories one-by-one
+        // and added members as each resolved (a per-child two.update each),
+        // while newCanvas hid the originals up-front — leaving a blank frame
+        // (the flicker) between "originals hidden" and "members painted".
+        // Factories are prefetched (board.tsx warm list), so Promise.all
+        // resolves on the next microtask on a warm cache.
         perfLog('GroupObject mount: selector ready → loading child factories', {
             childCount: props.children?.length ?? 0,
         })
 
-        for (let index = 0; index < props.children.length; index++) {
-            const item = props.children[index]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const loaders = props.children.map((item: any) => {
             const factoryKey = `../../factory/${item.componentType}.ts`
             const loader = factoryModules[factoryKey]
-            if (typeof loader !== 'function') continue
-            loader().then((component) => {
-                // [perf] A member's factory chunk resolved; it's now being
-                // added to the group + the group re-sorts + two.update() fires.
-                perfLog('GroupObject: child factory resolved → add + reorder', {
-                    type: item.componentType,
-                    index,
+            return typeof loader === 'function'
+                ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  loader().then((mod: any) => ({ item, mod }))
+                : Promise.resolve(null)
+        })
+
+        Promise.all(loaders).then((resolved) => {
+            // [perf] All member factories resolved; build them, add to the
+            // group, then atomically hide the originals in one update below.
+            perfLog(
+                'GroupObject: all child factories resolved → atomic add + hide',
+                { childCount: resolved.filter(Boolean).length }
+            )
+
+            resolved.forEach((entry) => {
+                if (!entry) return
+                const { item, mod } = entry
+                const componentFactory = new mod.default(two, item.x, item.y, {
+                    ...item,
                 })
-                const componentFactory = new component.default(
-                    two,
-                    item.x,
-                    item.y,
-                    { ...item }
-                )
                 const factoryObject = componentFactory.createElement()
                 const coreObject = factoryObject.group
                 coreObject.translation.x = item.x
@@ -440,12 +449,26 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                 }
 
                 coreObject.elementData = item
-
                 group.add(coreObject)
-                orderGroupChildrenByZ(group)
-                two.update()
             })
-        }
+            orderGroupChildrenByZ(group)
+
+            // Atomic swap: hide the on-canvas originals (group-SELECT only —
+            // `membersToHide` is unset for paste) in the SAME update that
+            // reveals the member copies, so there is never a blank frame.
+            const hideIds: string[] = Array.isArray(props.membersToHide)
+                ? props.membersToHide
+                : []
+            if (hideIds.length) {
+                const hideSet = new Set(hideIds)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                two.scene.children.forEach((child: any) => {
+                    if (hideSet.has(child?.elementData?.id)) child.opacity = 0
+                })
+            }
+
+            two.update()
+        })
 
         groupInstance = group
 

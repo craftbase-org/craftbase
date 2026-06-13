@@ -4085,12 +4085,14 @@ const Canvas: React.FC<CanvasProps> = (props) => {
 
             newGroup.children = newChildren
 
-            twoJSInstance.scene.children.forEach((child: any) => {
-                if (selectedComponentArr.includes(child?.elementData?.id)) {
-                    child.opacity = 0
-                    twoJSInstance.update()
-                }
-            })
+            // Defer hiding the originals to the group's own assembly so the
+            // swap is atomic — the group hides exactly these ids in the SAME
+            // two.update() that paints its member copies, so there is never a
+            // blank frame between "originals hidden" and "group copies drawn"
+            // (the residual group-select flicker). Only the group-SELECT path
+            // sets this; paste leaves it unset (its clones have no on-canvas
+            // originals to hide).
+            newGroup.membersToHide = [...selectedComponentArr]
 
             handleSetComponentsToRender([newGroup])
         }
