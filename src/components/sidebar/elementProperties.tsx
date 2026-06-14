@@ -4,9 +4,31 @@ import { useBoardContext } from '../../views/Board/boardContext'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 import ColorPicker from '../utils/colorPicker'
 import OpacitySlider from '../utils/opacitySlider'
+import Tooltip from '../common/tooltip'
 import { TEXT_SIZES_ARRAY, fillEssentialShades } from '../../utils/constants'
 import { MIXED, inspectGroupValues } from '../../utils/groupInspect'
 import { isStandaloneTextType } from '../../constants/misc'
+import type { ReorderOp } from '../canvasContextMenu'
+import BringToFrontIcon from '../../assets/bring-to-front.svg?react'
+import BringForwardIcon from '../../assets/bring-forward.svg?react'
+import SendBackwardIcon from '../../assets/send-backward.svg?react'
+import SendToBackIcon from '../../assets/send-to-back.svg?react'
+
+// Reorder icon tone — matches the toolbar's ink-mid text. The source SVGs
+// hardcode a blue stroke; SVGR spreads props after the original attrs so this
+// override wins (same trick as canvasContextMenu).
+const REORDER_ICON_STROKE = '#8C7E6A'
+
+const REORDER_BUTTONS: {
+    op: ReorderOp
+    label: string
+    Icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>
+}[] = [
+    { op: 'front', label: 'Bring to Front', Icon: BringToFrontIcon },
+    { op: 'forward', label: 'Bring Forward', Icon: BringForwardIcon },
+    { op: 'backward', label: 'Send Backward', Icon: SendBackwardIcon },
+    { op: 'back', label: 'Send to Back', Icon: SendToBackIcon },
+]
 
 const STROKE_TYPES = [
     { label: '—', value: 'solid' },
@@ -14,11 +36,16 @@ const STROKE_TYPES = [
     { label: '...', value: 'dotted' },
 ]
 
+// `inner` is the diameter (px) of the inner circle that visually nudges
+// the actual stroke width inside a constant outer ring. `0` renders the
+// "no stroke" state (a diagonal slash) instead of an inner circle.
 const STROKE_WIDTHS = [
-    { label: '0', value: 0, strokeHeight: '0px' },
-    { label: '2', value: 2, strokeHeight: '2px' },
-    { label: '4', value: 4, strokeHeight: '4px' },
-    { label: '6', value: 6, strokeHeight: '6px' },
+    { label: '0', value: 0, inner: 0 },
+    { label: '1', value: 1, inner: 4 },
+    { label: '2', value: 2, inner: 6 },
+    { label: '4', value: 4, inner: 9 },
+    { label: '6', value: 6, inner: 12 },
+    { label: '8', value: 8, inner: 15 },
 ]
 
 // What sections each "set" should render, in display order.
@@ -241,6 +268,34 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     </div>
 )
 
+const ReorderRow = ({ onReorder }: { onReorder: (op: ReorderOp) => void }) => (
+    <div
+        data-section="reorder"
+        className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]"
+    >
+        <SectionLabel>Reorder</SectionLabel>
+        <div className="flex gap-2">
+            {REORDER_BUTTONS.map(({ op, label, Icon }) => (
+                <Tooltip key={op} label={label} placement="top">
+                    <button
+                        type="button"
+                        aria-label={label}
+                        onClick={() => onReorder(op)}
+                        className="flex-1 h-8 flex items-center justify-center rounded cursor-pointer transition-colors ease-in-out duration-150 border border-border-card hover:bg-accent/20"
+                    >
+                        <Icon
+                            width={15}
+                            height={15}
+                            stroke={REORDER_ICON_STROKE}
+                            strokeWidth={2}
+                        />
+                    </button>
+                </Tooltip>
+            ))}
+        </div>
+    </div>
+)
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const StrokeWidthRow = ({
     value,
@@ -251,42 +306,52 @@ const StrokeWidthRow = ({
 }) => (
     <div id="stroke-width-section" className="pt-2 px-2">
         <SectionLabel>Stroke Width</SectionLabel>
-        <div className="flex gap-2">
-            {STROKE_WIDTHS.map(({ value: w, strokeHeight }) => {
+        <div className="flex justify-between">
+            {STROKE_WIDTHS.map(({ value: w, inner }) => {
                 const isSelected = value === w
+                const accent = isSelected ? '#C4901A' : '#8C7E6A'
                 return (
                     <button
                         key={w}
                         onClick={() => onChange(w)}
-                        className={`flex-1 w-4 h-6 flex items-center justify-center rounded cursor-pointer transition-all ease-in-out duration-200 ${
-                            isSelected ? 'bg-accent/20' : 'hover:bg-accent/20'
+                        title={`${w}px`}
+                        className={`w-7 h-7 shrink-0 flex items-center justify-center rounded-full cursor-pointer border-2 transition-all ease-in-out duration-200 ${
+                            isSelected
+                                ? 'border-accent-dark'
+                                : 'border-transparent hover:border-accent-dark/40'
                         }`}
-                        style={{
-                            border: isSelected
-                                ? '2px solid #C4901A'
-                                : '2px solid #C4B89A',
-                        }}
                     >
-                        {w === 0 ? (
-                            <div
-                                className="my-2 w-0.5 h-0.5 rotate-45"
-                                style={{
-                                    background: isSelected
-                                        ? '#C4901A'
-                                        : '#8C7E6A',
-                                }}
-                            />
-                        ) : (
-                            <div
-                                className="w-full my-2 mx-1 rounded-full"
-                                style={{
-                                    height: strokeHeight,
-                                    backgroundColor: isSelected
-                                        ? '#C4901A'
-                                        : '#8C7E6A',
-                                }}
-                            />
-                        )}
+                        {/* outer ring (constant) */}
+                        <div
+                            className="relative flex items-center justify-center rounded-full"
+                            style={{
+                                width: '20px',
+                                height: '20px',
+                                border: `1.5px solid ${accent}`,
+                            }}
+                        >
+                            {w === 0 ? (
+                                /* "no stroke" — diagonal slash across the ring */
+                                <div
+                                    className="absolute rotate-45 rounded-full"
+                                    style={{
+                                        width: '18px',
+                                        height: '1.5px',
+                                        background: accent,
+                                    }}
+                                />
+                            ) : (
+                                /* inner circle nudges the actual stroke width */
+                                <div
+                                    className="rounded-full"
+                                    style={{
+                                        width: `${inner}px`,
+                                        height: `${inner}px`,
+                                        backgroundColor: accent,
+                                    }}
+                                />
+                            )}
+                        </div>
                     </button>
                 )
             })}
@@ -377,6 +442,7 @@ const FontFamilyRow = ({
     const families = [
         { label: 'Caveat', family: 'Caveat' },
         { label: 'Geist', family: 'Geist' },
+        { label: 'Caveat Brush', family: 'Caveat Brush' },
     ]
     return (
         <div className="pt-3 px-2">
@@ -416,6 +482,7 @@ const ElementPropertiesToolbar = () => {
         currentElement,
         applyProperty,
         applyGroupProperty,
+        reorderSelected,
         showMobileToolbarPanel,
         // defaults
         defaultFill,
@@ -514,9 +581,14 @@ const ElementPropertiesToolbar = () => {
     if (isMobile && !showMobileToolbarPanel) return null
 
     const sections = SETS[setKey as keyof typeof SETS]
+    // Reorder controls apply to an actually-selected element (single shape or
+    // group). Hidden in pencil mode (armed pencil has no selection to reorder)
+    // and in the default/armed-tool panels where nothing is selected yet.
+    const showReorder =
+        Boolean(selectedComponent || selectedGroup) && !isPencilMode
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handle =
-        (key: string) =>
+        (key: string, opts?: { preview?: boolean }) =>
         (val: any): void => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             setValues((prev: any) => ({ ...prev, [key]: val }))
@@ -533,13 +605,13 @@ const ElementPropertiesToolbar = () => {
                             ? entry.mobileValue
                             : entry.value
                         : val
-                    applyGroupProperty?.(key, numeric)
+                    applyGroupProperty?.(key, numeric, opts)
                 } else {
-                    applyGroupProperty?.(key, val)
+                    applyGroupProperty?.(key, val, opts)
                 }
                 return
             }
-            applyProperty?.(key, val)
+            applyProperty?.(key, val, opts)
         }
 
     return (
@@ -652,16 +724,17 @@ const ElementPropertiesToolbar = () => {
                     <OpacitySlider
                         currentOpacity={values.opacity}
                         handleOnDrag={(arr): void =>
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            setValues((prev: any) => ({
-                                ...prev,
-                                opacity: arr[0],
-                            }))
+                            // Live preview while dragging: applies to the scene
+                            // only (no store/history write) so the element fades
+                            // in real time. The release (handleOnChange) commits.
+                            handle('opacity', { preview: true })(arr[0])
                         }
                         handleOnChange={(arr) => handle('opacity')(arr[0])}
                     />
                 </div>
             )}
+
+            {showReorder && <ReorderRow onReorder={reorderSelected} />}
         </div>
     )
 }

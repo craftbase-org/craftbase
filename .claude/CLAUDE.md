@@ -134,7 +134,7 @@ Reusable React UI components.
     - `userDetailsPopup.tsx` - User information popup
     - `sidebar.css` - Sidebar styles
 
-  **Element defaults vs. selected-shape edits:** `src/utils/applyProperty.ts` (`createApplyProperty`) is the single mutation path behind `elementProperties.tsx`. Every property change (1) updates the matching default via `useElementDefaults` setters, then (2) if a shape is selected, applies the same change to that shape. So editing a property with nothing selected just sets the default; editing with a shape selected sets both. Defaults store `null` for `strokeType: 'solid'` (matching what `primary.tsx` feeds new shapes); DB rows store the literal `'solid'`/`'dashed'`/`'dotted'`.
+    **Element defaults vs. selected-shape edits:** `src/utils/applyProperty.ts` (`createApplyProperty`) is the single mutation path behind `elementProperties.tsx`. Every property change (1) updates the matching default via `useElementDefaults` setters, then (2) if a shape is selected, applies the same change to that shape. So editing a property with nothing selected just sets the default; editing with a shape selected sets both. Defaults store `null` for `strokeType: 'solid'` (matching what `primary.tsx` feeds new shapes); DB rows store the literal `'solid'`/`'dashed'`/`'dotted'`.
 
 - **`common/`**: Shared utility components
     - `button.tsx` - Base button component
@@ -302,7 +302,39 @@ See detailed notes in `.claude/context/` for feature-specific implementation det
 - `.claude/context/floating-toolbar.md` - Floating toolbar activation and structure
 - `.claude/context/undo-history.md` - Undo/history stack: action entry shapes, `recordToHistoryLog`, and `undoLastAction()` as the canonical rollback for any failed mutation
 - `.claude/context/responsive-design.md` - When to use Tailwind responsive prefixes vs `useMediaQueryUtils` hook; breakpoint values for both; the core decision rule
-- `.claude/context/font-guide.md` - Font system: Geist (UI chrome), Fraunces (branding/headings), Caveat (canvas sketch); CSS variables, Tailwind config, and usage rules per area
+- `.claude/context/font-guide.md` - Font system: Geist (UI chrome), Fraunces (branding/headings), Caveat Brush (canvas sketch); CSS variables, Tailwind config, and usage rules per area
+- `claude/context/reorder.md` - How reording/positioning of elements in Z-Axis (Z-order) works in craftbase
+
+## Port connectors (connectable arrows)
+
+Connectors are `arrowLine` elements whose tail/head can dock onto a shape's
+edge **port**.
+
+- **Port** — a connection point floated just outside each edge midpoint
+  (n/e/s/w) of a `rectangle` selection box. Rendered + hit-tested in
+  `src/canvas/selectionController.ts`; geometry in `src/utils/shapePorts.ts`
+  (`getShapePortPoint`). Clicking a port pulls out a connector whose tail is
+  pinned there (`startPortConnector` in `src/newCanvas.tsx`).
+- **Nearby-port radar** — while an arrow endpoint is being dragged, the cursor
+  is the probe: `findNearestPort` (`shapePorts.ts`) finds the closest port in
+  range (`PORT_RADAR_RADIUS`), which the controller highlights with the amber
+  pulsing `portGlow` ring + the dashed `nearbyPortExpectedShape` skeleton around
+  the candidate shape. A **one-off magnetic snap** glues the endpoint to that
+  port; pulling past the threshold releases it (never forced). On release while
+  docked, the binding is committed (`updatePortRadar`/`applyPendingPortConnection`).
+- **Binding columns** — attachment is stored as 4 fields on the arrow row:
+  `tailShapeId`/`tailEdge` and `headShapeId`/`headEdge` (`*Edge` = `n/e/s/w-resize`).
+  Reverse lookup is derived by scanning the store (no shape-side columns).
+  `reanchorArrowsForShape`/`persistBoundArrows` keep a docked endpoint glued when
+  the bound shape moves/resizes.
+
+**Persisted-mode caveat:** these 4 fields currently live only on Two.js
+`elementData` + the local/localStorage store — they are **not** columns in the
+Hasura `components` table or `src/schema/generated.ts`. So bindings work in
+**local mode (`/`)** but do **not** survive a reload on a **saved board
+(`/board/:id`)** yet. Enabling persisted mode needs: `ALTER TABLE` to add the 4
+nullable columns + track them in Hasura, `yarn codegen`, and adding them to the
+board-load query so they read back.
 
 ### Component schema (from DB)
 

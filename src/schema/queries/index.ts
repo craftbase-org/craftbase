@@ -49,6 +49,7 @@ export const GET_COMPONENTS_FOR_BOARD_QUERY: TypedDocumentNode<
     query getComponentsForBoard($boardId: uuid = "") {
         components: components_component(
             where: { boardId: { _eq: $boardId } }
+            order_by: { position: asc }
         ) {
             id
             componentType
@@ -69,6 +70,7 @@ export const GET_COMPONENTS_FOR_BOARD_QUERY: TypedDocumentNode<
             linewidth
             strokeType
             textColor
+            position
         }
     }
 `

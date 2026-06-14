@@ -46,6 +46,24 @@ export interface ComponentRecord {
     isDummy: boolean | null
     updatedBy: string | null
     createdAt: number | null
+    /**
+     * Z-order key (back→front). Lower draws first (behind), higher draws on
+     * top — matching Two.js `scene.children` where index 0 is the back. New
+     * elements get `max(position)+1` (assigned in addToLocalComponentStore).
+     * Optional/nullable: legacy DB rows and directly-seeded records (e.g. the
+     * welcome sketch) may omit it; the z-order reconcile treats absent as 0.
+     */
+    position?: number | null
+    /**
+     * Connector binding (arrowLine only): the arrow's tail/head is pinned to a
+     * shape's edge port and re-anchors when that shape moves/resizes. Stores the
+     * bound shape's id and the edge (`n/e/s/w-resize`). Null/absent = free
+     * endpoint; cleared when the user manually drags that endpoint off.
+     */
+    tailShapeId?: string | null
+    tailEdge?: string | null
+    headShapeId?: string | null
+    headEdge?: string | null
 }
 
 export type ComponentStore = Record<string, ComponentRecord>
@@ -205,8 +223,21 @@ export interface BoardContextValue {
     stateRefForComponentStore: MutableRefObject<ComponentStore>
 
     // Property application
-    applyProperty: (name: string, value: unknown) => void
-    applyGroupProperty: (name: string, value: unknown) => void
+    applyProperty: (
+        name: string,
+        value: unknown,
+        opts?: { preview?: boolean }
+    ) => void
+    applyGroupProperty: (
+        name: string,
+        value: unknown,
+        opts?: { preview?: boolean }
+    ) => void
+
+    // Z-order of the currently-selected element. Bridged up from newCanvas via
+    // a ref (the implementation lives there alongside reconcileZOrder); a no-op
+    // until Canvas has mounted and populated it.
+    reorderSelected: (op: 'front' | 'forward' | 'backward' | 'back') => void
 
     // Element defaults (read sites: ElementPropertiesToolbar, primary sidebar, factories)
     defaultFill: string

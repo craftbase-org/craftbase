@@ -29,10 +29,11 @@ function Diamond(props: ElementProps): ReactElement {
         })
         const { group, diamond } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        diamond.opacity = props.metadata?.opacity ?? 1
+        const opacityValue = props.metadata?.opacity ?? 1
 
         if (props.parentGroup) {
             const parentGroup = props.parentGroup
+            diamond.opacity = opacityValue
             parentGroup.add(diamond)
             two.update()
         } else {
@@ -49,6 +50,10 @@ function Diamond(props: ElementProps): ReactElement {
                 props.width || diamond.width || 120,
                 meta
             )
+
+            // Group-level opacity so shape + embedded text dim uniformly and
+            // actually repaint (see rectangle.tsx for the unshift rationale).
+            group.opacity = opacityValue
 
             two.update()
 

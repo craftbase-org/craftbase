@@ -174,9 +174,18 @@ function applyPropertyToTwoJSGroup(
                 Object.entries(value as Record<string, unknown>).forEach(
                     ([k, v]) => {
                         if (k === 'opacity') {
-                            // Opacity lives on the leaf shape (children[0]) by
-                            // codebase convention; matches applyGroupProperty.
-                            shape.opacity = v
+                            // Opacity is applied at the GROUP level (see
+                            // applyProperty and the *-with-text components) so
+                            // the shape + text dim uniformly and repaint
+                            // reliably. Reset the leaf/text so they don't
+                            // compound with the group's opacity.
+                            group.opacity = v
+                            shape.opacity = 1
+                            if (textNodes.length > 0) {
+                                textNodes.forEach(
+                                    (n: ShapeLike) => (n.opacity = 1)
+                                )
+                            }
                         } else if (
                             k === 'textFontSize' ||
                             k === 'fontSize'
@@ -471,6 +480,26 @@ export function useComponentHistory({
                 reapplyTextFromMeta(group, props.metadata)
             }
 
+            // Connector port bindings have no Two.js geometry of their own, so
+            // applyPropertyToTwoJSGroup skips them. Mirror them onto elementData
+            // here so undo/redo of a detach restores (or re-clears) the binding
+            // that port re-anchoring reads.
+            if (group.elementData) {
+                const bindingKeys = [
+                    'tailShapeId',
+                    'tailEdge',
+                    'headShapeId',
+                    'headEdge',
+                ] as const
+                bindingKeys.forEach((k) => {
+                    if (k in props) {
+                        group.elementData[k] = (
+                            props as Record<string, unknown>
+                        )[k]
+                    }
+                })
+            }
+
             two?.update()
 
             if (props.width !== undefined || props.height !== undefined) {
@@ -760,6 +789,18 @@ export function useComponentHistory({
     // Only UPDATE_VERTICES and UPDATE_BULK need extra capture — for
     // ADD/DELETE/BATCH the original entry already contains everything redo needs.
     const captureNextState = (entry: HistoryEntry): HistoryEntry => {
+        if (entry.action === 'ADD') {
+            // The ADD entry's componentInfo is snapshotted at create time. For
+            // arrows (and any element whose post-create geometry is applied with
+            // skipHistory), that snapshot is stale — e.g. an arrow is pre-created
+            // off-screen at -9999 with zero-length vertices, then drawn later.
+            // Re-read the live store here (still present, since undo's
+            // applyRemove runs after this) so redo re-inserts the final geometry.
+            const current = stateRefForComponentStore.current[entry.id]
+            return current
+                ? { ...entry, componentInfo: { ...current } }
+                : entry
+        }
         if (entry.action === 'UPDATE_VERTICES') {
             const current = stateRefForComponentStore.current[entry.id]
             return {
@@ -811,6 +852,12 @@ export function useComponentHistory({
 
         const updatedBucket = [...bucketLogRef.current, enrichedForRedo]
         writeBucket(updatedBucket)
+
+        // An active group overlay shows static copies of its members, so it
+        // can't reflect an undo that moved/removed them underneath. Signal it to
+        // dismiss (reveal the now-updated real members + drop the overlay). Sent
+        // after applyBatch so members are already at their reverted state.
+        window.dispatchEvent(new CustomEvent('historyApplied'))
     }
 
     const redoLastAction = (): void => {
@@ -851,6 +898,10 @@ export function useComponentHistory({
         delete cleanEntry.nextProps
         const updatedLog = [...historyLogRef.current, cleanEntry as HistoryEntry]
         writeHistory(updatedLog)
+
+        // See undoLastAction: dismiss any active group overlay so it can't show
+        // stale copies of members a redo just moved/re-added.
+        window.dispatchEvent(new CustomEvent('historyApplied'))
     }
 
     const clearHistory = (

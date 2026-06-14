@@ -6,6 +6,7 @@ import ShapesToolbar from './shapesToolbar'
 import { GET_COMPONENT_TYPES } from '../../schema/queries'
 import SpinnerWithSize from '../common/spinnerWithSize'
 import { generateUUID } from '../../utils/misc'
+import { prefetchElementModule } from '../../elementModules'
 import { useBoardContext } from '../../views/Board/boardContext'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 import type { ComponentRecord } from '../../types/board'
@@ -59,7 +60,6 @@ const PrimarySidebar = (): ReactElement => {
         defaultStrokeType,
         defaultFill,
         defaultStrokeColor,
-        defaultOpacity,
         defaultTextFontFamily,
     } = useBoardContext()
     const [hintText, setHintText] = useState(
@@ -128,7 +128,7 @@ const PrimarySidebar = (): ReactElement => {
                         createdAt: null,
                         metadata: {
                             ...((item.metadata as Record<string, unknown>) ?? {}),
-                            opacity: defaultOpacity ?? 1,
+                            opacity: 1,
                             ...(defaultTextFontFamily && {
                                 textFontFamily: defaultTextFontFamily,
                             }),
@@ -167,7 +167,7 @@ const PrimarySidebar = (): ReactElement => {
                 isDummy: null,
                 createdAt: null,
                 metadata: {
-                    opacity: defaultOpacity ?? 1,
+                    opacity: 1,
                     ...(defaultTextFontFamily && {
                         textFontFamily: defaultTextFontFamily,
                     }),
@@ -305,6 +305,13 @@ const PrimarySidebar = (): ReactElement => {
     }
 
     const addElement = (label: string, category?: string): void => {
+        // Warm the shape's lazy chunk NOW, while the user moves to the canvas
+        // and drags (~700ms–1s). By mouseup the chunk is cached, so the
+        // component mounts instantly instead of the freshly-drawn shape sitting
+        // dimmed during a first-time network fetch on prod.
+        if (DRAW_SHAPE_TYPES.includes(label)) {
+            prefetchElementModule(label)
+        }
         cancelPendingElement()
         if (label !== 'rubber') setRubberModeInBoard(false)
         if (label !== 'pan') togglePanMode(false)
@@ -406,7 +413,7 @@ const PrimarySidebar = (): ReactElement => {
                                         string,
                                         unknown
                                     >) ?? {}),
-                                    opacity: defaultOpacity ?? 1,
+                                    opacity: 1,
                                     ...(defaultTextFontFamily && {
                                         textFontFamily: defaultTextFontFamily,
                                     }),
@@ -456,7 +463,7 @@ const PrimarySidebar = (): ReactElement => {
                         isDummy: null,
                         createdAt: null,
                         metadata: {
-                            opacity: defaultOpacity ?? 1,
+                            opacity: 1,
                             ...(defaultTextFontFamily && {
                                 textFontFamily: defaultTextFontFamily,
                             }),

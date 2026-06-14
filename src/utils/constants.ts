@@ -88,6 +88,14 @@ export const allColorShades: string[] = [
     '#C0B6F2',
     '#EAE6FF',
 
+    // Brown — 6 shades, light → dark.
+    '#EAD9C5',
+    '#D2B089',
+    '#B5824E',
+    '#8C5A2B',
+    '#5E3A1A',
+    '#3D2410',
+
     '#172B4D',
     '#253858',
     '#42526E',
@@ -109,15 +117,15 @@ export const essentialShades: string[] = [
     '#0065FF',
 ]
 
-// Fill picker only — transparent ("no fill") first, replacing the green that
-// the shared essentialShades keeps for stroke/text.
+// Fill picker only — transparent ("no fill") and white kept, followed by light
+// pastel shades suited to fills (vs. the saturated stroke/text essentialShades).
 export const fillEssentialShades: string[] = [
     TRANSPARENT_FILL,
     '#FFFFFF',
-    '#000000',
-    '#FF5630',
-    '#FFAB00',
-    '#0065FF',
+    '#FFBDAD',
+    '#FFF0B3',
+    '#ABF5D1',
+    '#B3D4FF',
 ]
 
 export interface DrawerElement {
@@ -133,7 +141,6 @@ export interface PrimaryElement {
     hasDrawer: boolean
     noAction: boolean
     drawerData: DrawerElement[]
-    mobileOnly?: boolean
 }
 
 export interface PrimarySection {
@@ -160,7 +167,6 @@ export const staticPrimaryElementData: PrimarySection[] = [
                 hasDrawer: false,
                 noAction: true,
                 drawerData: [],
-                mobileOnly: true,
             },
             {
                 elementName: 'shapes',

@@ -72,14 +72,9 @@ interface DefaultsForInspect {
 // Mirrors the acceptance map in applyGroupProperty.ts. Kept in sync manually
 // — this is small and changes rarely.
 const ACCEPTS: Record<InspectableProperty, Set<string>> = {
-    fill: new Set([
-        'rectangle',
-        'circle',
-        'diamond',
-        'frame',
-        'newText',
-        'geoText',
-    ]),
+    // Standalone text has no fill concept (its color is `textColor`); kept in
+    // sync with applyGroupProperty.ts ACCEPTS.fill.
+    fill: new Set(['rectangle', 'circle', 'diamond', 'frame']),
     stroke: new Set([
         'rectangle',
         'circle',

@@ -62,14 +62,10 @@ export interface ApplyGroupPropertyDeps {
 }
 
 const ACCEPTS: Record<GroupPropertyKey, Set<string>> = {
-    fill: new Set([
-        'rectangle',
-        'circle',
-        'diamond',
-        'frame',
-        'newText',
-        'geoText',
-    ]),
+    // Standalone text (newText/geoText) has no background-fill concept — its
+    // color is `textColor`. Excluded so a group fill leaves text untouched and
+    // never stamps a spurious `fill` onto a text row.
+    fill: new Set(['rectangle', 'circle', 'diamond', 'frame']),
     stroke: new Set([
         'rectangle',
         'circle',
@@ -205,7 +201,11 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
     return function applyGroupProperty(
         propertyKey: GroupPropertyKey | string,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        value: any
+        value: any,
+        // `preview` applies the change to the live Two.js scene only, skipping
+        // the store/history writes — used for continuous slider drags. The final
+        // value commits normally (no preview) on release.
+        opts?: { preview?: boolean }
     ): void {
         const {
             selectedGroup,
@@ -323,11 +323,20 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
             if (propertyKey === 'opacity') {
                 const sceneLeaf = sceneEl?.children?.[0]
                 if (sceneLeaf) sceneLeaf.opacity = value
+                // Dim embedded text alongside the shape leaf (rect/diamond/
+                // circle-with-text keep text in a separate text-layer node).
+                findTextNodesInside(sceneEl).forEach((t) => (t.opacity = value))
                 if (coreObj) {
                     coreObj.opacity = 1
                     const coreLeaf = coreObj?.children?.[0]
                     if (coreLeaf) coreLeaf.opacity = value
+                    findTextNodesInside(coreObj).forEach(
+                        (t) => (t.opacity = value)
+                    )
                 }
+                // Live drag preview: scene only, defer the store/history write
+                // to the commit on release.
+                if (opts?.preview) return
                 const existingMeta = sceneEl?.elementData?.metadata
                 const safeMeta =
                     existingMeta && !Array.isArray(existingMeta)

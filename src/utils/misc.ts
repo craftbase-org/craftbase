@@ -1,5 +1,18 @@
 import type { RandomUsername } from '../types/board'
 
+// True on macOS/iOS, where ⌘ (metaKey) is the primary shortcut modifier; Ctrl
+// elsewhere. Prefer the modern userAgentData.platform, fall back to the legacy
+// navigator.platform. Computed once at module load — the OS doesn't change.
+export const isMac: boolean =
+    typeof navigator !== 'undefined' &&
+    /mac|iphone|ipad|ipod/i.test(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (navigator as any).userAgentData?.platform || navigator.platform || ''
+    )
+
+/** Display label for the primary shortcut modifier: '⌘' on mac, 'Ctrl' else. */
+export const PRIMARY_MOD_LABEL: string = isMac ? '⌘' : 'Ctrl'
+
 export function strokeTypeToDashes(strokeType: string | null | undefined): number[] {
     if (strokeType === 'dashed') return [8]
     if (strokeType === 'dotted') return [4]

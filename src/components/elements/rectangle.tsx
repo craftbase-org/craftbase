@@ -29,10 +29,11 @@ function Rectangle(props: ElementProps): ReactElement {
         })
         const { group, rectangle } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        rectangle.opacity = props.metadata?.opacity ?? 1
+        const opacityValue = props.metadata?.opacity ?? 1
 
         if (props.parentGroup) {
             const parentGroup = props.parentGroup
+            rectangle.opacity = opacityValue
             parentGroup.add(rectangle)
             two.update()
         } else {
@@ -49,6 +50,12 @@ function Rectangle(props: ElementProps): ReactElement {
                 props.width || rectangle.width || 120,
                 meta
             )
+
+            // Apply opacity at the group level so the shape and any embedded
+            // text dim uniformly, and so it actually repaints (the rounded-rect
+            // path is double-referenced in group.children via the unshift above,
+            // which leaves leaf-level opacity flags unprocessed on render).
+            group.opacity = opacityValue
 
             two.update()
 

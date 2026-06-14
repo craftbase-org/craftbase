@@ -2,8 +2,13 @@ import { useEffect, useRef } from 'react'
 import type { MutableRefObject } from 'react'
 import { GROUP_COMPONENT, isStandaloneTextType } from '../constants/misc'
 import { generateUUID } from '../utils/misc'
-import { cloneElementData, getShapeTextNodes } from '../utils/canvasUtils'
+import {
+    cloneElementData,
+    getShapeTextNodes,
+    pollUntilElement,
+} from '../utils/canvasUtils'
 import type { ComponentRecord } from '../types/board'
+import type { HistoryEntry } from './useComponentHistory'
 
 // Two.js scene objects are typed loosely here; canvas-side typing converges
 // in Stages 7–9.
@@ -41,8 +46,10 @@ export interface CanvasClipboardOptions {
     addToLocalComponentStore: (
         id: string,
         componentType: string,
-        record: ComponentRecord
+        record: ComponentRecord,
+        skipHistory?: boolean
     ) => void
+    recordBatchToHistoryLog: (entries: HistoryEntry[]) => void
     renderGroupRef: MutableRefObject<
         ((groups: ComponentRecord[]) => void) | null
     >
@@ -58,6 +65,7 @@ export function useCanvasClipboard({
     zuiInstanceRef,
     boardId,
     addToLocalComponentStore,
+    recordBatchToHistoryLog,
     renderGroupRef,
 }: CanvasClipboardOptions): CanvasClipboardApi {
     const clipboardRef = useRef<ClipboardPayload | null>(null)
@@ -256,6 +264,97 @@ export function useCanvasClipboard({
                     cloned.relativeY = rY
                     return cloned
                 })
+
+                // Persist the pasted members to the store IMMEDIATELY, at
+                // absolute coords (paste origin + each child's relative offset).
+                // Previously the children were only written on the group's
+                // blur-materialize (groupobject's foundOriginalCount===0 path),
+                // which meant a reload while the pasted group was still selected
+                // lost them — they lived only as transient overlay copies, never
+                // in componentStore / the localStorage draft. Persisting here
+                // makes paste reload-safe and lets the overlay below be a pure
+                // selection over real standalones (see membersToHide), so blur
+                // takes the restore-opacity path instead of re-materialising —
+                // killing the teardown→async-rebuild flicker too.
+                const memberIds: string[] = []
+                // Record all member adds as ONE batch so a single undo removes
+                // the whole pasted group (not one shape per press). We pass
+                // skipHistory to addToLocalComponentStore and push an ADD entry
+                // per child, then commit them together via recordBatchToHistoryLog.
+                const pasteBatchEntries: HistoryEntry[] = []
+                newChildren.forEach((child: ComponentRecord) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const c = child as any
+                    const absX = px + (c.relativeX ?? 0)
+                    const absY = py + (c.relativeY ?? 0)
+
+                    // pencil / geo area / route keep their geometry as an
+                    // absolute {x,y} vertex array in metadata — not in x/y. The
+                    // group child stored it in the group's relative space, so
+                    // rebase the whole array to the standalone's absolute origin
+                    // (mirrors groupobject's blur-materialize). Without this the
+                    // pasted stroke renders near the origin instead of under the
+                    // group — i.e. "the pencil strokes disappear".
+                    let memberMetadata = c.metadata
+                    if (
+                        (c.componentType === 'pencil' ||
+                            c.componentType === 'area' ||
+                            c.componentType === 'route') &&
+                        Array.isArray(c.metadata)
+                    ) {
+                        const meta = c.metadata as Array<{
+                            x: number
+                            y: number
+                            lw?: number
+                        }>
+                        const m0 = meta[0] ?? { x: 0, y: 0 }
+                        memberMetadata = meta.map((vert, index) => {
+                            const lwProp =
+                                vert.lw !== undefined ? { lw: vert.lw } : {}
+                            if (index === 0) {
+                                return { x: absX, y: absY, ...lwProp }
+                            }
+                            return {
+                                x: absX + Math.trunc(vert.x - m0.x),
+                                y: absY + Math.trunc(vert.y - m0.y),
+                                ...lwProp,
+                            }
+                        })
+                    }
+
+                    const memberData = {
+                        ...c,
+                        x: absX,
+                        y: absY,
+                        metadata: memberMetadata,
+                    }
+                    memberIds.push(c.id)
+                    addToLocalComponentStore(
+                        c.id,
+                        c.componentType,
+                        memberData,
+                        true
+                    )
+                    // The history entry's componentInfo must mirror the stored
+                    // row: addToLocalComponentStore strips the transient
+                    // relativeX/relativeY (not DB columns), so strip them here
+                    // too — otherwise a redo in persisted mode would insert
+                    // those non-schema fields and fail.
+                    const {
+                        relativeX: _rx,
+                        relativeY: _ry,
+                        ...storedShape
+                    } = memberData
+                    pasteBatchEntries.push({
+                        action: 'ADD',
+                        id: c.id,
+                        componentInfo: storedShape as ComponentRecord,
+                    })
+                })
+                if (pasteBatchEntries.length > 0) {
+                    recordBatchToHistoryLog(pasteBatchEntries)
+                }
+
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const newGroup: any = {
                     id: generateUUID(),
@@ -268,8 +367,28 @@ export function useCanvasClipboard({
                     fill: null,
                     stroke: null,
                     children: newChildren,
+                    // Hide the just-persisted standalones beneath the overlay in
+                    // the same update that paints the group's copies (atomic
+                    // swap — see groupobject.tsx). Because the standalones now
+                    // exist in the scene, the group's blur handler takes the
+                    // restore-opacity path (foundOriginalCount > 0) rather than
+                    // re-materialising them: no double-write, no flicker.
+                    membersToHide: memberIds,
                 }
-                renderGroupRef.current?.([newGroup])
+
+                // Standalones mount asynchronously (React.lazy). Wait until the
+                // last one is in the scene before rendering the overlay so the
+                // group's atomic hide finds them — no brief double-paint of a
+                // standalone plus its overlay copy. Falls back to immediate
+                // render if there's nothing to wait on.
+                const lastId = memberIds[memberIds.length - 1]
+                if (lastId && twoJSInstance) {
+                    pollUntilElement(twoJSInstance, lastId, () => {
+                        renderGroupRef.current?.([newGroup])
+                    })
+                } else {
+                    renderGroupRef.current?.([newGroup])
+                }
             }
         }
         window.addEventListener('keydown', onPasteEvent)
