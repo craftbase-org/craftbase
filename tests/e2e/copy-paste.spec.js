@@ -180,14 +180,14 @@ test.describe('Copy-paste', () => {
      * Flow exercised:
      *   1. Draw circle (default fill #f4f4f2)
      *   2. Click circle → floating toolbar opens
-     *   3. Click #FFAB00 swatch in Background section → fill updated in store
+     *   3. Click #FFF0B3 swatch in Background section → fill updated in store
      *   4. Cmd+C → Cmd+V on empty area
-     *   5. Pasted circle's <ellipse> fill should be #FFAB00, not the default
+     *   5. Pasted circle's <ellipse> fill should be #FFF0B3, not the default
      */
     test('pasting a circle with user-modified fill preserves the new fill', async ({
         page,
     }) => {
-        const NEW_FILL = '#FFAB00'
+        const NEW_FILL = '#FFF0B3'
 
         const box = await getCanvasBox(page)
         const { cx, cy } = safeArea(box)

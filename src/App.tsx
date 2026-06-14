@@ -17,6 +17,7 @@ import BoardViewContainer from './views/Board'
 import HomePageViewContainer from './views/Home'
 import SupportViewContainer from './views/Support'
 import PrivacyViewContainer from './views/Privacy'
+import EmbeddableViewContainer from './views/Embeddable'
 import CraftbaseLoader from './components/common/craftbaseLoader'
 
 import routes from './routes'
@@ -170,6 +171,10 @@ class App extends Component {
                                 <Route
                                     path={routes.privacy}
                                     element={<PrivacyViewContainer />}
+                                />
+                                <Route
+                                    path={routes.embeddable}
+                                    element={<EmbeddableViewContainer />}
                                 />
                             </Routes>
                         </div>

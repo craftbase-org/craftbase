@@ -1,6 +1,6 @@
 # Craftbase
 
-A minimal whiteboard you can open and start drawing on. No signup, no setup, no empty-state tutorial to click through — the canvas is just there waiting.
+A minimal online whiteboard you can open and start drawing on. No signup, no setup, no empty-state tutorial to click through — the canvas is just there waiting.
 
 **Try it: [craftbase.org](https://craftbase.org)**
 

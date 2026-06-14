@@ -41,7 +41,7 @@ import {
 // text fill #3A342C). NOTE: the Fill picker uses fillEssentialShades (which
 // dropped green #36B37E for a transparent swatch), while stroke/text use the
 // shared essentialShades — so FILL_COLOR must come from fillEssentialShades.
-const FILL_COLOR = '#FFAB00'
+const FILL_COLOR = '#FFF0B3'
 const STROKE_COLOR = '#0065FF'
 const TEXT_COLOR = '#FF5630'
 

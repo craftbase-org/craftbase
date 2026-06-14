@@ -54,7 +54,9 @@ import {
 } from './constants/misc'
 import Spinner from './components/common/spinner'
 
-const elementModules = import.meta.glob('./components/elements/*.tsx')
+// Shared lazy-element glob (single source of truth) so the chunk warmed by
+// prefetchElementModule is the exact one React.lazy mounts here.
+import { elementModules } from './elementModules'
 
 import Loader from './components/utils/loader'
 import SelectionController, {
@@ -70,6 +72,10 @@ import {
     PORT_TAIL_STACK_GAP,
 } from './utils/shapePorts'
 import { generateUUID } from './utils/misc'
+import {
+    getConnectorsEnabled,
+    subscribeConnectorsEnabled,
+} from './utils/featureFlags'
 import {
     velocityToLinewidth,
     smoothLinewidth,
@@ -589,6 +595,15 @@ function addZUI(
         activeGroupRef.current = null
     })
 
+    // Connectors flag is live-toggleable from Settings. When it flips, re-sync
+    // the current selection box so its edge ports appear/disappear immediately
+    // (rather than waiting for the next transform). If the flag goes off mid
+    // arrow-drag, clear any lingering radar glow too.
+    subscribeConnectorsEnabled((enabled) => {
+        if (!enabled) selectionController.hidePortGlow()
+        selectionController.resync()
+    })
+
     function dblclick(e: MouseEvent) {
         // In a multi-click geo draw, a double-click finishes it. Drop the
         // duplicate vertex the second mousedown added.
@@ -689,16 +704,18 @@ function addZUI(
             // Two.js renders text at `fontSize * sceneScale` screen pixels.
             // Match the textarea/measureSpan to that so visuals stay in sync
             // and the surface-unit math (measuredW / zoom) remains correct.
+            // Camera-dependent geometry — reassigned by recomputeGeometry() on
+            // every two.update (pan/zoom) so the editor stays glued to the shape.
             const sceneScale = two?.scene?.scale || 1
-            const cssFontSize = fontSize * sceneScale
+            let cssFontSize = fontSize * sceneScale
             // Use a generous line-height so ascenders/descenders are
             // never clipped. A LINE_HEIGHT_MULTIPLIER× covers most font metrics.
-            const lineH = Math.ceil(cssFontSize * LINE_HEIGHT_MULTIPLIER)
+            let lineH = Math.ceil(cssFontSize * LINE_HEIGHT_MULTIPLIER)
             // Vertical padding inside the textarea prevents the top of
             // tall glyphs (H, d, l …) from being cut off by the element
             // boundary. Half the difference between lineH and cssFontSize
             // approximates the ascender headroom the browser needs.
-            const vertPad = Math.ceil((lineH - cssFontSize) / 2) + 4
+            let vertPad = Math.ceil((lineH - cssFontSize) / 2) + 4
 
             const input = document.createElement('textarea')
             const randomId = Math.floor(Math.random() * 90 + 10)
@@ -732,16 +749,18 @@ function addZUI(
             input.style.boxSizing = 'border-box'
             input.className = 'temp-input-area'
 
-            // Anchor point: the SVG text element's screen-space center
-            const centerX = screenRect.left + screenRect.width / 2
-            const centerY = screenRect.top + screenRect.height / 2
+            // Anchor point: the SVG shape's screen-space center. The shape stays
+            // VISIBLE during edit (only the text layer is hidden), so its rect is
+            // live — recomputeGeometry() re-reads it each frame to follow pan/zoom.
+            let centerX = screenRect.left + screenRect.width / 2
+            let centerY = screenRect.top + screenRect.height / 2
 
             // px-per-surface-unit derived from the shape's current screen
             // size; converts the textarea's pixel measurement back into
             // Two.js surface units before growing the shape.
             const rectScreen =
                 rectChild?._renderer?.elem?.getBoundingClientRect()
-            const zoom =
+            let zoom =
                 rectChild && rectScreen && rectChild.width
                     ? rectScreen.width / rectChild.width
                     : 1
@@ -757,7 +776,7 @@ function addZUI(
             // (screen px), so wrapping mirrors the committed render and the
             // box never spills outside the shape horizontally.
             const surfaceW = rectChild?.width || screenRect.width / zoom
-            const usableScreenW = Math.max(
+            let usableScreenW = Math.max(
                 Math.round(usableTextWidth(shapeKind, surfaceW) * zoom),
                 Math.ceil(cssFontSize) // never below ~1 glyph
             )
@@ -780,8 +799,43 @@ function addZUI(
             measureSpan.style.boxSizing = 'content-box'
             document.body.appendChild(measureSpan)
 
-            const autoSizeAndCenter = () => {
-                // Measure wrapped height at the fixed usable width.
+            // Pull anchor + font from the LIVE shape rect + camera. Called on
+            // every two.update so the editor pans/zooms with the shape.
+            const recomputeGeometry = () => {
+                const scale = two?.scene?.scale || 1
+                cssFontSize = fontSize * scale
+                lineH = Math.ceil(cssFontSize * LINE_HEIGHT_MULTIPLIER)
+                vertPad = Math.ceil((lineH - cssFontSize) / 2) + 4
+                const liveRect = (
+                    rectChild?._renderer?.elem ?? groupDomElem
+                )?.getBoundingClientRect()
+                if (liveRect) {
+                    centerX = liveRect.left + liveRect.width / 2
+                    centerY = liveRect.top + liveRect.height / 2
+                }
+                const rs = rectChild?._renderer?.elem?.getBoundingClientRect()
+                zoom =
+                    rectChild && rs && rectChild.width
+                        ? rs.width / rectChild.width
+                        : 1
+                const sw =
+                    rectChild?.width ||
+                    (liveRect ? liveRect.width / zoom : surfaceW)
+                usableScreenW = Math.max(
+                    Math.round(usableTextWidth(shapeKind, sw) * zoom),
+                    Math.ceil(cssFontSize)
+                )
+                input.style.fontSize = `${cssFontSize}px`
+                input.style.lineHeight = `${lineH}px`
+                input.style.padding = `${vertPad}px 8px`
+                measureSpan.style.fontSize = `${cssFontSize}px`
+                measureSpan.style.lineHeight = `${lineH}px`
+                measureSpan.style.width = `${usableScreenW}px`
+            }
+
+            // Pure DOM: size + centre the textarea over the shape midpoint.
+            // No shape-grow / two.update — safe to call from the update handler.
+            const placeEditor = () => {
                 const val = input.value || 'M'
                 measureSpan.textContent = val
                 const measuredH = measureSpan.offsetHeight
@@ -794,36 +848,48 @@ function addZUI(
 
                 input.style.width = `${contentWidth}px`
                 input.style.height = `${contentHeight}px`
-
-                // Centre over the shape midpoint. Width is fixed to the
-                // shape's usable width, so the box stays inside the shape;
-                // only the height grows as lines are added.
                 input.style.left = `${centerX - contentWidth / 2}px`
                 input.style.top = `${centerY - contentHeight / 2}px`
+            }
 
-                // Grow ONLY the shape height to fit the wrapped lines
-                // (width is user-driven). Symmetric growth keeps the centre
-                // fixed, so centerX/centerY stay valid.
-                if (rectChild) {
-                    const textSurfaceH = measuredH / zoom
-                    const { h: nextH } = growShapeToFitText(
-                        shapeKind,
-                        rectChild.width,
-                        rectChild.height,
-                        0,
-                        textSurfaceH
-                    )
-                    if (rectChild.height < nextH) {
-                        rectChild.height = nextH
-                        two.update()
-                    }
+            // Grow ONLY the shape height to fit the wrapped lines (width is
+            // user-driven). Symmetric growth keeps the centre fixed. Only on
+            // typing — NOT from the update handler (it calls two.update).
+            const growShapeToFit = () => {
+                if (!rectChild) return
+                const val = input.value || 'M'
+                measureSpan.textContent = val
+                const measuredH = measureSpan.offsetHeight
+                const textSurfaceH = measuredH / zoom
+                const { h: nextH } = growShapeToFitText(
+                    shapeKind,
+                    rectChild.width,
+                    rectChild.height,
+                    0,
+                    textSurfaceH
+                )
+                if (rectChild.height < nextH) {
+                    rectChild.height = nextH
+                    two.update()
                 }
             }
 
-            autoSizeAndCenter()
+            // Re-glue the editor to the shape after any render (pan/zoom).
+            const repositionEditor = () => {
+                recomputeGeometry()
+                placeEditor()
+            }
+
+            const onTextInput = () => {
+                growShapeToFit() // may two.update → 'update' → repositionEditor
+                placeEditor()
+            }
+
+            repositionEditor()
+            two.bind('update', repositionEditor)
 
             // Re-measure on every keystroke so the box grows with the text
-            input.addEventListener('input', autoSizeAndCenter)
+            input.addEventListener('input', onTextInput)
 
             input.focus()
 
@@ -846,8 +912,9 @@ function addZUI(
             })
 
             input.addEventListener('blur', () => {
-                // Clean up the input listener and measurement span
-                input.removeEventListener('input', autoSizeAndCenter)
+                // Clean up the camera tracker, input listener and measure span
+                two.unbind('update', repositionEditor)
+                input.removeEventListener('input', onTextInput)
                 if (measureSpan.parentNode) {
                     measureSpan.parentNode.removeChild(measureSpan)
                 }
@@ -1125,6 +1192,8 @@ function addZUI(
         dragContext: PortDragContext | null = null,
         excludeShapeId: string | null = arrowDrawTailShapeId
     ) {
+        // No port snapping/glow while connectors are disabled (live flag).
+        if (!getConnectorsEnabled()) return
         const threshold = PORT_RADAR_RADIUS / (zui.scale || 1)
         const nearest = findNearestPort(
             two.scene.children,
@@ -1311,6 +1380,10 @@ function addZUI(
     // the free endpoint fixed in surface space.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function reanchorArrowsForShape(group: any) {
+        // Bound arrows only track their shape while connectors are enabled. When
+        // off, existing bindings lie dormant (the arrow stays put) rather than
+        // being stripped — flip the flag back on to resume gluing.
+        if (!getConnectorsEnabled()) return
         const shapeId = group?.elementData?.id
         if (!shapeId) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1376,6 +1449,7 @@ function addZUI(
     // moves), and isLineCircle drives the x1/y1/x2/y2 write.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function persistBoundArrows(group: any) {
+        if (!getConnectorsEnabled()) return
         const shapeId = group?.elementData?.id
         if (!shapeId) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -3158,9 +3232,10 @@ function addZUI(
     }
 
     function mousewheel(e: WheelEvent) {
-        // Pan mode treats a plain wheel/scroll as zoom (no modifier needed);
-        // otherwise the wheel pans the surface and shift/meta zooms.
-        if (e.shiftKey === true || e.metaKey === true || isPanMode()) {
+        // Wheel/scroll zooms only with a modifier held — cmd (macOS), ctrl
+        // (Windows; also what trackpad pinch-zoom emits), or shift. A plain
+        // wheel/scroll always pans the surface, in pan mode and otherwise.
+        if (e.shiftKey === true || e.metaKey === true || e.ctrlKey === true) {
             let dy =
                 ((e as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY ||
                     -e.deltaY) / 1000
@@ -3624,6 +3699,7 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         zuiInstanceRef,
         boardId: props.boardId,
         addToLocalComponentStore,
+        recordBatchToHistoryLog,
         renderGroupRef,
     })
 
@@ -4053,12 +4129,14 @@ const Canvas: React.FC<CanvasProps> = (props) => {
 
             newGroup.children = newChildren
 
-            twoJSInstance.scene.children.forEach((child: any) => {
-                if (selectedComponentArr.includes(child?.elementData?.id)) {
-                    child.opacity = 0
-                    twoJSInstance.update()
-                }
-            })
+            // Defer hiding the originals to the group's own assembly so the
+            // swap is atomic — the group hides exactly these ids in the SAME
+            // two.update() that paints its member copies, so there is never a
+            // blank frame between "originals hidden" and "group copies drawn"
+            // (the residual group-select flicker). Only the group-SELECT path
+            // sets this; paste leaves it unset (its clones have no on-canvas
+            // originals to hide).
+            newGroup.membersToHide = [...selectedComponentArr]
 
             handleSetComponentsToRender([newGroup])
         }

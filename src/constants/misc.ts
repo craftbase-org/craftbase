@@ -199,6 +199,11 @@ export const STORAGE_QUOTA_ERROR_NAME = 'QuotaExceededError'
 // never seed again for this browser profile.
 export const WELCOME_DISMISSED_KEY = 'craftbase_welcome_dismissed'
 
+// Feature-flag preference: connectable arrows / shape edge ports. User-toggled
+// in the Settings modal, persisted in localStorage, read live (see
+// `src/utils/featureFlags.ts`). Defaults to enabled.
+export const CONNECTORS_ENABLED_KEY = 'craftbase_connectors_enabled'
+
 // Canvas rendering constants
 export const HOVER_THRESHOLD = 15
 export const HOVER_COLOR = 'rgba(196, 144, 26, 0.7)'

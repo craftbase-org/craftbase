@@ -4,8 +4,16 @@ import {
     getShapeTextNodes,
     renderShapeTextLayer,
     shapeTextStyleFromMeta,
+    syncTextHitRect,
 } from '../utils/canvasUtils'
 import { reflowTextForShape, minShapeWidthForText } from '../utils/shapeTextFit'
+import {
+    lineHeightFor,
+    measureTextWidth,
+    type FontSpec,
+} from '../utils/textLayout'
+import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
+import { getConnectorsEnabled } from '../utils/featureFlags'
 
 // Two.js scene shapes carry codebase-specific bookkeeping (elementData,
 // _renderer, etc.) outside the published types. Stay loose here; Stage 12
@@ -25,6 +33,40 @@ interface ShapeAdapter {
     resizable: boolean
     minWidth: number
     minHeight: number
+    // 'dimension' (default) → corner drag changes width/height. 'font' → corner
+    // drag scales the font size of a standalone text block (no w/h change). The
+    // box still tracks the rendered block via getLocalSize.
+    resizeMode?: 'dimension' | 'font'
+}
+
+// Font spec for a single standalone text line node.
+function textNodeFontSpec(node: ShapeLike): FontSpec {
+    return {
+        family: node?.family || DEFAULT_TEXT_FONT_FAMILY,
+        size: node?.size || 36,
+        weight: node?.weight,
+    }
+}
+
+// Surface-unit size of a standalone text block: widest measured line × the
+// stacked line height. measureTextWidth returns surface units (same space as a
+// shape's width), so this feeds the selection box directly — no screen↔surface
+// conversion needed.
+function textBlockLocalSize(group: ShapeLike): {
+    width: number
+    height: number
+} {
+    const nodes = getShapeTextNodes(group)
+    if (!nodes.length) return { width: 60, height: 36 }
+    const size = nodes[0]?.size || 36
+    let maxW = 0
+    nodes.forEach((nd) => {
+        maxW = Math.max(maxW, measureTextWidth(nd?.value || '', textNodeFontSpec(nd)))
+    })
+    return {
+        width: Math.max(maxW, 20),
+        height: Math.max(nodes.length * lineHeightFor(size), size),
+    }
 }
 
 const DEFAULT_ADAPTER: ShapeAdapter = {
@@ -41,14 +83,13 @@ const DEFAULT_ADAPTER: ShapeAdapter = {
     minHeight: 20,
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TEXT_ADAPTER: ShapeAdapter = {
-    getLocalSize: (shape) => ({
-        width: shape.getBoundingClientRect(true).width || 60,
-        height: shape.getBoundingClientRect(true).height || 30,
-    }),
-    applySize: () => {},
-    resizable: false,
+    // currentShape is line 1 (group.children[0]); walk up to the group to size
+    // the whole multiline block.
+    getLocalSize: (shape) => textBlockLocalSize(shape?.parent ?? shape),
+    applySize: () => {}, // sizing happens via font scaling, not w/h
+    resizable: true,
+    resizeMode: 'font',
     minWidth: 20,
     minHeight: 20,
 }
@@ -57,6 +98,7 @@ const SHAPE_ADAPTERS: Record<string, ShapeAdapter> = {
     rectangle: DEFAULT_ADAPTER,
     circle: DEFAULT_ADAPTER,
     diamond: DEFAULT_ADAPTER,
+    newText: TEXT_ADAPTER,
 }
 
 // Handle dot diameter in *screen* px, stepped across 3 zoom ranges so the dots
@@ -134,7 +176,16 @@ interface SelectionControllerOptions {
     onDeselect?: () => void
     commit?: (
         id: string,
-        patch: { width: number; height: number; x: number; y: number }
+        patch: {
+            width: number
+            height: number
+            x: number
+            y: number
+            // Font resize on text also carries updated metadata (fontSize +
+            // multiline content).
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            metadata?: Record<string, any>
+        }
     ) => void
     recordHistory?: () => void
     onDelete?: (group: GroupLike) => void
@@ -161,6 +212,8 @@ interface ScaleInteraction {
     initialHeight: number
     initialPosition: { x: number; y: number }
     initialRotation: number
+    // Font size at gesture start — only used for 'font' resizeMode (text).
+    initialFontSize?: number
 }
 
 interface RotateInteraction {
@@ -549,16 +602,25 @@ export default class SelectionController {
         this.box.width = width + pad * 2
         this.box.height = height + pad * 2
 
+        // Standalone text is anchored left/middle at the group origin (the text
+        // extends RIGHT from translation.x and is vertically centered on
+        // translation.y). The box is centered on `ui`, so shift `ui` right by
+        // half the block width to wrap the text instead of sitting left of it.
+        // Shapes are centered on their origin, so no offset.
+        const anchorOffsetX =
+            this.currentAdapter?.resizeMode === 'font' ? width / 2 : 0
         this.ui.position.set(
-            this.currentGroup.translation.x,
+            this.currentGroup.translation.x + anchorOffsetX,
             this.currentGroup.translation.y
         )
         this.ui.rotation = this.currentGroup.rotation || 0
 
         const isRect =
             this.currentGroup?.elementData?.componentType === 'rectangle'
-        this.portHandles.visible = isRect
-        if (isRect) {
+        // Ports only render when the connectors feature flag is on (live).
+        const portsOn = isRect && getConnectorsEnabled()
+        this.portHandles.visible = portsOn
+        if (portsOn) {
             const hw = (width + pad * 2) / 2
             const hh = (height + pad * 2) / 2
             this._halfW = hw
@@ -639,7 +701,7 @@ export default class SelectionController {
         surface: { x: number; y: number },
         targetGroup?: ShapeLike
     ): void {
-        if (!this.portGlow) return
+        if (!this.portGlow || !getConnectorsEnabled()) return
         const scale = this.zui.scale || 1
         this.portGlow.position.set(surface.x, surface.y)
         this.portGlow.scale = 1 / scale
@@ -841,6 +903,9 @@ export default class SelectionController {
     // Edge name (n/e/s/w-resize) whose port the surface point is hovering, or
     // null. Rectangle-only; this is what the port arrow keys off of.
     private _hoveredPortEdge(point: { x: number; y: number }): string | null {
+        // Single chokepoint for both hover (port arrow) and `hitTestPort`
+        // (pull-out). Off when connectors are disabled.
+        if (!getConnectorsEnabled()) return null
         if (this.currentGroup?.elementData?.componentType !== 'rectangle') {
             return null
         }
@@ -981,6 +1046,7 @@ export default class SelectionController {
                 y: this.currentGroup.translation.y,
             },
             initialRotation: this.currentGroup.rotation || 0,
+            initialFontSize: this.currentShape?.size ?? 36,
         }
         this._attachPointerStream()
         return true
@@ -1081,6 +1147,12 @@ export default class SelectionController {
     private _scaleMove(e: MouseEvent): void {
         if (!this.interaction || this.interaction.mode !== 'scale') return
         if (!this.currentAdapter) return
+        // Standalone text resizes by font size (anchored at its center), not by
+        // width/height like shapes.
+        if (this.currentAdapter.resizeMode === 'font') {
+            this._fontScaleMove(e)
+            return
+        }
         const {
             corner,
             startSurface,
@@ -1264,6 +1336,55 @@ export default class SelectionController {
         this.callbacks.onTransform(this.currentGroup)
     }
 
+    // Font-size resize for standalone text: scale the size by how far the
+    // cursor moved relative to the block's center (mirrors the old per-element
+    // interactjs handle). Anchored at the center, so the block never translates.
+    private _fontScaleMove(e: MouseEvent): void {
+        if (!this.interaction || this.interaction.mode !== 'scale') return
+        const { startSurface, initialPosition, initialFontSize, initialWidth } =
+            this.interaction
+        // Text is anchored left/middle at the group origin, so its visual center
+        // is offset right by half the block width. Anchor the scaling there
+        // (mirrors the old per-element resize which keyed off the text center).
+        const center = {
+            x: initialPosition.x + (initialWidth ?? 0) / 2,
+            y: initialPosition.y,
+        }
+        const surface = this.zui.clientToSurface(e.clientX, e.clientY)
+        const startDist = Math.hypot(
+            startSurface.x - center.x,
+            startSurface.y - center.y
+        )
+        const curDist = Math.hypot(
+            surface.x - center.x,
+            surface.y - center.y
+        )
+        const factor = curDist / Math.max(startDist, 1)
+        const base = initialFontSize ?? 36
+        const newSize = Math.round(Math.min(Math.max(base * factor, 8), 300))
+        this._applyTextFontSize(this.currentGroup, newSize)
+        this.syncToTarget()
+        this.two.update()
+        this.callbacks.onTransform(this.currentGroup)
+    }
+
+    // Resize every line node to `size` and re-stack the block at the new line
+    // height, vertically centered on the group origin. Matches newText's
+    // syncMultilineLayout so the live scene and a reload render identically.
+    private _applyTextFontSize(group: ShapeLike, size: number): void {
+        const nodes = getShapeTextNodes(group)
+        const n = nodes.length
+        const lineH = lineHeightFor(size)
+        nodes.forEach((nd, i) => {
+            nd.size = size
+            nd.leading = size
+            nd.translation.set(0, (i - (n - 1) / 2) * lineH)
+        })
+        // Re-fit the transparent gap hit area to the resized block so the text
+        // stays selectable across the whole block after a font resize.
+        syncTextHitRect(this.two, group)
+    }
+
     private _rotateMove(e: MouseEvent): void {
         if (!this.interaction || this.interaction.mode !== 'rotate') return
         const { center, startSurface, initialRotation } = this.interaction
@@ -1298,11 +1419,34 @@ export default class SelectionController {
             const { width, height } = this.currentAdapter.getLocalSize(
                 this.currentShape
             )
-            const patch = {
+            const patch: {
+                width: number
+                height: number
+                x: number
+                y: number
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                metadata?: Record<string, any>
+            } = {
                 width: parseInt(String(width)),
                 height: parseInt(String(height)),
                 x: parseInt(String(this.currentGroup.translation.x)),
                 y: parseInt(String(this.currentGroup.translation.y)),
+            }
+            // Font resize (text): persist the new size + the multiline content
+            // so a reload restores the resized block.
+            if (this.currentAdapter.resizeMode === 'font') {
+                const nodes = getShapeTextNodes(this.currentGroup)
+                const size = this.currentShape?.size
+                const meta = this.currentGroup?.elementData?.metadata || {}
+                const newMeta = {
+                    ...meta,
+                    fontSize: size,
+                    content: nodes.map((nd) => nd?.value ?? '').join('\n'),
+                }
+                patch.metadata = newMeta
+                if (this.currentGroup.elementData) {
+                    this.currentGroup.elementData.metadata = newMeta
+                }
             }
             this.callbacks.commit(componentId, patch)
         }

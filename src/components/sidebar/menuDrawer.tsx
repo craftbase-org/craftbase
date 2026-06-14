@@ -6,6 +6,8 @@ import { useBoardContext } from '../../views/Board/boardContext'
 import { downloadViewportAsImage } from '../../utils/exportViewport'
 import Modal from '../common/modal'
 import Button from '../common/button'
+import SettingsModal from './settingsModal'
+import settingsIcon from '../../assets/settings.svg'
 
 const HamburgerIcon = (): ReactElement => (
     <svg
@@ -93,6 +95,7 @@ const MenuDrawer = (): ReactElement => {
     const refNode = useRef<HTMLDivElement | null>(null)
     const [showMenu, setShowMenu] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
+    const [showSettings, setShowSettings] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
     const { clearBoard } = useBoardContext()
 
@@ -110,6 +113,11 @@ const MenuDrawer = (): ReactElement => {
     const handleClearClick = (): void => {
         setShowMenu(false)
         setShowConfirm(true)
+    }
+
+    const handleSettingsClick = (): void => {
+        setShowMenu(false)
+        setShowSettings(true)
     }
 
     const handleDownloadClick = async (): Promise<void> => {
@@ -154,7 +162,7 @@ const MenuDrawer = (): ReactElement => {
                 </div>
 
                 <div
-                    className="absolute left-0 transition-all ease-in duration-200"
+                    className="absolute left-0"
                     style={{
                         top: '48px',
                         opacity: showMenu ? 1 : 0,
@@ -162,15 +170,7 @@ const MenuDrawer = (): ReactElement => {
                         pointerEvents: showMenu ? 'auto' : 'none',
                     }}
                 >
-                    <div className="bg-card-bg border border-border-panel rounded-lg shadow-lg py-1 w-[188px] max-w-[calc(100vw-20px)]">
-                        <div className="px-3 pt-1 pb-1.5">
-                            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-                                More
-                            </span>
-                        </div>
-
-                        <div className="h-px bg-border-panel mx-2 mb-1" />
-
+                    <div className="bg-card-bg border border-border-panel rounded-lg shadow-lg py-1 w-max min-w-[188px] max-w-[calc(100vw-20px)]">
                         <a
                             href="https://github.com/craftbase-org/craftbase/releases"
                             target="_blank"
@@ -204,6 +204,31 @@ const MenuDrawer = (): ReactElement => {
                             </div>
                             <ExternalIcon />
                         </a>
+
+                        <Link
+                            to={routes.embeddable}
+                            className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                hover:bg-accent/30 rounded cursor-pointer no-underline
+                                transition-colors ease-in-out duration-150"
+                            onClick={(): void => setShowMenu(false)}
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 14 14"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    d="M5 9.5L2.5 7 5 4.5M9 4.5L11.5 7 9 9.5"
+                                    stroke="#8C7E6A"
+                                    strokeWidth="1.1"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                            <span>Embeddable whiteboard</span>
+                        </Link>
 
                         <Link
                             to={routes.support}
@@ -272,6 +297,23 @@ const MenuDrawer = (): ReactElement => {
                         <button
                             className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
                                 hover:bg-accent/30 rounded cursor-pointer
+                                transition-colors ease-in-out duration-150"
+                            style={{ width: 'calc(100% - 8px)' }}
+                            onClick={handleSettingsClick}
+                        >
+                            <img
+                                src={settingsIcon}
+                                className="w-3.5 h-3.5"
+                                alt=""
+                            />
+                            <span>Settings</span>
+                        </button>
+
+                        <div className="h-px bg-border-panel mx-2 mt-1 mb-1" />
+
+                        <button
+                            className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                hover:bg-accent/30 rounded cursor-pointer
                                 transition-colors ease-in-out duration-150
                                 disabled:opacity-50 disabled:cursor-default"
                             style={{ width: 'calc(100% - 8px)' }}
@@ -301,6 +343,11 @@ const MenuDrawer = (): ReactElement => {
                     </div>
                 </div>
             </div>
+
+            <SettingsModal
+                open={showSettings}
+                onClose={(): void => setShowSettings(false)}
+            />
 
             <Modal
                 open={showConfirm}
