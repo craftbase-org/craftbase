@@ -62,14 +62,10 @@ export interface ApplyGroupPropertyDeps {
 }
 
 const ACCEPTS: Record<GroupPropertyKey, Set<string>> = {
-    fill: new Set([
-        'rectangle',
-        'circle',
-        'diamond',
-        'frame',
-        'newText',
-        'geoText',
-    ]),
+    // Standalone text (newText/geoText) has no background-fill concept — its
+    // color is `textColor`. Excluded so a group fill leaves text untouched and
+    // never stamps a spurious `fill` onto a text row.
+    fill: new Set(['rectangle', 'circle', 'diamond', 'frame']),
     stroke: new Set([
         'rectangle',
         'circle',
