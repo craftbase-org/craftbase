@@ -88,6 +88,14 @@ export const allColorShades: string[] = [
     '#C0B6F2',
     '#EAE6FF',
 
+    // Brown — 6 shades, light → dark.
+    '#EAD9C5',
+    '#D2B089',
+    '#B5824E',
+    '#8C5A2B',
+    '#5E3A1A',
+    '#3D2410',
+
     '#172B4D',
     '#253858',
     '#42526E',

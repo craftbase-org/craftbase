@@ -20,8 +20,8 @@ interface CanvasContextMenuProps {
     onReorder: (op: ReorderOp) => void
 }
 
-const MENU_WIDTH = 220
-const SUBMENU_WIDTH = 212
+const MENU_WIDTH = 240
+const SUBMENU_WIDTH = 240
 const MENU_MARGIN = 8
 
 // Shared icon tone — matches the menu's ink-mid text. The source SVGs hardcode
