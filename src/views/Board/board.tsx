@@ -70,7 +70,6 @@ import {
 import {
     isWelcomeComponent,
     playWelcomeSketchEntrance,
-    playWelcomeSketchExit,
 } from '../../utils/welcomeSketch'
 import { useDrawingModes } from '../../hooks/useDrawingModes'
 import { useElementDefaults } from '../../hooks/useElementDefaults'
@@ -220,9 +219,9 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     )
     // Guards the one-shot welcome-sketch soft-land entrance.
     const welcomeEntrancePlayedRef = useRef(false)
-    // Guards the one-shot welcome-sketch exit so a burst of first adds only
-    // fades the sketch out once.
-    const welcomeDismissInFlightRef = useRef(false)
+    // Guards the one-shot welcome-sketch promotion so a burst of first adds only
+    // promotes the sketch into real content once.
+    const welcomePromotedRef = useRef(false)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const twoJSInstanceRef = useRef<any>(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -588,14 +587,15 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         }
     }
 
-    // Gently fades + lifts the welcome-sketch elements out, then clears them
-    // from the store, on the user's first real interaction. The exit tween runs
-    // node-direct via the same primitive as the soft-land entrance (and
-    // supersedes it if still in flight); the store sweep is gated on the tween
-    // finishing so elements aren't yanked mid-fade. Guarded so a burst of first
-    // adds only triggers one dismissal.
-    const dismissWelcomeSketch = (): void => {
-        if (welcomeDismissInFlightRef.current) return
+    // On the user's first real interaction, the welcome sketch stops being
+    // onboarding scaffolding and becomes the user's own content: we strip the
+    // `isWelcome`/`welcomeRole` tags so the elements are no longer filtered out
+    // of draft saves + share-time persistence (see useLocalDraftPersistence +
+    // the persist filter below). They simply stay on the canvas as-is — no fade,
+    // no removal — and are saved, persisted, and deletable like anything the
+    // user drew. Guarded so a burst of first adds only promotes once.
+    const promoteWelcomeSketch = (): void => {
+        if (welcomePromotedRef.current) return
         const welcomeIds = Object.keys(
             stateRefForComponentStore.current
         ).filter((id) =>
@@ -603,47 +603,41 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         )
         if (welcomeIds.length === 0) return
 
-        welcomeDismissInFlightRef.current = true
+        welcomePromotedRef.current = true
+        // The sketch now lives in the draft, so it must not be re-seeded on the
+        // next visit.
         localStorage.setItem(WELCOME_DISMISSED_KEY, '1')
 
-        const sweepStore = (): void => {
-            const two = twoJSInstanceRef.current
-            const next = { ...stateRefForComponentStore.current }
-            welcomeIds.forEach((id) => {
-                delete next[id]
-                // The exit tween only fades opacity to 0; the node stays in the
-                // Two.js scene and remains hit-testable. Remove it outright so a
-                // dismissed welcome element (e.g. the "Drag me" rect) can't be
-                // clicked after the user draws. The element's React wrapper never
-                // unmounts, so nothing else removes it from the scene.
-                if (two) {
-                    const el = two.scene.children.find(
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (child: any) => child?.elementData?.id === id
-                    )
-                    if (el) two.remove(el)
-                }
-                window.dispatchEvent(
-                    new CustomEvent('elementRemoved', { detail: { id } })
-                )
-            })
-            stateRefForComponentStore.current = next
-            setComponentStore(next)
-            if (two) {
-                try {
-                    two.update()
-                } catch {
-                    // See CLAUDE.md "Two.js scene.subtractions Pitfall": if the
-                    // render throws, the bad subtraction stays queued and every
-                    // later two.update() repeats the crash. Clear it so the
-                    // canvas keeps rendering.
-                    two.scene.subtractions.length = 0
-                    two.scene._flagSubtractions = false
-                }
+        const two = twoJSInstanceRef.current
+        const next = { ...stateRefForComponentStore.current }
+        welcomeIds.forEach((id) => {
+            const comp = next[id]
+            if (!comp) return
+            // Drop only the welcome tags; everything else (opacity, text
+            // content, etc.) carries over so the element renders unchanged but
+            // isWelcomeComponent() no longer matches it.
+            const {
+                isWelcome: _isWelcome,
+                welcomeRole: _welcomeRole,
+                ...restMeta
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } = (comp.metadata ?? {}) as any
+            next[id] = { ...comp, metadata: restMeta }
+            // Keep the live Two.js node's bookkeeping in sync in case anything
+            // reads the welcome flag off elementData.
+            const el = two?.scene.children.find(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (child: any) => child?.elementData?.id === id
+            )
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const meta = (el as any)?.elementData?.metadata
+            if (meta) {
+                delete meta.isWelcome
+                delete meta.welcomeRole
             }
-        }
-
-        playWelcomeSketchExit(twoJSInstanceRef.current, welcomeIds, sweepStore)
+        })
+        stateRefForComponentStore.current = next
+        setComponentStore(next)
     }
 
     // Records ADD action, updates store and syncs to DB
@@ -686,11 +680,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             safeInfo.position = maxPos + 1
         }
 
-        // User's first real element dismisses the onboarding sketch. Welcome
-        // elements are seeded via setComponentStore directly (never through
-        // this path), so any add here is by definition "real" user content.
+        // User's first real element promotes the onboarding sketch into real,
+        // persisted content (it stays on the canvas rather than vanishing).
+        // Welcome elements are seeded via setComponentStore directly (never
+        // through this path), so any add here is by definition "real" content.
         if (!isWelcomeComponent(safeInfo as ComponentRecord)) {
-            dismissWelcomeSketch()
+            promoteWelcomeSketch()
         }
 
         // Trigger background board creation on first interaction
@@ -842,6 +837,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         skipHistory: boolean = false,
         syncDefaults: boolean = false
     ) => {
+        // Changing a property of a welcome element counts as a first real
+        // interaction: promote the sketch into persisted content and spin up the
+        // background board, same as the shapes toolbar. Both are one-shot.
+        promoteWelcomeSketch()
+        ensureBackgroundBoard()
+
         const userId = localStorage.getItem('userId')
 
         if (!skipHistory) {
@@ -898,6 +899,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         x: number,
         y: number
     ) => {
+        // Dragging a welcome element counts as a first real interaction: promote
+        // the sketch into persisted content and spin up the background board,
+        // same as drawing via the shapes toolbar. Both are one-shot/idempotent.
+        promoteWelcomeSketch()
+        ensureBackgroundBoard()
+
         const userId = localStorage.getItem('userId')
 
         recordToHistoryLog({
