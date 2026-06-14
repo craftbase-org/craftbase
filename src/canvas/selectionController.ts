@@ -61,7 +61,10 @@ function textBlockLocalSize(group: ShapeLike): {
     const size = nodes[0]?.size || 36
     let maxW = 0
     nodes.forEach((nd) => {
-        maxW = Math.max(maxW, measureTextWidth(nd?.value || '', textNodeFontSpec(nd)))
+        maxW = Math.max(
+            maxW,
+            measureTextWidth(nd?.value || '', textNodeFontSpec(nd))
+        )
     })
     return {
         width: Math.max(maxW, 20),
@@ -130,6 +133,11 @@ const GLOW_PERIOD_MS = 1100
 // Amber palette for the glow.
 const GLOW_RING_COLOR = '#E0A22B'
 const GLOW_CORE_COLOR = '#F2C150'
+
+// Selection box + resize-handle stroke. Theme `ink` (#1A1612) — the warm
+// near-black primary ink, for strong contrast against the parchment `canvas`
+// (#F5F0E8). The muted `accent.dark` gold used previously blended into the bg.
+const SELECTION_STROKE = '#1A1612'
 
 interface ToolbarState {
     element: Record<string, ShapeLike>
@@ -324,14 +332,14 @@ export default class SelectionController {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const box = new (Two as any).Rectangle(0, 0, 0, 0)
         box.noFill()
-        box.stroke = '#C4901A'
+        box.stroke = SELECTION_STROKE
         box.linewidth = 1.5
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const endpoints = new (Two as any).Points(box.vertices)
         endpoints.size = 10
         endpoints.fill = '#FFFCF5'
-        endpoints.stroke = '#C4901A'
+        endpoints.stroke = SELECTION_STROKE
         endpoints.linewidth = 1.5
 
         this.portPoints = [
@@ -1355,10 +1363,7 @@ export default class SelectionController {
             startSurface.x - center.x,
             startSurface.y - center.y
         )
-        const curDist = Math.hypot(
-            surface.x - center.x,
-            surface.y - center.y
-        )
+        const curDist = Math.hypot(surface.x - center.x, surface.y - center.y)
         const factor = curDist / Math.max(startDist, 1)
         const base = initialFontSize ?? 36
         const newSize = Math.round(Math.min(Math.max(base * factor, 8), 300))
