@@ -9,6 +9,7 @@ import { useBoardContext } from '../../views/Board/boardContext'
 import getEditComponents from '../utils/editWrapper'
 import { elementOnBlurHandler } from '../../utils/misc'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../../constants/misc'
+import { layoutStandaloneText } from '../../utils/canvasUtils'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -441,6 +442,19 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                 coreObject.translation.y = item.y
                 if (item.metadata?.opacity !== undefined) {
                     coreObject.opacity = item.metadata.opacity
+                }
+
+                // Standalone text: the factory makes ONE Two.Text from the raw
+                // content, but SVG collapses `\n` to a single line. Re-lay it out
+                // as the stacked multiline block (same as the newText component)
+                // so a grouped/duplicated text keeps its line breaks.
+                if (item.componentType === 'newText') {
+                    layoutStandaloneText(
+                        two,
+                        coreObject,
+                        item.metadata?.content ?? '',
+                        item.metadata?.fontSize || 36
+                    )
                 }
 
                 const meta = item.metadata || {}

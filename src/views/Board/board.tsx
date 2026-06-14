@@ -1184,14 +1184,22 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
             sel?.group?.data?.elementData?.metadata ?? {}
+        const updatedMetadata = {
+            ...existingMetadata,
+            fontSize: textSize,
+            // Reconstruct the raw multiline string from every line node,
+            // not just line 1 — otherwise a reload would drop lines 2..N.
+            content: nodes.map((node) => node.value).join('\n'),
+        }
+        // Keep the in-place elementData.metadata current too. Other property
+        // handlers (e.g. opacity in applyProperty) read it as the merge base; if
+        // left stale they'd write the OLD fontSize back to the store and the
+        // resize would silently revert on reload.
+        if (sel?.group?.data?.elementData) {
+            sel.group.data.elementData.metadata = updatedMetadata
+        }
         updateComponentBulkPropertiesInLocalStore(componentId, {
-            metadata: {
-                ...existingMetadata,
-                fontSize: textSize,
-                // Reconstruct the raw multiline string from every line node,
-                // not just line 1 — otherwise a reload would drop lines 2..N.
-                content: nodes.map((node) => node.value).join('\n'),
-            },
+            metadata: updatedMetadata,
         })
         twoJSInstance?.update()
         syncOpenTextarea({ fontSize: textSize })
@@ -1286,14 +1294,20 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         const componentId = sel?.group?.data?.elementData?.id
         const existingMetadata =
             sel?.group?.data?.elementData?.metadata ?? {}
+        const updatedMetadata = {
+            ...existingMetadata,
+            textFontFamily: fontFamily,
+            // Reconstruct the raw multiline string from every line node,
+            // not just line 1 — otherwise a reload would drop lines 2..N.
+            content: nodes.map((node) => node.value).join('\n'),
+        }
+        // Keep in-place elementData.metadata current so later handlers (opacity,
+        // etc.) merge onto the new family instead of writing a stale one back.
+        if (sel?.group?.data?.elementData) {
+            sel.group.data.elementData.metadata = updatedMetadata
+        }
         updateComponentBulkPropertiesInLocalStore(componentId, {
-            metadata: {
-                ...existingMetadata,
-                textFontFamily: fontFamily,
-                // Reconstruct the raw multiline string from every line node,
-                // not just line 1 — otherwise a reload would drop lines 2..N.
-                content: nodes.map((node) => node.value).join('\n'),
-            },
+            metadata: updatedMetadata,
         })
         twoJSInstance?.update()
         syncOpenTextarea({ fontFamily })

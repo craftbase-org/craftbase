@@ -293,6 +293,112 @@ export function getShapeTextNodes(group: ShapeLike): ShapeLike[] {
 }
 
 /**
+ * Keep a transparent, full-block hit-area rectangle inside a STANDALONE text
+ * group, sized to the rendered multiline block (anchored left/middle at the
+ * group origin, matching the text layout).
+ *
+ * Why this exists: an SVG `<text>` only catches pointer events on the glyphs
+ * themselves. For multiline text rendered as stacked `<text>` nodes, the blank
+ * gaps between lines (and the padding around them) belong to no element, so a
+ * click there misses the group `<g>` entirely and `resolveShapeFromPath` reads
+ * it as "empty canvas" — the text can't be selected as a whole. A
+ * transparent-but-painted (`rgba(0,0,0,0)`) rect spanning the block restores a
+ * solid hit target across the whole block. (This is what the old per-element
+ * `ObjectSelector.area` path used to provide before selection moved to the
+ * generic SelectionController.)
+ *
+ * Idempotent: creates the rect on first call (tagged via `_isTextHitArea`),
+ * resizes it on later calls. Added AFTER line 1 so `group.children[0]` stays
+ * the text node the SelectionController attaches to, and excluded from
+ * `getShapeTextNodes` (no string `value`).
+ */
+export function syncTextHitRect(two: TwoLike, group: ShapeLike): void {
+    const nodes = getShapeTextNodes(group)
+    if (!nodes.length) return
+    const size = nodes[0]?.size || 36
+    const lineH = lineHeightFor(size)
+    let maxW = 20
+    nodes.forEach((nd) => {
+        const w = measureTextWidth(nd?.value || '', {
+            family: nd?.family || DEFAULT_TEXT_FONT_FAMILY,
+            size: nd?.size || size,
+            weight: nd?.weight,
+        })
+        maxW = Math.max(maxW, w)
+    })
+    const blockH = Math.max(nodes.length * lineH, size)
+
+    let rect = Array.from(group.children as ArrayLike<ShapeLike>).find(
+        (c: ShapeLike) => c?._isTextHitArea
+    )
+    if (!rect) {
+        rect = two.makeRectangle(0, 0, maxW, blockH)
+        rect.fill = 'rgba(0,0,0,0)'
+        rect.noStroke()
+        rect._isTextHitArea = true
+        group.add(rect)
+    }
+    rect.width = maxW
+    rect.height = blockH
+    // Text is left-aligned at the group origin (extends right) and vertically
+    // centered on it, so center the rect at (width/2, 0).
+    rect.translation.set(maxW / 2, 0)
+}
+
+/**
+ * Lay out STANDALONE text (the `newText` kind) as a vertical stack of one
+ * Two.Text per hard-newline line, centered on the group origin. An SVG <text>
+ * collapses `\n`, so multiline standalone text must be rendered as stacked
+ * nodes — newText's component does this internally, but the same layout is
+ * needed whenever the text is re-materialised outside that component (e.g. as a
+ * cloned member of a group selection). Reuses any existing line nodes (line 1 is
+ * the factory's text node), adds nodes for new lines, removes surplus ones.
+ *
+ * Keep in sync with newText.tsx's `syncMultilineLayout`.
+ */
+export function layoutStandaloneText(
+    two: TwoLike,
+    group: ShapeLike,
+    content: string,
+    size: number
+): void {
+    const nodes = getShapeTextNodes(group)
+    const first = nodes[0]
+    if (!first) return
+    const lines = (content || '').split('\n')
+    const n = lines.length
+    const lineH = lineHeightFor(size)
+
+    first.value = lines[0] ?? ''
+    first.size = size
+    first.leading = size
+    first.translation.set(0, (0 - (n - 1) / 2) * lineH)
+
+    const extra = nodes.slice(1)
+    for (let i = 1; i < n; i++) {
+        let node = extra[i - 1]
+        if (!node) {
+            node = two.makeText(lines[i] ?? '', 0, 0)
+            group.add(node)
+        }
+        node.value = lines[i] ?? ''
+        node.fill = first.fill
+        node.size = size
+        node.leading = size
+        node.family = first.family
+        node.alignment = first.alignment
+        node.baseline = first.baseline
+        node.opacity = first.opacity
+        node.translation.set(0, (i - (n - 1) / 2) * lineH)
+    }
+
+    if (extra.length > n - 1) {
+        const surplus = extra.slice(n - 1)
+        if (surplus.length) group.remove(surplus)
+    }
+}
+
+/**
  * Render `lines` as a vertical stack of Two.Text nodes inside `group`'s text
  * layer, creating the layer on first use. Existing line nodes are reused
  * (value/position/style updated) and only the surplus is removed — we never

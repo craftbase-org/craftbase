@@ -109,15 +109,15 @@ export const essentialShades: string[] = [
     '#0065FF',
 ]
 
-// Fill picker only — transparent ("no fill") first, replacing the green that
-// the shared essentialShades keeps for stroke/text.
+// Fill picker only — transparent ("no fill") and white kept, followed by light
+// pastel shades suited to fills (vs. the saturated stroke/text essentialShades).
 export const fillEssentialShades: string[] = [
     TRANSPARENT_FILL,
     '#FFFFFF',
-    '#000000',
-    '#FF5630',
-    '#FFAB00',
-    '#0065FF',
+    '#FFBDAD',
+    '#FFF0B3',
+    '#ABF5D1',
+    '#B3D4FF',
 ]
 
 export interface DrawerElement {

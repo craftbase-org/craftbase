@@ -162,7 +162,7 @@ const MenuDrawer = (): ReactElement => {
                 </div>
 
                 <div
-                    className="absolute left-0 transition-all ease-in duration-200"
+                    className="absolute left-0"
                     style={{
                         top: '48px',
                         opacity: showMenu ? 1 : 0,
@@ -170,15 +170,7 @@ const MenuDrawer = (): ReactElement => {
                         pointerEvents: showMenu ? 'auto' : 'none',
                     }}
                 >
-                    <div className="bg-card-bg border border-border-panel rounded-lg shadow-lg py-1 w-[188px] max-w-[calc(100vw-20px)]">
-                        <div className="px-3 pt-1 pb-1.5">
-                            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-                                More
-                            </span>
-                        </div>
-
-                        <div className="h-px bg-border-panel mx-2 mb-1" />
-
+                    <div className="bg-card-bg border border-border-panel rounded-lg shadow-lg py-1 w-max min-w-[188px] max-w-[calc(100vw-20px)]">
                         <a
                             href="https://github.com/craftbase-org/craftbase/releases"
                             target="_blank"
@@ -212,6 +204,31 @@ const MenuDrawer = (): ReactElement => {
                             </div>
                             <ExternalIcon />
                         </a>
+
+                        <Link
+                            to={routes.embeddable}
+                            className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                hover:bg-accent/30 rounded cursor-pointer no-underline
+                                transition-colors ease-in-out duration-150"
+                            onClick={(): void => setShowMenu(false)}
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 14 14"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    d="M5 9.5L2.5 7 5 4.5M9 4.5L11.5 7 9 9.5"
+                                    stroke="#8C7E6A"
+                                    strokeWidth="1.1"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                            <span>Embeddable whiteboard</span>
+                        </Link>
 
                         <Link
                             to={routes.support}

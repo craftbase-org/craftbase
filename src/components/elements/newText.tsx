@@ -1,20 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react'
 import type { ReactElement } from 'react'
-import interact from 'interactjs'
 import { useImmer } from 'use-immer'
 import { useBoardContext } from '../../views/Board/boardContext'
 
-import { elementOnBlurHandler } from '../../utils/misc'
-import getEditComponents from '../utils/editWrapper'
 import NewTextFactory from '../../factory/newText'
-import {
-    TEXT_SIZES_OBJECT,
-    MOBILE_TEXT_SIZES_OBJECT,
-} from '../../utils/constants'
+import { syncTextHitRect } from '../../utils/canvasUtils'
 import { lineHeightFor } from '../../utils/textLayout'
 import { htmlToBulletText } from '../../utils/htmlToBulletText'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../../constants/misc'
-import { useMediaQueryUtils } from '../../constants/exportHooks'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -23,13 +16,9 @@ type ShapeLike = any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type InternalState = Record<string, any>
 
-interface ResizeState {
-    centerX: number
-    centerY: number
-    startDist: number
-    startSize: number
-}
-
+// Selection, drag-follow, font-resize and deletion are owned by the generic
+// SelectionController (TEXT_ADAPTER with resizeMode:'font'). This component only
+// renders the text and owns the inline text-edit overlay (dblclick → textarea).
 function NewText(props: ElementProps): ReactElement {
     const {
         updateComponentBulkPropertiesInLocalStore,
@@ -39,11 +28,7 @@ function NewText(props: ElementProps): ReactElement {
         isArrowSelected,
     } = useBoardContext()
 
-    const { isMobile } = useMediaQueryUtils()
-    const [showToolbar, toggleToolbar] = useState(false)
-    const [, setShowMobilePanel] = useState(false)
     const [internalState, setInternalState] = useImmer<InternalState>({})
-    const mobileTriggerRef = useRef<HTMLElement | null>(null)
     const [textValue, setTextValue] = useState<string>(
         props?.metadata?.content || ''
     )
@@ -57,42 +42,9 @@ function NewText(props: ElementProps): ReactElement {
 
     const two = props.twoJSInstance
 
-    let selectorInstance: ShapeLike = null
-    let groupObject: ShapeLike = null
-
-    function onBlurHandler(e: FocusEvent): void {
-        elementOnBlurHandler(e, selectorInstance, two)
-        if (groupObject) {
-            document
-                .getElementById(`${groupObject.id}`)
-                ?.removeEventListener('keydown', handleKeyDown)
-        }
-    }
-
-    function handleKeyDown(e: KeyboardEvent): void {
-        if (e.keyCode === 8 || e.keyCode === 46) {
-            if (groupObject) {
-                document.getElementById(`${groupObject.id}`)?.blur()
-                props.handleDeleteComponent?.(groupObject)
-                two.remove([groupObject])
-            }
-            two.update()
-        }
-    }
-
-    function onFocusHandler(): void {
-        if (!groupObject) return
-        const el = document.getElementById(`${groupObject.id}`)
-        if (el) {
-            el.style.outline = '0'
-            el.addEventListener('keydown', handleKeyDown)
-        }
-    }
-
     useEffect(() => {
         const prevX = props.x
         const prevY = props.y
-        let handleGlobalMousedown: ((e: MouseEvent) => void) | null = null
 
         const elementFactory = new NewTextFactory(two, prevX, prevY, props)
         const { group, twoText } = elementFactory.createElement()
@@ -100,7 +52,6 @@ function NewText(props: ElementProps): ReactElement {
         twoText.opacity = props.metadata?.opacity ?? 1
 
         twoTextRef.current = twoText
-        groupObject = group
 
         // Multiline rendering for standalone text: `twoText` holds line 1;
         // satellite Two.Text nodes hold lines 2..N. We honor only hard
@@ -138,6 +89,9 @@ function NewText(props: ElementProps): ReactElement {
                 const surplus = extra.splice(Math.max(n - 1, 0))
                 if (surplus.length > 0) group.remove(surplus)
             }
+            // Keep the transparent hit area covering the whole block so clicks
+            // in the gaps between lines still select the text (see canvasUtils).
+            syncTextHitRect(two, group)
             two.update()
         }
         syncMultilineRef.current = syncMultilineLayout
@@ -182,119 +136,7 @@ function NewText(props: ElementProps): ReactElement {
 
         // Render any persisted multiline content as the stacked block.
         syncMultilineLayout()
-
-        const { selector } = getEditComponents(two, group, 4)
-        selectorInstance = selector
         two.update()
-
-        // Resize via corner handles (proportional font-size scaling).
-        const cornerCircles: ShapeLike[] = [
-            selectorInstance.circle1,
-            selectorInstance.circle2,
-            selectorInstance.circle3,
-            selectorInstance.circle4,
-        ].filter(Boolean)
-
-        const resizeCursors = [
-            'nwse-resize', // circle1 = TL
-            'nesw-resize', // circle2 = TR
-            'nwse-resize', // circle3 = BR
-            'nesw-resize', // circle4 = BL
-        ]
-
-        let resizeState: ResizeState | null = null
-
-        const onResizeMouseMove = (e: MouseEvent): void => {
-            if (!resizeState) return
-            const { centerX, centerY, startDist, startSize } = resizeState
-            const currentDist = Math.sqrt(
-                (e.clientX - centerX) ** 2 + (e.clientY - centerY) ** 2
-            )
-            const scale = currentDist / Math.max(startDist, 1)
-            const newSize = Math.round(
-                Math.min(Math.max(startSize * scale, 8), 300)
-            )
-
-            twoText.size = newSize
-            twoText.leading = newSize
-            extraLineNodesRef.current.forEach((nd) => {
-                nd.size = newSize
-                nd.leading = newSize
-            })
-            // Re-stack for the new line height, then box the whole block.
-            syncMultilineLayout()
-
-            const bRect = blockRect()
-            selectorInstance.update(
-                bRect.left - 4,
-                bRect.right + 4,
-                bRect.top - 4,
-                bRect.bottom + 4
-            )
-
-            setTextSize(newSize)
-        }
-
-        const onResizeMouseUp = (): void => {
-            if (!resizeState) return
-            const finalSize = twoText.size
-            resizeState = null
-
-            window.removeEventListener('mousemove', onResizeMouseMove)
-            window.removeEventListener('mouseup', onResizeMouseUp)
-
-            const bRect = blockRect()
-            const newWidth = Math.round(bRect.width || 60)
-            const newHeight = Math.round(bRect.height || twoText.size)
-
-            const resizeMetadata = {
-                ...props.metadata,
-                fontSize: finalSize,
-                content: textValueRef.current,
-            }
-            updateComponentBulkPropertiesInLocalStore(props.id, {
-                width: newWidth,
-                height: newHeight,
-                metadata: resizeMetadata,
-            })
-            if (group.elementData) {
-                group.elementData.metadata = resizeMetadata
-            }
-        }
-
-        cornerCircles.forEach((circle, index) => {
-            const circleElem = circle._renderer?.elem as HTMLElement | undefined
-            if (!circleElem) return
-
-            circleElem.style.cursor = resizeCursors[index] ?? 'pointer'
-            circleElem.style.pointerEvents = 'all'
-
-            circleElem.addEventListener('mousedown', (e: MouseEvent) => {
-                if (selectorInstance.areaGroup.opacity === 0) return
-
-                e.stopPropagation()
-                e.preventDefault()
-
-                const textDomElem = twoText._renderer.elem
-                const textScreenRect = textDomElem.getBoundingClientRect()
-                const centerX = textScreenRect.left + textScreenRect.width / 2
-                const centerY = textScreenRect.top + textScreenRect.height / 2
-
-                const startDist = Math.sqrt(
-                    (e.clientX - centerX) ** 2 + (e.clientY - centerY) ** 2
-                )
-
-                resizeState = {
-                    centerX,
-                    centerY,
-                    startDist,
-                    startSize: twoText.size || 16,
-                }
-
-                window.addEventListener('mousemove', onResizeMouseMove)
-                window.addEventListener('mouseup', onResizeMouseUp)
-            })
-        })
 
         const groupEl = document.getElementById(group.id)
         if (groupEl) {
@@ -311,23 +153,94 @@ function NewText(props: ElementProps): ReactElement {
         })
 
         const getGroupElementFromDOM = document.getElementById(`${group.id}`)
-        getGroupElementFromDOM?.addEventListener('focus', onFocusHandler)
-        getGroupElementFromDOM?.addEventListener('blur', onBlurHandler)
 
         const showTextInput = (): void => {
+            // A dblclick bubbles from the text node to the group, firing BOTH
+            // dblclick listeners below. Without this guard the second call reads
+            // getBoundingClientRect on the now-hidden group → (0,0) and drops a
+            // duplicate editor in the top-left corner. One editor at a time.
+            if (document.querySelector('.temp-input-area')) return
+
             const groupDomElem = document.getElementById(`${group.id}`)
             if (!groupDomElem) return
 
-            const textDomElem = twoText._renderer.elem as HTMLElement
-            const screenRect = textDomElem.getBoundingClientRect()
+            // Live block screen rect = union of every line node's DOM rect.
+            // Re-read each frame so the editor follows the text as the canvas
+            // pans/zooms. The block is vertically centered on the group origin
+            // (line 1 sits at its TOP), so unioning ALL lines — not just line 1 —
+            // is what keeps multi-line text centered in the editor/box.
+            const blockScreenRect = (): {
+                left: number
+                top: number
+                width: number
+                height: number
+            } => {
+                const lineNodes = [
+                    twoTextRef.current,
+                    ...extraLineNodesRef.current,
+                ].filter(Boolean)
+                let L = Infinity
+                let R = -Infinity
+                let T = Infinity
+                let Bm = -Infinity
+                lineNodes.forEach((nd: ShapeLike) => {
+                    const el = nd?._renderer?.elem as HTMLElement | undefined
+                    if (!el) return
+                    const r = el.getBoundingClientRect()
+                    L = Math.min(L, r.left)
+                    R = Math.max(R, r.right)
+                    T = Math.min(T, r.top)
+                    Bm = Math.max(Bm, r.bottom)
+                })
+                if (L === Infinity) {
+                    const r = (
+                        twoText._renderer.elem as HTMLElement
+                    ).getBoundingClientRect()
+                    return {
+                        left: r.left,
+                        top: r.top,
+                        width: r.width,
+                        height: r.height,
+                    }
+                }
+                return { left: L, top: T, width: R - L, height: Bm - T }
+            }
 
+            // Measure the text's real screen rect WHILE it's still visible, then
+            // hide it with display:none. (We must NOT use visibility:hidden:
+            // Two.js drives the SVG visibility/display from its own `.visible`
+            // flag and overwrites a CSS visibility we set on the next two.update,
+            // re-showing the text on top of the textarea — double text. opacity:0
+            // is no good either: the renderer skips updating opacity-0 nodes, so
+            // typed changes wouldn't track.) With display:none we can't read the
+            // hidden text's rect, so we map its FIXED surface anchor → screen via
+            // the live camera instead.
+            const startRect = blockScreenRect()
             groupDomElem.style.display = 'none'
 
-            const fontSize = twoText.size || 36
-            const sceneScale = two?.scene?.scale || 1
-            const cssFontSize = fontSize * sceneScale
-            const lineH = Math.ceil(cssFontSize * 1.6)
-            const vertPad = Math.ceil((lineH - cssFontSize) / 2) + 4
+            const scale0 = two?.scene?.scale || 1
+            // The anchor is invariant during edit: text is left-aligned at the
+            // group origin x and vertically centered on the group origin y.
+            const surfaceLeft = group.translation.x
+            const surfaceCenterY = group.translation.y
+            const surfaceWidth = startRect.width / scale0
+            // Calibrate the constant part (canvas page offset + glyph bearing)
+            // from the real start position so there's no jump entering edit.
+            const calibX =
+                startRect.left - 8 - two.scene.translation.x - surfaceLeft * scale0
+            const calibY =
+                startRect.top +
+                startRect.height / 2 -
+                two.scene.translation.y -
+                surfaceCenterY * scale0
+
+            // Camera-dependent geometry — recomputed each two.update (pan/zoom).
+            let cssFontSize = (twoText.size || 36) * scale0
+            let lineH = Math.ceil(cssFontSize * 1.6)
+            let vertPad = Math.ceil((lineH - cssFontSize) / 2) + 4
+            let leftAnchor = 0
+            let centerY = 0
+            let minContentWidth = 0
 
             const input = document.createElement('textarea')
             const randomId = Math.floor(Math.random() * 90 + 10)
@@ -338,6 +251,12 @@ function NewText(props: ElementProps): ReactElement {
             input.style.background = 'transparent'
             input.style.padding = `${vertPad}px 8px`
             input.style.color = twoText.fill || '#3A342C'
+            // Match the element's current opacity so the editor doesn't flash to
+            // full opacity on entering edit mode. The opacity handler stores it
+            // on metadata (and applies it at group level), so read that.
+            input.style.opacity = String(
+                group.elementData?.metadata?.opacity ?? group.opacity ?? 1
+            )
             input.style.fontSize = `${cssFontSize}px`
             input.style.fontFamily = twoText.family || DEFAULT_TEXT_FONT_FAMILY
             input.style.fontWeight = twoText.weight || 'normal'
@@ -351,9 +270,6 @@ function NewText(props: ElementProps): ReactElement {
             input.style.whiteSpace = 'pre'
             input.style.boxSizing = 'border-box'
             input.className = 'temp-input-area'
-
-            const centerY = screenRect.top + screenRect.height / 2
-            const leftAnchor = screenRect.left - 8
 
             document.getElementById('main-two-root')?.append(input)
 
@@ -370,6 +286,29 @@ function NewText(props: ElementProps): ReactElement {
             measureSpan.style.padding = '0'
             document.body.appendChild(measureSpan)
 
+            // Pull font + anchor from the LIVE camera + text position. Called on
+            // every two.update so the editor pans/zooms with the text.
+            const recomputeGeometry = (): void => {
+                const scale = two?.scene?.scale || 1
+                cssFontSize = (twoText.size || 36) * scale
+                lineH = Math.ceil(cssFontSize * 1.6)
+                vertPad = Math.ceil((lineH - cssFontSize) / 2) + 4
+                // Map the fixed surface anchor → current screen via the live
+                // camera. No getBoundingClientRect (the text is display:none).
+                leftAnchor =
+                    calibX + two.scene.translation.x + surfaceLeft * scale
+                centerY =
+                    calibY + two.scene.translation.y + surfaceCenterY * scale
+                minContentWidth = surfaceWidth * scale
+                input.style.fontSize = `${cssFontSize}px`
+                input.style.lineHeight = `${lineH}px`
+                input.style.padding = `${vertPad}px 8px`
+                measureSpan.style.fontSize = `${cssFontSize}px`
+                measureSpan.style.lineHeight = `${lineH}px`
+            }
+
+            // Pure DOM: size + place the textarea from the current geometry.
+            // No two.update here (so it's safe to call from the update handler).
             const autoSizeAndCenter = (): void => {
                 const val = input.value || 'M'
                 measureSpan.textContent = val
@@ -379,7 +318,7 @@ function NewText(props: ElementProps): ReactElement {
 
                 const contentWidth = Math.max(
                     measuredW + 40,
-                    screenRect.width + 40,
+                    minContentWidth + 40,
                     80
                 )
                 const contentHeight = Math.max(
@@ -389,14 +328,29 @@ function NewText(props: ElementProps): ReactElement {
 
                 input.style.width = `${contentWidth}px`
                 input.style.height = `${contentHeight}px`
-
                 input.style.left = `${leftAnchor}px`
                 input.style.top = `${centerY - contentHeight / 2}px`
             }
 
-            autoSizeAndCenter()
+            // Re-glue the editor to the text after any render (pan/zoom/content).
+            const repositionEditor = (): void => {
+                recomputeGeometry()
+                autoSizeAndCenter()
+            }
 
-            input.addEventListener('input', autoSizeAndCenter)
+            // On typing: push the value into the hidden Two.js text nodes so the
+            // SelectionController's box (and our live block rect) reflect it. The
+            // syncMultilineLayout's two.update fires 'update' → repositionEditor.
+            const onTextInput = (): void => {
+                textValueRef.current = input.value
+                syncMultilineLayout()
+                repositionEditor()
+            }
+
+            repositionEditor()
+            two.bind('update', repositionEditor)
+
+            input.addEventListener('input', onTextInput)
 
             // Pasting a bulleted list from a rich-text source (Docs, Notion,
             // Notes) into this plain textarea would otherwise drop the bullet
@@ -419,20 +373,8 @@ function NewText(props: ElementProps): ReactElement {
                 const caret = start + converted.length
                 input.selectionStart = caret
                 input.selectionEnd = caret
-                autoSizeAndCenter()
+                onTextInput()
             })
-
-            input.onfocus = function (): void {
-                const bRect = blockRect()
-                selectorInstance.update(
-                    bRect.left - 4,
-                    bRect.right + 4,
-                    bRect.top - 4,
-                    bRect.bottom + 4
-                )
-                selectorInstance.show()
-                two.update()
-            }
 
             input.focus()
 
@@ -454,7 +396,8 @@ function NewText(props: ElementProps): ReactElement {
             })
 
             input.addEventListener('blur', () => {
-                input.removeEventListener('input', autoSizeAndCenter)
+                two.unbind('update', repositionEditor)
+                input.removeEventListener('input', onTextInput)
                 if (measureSpan.parentNode) {
                     measureSpan.parentNode.removeChild(measureSpan)
                 }
@@ -472,17 +415,19 @@ function NewText(props: ElementProps): ReactElement {
                 const newWidth = Math.round(bRect.width || 60)
                 const newHeight = Math.round(bRect.height || twoText.size)
 
-                selectorInstance.update(
-                    bRect.left - 4,
-                    bRect.right + 4,
-                    bRect.top - 4,
-                    bRect.bottom + 4
-                )
-                selectorInstance.hide()
+                // two.update() re-runs the SelectionController's 'update' bind,
+                // which re-syncs its box to the (possibly resized) text block.
                 two.update()
 
+                // Merge onto the LIVE metadata (kept current by the toolbar's
+                // size/font/opacity handlers + controller resize), not the
+                // props snapshot frozen at mount — otherwise editing the text
+                // after a size/opacity change would write those stale values
+                // back and revert them on reload.
+                const baseMetadata =
+                    group.elementData?.metadata ?? props.metadata ?? {}
                 const updatedMetadata = {
-                    ...props.metadata,
+                    ...baseMetadata,
                     content: textValueRef.current,
                 }
                 updateComponentBulkPropertiesInLocalStore(props.id, {
@@ -514,50 +459,11 @@ function NewText(props: ElementProps): ReactElement {
         }
         window.addEventListener('triggerTextInput', handleTriggerTextInput)
 
-        interact(`#${group.id}`).on('click', () => {
-            const bRect = blockRect()
-            selector.update(
-                bRect.left - 4,
-                bRect.right + 4,
-                bRect.top - 4,
-                bRect.bottom + 4
-            )
-            two.update()
-            toggleToolbar(true)
-        })
-
-        handleGlobalMousedown = (e: MouseEvent): void => {
-            const path: EventTarget[] = e.composedPath
-                ? e.composedPath()
-                : []
-            const isOnGroup = path.some(
-                (el: EventTarget) => (el as HTMLElement)?.id === group.id
-            )
-            const isOnToolbar = path.some(
-                (el: EventTarget) =>
-                    (el as HTMLElement)?.id === 'floating-toolbar'
-            )
-            const isOnMobileTrigger =
-                mobileTriggerRef.current &&
-                path.includes(mobileTriggerRef.current)
-            if (!isOnGroup && !isOnToolbar && !isOnMobileTrigger) {
-                selectorInstance.hide()
-                toggleToolbar(false)
-                two.update()
-            }
-        }
-        window.addEventListener('mousedown', handleGlobalMousedown)
-
         return (): void => {
             window.removeEventListener(
                 'triggerTextInput',
                 handleTriggerTextInput
             )
-            if (handleGlobalMousedown) {
-                window.removeEventListener('mousedown', handleGlobalMousedown)
-            }
-            window.removeEventListener('mousemove', onResizeMouseMove)
-            window.removeEventListener('mouseup', onResizeMouseUp)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -624,10 +530,6 @@ function NewText(props: ElementProps): ReactElement {
     }, [props.id, two])
 
     useEffect(() => {
-        if (!showToolbar) setShowMobilePanel(false)
-    }, [showToolbar])
-
-    useEffect(() => {
         const groupId = internalState?.group?.id
         const el = groupId ? document.getElementById(groupId) : null
         if (el) {
@@ -646,11 +548,6 @@ function NewText(props: ElementProps): ReactElement {
         isArrowSelected,
         internalState?.group?.id,
     ])
-
-    // TEXT_SIZES_OBJECT and MOBILE_TEXT_SIZES_OBJECT used by callbacks
-    // wired in via the toolbar; keep imports referenced via a no-op.
-    void TEXT_SIZES_OBJECT
-    void MOBILE_TEXT_SIZES_OBJECT
 
     return (
         <React.Fragment>
