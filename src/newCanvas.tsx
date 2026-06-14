@@ -3232,9 +3232,10 @@ function addZUI(
     }
 
     function mousewheel(e: WheelEvent) {
-        // Pan mode treats a plain wheel/scroll as zoom (no modifier needed);
-        // otherwise the wheel pans the surface and shift/meta zooms.
-        if (e.shiftKey === true || e.metaKey === true || isPanMode()) {
+        // Wheel/scroll zooms only with a modifier held — cmd (macOS), ctrl
+        // (Windows; also what trackpad pinch-zoom emits), or shift. A plain
+        // wheel/scroll always pans the surface, in pan mode and otherwise.
+        if (e.shiftKey === true || e.metaKey === true || e.ctrlKey === true) {
             let dy =
                 ((e as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY ||
                     -e.deltaY) / 1000

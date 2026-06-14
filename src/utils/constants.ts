@@ -133,7 +133,6 @@ export interface PrimaryElement {
     hasDrawer: boolean
     noAction: boolean
     drawerData: DrawerElement[]
-    mobileOnly?: boolean
 }
 
 export interface PrimarySection {
@@ -160,7 +159,6 @@ export const staticPrimaryElementData: PrimarySection[] = [
                 hasDrawer: false,
                 noAction: true,
                 drawerData: [],
-                mobileOnly: true,
             },
             {
                 elementName: 'shapes',

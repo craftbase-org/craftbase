@@ -102,17 +102,6 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
         const list = (
             isMobile ? allElementsRaw : flattenShapesForDesktop(allElementsRaw)
         )
-            .filter((el) => {
-                // Pan is normally mobile-only; surface it on desktop too when
-                // geo objects are enabled so the default tool is reachable.
-                if (el.mobileOnly) {
-                    return (
-                        isMobile ||
-                        (geoObjectsEnabled && el.elementName === 'pan')
-                    )
-                }
-                return true
-            })
             // Whiteboard shape tools are hidden in geo mode in favour of the
             // geo toolset (point/area/route/geoText).
             .filter(
