@@ -1,5 +1,11 @@
 import type { MutableRefObject } from 'react'
 import { strokeTypeToDashes, clearDashesOnTwoJSShape } from './misc'
+import {
+    applyShapeText,
+    layoutStandaloneText,
+    shapeTextStyleFromMeta,
+} from './canvasUtils'
+import { reflowTextForShape } from './shapeTextFit'
 
 // Bulk-apply a property to every child of the currently-focused group whose
 // element type accepts that property. Element types that don't accept the
@@ -112,13 +118,7 @@ const ACCEPTS: Record<GroupPropertyKey, Set<string>> = {
         'diamond',
         'circle',
     ]),
-    textSize: new Set([
-        'newText',
-        'geoText',
-        'rectangle',
-        'diamond',
-        'circle',
-    ]),
+    textSize: new Set(['newText', 'geoText', 'rectangle', 'diamond', 'circle']),
     textFontFamily: new Set([
         'newText',
         'geoText',
@@ -223,11 +223,6 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
         if (!acceptSet) return
 
         const batchEntries: HistoryBatchEntry[] = []
-        const rectsToGrow: Array<{
-            id: string
-            sceneEl: ShapeLike | undefined
-            coreObj: ShapeLike | null
-        }> = []
 
         const snapshotPrev = (
             id: string,
@@ -282,9 +277,7 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                 // this by targeting the shape leaf, not the group.)
                 const sceneTexts = findTextNodesInside(sceneEl)
                 const coreTexts = findTextNodesInside(coreObj)
-                const sceneTextValues = sceneTexts.map(
-                    (t) => t?.[propertyKey]
-                )
+                const sceneTextValues = sceneTexts.map((t) => t?.[propertyKey])
                 const coreTextValues = coreTexts.map((t) => t?.[propertyKey])
 
                 applyToTwoShape(sceneEl, propertyKey, value)
@@ -405,29 +398,13 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                 propertyKey === 'textSize' ||
                 propertyKey === 'textFontFamily'
             ) {
-                const sceneTexts = sceneEl
-                    ? findTextNodesInside(sceneEl)
-                    : []
-                const coreTexts = coreObj
-                    ? findTextNodesInside(coreObj)
-                    : []
-                if (
-                    (type === 'rectangle' ||
-                        type === 'diamond' ||
-                        type === 'circle') &&
-                    sceneTexts.length === 0 &&
-                    coreTexts.length === 0 &&
-                    !child?.metadata?.hasText
-                ) {
-                    return
-                }
+                const sceneTexts = sceneEl ? findTextNodesInside(sceneEl) : []
+                const coreTexts = coreObj ? findTextNodesInside(coreObj) : []
                 const metaKey =
                     propertyKey === 'textSize'
                         ? 'textFontSize'
                         : 'textFontFamily'
                 const twoKey = propertyKey === 'textSize' ? 'size' : 'family'
-                sceneTexts.forEach((t) => (t[twoKey] = value))
-                coreTexts.forEach((t) => (t[twoKey] = value))
                 const existingMeta =
                     sceneEl?.elementData?.metadata &&
                     !Array.isArray(sceneEl.elementData.metadata)
@@ -436,19 +413,150 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
                           ? child.metadata
                           : {}
                 const updatedMeta = { ...existingMeta, [metaKey]: value }
+
+                if (type === 'newText' || type === 'geoText') {
+                    // Standalone text has no container box to fit — just restyle
+                    // every line node. A size change also changes the per-line
+                    // vertical offset, so re-lay the stack out (matching how the
+                    // newText component re-spaces its lines) to keep them from
+                    // overlapping. Rebuild the content string from the live line
+                    // nodes rather than trusting `metadata.content` (which can be
+                    // absent) so the re-layout never collapses the text.
+                    sceneTexts.forEach((t) => (t[twoKey] = value))
+                    coreTexts.forEach((t) => (t[twoKey] = value))
+                    if (propertyKey === 'textSize') {
+                        const lineSource =
+                            coreTexts.length > 0 ? coreTexts : sceneTexts
+                        const content =
+                            lineSource.length > 0
+                                ? lineSource
+                                      .map((n) => n.value ?? '')
+                                      .join('\n')
+                                : (updatedMeta.content ?? '')
+                        if (sceneEl)
+                            layoutStandaloneText(
+                                twoJSInstance,
+                                sceneEl,
+                                content,
+                                value
+                            )
+                        if (coreObj)
+                            layoutStandaloneText(
+                                twoJSInstance,
+                                coreObj,
+                                content,
+                                value
+                            )
+                    }
+                    if (sceneEl?.elementData)
+                        sceneEl.elementData.metadata = updatedMeta
+                    child.metadata = updatedMeta
+                    recordChild(id, { metadata: updatedMeta })
+                    return
+                }
+
+                // rectangle / diamond / circle with embedded text.
+                if (
+                    sceneTexts.length === 0 &&
+                    coreTexts.length === 0 &&
+                    !child?.metadata?.hasText
+                ) {
+                    return
+                }
+
+                // Reflow the embedded text to the shape's CURRENT (fixed) width
+                // with the new size/family so it wraps inside the box instead of
+                // spilling out — never widen the box. Widening would break the
+                // group's relative horizontal spacing (shapes laid out side by
+                // side would overlap). Then grow ONLY the height to fit the
+                // reflowed block (`reflowTextForShape.requiredHeight`), which
+                // keeps every x-position untouched. This mirrors the single
+                // element resize/reflow path (canvasUtils.applyShapeText +
+                // shapeTextFit) instead of the old getBBox width-grow.
+                const storeRow = stateRefForComponentStore?.current?.[id]
+                const width =
+                    storeRow?.width ??
+                    child?.width ??
+                    sceneEl?.children?.[0]?.width ??
+                    coreObj?.children?.[0]?.width ??
+                    120
+                const currentH =
+                    storeRow?.height ??
+                    child?.height ??
+                    sceneEl?.children?.[0]?.height ??
+                    coreObj?.children?.[0]?.height ??
+                    0
+
+                if (sceneEl)
+                    applyShapeText(
+                        twoJSInstance,
+                        sceneEl,
+                        type,
+                        width,
+                        updatedMeta
+                    )
+                if (coreObj)
+                    applyShapeText(
+                        twoJSInstance,
+                        coreObj,
+                        type,
+                        width,
+                        updatedMeta
+                    )
+
+                const { font } = shapeTextStyleFromMeta(updatedMeta)
+                const { requiredHeight } = reflowTextForShape(
+                    type,
+                    width,
+                    updatedMeta.textContent ?? '',
+                    font
+                )
+                const newH = Math.max(currentH, requiredHeight)
+
+                const bulkObj: Partial<ComponentRow> = { metadata: updatedMeta }
+                if (newH > currentH) {
+                    const sceneRect = sceneEl?.children?.[0]
+                    const coreRect = coreObj?.children?.[0]
+                    if (sceneRect) sceneRect.height = newH
+                    if (coreRect) coreRect.height = newH
+
+                    // Anchor the TOP edge: the shape path + text layer are
+                    // centered on the group origin, so growing `height` alone
+                    // expands symmetrically and pushes the top edge upward
+                    // (moving the shape's visual y). Shift the group down by half
+                    // the height delta so the box only grows downward and the top
+                    // edge — the user's "y point" — stays put. The shape center
+                    // therefore moves down by the same half-delta.
+                    //
+                    // Two coordinate spaces are in play: the scene element's
+                    // translation + the store row are ABSOLUTE world y, while the
+                    // group child entry's x/y are RELATIVE to the group center
+                    // (see the group assembly in newCanvas — `item.x - xMid`).
+                    // Shift each in its own space so a later drag-commit
+                    // (commitGroupMove: `gy + child.y`) recomputes the same
+                    // absolute position.
+                    const dy = (newH - currentH) / 2
+                    const prevAbsY = sceneEl?.translation?.y ?? storeRow?.y ?? 0
+                    const newAbsY = prevAbsY + dy
+                    if (sceneEl?.translation) sceneEl.translation.y = newAbsY
+                    if (coreObj?.translation) coreObj.translation.y += dy
+
+                    if (sceneEl?.elementData) {
+                        sceneEl.elementData.height = newH
+                        sceneEl.elementData.y = newAbsY
+                    }
+                    child.height = newH
+                    if (typeof child.y === 'number') child.y += dy
+                    else child.y = (child.relativeY ?? 0) + dy
+                    if (typeof child.relativeY === 'number')
+                        child.relativeY += dy
+                    bulkObj.height = Math.round(newH)
+                    bulkObj.y = Math.round(newAbsY)
+                }
                 if (sceneEl?.elementData)
                     sceneEl.elementData.metadata = updatedMeta
                 child.metadata = updatedMeta
-                recordChild(id, { metadata: updatedMeta })
-
-                if (
-                    (type === 'rectangle' ||
-                        type === 'diamond' ||
-                        type === 'circle') &&
-                    (sceneTexts.length > 0 || coreTexts.length > 0)
-                ) {
-                    rectsToGrow.push({ id, sceneEl, coreObj })
-                }
+                recordChild(id, bulkObj)
                 return
             }
         })
@@ -458,88 +566,5 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
         }
 
         twoJSInstance?.update()
-
-        // Grow wrapping rectangles in a single RAF after Two.js has rendered
-        // the new text size/family.
-        function runGrowPass(): void {
-            const PAD = 20
-            const growEntries: HistoryBatchEntry[] = []
-            rectsToGrow.forEach(({ id, sceneEl, coreObj }) => {
-                const sceneTexts = sceneEl
-                    ? findTextNodesInside(sceneEl)
-                    : []
-                const coreTexts = coreObj
-                    ? findTextNodesInside(coreObj)
-                    : []
-                // Prefer coreTexts for measurement: the scene element's outer
-                // group is at opacity=0 while a group is focused, and Two.js's
-                // render path leaves sceneText's _flagSize unprocessed in that
-                // state — its DOM font-size attribute stays stale. coreText is
-                // on the visible group and gets rendered correctly. Union the
-                // line nodes' boxes so multiline text is fully enclosed.
-                const measureNodes =
-                    coreTexts.length > 0 ? coreTexts : sceneTexts
-                let bw = 0
-                let bh = 0
-                measureNodes.forEach((nd) => {
-                    const b = nd?._renderer?.elem?.getBBox?.()
-                    if (!b) return
-                    bw = Math.max(bw, b.width)
-                    bh += b.height
-                })
-                const bbox = { width: bw, height: bh }
-                if (bbox.width <= 0) return
-
-                const sceneRect = sceneEl?.children?.[0]
-                const coreRect = coreObj?.children?.[0]
-                const currentW = sceneRect?.width ?? coreRect?.width
-                const currentH = sceneRect?.height ?? coreRect?.height
-                if (!currentW || !currentH) return
-
-                const minW = bbox.width + PAD
-                const minH = bbox.height + PAD
-                const newW = Math.max(currentW, minW)
-                const newH = Math.max(currentH, minH)
-                if (newW === currentW && newH === currentH) return
-
-                if (sceneRect) {
-                    sceneRect.width = newW
-                    sceneRect.height = newH
-                }
-                if (coreRect) {
-                    coreRect.width = newW
-                    coreRect.height = newH
-                }
-                const roundedW = Math.round(newW)
-                const roundedH = Math.round(newH)
-                const prevW = stateRefForComponentStore?.current?.[id]?.width
-                const prevH = stateRefForComponentStore?.current?.[id]?.height
-                updateComponentBulkPropertiesInLocalStore(
-                    id,
-                    { width: roundedW, height: roundedH },
-                    true
-                )
-                growEntries.push({
-                    action: 'UPDATE_BULK',
-                    id,
-                    prevProps: { width: prevW, height: prevH },
-                    bulkObj: { width: roundedW, height: roundedH },
-                })
-            })
-            if (growEntries.length > 0) {
-                recordBatchToHistoryLog?.(growEntries)
-                twoJSInstance?.update()
-            }
-        }
-
-        if (rectsToGrow.length > 0) {
-            // Two RAFs: first lets Two.js commit the new font-size to the SVG;
-            // second lets the browser flush layout so getBBox reflects the new
-            // text dimensions instead of the pre-change cached value.
-            requestAnimationFrame(() => {
-                twoJSInstance?.update()
-                requestAnimationFrame(() => runGrowPass())
-            })
-        }
     }
 }
