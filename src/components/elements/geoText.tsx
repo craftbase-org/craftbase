@@ -12,6 +12,7 @@ import {
     MOBILE_TEXT_SIZES_OBJECT,
 } from '../../utils/constants'
 import { lineHeightFor } from '../../utils/textLayout'
+import { readOpacity } from '../../utils/canvasUtils'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
 import { computeCounterScale } from '../../utils/counterScale'
 import {
@@ -113,7 +114,7 @@ function GeoText(props: ElementProps): ReactElement {
         const elementFactory = new NewTextFactory(two, prevX, prevY, props)
         const { group, twoText } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        twoText.opacity = props.metadata?.opacity ?? 1
+        twoText.opacity = readOpacity(props)
 
         twoTextRef.current = twoText
         groupObject = group

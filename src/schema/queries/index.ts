@@ -70,6 +70,7 @@ export const GET_COMPONENTS_FOR_BOARD_QUERY: TypedDocumentNode<
             linewidth
             strokeType
             textColor
+            opacity
             position
         }
     }
@@ -100,6 +101,7 @@ export const GET_COMPONENT_INFO_QUERY: TypedDocumentNode<
             updatedBy
             iconStroke
             textColor
+            opacity
         }
     }
 `

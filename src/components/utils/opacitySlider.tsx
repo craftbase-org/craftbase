@@ -14,6 +14,11 @@ export interface OpacitySliderProps {
     handleOnChange: (values: number[]) => void
     handleOnDrag: (values: number[]) => void
     currentOpacity?: number
+    // True when a group selection's members have differing opacities. The
+    // slider shows a "Mixed" indicator (instead of a misleading single value)
+    // until the user drags — at which point dragging sets a uniform value
+    // across the whole group, same as any other group property edit.
+    isMixed?: boolean
 }
 
 const OpacitySlider = ({
@@ -21,8 +26,12 @@ const OpacitySlider = ({
     handleOnChange,
     handleOnDrag,
     currentOpacity,
+    isMixed = false,
 }: OpacitySliderProps): ReactElement => {
     const [values, setValues] = useState<number[]>([1])
+    // Cleared whenever the inputs change; set on first drag so the "Mixed"
+    // hint disappears as soon as the user starts choosing a value.
+    const [interacted, setInteracted] = useState(false)
     const rangerRef = useRef<HTMLDivElement | null>(null)
 
     const rangerInstance = useRanger({
@@ -33,18 +42,26 @@ const OpacitySlider = ({
         stepSize: 0.1,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onDrag: (instance: any) => {
+            setInteracted(true)
             setValues(instance.sortedValues)
             handleOnDrag(instance.sortedValues)
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onChange: (instance: any) => handleOnChange(instance.sortedValues),
+        onChange: (instance: any) => {
+            setInteracted(true)
+            handleOnChange(instance.sortedValues)
+        },
     })
 
     useEffect(() => {
-        const arr = currentOpacity ? [currentOpacity] : [0]
+        setInteracted(false)
+        // Mixed: rest the handle at the midpoint (neutral) since there's no
+        // single current value to show.
+        const arr = isMixed ? [0.5] : currentOpacity ? [currentOpacity] : [0]
         setValues(arr)
-    }, [currentOpacity])
+    }, [currentOpacity, isMixed])
 
+    const showMixed = isMixed && !interacted
     const firstValue = values[0] ?? 0
 
     return (
@@ -67,7 +84,9 @@ const OpacitySlider = ({
                             position: 'relative',
                             userSelect: 'none',
                             height: '4px',
-                            background: `linear-gradient(to right, #C4901A ${rangerInstance.getPercentageForValue(firstValue)}%, #ddd ${rangerInstance.getPercentageForValue(firstValue)}%)`,
+                            background: showMixed
+                                ? '#ddd'
+                                : `linear-gradient(to right, #C4901A ${rangerInstance.getPercentageForValue(firstValue)}%, #ddd ${rangerInstance.getPercentageForValue(firstValue)}%)`,
                             borderRadius: '2px',
                         }}
                     >
@@ -121,13 +140,16 @@ const OpacitySlider = ({
                                             whiteSpace: 'nowrap',
                                             pointerEvents: 'none',
                                             userSelect: 'none',
-                                            opacity:
-                                                value > 0.9 || value < 0.1
-                                                    ? 0
-                                                    : 1,
+                                            opacity: showMixed
+                                                ? 1
+                                                : value > 0.9 || value < 0.1
+                                                  ? 0
+                                                  : 1,
                                         }}
                                     >
-                                        {Math.round(value * 100)}
+                                        {showMixed
+                                            ? 'Mixed'
+                                            : Math.round(value * 100)}
                                     </span>
                                 </button>
                             )

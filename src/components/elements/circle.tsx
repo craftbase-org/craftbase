@@ -4,7 +4,7 @@ import { useBoardContext } from '../../views/Board/boardContext'
 
 import CircleFactory from '../../factory/circle'
 import { strokeTypeToDashes } from '../../utils/misc'
-import { applyShapeText } from '../../utils/canvasUtils'
+import { applyShapeText, readOpacity } from '../../utils/canvasUtils'
 import { componentTypes } from '../../constants/misc'
 
 // Element components receive a fluid prop bag composed of the ComponentRecord
@@ -34,7 +34,7 @@ function Circle(props: ElementProps): ReactElement {
         })
         const { group, circle } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        const opacityValue = props.metadata?.opacity ?? 1
+        const opacityValue = readOpacity(props)
 
         if (props.parentGroup) {
             const parentGroup = props.parentGroup

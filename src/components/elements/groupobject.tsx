@@ -2,14 +2,18 @@ import React, { useEffect, useState, useRef } from 'react'
 import type { ReactElement } from 'react'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const factoryModules: Record<string, () => Promise<any>> =
-    import.meta.glob('../../factory/*.ts')
+const factoryModules: Record<string, () => Promise<any>> = import.meta.glob(
+    '../../factory/*.ts'
+)
 import Two from 'two.js'
 import { useBoardContext } from '../../views/Board/boardContext'
 import getEditComponents from '../utils/editWrapper'
 import { elementOnBlurHandler } from '../../utils/misc'
-import { DEFAULT_TEXT_FONT_FAMILY } from '../../constants/misc'
-import { layoutStandaloneText } from '../../utils/canvasUtils'
+import {
+    applyShapeText,
+    layoutStandaloneText,
+    readOpacity,
+} from '../../utils/canvasUtils'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -103,9 +107,7 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
         two.scene.children.forEach((element: ShapeLike) => {
             if (!element.elementData) return
             if (!childrenIds.includes(element.elementData.id)) return
-            const elMeta = element.elementData.metadata
-            element.opacity =
-                elMeta && !Array.isArray(elMeta) ? (elMeta.opacity ?? 1) : 1
+            element.opacity = readOpacity(element.elementData)
         })
     }
 
@@ -242,12 +244,7 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                     foundOriginalCount++
                     // Reveal the (now position-synced) original: restore its own
                     // group-level opacity — it was hidden at 0 under the overlay.
-                    // metadata may be a pencil vertex array, so guard the read.
-                    const elMeta = element.elementData.metadata
-                    element.opacity =
-                        elMeta && !Array.isArray(elMeta)
-                            ? (elMeta.opacity ?? 1)
-                            : 1
+                    element.opacity = readOpacity(element.elementData)
                 }
             })
             two.update()
@@ -275,9 +272,7 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                         childMetadata = child.metadata.map(
                             (vert: ShapeLike, index: number) => {
                                 const lwProp =
-                                    vert.lw !== undefined
-                                        ? { lw: vert.lw }
-                                        : {}
+                                    vert.lw !== undefined ? { lw: vert.lw } : {}
                                 if (index === 0) {
                                     return { x: absX, y: absY, ...lwProp }
                                 }
@@ -440,9 +435,7 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                 const coreObject = factoryObject.group
                 coreObject.translation.x = item.x
                 coreObject.translation.y = item.y
-                if (item.metadata?.opacity !== undefined) {
-                    coreObject.opacity = item.metadata.opacity
-                }
+                coreObject.opacity = readOpacity(item)
 
                 // Standalone text: the factory makes ONE Two.Text from the raw
                 // content, but SVG collapses `\n` to a single line. Re-lay it out
@@ -457,18 +450,23 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                     )
                 }
 
+                // Shape-with-text (rectangle/diamond/circle): re-materialise the
+                // embedded text the SAME way the shape components do on mount —
+                // via `applyShapeText`, which reflows the raw content to the box
+                // width and renders it as a stacked multiline text layer. The old
+                // single `two.makeText(textContent)` collapsed `\n` into one line
+                // (SVG <text> ignores newlines), so a grouped shape with multiline
+                // text spilled out of its container. Mirrors the standalone-text
+                // (`newText`) handling above.
                 const meta = item.metadata || {}
                 if (meta.hasText && meta.textContent) {
-                    const twoText = two.makeText(meta.textContent, 0, 0)
-                    twoText.fill = meta.textFill || '#000'
-                    twoText.size = meta.textFontSize || 24
-                    twoText.alignment = 'center'
-                    twoText.baseline = meta.textBaseLine || 'middle'
-                    twoText.family =
-                        meta.textFontFamily ||
-                        meta.textFamily ||
-                        DEFAULT_TEXT_FONT_FAMILY
-                    coreObject.add(twoText)
+                    applyShapeText(
+                        two,
+                        coreObject,
+                        item.componentType,
+                        item.width || meta.width || 120,
+                        meta
+                    )
                 }
 
                 coreObject.elementData = item
@@ -559,9 +557,7 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
     // Delete-key path sets isDeletingRef and owns its teardown, so we skip then.
     useEffect(() => {
         const memberIds = new Set(
-            (props.children ?? [])
-                .map((c: ShapeLike) => c?.id)
-                .filter(Boolean)
+            (props.children ?? []).map((c: ShapeLike) => c?.id).filter(Boolean)
         )
         const onMemberRemoved = ((e: CustomEvent<{ id: string }>): void => {
             if (isDeletingRef.current) return

@@ -38,6 +38,7 @@ import {
     getShapeTextNodes,
     applyShapeText,
     shapeTextStyleFromMeta,
+    readOpacity,
 } from '../../utils/canvasUtils'
 import { reflowTextForShape } from '../../utils/shapeTextFit'
 import { lineHeightFor } from '../../utils/textLayout'
@@ -198,6 +199,13 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     // Mirror of selectedGroup as a ref — useComponentHistory's applyBatch needs
     // to read the currently-focused group at undo/redo time without re-running.
     const selectedGroupRef = useRef<unknown>(null)
+    // True while a selected element/group is actively being dragged or resized.
+    // Used to hide the (fixed-position) properties toolbar so it doesn't sit
+    // under the element mid-drag. Driven by a document-level pointer watcher
+    // below; `selectionPresentRef` lets that DOM handler read the live selection
+    // without re-binding on every selection change.
+    const [isElementDragging, setIsElementDragging] = useState(false)
+    const selectionPresentRef = useRef(false)
     const [currentElement, setCurrentElement] = useState<string | null>(null)
     const [showPermissionErrorModal, setShowPermissionErrorModal] =
         useState(false)
@@ -852,7 +860,14 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             const prevProps: Record<string, any> = {}
             Object.keys(bulkObj).forEach((key) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const val = (currentComponent as any)?.[key]
+                let val = (currentComponent as any)?.[key]
+                // Opacity has no stored value until first set, but its effective
+                // prior value is "fully opaque" (or a legacy metadata.opacity).
+                // Capture that so undo of the FIRST opacity change restores it
+                // instead of no-op'ing on an empty snapshot.
+                if (val === undefined && key === 'opacity') {
+                    val = readOpacity(currentComponent)
+                }
                 if (val !== undefined) {
                     prevProps[key] = val
                 }
@@ -1395,6 +1410,85 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         }
     }, [])
 
+    // Keep a live ref of "is anything selected" for the DOM pointer watcher
+    // below — it reads this synchronously inside a capture-phase handler that
+    // must not re-bind on every selection change.
+    useEffect(() => {
+        selectionPresentRef.current = !!selectedComponent || !!selectedGroup
+    }, [selectedComponent, selectedGroup])
+
+    // Hide the fixed properties toolbar while a selected element/group is being
+    // dragged or resized, so it doesn't sit under the element mid-interaction.
+    // This watches the pointer at the document level (capture phase) rather than
+    // threading through the four separate drag paths (single-shape controller,
+    // group object, arrow endpoints, resize handles) — any of them manifests as
+    // "pointer down on the canvas with a selection, then move". Pure DOM + one
+    // boolean of React state: no canvas/React races, and pointerup/cancel always
+    // resets it. Drags that start on the toolbar itself (e.g. the opacity
+    // slider) are excluded so adjusting a control never hides the panel.
+    useEffect(() => {
+        const DRAG_THRESHOLD_SQ = 4 * 4 // px², ignore click jitter
+        let armed = false
+        let moved = false
+        let startX = 0
+        let startY = 0
+
+        const onDown = (e: PointerEvent): void => {
+            if (e.button !== 0) return
+            const target = e.target as HTMLElement | null
+            if (!target) return
+            // Ignore presses on the toolbar/UI chrome or outside the canvas, and
+            // on the in-canvas text-edit field (drag-selecting text isn't an
+            // element drag — the textarea is appended under #main-two-root).
+            if (target.closest('#floating-toolbar')) return
+            if (
+                target.closest(
+                    'input, textarea, [contenteditable="true"], .temp-input-area'
+                )
+            )
+                return
+            if (!target.closest('#main-two-root')) return
+            // Arm only when something draggable is under (or already engaged by)
+            // the pointer: a press directly on an element node, or any active
+            // selection (covers resize handles, which live in the overlay group,
+            // and select-then-drag). Empty-canvas presses — pan, marquee, draw —
+            // are left alone so they never hide a defaults panel.
+            const onElement = !!target.closest('[data-component-id]')
+            if (!onElement && !selectionPresentRef.current) return
+            armed = true
+            moved = false
+            startX = e.clientX
+            startY = e.clientY
+        }
+        const onMove = (e: PointerEvent): void => {
+            if (!armed || moved) return
+            const dx = e.clientX - startX
+            const dy = e.clientY - startY
+            if (dx * dx + dy * dy >= DRAG_THRESHOLD_SQ) {
+                moved = true
+                setIsElementDragging(true)
+            }
+        }
+        const onUp = (): void => {
+            armed = false
+            if (moved) {
+                moved = false
+                setIsElementDragging(false)
+            }
+        }
+
+        document.addEventListener('pointerdown', onDown, true)
+        document.addEventListener('pointermove', onMove, true)
+        document.addEventListener('pointerup', onUp, true)
+        document.addEventListener('pointercancel', onUp, true)
+        return () => {
+            document.removeEventListener('pointerdown', onDown, true)
+            document.removeEventListener('pointermove', onMove, true)
+            document.removeEventListener('pointerup', onUp, true)
+            document.removeEventListener('pointercancel', onUp, true)
+        }
+    }, [])
+
     const applyGroupProperty = createApplyGroupProperty({
         selectedGroup,
         twoJSInstance,
@@ -1489,6 +1583,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         selectedGroup,
         applyGroupProperty,
         reorderSelected,
+        isElementDragging,
         // Defaults — read by ElementPropertiesToolbar, also still exposed
         // individually so legacy primary.js / Canvas reads keep working.
         defaultFill,

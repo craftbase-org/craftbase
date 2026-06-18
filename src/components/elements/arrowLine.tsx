@@ -5,6 +5,7 @@ import { useImmer } from 'use-immer'
 import Two from 'two.js'
 
 import ElementCreator from '../../factory/arrowLine'
+import { readOpacity } from '../../utils/canvasUtils'
 
 import {
     updateX1Y1Vertices,
@@ -98,7 +99,7 @@ function ArrowLine(props: ElementProps): ReactElement {
             line,
         } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        line.opacity = props.metadata?.opacity ?? 1
+        line.opacity = readOpacity(props)
         if (props.stroke) line.stroke = props.stroke
         if (props.linewidth) line.linewidth = props.linewidth
 
@@ -219,7 +220,7 @@ function ArrowLine(props: ElementProps): ReactElement {
             const lineInstance = internalState.line.data
             groupInstance.translation.x = props.x
             groupInstance.translation.y = props.y
-            lineInstance.opacity = props.metadata?.opacity ?? 1
+            lineInstance.opacity = readOpacity(props)
             two.update()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

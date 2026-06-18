@@ -4,7 +4,7 @@ import { useBoardContext } from '../../views/Board/boardContext'
 
 import ElementFactory from '../../factory/diamond'
 import { strokeTypeToDashes } from '../../utils/misc'
-import { applyShapeText } from '../../utils/canvasUtils'
+import { applyShapeText, readOpacity } from '../../utils/canvasUtils'
 import { componentTypes } from '../../constants/misc'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,7 +29,7 @@ function Diamond(props: ElementProps): ReactElement {
         })
         const { group, diamond } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        const opacityValue = props.metadata?.opacity ?? 1
+        const opacityValue = readOpacity(props)
 
         if (props.parentGroup) {
             const parentGroup = props.parentGroup

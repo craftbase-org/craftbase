@@ -14,6 +14,7 @@ import {
 } from '../utils/textLayout'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
 import { getConnectorsEnabled } from '../utils/featureFlags'
+import { markSelectionChrome } from '../utils/svgExportShared'
 
 // Two.js scene shapes carry codebase-specific bookkeeping (elementData,
 // _renderer, etc.) outside the published types. Stay loose here; Stage 12
@@ -556,6 +557,10 @@ export default class SelectionController {
         this.domElement.classList.add('shape-selected')
         this.syncToTarget()
         this.two.update()
+        // Tag the overlay so exports strip it. The `ui` lives at scene level
+        // (not in any element group), so it only reaches the full-scene PNG
+        // export — harmless to tag for the per-selection SVG export too.
+        markSelectionChrome(this.ui)
 
         this._attachHoverListener()
         this.callbacks.onSelect(

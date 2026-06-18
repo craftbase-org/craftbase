@@ -153,6 +153,17 @@ function applyPropertyToTwoJSGroup(
                 clearDashesOnTwoJSShape(shape)
             }
             break
+        case 'opacity':
+            // Opacity persists in the top-level `opacity` field. Apply at the
+            // GROUP level (shape + text dim uniformly and repaint reliably) and
+            // neutralize the leaf/text so they don't compound with the group's
+            // opacity. Mirrors applyProperty and the *-with-text components.
+            group.opacity = value
+            shape.opacity = 1
+            if (textNodes.length > 0) {
+                textNodes.forEach((n: ShapeLike) => (n.opacity = 1))
+            }
+            break
         case 'metadata':
             if (
                 value &&
@@ -719,16 +730,9 @@ export function useComponentHistory({
                             (c: ShapeLike) => c?.elementData?.id === e.id
                         )
                         if (coreObj) {
-                            const isOpacityChange =
-                                'metadata' in propsToApply &&
-                                propsToApply.metadata &&
-                                typeof propsToApply.metadata === 'object' &&
-                                'opacity' in
-                                    (propsToApply.metadata as Record<
-                                        string,
-                                        unknown
-                                    >)
-                            if (isOpacityChange) coreObj.opacity = 1
+                            // Opacity persists top-level now; the case 'opacity'
+                            // in applyPropertyToTwoJSGroup sets coreObj.opacity,
+                            // so no pre-reset is needed here.
                             Object.entries(propsToApply).forEach(
                                 ([name, val]) => {
                                     applyPropertyToTwoJSGroup(

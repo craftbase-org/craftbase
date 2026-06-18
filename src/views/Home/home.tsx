@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import StickerSVG from '../../assets/sticker.svg'
+import LogoSVG from '../../assets/logo.svg'
 import TwitterLogoSVG from '../../assets/twitter_logo.svg'
 import GithubLogoSVG from '../../assets/github_logo.svg'
 import RightArrowWhiteSVG from '../../assets/right_arrow_white.svg'
@@ -11,7 +11,7 @@ import BlueStarSVG from '../../assets/blue_star.svg'
 // import ImageContainer from '../../components/ProgressiveImageLoader/loader'
 // import CraftbaseBoardScreenshotPNG from '../../assets/craftbase_board_screenshot.png'
 // import CraftbaseBoardScreenshotBlurJPG from '../../assets/blur_craftbase_screenshot.jpg'
-import WhiteboardingPNG from '../../assets/whiteboarding.png'
+import Brainstorming from '../../assets/brainstorming_craftbase.png'
 import Button from '../../components/common/button'
 
 const HomePage: React.FC = () => {
@@ -35,19 +35,20 @@ const HomePage: React.FC = () => {
         <>
             {/* <Redirect to={`/board/03a3706e-fe79-4df5-80f6-2f4040ade05f`} /> */}
             <div
-                className="home-page-container relative bg-neutrals-n20 "
+                className="home-page-container relative bg-canvas "
                 // style={{ height: `${pageHeight}px` }}
             >
                 <nav
                     className="flex items-center w-full px-5 py-1 lg:py-2 2xl:py-4
-                 bg-white shadow-md
+                 bg-sidebar border-b border-border-panel
                  "
                 >
                     <div className="w-1/2 flex items-center ">
                         <div>
                             <img
-                                src={StickerSVG}
-                                className="w-4 h-4 
+                                src={LogoSVG}
+                                alt="Craftbase"
+                                className="w-4 h-4
                             lg:w-6 lg:h-6
                             2xl:w-8 2xl:h-8
                             "
@@ -55,11 +56,11 @@ const HomePage: React.FC = () => {
                         </div>
                         <div
                             className="pl-2
-                        text-primary-blue text-base lg:text-xl 2xl:text-2xl font-bold font-display"
+                        text-ink text-base lg:text-xl 2xl:text-2xl font-bold font-display"
                         >
                             craftbase
                         </div>
-                        <div className="text-primary-blue pl-2 text-sm">
+                        <div className="text-ink-muted pl-2 text-sm">
                             {' '}
                             (still in early alpha stage)
                         </div>
@@ -91,7 +92,7 @@ const HomePage: React.FC = () => {
                                 name="create_canvas"
                                 label="New Canvas"
                                 onClick={onCreateCanvas}
-                                extendClass="font-semibold shadow-lg ml-4"
+                                extendClass="font-semibold shadow-card hover:shadow-card-accent ml-4"
                             />
                         </div>
                     </div>
@@ -107,12 +108,13 @@ const HomePage: React.FC = () => {
                             <div className="text-left transition-opacity duration-300 ease-in-out">
                                 <h1 className="text-base lg:text-3xl 2xl:text-4xl font-bold font-display">
                                     Instant Infinite Whiteboard with Unique
-                                    Board Links
+                                    Shareable Board Links
                                 </h1>
                                 <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
-                                    Create unlimited infinite canvases. Each
-                                    board gets a unique URL. No accounts. No
-                                    dashboards. Just start thinking.
+                                    Start brainstorming in craftbase. Create as
+                                    much as shared boards as you like. Each
+                                    shared board gets a unique URL. No accounts.
+                                    No login/signup. Just start thinking.
                                 </p>
                                 {/* <p className="pt-4 2xl:pt-8 text-sm lg:text-lg 2xl:text-xl ">
                                     With real-time updates across all devices,
@@ -128,7 +130,7 @@ const HomePage: React.FC = () => {
 
                                         size="large"
                                         onClick={onCreateCanvas}
-                                        extendClass="font-semibold shadow-lg primary-btn-home hover:shadow-xl"
+                                        extendClass="font-semibold primary-btn-home shadow-card hover:shadow-card-accent"
                                     >
                                         <div className="flex items-center">
                                             <span>Start on empty canvas</span>
@@ -144,9 +146,9 @@ const HomePage: React.FC = () => {
                         <div className="w-full lg:w-7/12 pt-8 lg:pt-0 h-full ">
                             <div className="lg:pl-4 w-full flex items-center lg:justify-end justify-center ">
                                 <img
-                                    src={WhiteboardingPNG}
-                                    alt="Craftbase whiteboarding"
-                                    className="w-full lg:w-11/12 rounded-lg shadow-lg"
+                                    src={Brainstorming}
+                                    alt="Craftbase brainstorming"
+                                    className="w-full lg:w-11/12 shadow-md"
                                 />
                             </div>
                         </div>
@@ -161,8 +163,8 @@ const HomePage: React.FC = () => {
                                         className="w-10 h-10 big-desktop:w-14 big-desktop:h-14 mx-auto"
                                     />
                                 </div>
-                                <div className=" px-8 lg:px-20 big-desktop:text-lg">
-                                    <p className="mt-4 text-primary-blue font-bold font-display">
+                                <div className=" px-8 lg:px-20 big-desktop:text-lg text-center">
+                                    <p className="mt-4 text-ink font-bold font-display">
                                         No sign-up(s) needed
                                     </p>
                                     <p className="mt-2">
@@ -178,8 +180,8 @@ const HomePage: React.FC = () => {
                                         className="w-10 h-10 big-desktop:w-14 big-desktop:h-14 mx-auto"
                                     />
                                 </div>
-                                <div className=" px-8 lg:px-20 big-desktop:text-lg">
-                                    <p className="mt-4 text-primary-blue font-bold font-display">
+                                <div className=" px-8 lg:px-20 big-desktop:text-lg text-center">
+                                    <p className="mt-4 text-ink font-bold font-display">
                                         Open Source at its core
                                     </p>
                                     <p className="mt-2">
@@ -197,8 +199,8 @@ const HomePage: React.FC = () => {
                                         className="w-10 h-10 big-desktop:w-14 big-desktop:h-14 mx-auto"
                                     />
                                 </div>
-                                <div className=" px-8 lg:px-20 big-desktop:text-lg">
-                                    <p className="mt-4 text-primary-blue font-bold font-display">
+                                <div className=" px-8 lg:px-20 big-desktop:text-lg text-center">
+                                    <p className="mt-4 text-ink font-bold font-display">
                                         Customization
                                     </p>
                                     <p className="mt-2">
@@ -211,29 +213,7 @@ const HomePage: React.FC = () => {
                     </div>
 
                     <div className="mt-20 w-full flex items-center justify-center">
-                        <hr className="border border-neutrals-n80 w-2/4" />
-                    </div>
-
-                    <div className="mt-20 mb-20">
-                        <div className="text-2xl font-medium">
-                            We are still in early alpha stage. Show your support
-                            by giving a star to our{' '}
-                            <a
-                                className="text-primary-blue underline"
-                                href="https://github.com/craftbase-org"
-                                target="_blank"
-                            >
-                                Github
-                            </a>{' '}
-                            repo or by giving us a follow on{' '}
-                            <a
-                                className="text-primary-blue underline"
-                                href="https://twitter.com/craftbase_org"
-                                target="_blank"
-                            >
-                                Twitter
-                            </a>{' '}
-                        </div>
+                        <hr className="border-t border-border-panel w-2/4" />
                     </div>
 
                     {/* <div className="mt-8">
@@ -250,12 +230,12 @@ const HomePage: React.FC = () => {
                     {/* <div className="mt-8 pt-20"> </div> */}
                 </div>
                 <footer
-                    className="  
-                    w-full  px-10 2xl:px-20 
-                     bg-neutrals-n40  h-20 shadow-inner
+                    className="
+                    w-full  px-10 2xl:px-20
+                     bg-sidebar border-t border-border-panel  h-20
                 flex items-center justify-between"
                 >
-                    <div className="text-sm big-desktop:text-base">
+                    <div className="text-sm big-desktop:text-base text-ink-mid">
                         © 2026 Craftbase. All rights reserved.
                     </div>
                     <div className=" flex items-center">

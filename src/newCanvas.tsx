@@ -1309,7 +1309,8 @@ function addZUI(
             iconStroke: null,
             isDummy: null,
             createdAt: null,
-            metadata: { opacity: 1 },
+            opacity: 1,
+            metadata: {},
             width: 100,
             height: 0,
             fill: 'transparent',
@@ -3883,6 +3884,18 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         // it back on top so the active selection box stays visible.
         zuiInstanceRef.current?.bringSelectionToFront?.()
 
+        // An arrow's "selected" look is its two endpoint circles, shown while
+        // the arrow group's <g> holds DOM focus. The restack below detaches and
+        // re-appends that <g> to reorder it, which blurs the focused node and
+        // fires arrowLine's blur handler — hiding the circles even though the
+        // arrow is still the active selection. Capture the selected arrow now so
+        // we can re-assert its endpoints after the restack settles.
+        const selectedGroup = zuiInstanceRef.current?.getSelectedGroup?.()
+        const selectedArrow =
+            selectedGroup?.elementData?.componentType === 'arrowLine'
+                ? selectedGroup
+                : null
+
         try {
             two.update()
         } catch (err) {
@@ -3892,6 +3905,20 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             console.warn('reconcileZOrder two.update failed', err)
             scene.subtractions.length = 0
             scene._flagSubtractions = false
+        }
+
+        // Re-show the endpoints AFTER the restack: the blur (and its own nested
+        // two.update) has already run during the update above, so setting them
+        // visible now and re-rendering sticks. The node is no longer focused, so
+        // this second update doesn't reorder and can't re-trigger the blur.
+        if (selectedArrow) {
+            setArrowEndpointsVisible(selectedArrow, true)
+            try {
+                two.update()
+            } catch {
+                scene.subtractions.length = 0
+                scene._flagSubtractions = false
+            }
         }
     }, [twoJSInstance])
 

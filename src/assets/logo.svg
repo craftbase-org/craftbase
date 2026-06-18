@@ -1,0 +1,7 @@
+<svg role="img" xmlns="http://www.w3.org/2000/svg" width="48px" height="48px" viewBox="0 0 24 24" aria-labelledby="craftbaseIconTitle" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter" fill="none">
+  <title id="craftbaseIconTitle">Craftbase</title>
+  <!-- No background fill — transparent, works on any bg -->
+  <polyline points="4,9 4,4 9,4"/>
+  <polyline points="15,4 20,4 20,9"/>
+  <polyline points="4,15 4,20 9,20"/>
+</svg>
