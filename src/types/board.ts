@@ -239,6 +239,10 @@ export interface BoardContextValue {
     // until Canvas has mounted and populated it.
     reorderSelected: (op: 'front' | 'forward' | 'backward' | 'back') => void
 
+    // True while a selected element/group is being dragged or resized — the
+    // properties toolbar hides itself so it doesn't overlap the element.
+    isElementDragging: boolean
+
     // Element defaults (read sites: ElementPropertiesToolbar, primary sidebar, factories)
     defaultFill: string
     defaultStrokeColor: string

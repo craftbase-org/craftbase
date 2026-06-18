@@ -486,6 +486,7 @@ const ElementPropertiesToolbar = () => {
         applyProperty,
         applyGroupProperty,
         reorderSelected,
+        isElementDragging,
         showMobileToolbarPanel,
         // defaults
         defaultFill,
@@ -582,6 +583,9 @@ const ElementPropertiesToolbar = () => {
 
     if (!setKey) return null
     if (isMobile && !showMobileToolbarPanel) return null
+    // Hide while the selected element/group is being dragged/resized so the
+    // fixed panel doesn't sit under it mid-interaction; it returns on release.
+    if (isElementDragging) return null
 
     const sections = SETS[setKey as keyof typeof SETS]
     // Reorder controls apply to an actually-selected element (single shape or
