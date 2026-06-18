@@ -1,4 +1,5 @@
 import Two from 'two.js'
+import { markSelectionChrome } from '../../utils/svgExportShared'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TwoLike = any
@@ -102,6 +103,9 @@ export default class Selector {
         this.areaGroup = areaGroup
         this.group.add(areaGroup)
         this.two.update()
+        // Tag the overlay so SVG/PNG exports can strip it — it lives inside the
+        // group's <g>, so a clone of the group would otherwise carry it.
+        markSelectionChrome(areaGroup)
 
         const clearSelector = (): void => {
             this.areaGroup.opacity = 0

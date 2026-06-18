@@ -4,6 +4,7 @@ import {
     applyShapeText,
     layoutStandaloneText,
     shapeTextStyleFromMeta,
+    readOpacity,
 } from './canvasUtils'
 import { reflowTextForShape } from './shapeTextFit'
 
@@ -97,8 +98,10 @@ const ACCEPTS: Record<GroupPropertyKey, Set<string>> = {
         'divider',
         'pencil',
     ]),
-    // Pencil opacity unsupported: pencil's metadata is the vertex array, so
-    // the metadata.opacity slot collides with the array shape on group blur.
+    // Pencil's metadata IS its vertex array, so opacity can't live in
+    // `metadata.opacity` like every other type (it would clobber the points).
+    // Pencil therefore persists opacity in a top-level `opacity` field instead
+    // — see the pencil branch in the opacity handler below.
     opacity: new Set([
         'rectangle',
         'circle',
@@ -107,6 +110,7 @@ const ACCEPTS: Record<GroupPropertyKey, Set<string>> = {
         'arrowLine',
         'newText',
         'geoText',
+        'pencil',
     ]),
     // rectangle, diamond AND circle all carry text the same way (see
     // applyShapeText / the *-with-text components), so a group text edit
@@ -231,7 +235,12 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
             const current = stateRefForComponentStore?.current?.[id] ?? {}
             const prev: Partial<ComponentRow> = {}
             keys.forEach((k) => {
-                if (current[k] !== undefined) prev[k] = current[k]
+                let v = current[k]
+                // Opacity is unset until first edited; its effective prior value
+                // is fully opaque (or a legacy metadata.opacity). Capture that so
+                // undo of the first opacity change restores it.
+                if (v === undefined && k === 'opacity') v = readOpacity(current)
+                if (v !== undefined) prev[k] = v
             })
             return prev
         }
@@ -314,32 +323,34 @@ export function createApplyGroupProperty(deps: ApplyGroupPropertyDeps) {
             }
 
             if (propertyKey === 'opacity') {
+                // Apply at GROUP level (mirrors the single-element path) so the
+                // value can't compound with the group-level opacity that
+                // revealMembers restores when the group is dismissed. The old
+                // code pre-staged the value on the hidden original's LEAF, then
+                // reveal set the GROUP opacity to the same value — leaf × group
+                // = value² (a 50% edit rendered as 25% after ungrouping). The
+                // hidden original stays hidden (its group opacity is 0 under the
+                // overlay); we only normalise its leaf/text to 1 so the value
+                // reveal sets later is exact. The visible overlay copy is dimmed
+                // at its own group level so the user sees the change live.
                 const sceneLeaf = sceneEl?.children?.[0]
-                if (sceneLeaf) sceneLeaf.opacity = value
-                // Dim embedded text alongside the shape leaf (rect/diamond/
-                // circle-with-text keep text in a separate text-layer node).
-                findTextNodesInside(sceneEl).forEach((t) => (t.opacity = value))
+                if (sceneLeaf) sceneLeaf.opacity = 1
+                findTextNodesInside(sceneEl).forEach((t) => (t.opacity = 1))
                 if (coreObj) {
-                    coreObj.opacity = 1
+                    coreObj.opacity = value
                     const coreLeaf = coreObj?.children?.[0]
-                    if (coreLeaf) coreLeaf.opacity = value
-                    findTextNodesInside(coreObj).forEach(
-                        (t) => (t.opacity = value)
-                    )
+                    if (coreLeaf) coreLeaf.opacity = 1
+                    findTextNodesInside(coreObj).forEach((t) => (t.opacity = 1))
                 }
                 // Live drag preview: scene only, defer the store/history write
                 // to the commit on release.
                 if (opts?.preview) return
-                const existingMeta = sceneEl?.elementData?.metadata
-                const safeMeta =
-                    existingMeta && !Array.isArray(existingMeta)
-                        ? existingMeta
-                        : {}
-                const updatedMeta = { ...safeMeta, opacity: value }
-                if (sceneEl?.elementData)
-                    sceneEl.elementData.metadata = updatedMeta
-                child.metadata = updatedMeta
-                recordChild(id, { metadata: updatedMeta })
+                // Opacity persists in the top-level `opacity` column for every
+                // element type (unified — pencil's metadata is its vertex array
+                // and the rest were migrated off metadata.opacity).
+                if (sceneEl?.elementData) sceneEl.elementData.opacity = value
+                child.opacity = value
+                recordChild(id, { opacity: value })
                 return
             }
 

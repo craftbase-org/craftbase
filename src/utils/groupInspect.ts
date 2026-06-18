@@ -108,6 +108,7 @@ const ACCEPTS: Record<InspectableProperty, Set<string>> = {
         'arrowLine',
         'newText',
         'geoText',
+        'pencil',
     ]),
     textColor: new Set([
         'newText',
@@ -148,6 +149,9 @@ function readChildValue(child: ChildEntry, key: InspectableProperty): unknown {
         case 'strokeType':
             return child.strokeType ?? 'solid'
         case 'opacity':
+            // Opacity lives in the top-level `opacity` field (legacy rows fall
+            // back to metadata.opacity; pencil never used metadata).
+            if (typeof child.opacity === 'number') return child.opacity
             return meta?.opacity ?? 1
         case 'textColor':
             if (

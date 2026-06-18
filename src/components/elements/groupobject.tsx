@@ -9,7 +9,11 @@ import Two from 'two.js'
 import { useBoardContext } from '../../views/Board/boardContext'
 import getEditComponents from '../utils/editWrapper'
 import { elementOnBlurHandler } from '../../utils/misc'
-import { applyShapeText, layoutStandaloneText } from '../../utils/canvasUtils'
+import {
+    applyShapeText,
+    layoutStandaloneText,
+    readOpacity,
+} from '../../utils/canvasUtils'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -103,9 +107,7 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
         two.scene.children.forEach((element: ShapeLike) => {
             if (!element.elementData) return
             if (!childrenIds.includes(element.elementData.id)) return
-            const elMeta = element.elementData.metadata
-            element.opacity =
-                elMeta && !Array.isArray(elMeta) ? (elMeta.opacity ?? 1) : 1
+            element.opacity = readOpacity(element.elementData)
         })
     }
 
@@ -242,12 +244,7 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                     foundOriginalCount++
                     // Reveal the (now position-synced) original: restore its own
                     // group-level opacity — it was hidden at 0 under the overlay.
-                    // metadata may be a pencil vertex array, so guard the read.
-                    const elMeta = element.elementData.metadata
-                    element.opacity =
-                        elMeta && !Array.isArray(elMeta)
-                            ? (elMeta.opacity ?? 1)
-                            : 1
+                    element.opacity = readOpacity(element.elementData)
                 }
             })
             two.update()
@@ -438,9 +435,7 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                 const coreObject = factoryObject.group
                 coreObject.translation.x = item.x
                 coreObject.translation.y = item.y
-                if (item.metadata?.opacity !== undefined) {
-                    coreObject.opacity = item.metadata.opacity
-                }
+                coreObject.opacity = readOpacity(item)
 
                 // Standalone text: the factory makes ONE Two.Text from the raw
                 // content, but SVG collapses `\n` to a single line. Re-lay it out

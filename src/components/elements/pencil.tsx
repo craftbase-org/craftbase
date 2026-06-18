@@ -5,6 +5,7 @@ import { useImmer } from 'use-immer'
 import { strokeTypeToDashes } from '../../utils/misc'
 import getEditComponents from '../utils/editWrapper'
 import PencilFactory from '../../factory/pencil'
+import { readOpacity } from '../../utils/canvasUtils'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -28,13 +29,19 @@ function Pencil(props: ElementProps): ReactElement {
         const shapeRef = path || group.children[0]
         group.elementData = { ...props.itemData, ...props }
 
+        // Opacity persists in the top-level `opacity` field (pencil's
+        // `metadata` is the vertex array; legacy rows fall back to metadata).
+        const pencilOpacity = readOpacity(props)
+
         if (props.parentGroup) {
             const parentGroup = props.parentGroup
             shapeRef.translation.x = props.properties.x
             shapeRef.translation.y = props.properties.y
+            shapeRef.opacity = pencilOpacity
             parentGroup.add(shapeRef)
             two.update()
         } else {
+            group.opacity = pencilOpacity
             getEditComponents(two, group, 4)
 
             if (path) {

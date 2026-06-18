@@ -38,6 +38,7 @@ import {
     getShapeTextNodes,
     applyShapeText,
     shapeTextStyleFromMeta,
+    readOpacity,
 } from '../../utils/canvasUtils'
 import { reflowTextForShape } from '../../utils/shapeTextFit'
 import { lineHeightFor } from '../../utils/textLayout'
@@ -852,7 +853,14 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             const prevProps: Record<string, any> = {}
             Object.keys(bulkObj).forEach((key) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const val = (currentComponent as any)?.[key]
+                let val = (currentComponent as any)?.[key]
+                // Opacity has no stored value until first set, but its effective
+                // prior value is "fully opaque" (or a legacy metadata.opacity).
+                // Capture that so undo of the FIRST opacity change restores it
+                // instead of no-op'ing on an empty snapshot.
+                if (val === undefined && key === 'opacity') {
+                    val = readOpacity(currentComponent)
+                }
                 if (val !== undefined) {
                     prevProps[key] = val
                 }

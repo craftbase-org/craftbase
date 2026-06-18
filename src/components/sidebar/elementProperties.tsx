@@ -7,6 +7,7 @@ import OpacitySlider from '../utils/opacitySlider'
 import Tooltip from '../common/tooltip'
 import { TEXT_SIZES_ARRAY, fillEssentialShades } from '../../utils/constants'
 import { MIXED, inspectGroupValues } from '../../utils/groupInspect'
+import { readOpacity } from '../../utils/canvasUtils'
 import { isStandaloneTextType } from '../../constants/misc'
 import type { ReorderOp } from '../canvasContextMenu'
 import BringToFrontIcon from '../../assets/bring-to-front.svg?react'
@@ -52,7 +53,7 @@ const STROKE_WIDTHS = [
 const SETS = {
     SHAPE: ['fill', 'stroke', 'strokeWidth', 'strokeType', 'opacity'],
     ARROW: ['stroke', 'strokeWidth', 'strokeType', 'opacity'],
-    PENCIL: ['stroke', 'strokeWidth', 'strokeType'],
+    PENCIL: ['stroke', 'strokeWidth', 'strokeType', 'opacity'],
     TEXT: ['textColor', 'textSize', 'textFont', 'opacity'],
     // Geo objects: stroke-centric. Area's fill is auto-derived from stroke, so
     // no fill control — but its outline still takes width/type like a route.
@@ -253,7 +254,9 @@ function readEffectiveValues({
         stroke: shapeData?.stroke ?? defaults.defaultStrokeColor,
         linewidth: shapeData?.linewidth ?? defaults.defaultLinewidth,
         strokeType: elementData?.strokeType ?? 'solid',
-        opacity: elementData?.metadata?.opacity ?? 1,
+        // Opacity lives in the top-level `opacity` field (legacy rows fall
+        // back to metadata.opacity).
+        opacity: readOpacity(elementData),
         textColor: isText
             ? (shapeData?.fill ?? defaults.defaultTextColor)
             : (textData?.fill ?? defaults.defaultTextColor),
@@ -722,7 +725,12 @@ const ElementPropertiesToolbar = () => {
                 <div className="pt-3 px-2">
                     <SectionLabel>Opacity</SectionLabel>
                     <OpacitySlider
-                        currentOpacity={values.opacity}
+                        isMixed={values.opacity === MIXED}
+                        currentOpacity={
+                            typeof values.opacity === 'number'
+                                ? values.opacity
+                                : 1
+                        }
                         handleOnDrag={(arr): void =>
                             // Live preview while dragging: applies to the scene
                             // only (no store/history write) so the element fades

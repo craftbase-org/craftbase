@@ -259,11 +259,12 @@ export function createApplyProperty(deps: ApplyPropertyDeps) {
             // Preview = live drag: mutate the scene only, defer the
             // store/history write to the commit on release.
             if (!opts?.preview) {
-                const existingMeta = elementData?.metadata ?? {}
-                const updatedMeta = { ...existingMeta, opacity: value }
-                if (elementData) elementData.metadata = updatedMeta
+                // Opacity persists in the top-level `opacity` column for every
+                // element type (pencil's `metadata` is its vertex array and
+                // never used metadata.opacity; the rest were migrated off it).
+                if (elementData) elementData.opacity = value
                 updateComponentBulkPropertiesInLocalStore(id, {
-                    metadata: updatedMeta,
+                    opacity: value,
                 })
             }
         }

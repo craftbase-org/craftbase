@@ -4,7 +4,7 @@ import { useImmer } from 'use-immer'
 import { useBoardContext } from '../../views/Board/boardContext'
 
 import NewTextFactory from '../../factory/newText'
-import { syncTextHitRect } from '../../utils/canvasUtils'
+import { syncTextHitRect, readOpacity } from '../../utils/canvasUtils'
 import { lineHeightFor } from '../../utils/textLayout'
 import { htmlToBulletText } from '../../utils/htmlToBulletText'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../../constants/misc'
@@ -49,7 +49,7 @@ function NewText(props: ElementProps): ReactElement {
         const elementFactory = new NewTextFactory(two, prevX, prevY, props)
         const { group, twoText } = elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        twoText.opacity = props.metadata?.opacity ?? 1
+        twoText.opacity = readOpacity(props)
 
         twoTextRef.current = twoText
 
@@ -252,10 +252,10 @@ function NewText(props: ElementProps): ReactElement {
             input.style.padding = `${vertPad}px 8px`
             input.style.color = twoText.fill || '#3A342C'
             // Match the element's current opacity so the editor doesn't flash to
-            // full opacity on entering edit mode. The opacity handler stores it
-            // on metadata (and applies it at group level), so read that.
+            // full opacity on entering edit mode. Opacity persists in the
+            // top-level `opacity` field (legacy rows fall back to metadata).
             input.style.opacity = String(
-                group.elementData?.metadata?.opacity ?? group.opacity ?? 1
+                readOpacity(group.elementData) ?? group.opacity ?? 1
             )
             input.style.fontSize = `${cssFontSize}px`
             input.style.fontFamily = twoText.family || DEFAULT_TEXT_FONT_FAMILY

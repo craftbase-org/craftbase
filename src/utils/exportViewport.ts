@@ -9,7 +9,7 @@
 // stamp a screen-space watermark, then draw the SVG onto a <canvas> and
 // download it as PNG.
 
-import { SVG_NS, embedFonts } from './svgExportShared'
+import { SVG_NS, embedFonts, stripSelectionChrome } from './svgExportShared'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
 
 const CANVAS_BG = '#f5f0e8' // --color-canvas (App.css)
@@ -40,6 +40,9 @@ export async function downloadViewportAsImage(): Promise<void> {
     clone.setAttribute('width', String(width))
     clone.setAttribute('height', String(height))
     clone.setAttribute('viewBox', `0 0 ${width} ${height}`)
+
+    // Don't bake the on-screen selection box/handles into the exported image.
+    stripSelectionChrome(clone)
 
     injectBackground(clone, width, height)
     await embedFonts(clone)

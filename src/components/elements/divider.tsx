@@ -6,6 +6,7 @@ import { useImmer } from 'use-immer'
 import { strokeTypeToDashes } from '../../utils/misc'
 
 import ElementCreator from '../../factory/divider'
+import { readOpacity } from '../../utils/canvasUtils'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -85,7 +86,7 @@ function Divider(props: ElementProps): ReactElement {
         const { group, pointCircle1, pointCircle2, line } =
             elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
-        line.opacity = props.metadata?.opacity ?? 1
+        line.opacity = readOpacity(props)
 
         if (props.parentGroup) {
             const parentGroup = props.parentGroup

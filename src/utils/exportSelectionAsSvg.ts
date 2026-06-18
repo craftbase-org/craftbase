@@ -8,7 +8,7 @@
 // (unzoomed, scene-space) transform, getBBox reports its bounds in that same
 // space, and using those bounds as the viewBox yields a 1:1 portable asset.
 
-import { SVG_NS, embedFonts } from './svgExportShared'
+import { SVG_NS, embedFonts, stripSelectionChrome } from './svgExportShared'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GroupLike = any
@@ -23,6 +23,13 @@ export async function exportSelectionAsSvg(group: GroupLike): Promise<void> {
     if (!gEl) throw new Error('No rendered SVG node found for the selection')
 
     const clone = gEl.cloneNode(true) as SVGGElement
+
+    // Drop any selection-overlay node tagged at its source (the legacy
+    // objectSelector area/handles injected into a group's <g>, or the
+    // SelectionController box if it ever ends up inside the clone). This is the
+    // primary chrome strip; the marquee-specific prune below additionally drops
+    // the transparent marquee-sized rect, which carries no tag.
+    stripSelectionChrome(clone)
 
     // A marquee group's <g> also contains the transparent marquee-sized rect and
     // the visible selection border/handles (added as children of the group). For

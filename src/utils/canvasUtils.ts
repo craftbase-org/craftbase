@@ -40,6 +40,25 @@ export function setArrowEndpointsVisible(
     if (shape?.children?.[2]) shape.children[2].opacity = opacity
 }
 
+// Single source of truth for reading an element's opacity off a store row /
+// props / elementData. Opacity is persisted in the top-level `opacity` column
+// for every element type. The legacy `metadata.opacity` read is kept as a
+// fallback so boards saved before the migration still render dimmed (pencil
+// never used metadata.opacity — its metadata is the vertex array — so the
+// Array guard also covers it). Absent everywhere → fully opaque.
+export function readOpacity(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    source: any
+): number {
+    if (!source) return 1
+    if (typeof source.opacity === 'number') return source.opacity
+    const meta = source.metadata
+    if (meta && !Array.isArray(meta) && typeof meta.opacity === 'number') {
+        return meta.opacity
+    }
+    return 1
+}
+
 // Convert a mouse event's client coords to Two.js surface coords via ZUI.
 export function clientToSurface(
     zui: ZUILike,
@@ -78,6 +97,7 @@ interface ElementCloneSource {
     radius: number | null
     iconStroke: string | null
     textColor: string | null
+    opacity?: number | null
     metadata: unknown
     children: unknown
     relativeX?: number
@@ -118,6 +138,7 @@ export function cloneElementData(
         radius: src.radius,
         iconStroke: src.iconStroke,
         textColor: src.textColor,
+        opacity: readOpacity(src),
         metadata: Array.isArray(src.metadata)
             ? src.metadata.map((p: unknown) =>
                   typeof p === 'object' && p !== null ? { ...p } : p
