@@ -4,8 +4,11 @@ import { useBoardContext } from '../views/Board/boardContext'
 import zoomInIcon from '../assets/zoom-in.svg'
 import zoomOutIcon from '../assets/zoom-out.svg'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ZuiWrapperLike = { zui: any } | null
+type ZuiWrapperLike = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    zui: any
+    syncBackgroundToCamera?: () => void
+} | null
 
 const ZoomControls = (): ReactElement => {
     const { zuiInBoard, twoJSInstance, scaleToDisplay } = useBoardContext()
@@ -31,6 +34,7 @@ const ZoomControls = (): ReactElement => {
         if (!zui || !twoJSInstance) return
         zui.zui.zoomBy(delta, window.innerWidth / 2, window.innerHeight / 2)
         twoJSInstance.update()
+        zui.syncBackgroundToCamera?.()
         window.dispatchEvent(
             new CustomEvent('zoomChanged', {
                 detail: { scale: zui.zui.scale },

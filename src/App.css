@@ -53,6 +53,10 @@ code {
 #main-two-root svg {
     background-color: #f5f0e8;
     background-image: radial-gradient(circle, #c4b89a 1px, transparent 1px);
+    /* First-paint default. background-size + background-position are driven live
+       by syncBackgroundToCamera() in newCanvas.tsx so the dot grid scales/pans
+       with the Two.js camera. Base tile (24px) is BG_TILE_BASE there — keep in
+       sync. */
     background-size: 24px 24px;
     z-index: -1;
 }

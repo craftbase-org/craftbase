@@ -385,6 +385,42 @@ function addZUI(
         zui.clientToSurface(e.clientX, e.clientY)
     zui.addLimits(0.06, 8)
 
+    // Parchment dot-grid camera sync. The grid is a CSS radial-gradient painted
+    // on the renderer's SVG element, which lives in screen space (Two.js
+    // transforms the scene group inside it, never the SVG itself). To make the
+    // grid feel glued to the canvas we mirror the camera onto the CSS background:
+    // scale the tile by the zoom and offset it by the scene translation. CSS
+    // tiling makes it an infinite grid for free, and the dots re-rasterize sharp
+    // at every zoom. Base tile is 24px (kept in sync with App.css).
+    const BG_TILE_BASE = 24
+    // Keep the on-screen dot spacing inside a comfortable band by stepping the
+    // tile through power-of-2 "octaves". A plain `BG_TILE_BASE * scale` shrinks
+    // the tile as you zoom out, crowding the dots into a dense mush below ~50%
+    // (and into a sparse field when zoomed far in). Doubling/halving the tile at
+    // the band edges keeps apparent spacing roughly constant. MAX must be 2*MIN
+    // so each octave wrap lands back inside the band.
+    const BG_TILE_MIN = 16
+    const BG_TILE_MAX = 32
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let bgSvgEl: any = null
+    const syncBackgroundToCamera = () => {
+        if (!bgSvgEl) {
+            const root = document.getElementById('main-two-root')
+            bgSvgEl = root?.querySelector('svg') || null
+        }
+        if (!bgSvgEl) return
+        const scale = two.scene.scale || 1
+        const tx = two.scene.translation.x
+        const ty = two.scene.translation.y
+        let size = BG_TILE_BASE * scale
+        if (size > 0) {
+            while (size < BG_TILE_MIN) size *= 2
+            while (size > BG_TILE_MAX) size /= 2
+        }
+        bgSvgEl.style.backgroundSize = `${size}px ${size}px`
+        bgSvgEl.style.backgroundPosition = `${tx}px ${ty}px`
+    }
+
     const setRootCursor = (cursor: string) => {
         const root = document.getElementById('main-two-root')
         if (root) root.style.cursor = cursor
@@ -2245,6 +2281,7 @@ function addZUI(
             if (dx !== 0 || dy !== 0) {
                 zui.translateSurface(dx, dy)
                 two.update()
+                syncBackgroundToCamera()
                 onCameraChangeRef?.current?.({
                     scale: two.scene.scale,
                     tx: two.scene.translation.x,
@@ -3254,6 +3291,7 @@ function addZUI(
         }
 
         two.update()
+        syncBackgroundToCamera()
 
         onCameraChangeRef?.current?.({
             scale: two.scene.scale,
@@ -3383,6 +3421,7 @@ function addZUI(
                 if (dx !== 0 || dy !== 0) {
                     zui.translateSurface(dx, dy)
                     two.update()
+                    syncBackgroundToCamera()
                     onCameraChangeRef?.current?.({
                         scale: two.scene.scale,
                         tx: two.scene.translation.x,
@@ -3586,6 +3625,7 @@ function addZUI(
         distance = newDist
 
         two.update()
+        syncBackgroundToCamera()
 
         onCameraChangeRef?.current?.({
             scale: two.scene.scale,
@@ -3596,6 +3636,7 @@ function addZUI(
 
     return {
         zui,
+        syncBackgroundToCamera,
         mousemove,
         resetDragState: () => {
             dragging = false
@@ -3814,6 +3855,10 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         if (!isMobile && props.boardId) {
             restoreViewport(`${VIEWPORT_KEY_PREFIX}${props.boardId}`)
         }
+
+        // Seed the parchment grid from the restored (or default) camera so it
+        // lands aligned on first paint, not just on the first pan/zoom.
+        zui_instance.syncBackgroundToCamera()
 
         onCameraChangeRef.current?.({
             scale: two.scene.scale as number,
