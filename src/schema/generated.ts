@@ -554,6 +554,7 @@ export type Components_Component = {
   createdBy: Scalars['String']['output'];
   fill: Scalars['String']['output'];
   headEdge?: Maybe<Scalars['String']['output']>;
+  headPortIndex: Scalars['Int']['output'];
   headShapeId?: Maybe<Scalars['uuid']['output']>;
   height: Scalars['float8']['output'];
   iconStroke?: Maybe<Scalars['String']['output']>;
@@ -568,6 +569,7 @@ export type Components_Component = {
   stroke?: Maybe<Scalars['String']['output']>;
   strokeType?: Maybe<Scalars['String']['output']>;
   tailEdge?: Maybe<Scalars['String']['output']>;
+  tailPortIndex: Scalars['Int']['output'];
   tailShapeId?: Maybe<Scalars['uuid']['output']>;
   textColor?: Maybe<Scalars['String']['output']>;
   updatedBy?: Maybe<Scalars['String']['output']>;
@@ -958,11 +960,13 @@ export type Components_Component_Append_Input = {
 export type Components_Component_Avg_Fields = {
   __typename?: 'components_component_avg_fields';
   createdAt?: Maybe<Scalars['Float']['output']>;
+  headPortIndex?: Maybe<Scalars['Float']['output']>;
   height?: Maybe<Scalars['Float']['output']>;
   linewidth?: Maybe<Scalars['Float']['output']>;
   opacity?: Maybe<Scalars['Float']['output']>;
   position?: Maybe<Scalars['Float']['output']>;
   radius?: Maybe<Scalars['Float']['output']>;
+  tailPortIndex?: Maybe<Scalars['Float']['output']>;
   width?: Maybe<Scalars['Float']['output']>;
   x?: Maybe<Scalars['Float']['output']>;
   x1?: Maybe<Scalars['Float']['output']>;
@@ -986,6 +990,7 @@ export type Components_Component_Bool_Exp = {
   createdBy?: InputMaybe<String_Comparison_Exp>;
   fill?: InputMaybe<String_Comparison_Exp>;
   headEdge?: InputMaybe<String_Comparison_Exp>;
+  headPortIndex?: InputMaybe<Int_Comparison_Exp>;
   headShapeId?: InputMaybe<Uuid_Comparison_Exp>;
   height?: InputMaybe<Float8_Comparison_Exp>;
   iconStroke?: InputMaybe<String_Comparison_Exp>;
@@ -1000,6 +1005,7 @@ export type Components_Component_Bool_Exp = {
   stroke?: InputMaybe<String_Comparison_Exp>;
   strokeType?: InputMaybe<String_Comparison_Exp>;
   tailEdge?: InputMaybe<String_Comparison_Exp>;
+  tailPortIndex?: InputMaybe<Int_Comparison_Exp>;
   tailShapeId?: InputMaybe<Uuid_Comparison_Exp>;
   textColor?: InputMaybe<String_Comparison_Exp>;
   updatedBy?: InputMaybe<String_Comparison_Exp>;
@@ -1040,11 +1046,13 @@ export type Components_Component_Delete_Key_Input = {
 /** input type for incrementing numeric columns in table "components.component" */
 export type Components_Component_Inc_Input = {
   createdAt?: InputMaybe<Scalars['bigint']['input']>;
+  headPortIndex?: InputMaybe<Scalars['Int']['input']>;
   height?: InputMaybe<Scalars['float8']['input']>;
   linewidth?: InputMaybe<Scalars['float8']['input']>;
   opacity?: InputMaybe<Scalars['Float']['input']>;
   position?: InputMaybe<Scalars['Int']['input']>;
   radius?: InputMaybe<Scalars['float8']['input']>;
+  tailPortIndex?: InputMaybe<Scalars['Int']['input']>;
   width?: InputMaybe<Scalars['float8']['input']>;
   x?: InputMaybe<Scalars['float8']['input']>;
   x1?: InputMaybe<Scalars['float8']['input']>;
@@ -1065,6 +1073,7 @@ export type Components_Component_Insert_Input = {
   createdBy?: InputMaybe<Scalars['String']['input']>;
   fill?: InputMaybe<Scalars['String']['input']>;
   headEdge?: InputMaybe<Scalars['String']['input']>;
+  headPortIndex?: InputMaybe<Scalars['Int']['input']>;
   headShapeId?: InputMaybe<Scalars['uuid']['input']>;
   height?: InputMaybe<Scalars['float8']['input']>;
   iconStroke?: InputMaybe<Scalars['String']['input']>;
@@ -1079,6 +1088,7 @@ export type Components_Component_Insert_Input = {
   stroke?: InputMaybe<Scalars['String']['input']>;
   strokeType?: InputMaybe<Scalars['String']['input']>;
   tailEdge?: InputMaybe<Scalars['String']['input']>;
+  tailPortIndex?: InputMaybe<Scalars['Int']['input']>;
   tailShapeId?: InputMaybe<Scalars['uuid']['input']>;
   textColor?: InputMaybe<Scalars['String']['input']>;
   updatedBy?: InputMaybe<Scalars['String']['input']>;
@@ -1101,6 +1111,7 @@ export type Components_Component_Max_Fields = {
   createdBy?: Maybe<Scalars['String']['output']>;
   fill?: Maybe<Scalars['String']['output']>;
   headEdge?: Maybe<Scalars['String']['output']>;
+  headPortIndex?: Maybe<Scalars['Int']['output']>;
   headShapeId?: Maybe<Scalars['uuid']['output']>;
   height?: Maybe<Scalars['float8']['output']>;
   iconStroke?: Maybe<Scalars['String']['output']>;
@@ -1113,6 +1124,7 @@ export type Components_Component_Max_Fields = {
   stroke?: Maybe<Scalars['String']['output']>;
   strokeType?: Maybe<Scalars['String']['output']>;
   tailEdge?: Maybe<Scalars['String']['output']>;
+  tailPortIndex?: Maybe<Scalars['Int']['output']>;
   tailShapeId?: Maybe<Scalars['uuid']['output']>;
   textColor?: Maybe<Scalars['String']['output']>;
   updatedBy?: Maybe<Scalars['String']['output']>;
@@ -1135,6 +1147,7 @@ export type Components_Component_Min_Fields = {
   createdBy?: Maybe<Scalars['String']['output']>;
   fill?: Maybe<Scalars['String']['output']>;
   headEdge?: Maybe<Scalars['String']['output']>;
+  headPortIndex?: Maybe<Scalars['Int']['output']>;
   headShapeId?: Maybe<Scalars['uuid']['output']>;
   height?: Maybe<Scalars['float8']['output']>;
   iconStroke?: Maybe<Scalars['String']['output']>;
@@ -1147,6 +1160,7 @@ export type Components_Component_Min_Fields = {
   stroke?: Maybe<Scalars['String']['output']>;
   strokeType?: Maybe<Scalars['String']['output']>;
   tailEdge?: Maybe<Scalars['String']['output']>;
+  tailPortIndex?: Maybe<Scalars['Int']['output']>;
   tailShapeId?: Maybe<Scalars['uuid']['output']>;
   textColor?: Maybe<Scalars['String']['output']>;
   updatedBy?: Maybe<Scalars['String']['output']>;
@@ -1186,6 +1200,7 @@ export type Components_Component_Order_By = {
   createdBy?: InputMaybe<Order_By>;
   fill?: InputMaybe<Order_By>;
   headEdge?: InputMaybe<Order_By>;
+  headPortIndex?: InputMaybe<Order_By>;
   headShapeId?: InputMaybe<Order_By>;
   height?: InputMaybe<Order_By>;
   iconStroke?: InputMaybe<Order_By>;
@@ -1200,6 +1215,7 @@ export type Components_Component_Order_By = {
   stroke?: InputMaybe<Order_By>;
   strokeType?: InputMaybe<Order_By>;
   tailEdge?: InputMaybe<Order_By>;
+  tailPortIndex?: InputMaybe<Order_By>;
   tailShapeId?: InputMaybe<Order_By>;
   textColor?: InputMaybe<Order_By>;
   updatedBy?: InputMaybe<Order_By>;
@@ -1242,6 +1258,8 @@ export type Components_Component_Select_Column =
   /** column name */
   | 'headEdge'
   /** column name */
+  | 'headPortIndex'
+  /** column name */
   | 'headShapeId'
   /** column name */
   | 'height'
@@ -1269,6 +1287,8 @@ export type Components_Component_Select_Column =
   | 'strokeType'
   /** column name */
   | 'tailEdge'
+  /** column name */
+  | 'tailPortIndex'
   /** column name */
   | 'tailShapeId'
   /** column name */
@@ -1300,6 +1320,7 @@ export type Components_Component_Set_Input = {
   createdBy?: InputMaybe<Scalars['String']['input']>;
   fill?: InputMaybe<Scalars['String']['input']>;
   headEdge?: InputMaybe<Scalars['String']['input']>;
+  headPortIndex?: InputMaybe<Scalars['Int']['input']>;
   headShapeId?: InputMaybe<Scalars['uuid']['input']>;
   height?: InputMaybe<Scalars['float8']['input']>;
   iconStroke?: InputMaybe<Scalars['String']['input']>;
@@ -1314,6 +1335,7 @@ export type Components_Component_Set_Input = {
   stroke?: InputMaybe<Scalars['String']['input']>;
   strokeType?: InputMaybe<Scalars['String']['input']>;
   tailEdge?: InputMaybe<Scalars['String']['input']>;
+  tailPortIndex?: InputMaybe<Scalars['Int']['input']>;
   tailShapeId?: InputMaybe<Scalars['uuid']['input']>;
   textColor?: InputMaybe<Scalars['String']['input']>;
   updatedBy?: InputMaybe<Scalars['String']['input']>;
@@ -1330,11 +1352,13 @@ export type Components_Component_Set_Input = {
 export type Components_Component_Stddev_Fields = {
   __typename?: 'components_component_stddev_fields';
   createdAt?: Maybe<Scalars['Float']['output']>;
+  headPortIndex?: Maybe<Scalars['Float']['output']>;
   height?: Maybe<Scalars['Float']['output']>;
   linewidth?: Maybe<Scalars['Float']['output']>;
   opacity?: Maybe<Scalars['Float']['output']>;
   position?: Maybe<Scalars['Float']['output']>;
   radius?: Maybe<Scalars['Float']['output']>;
+  tailPortIndex?: Maybe<Scalars['Float']['output']>;
   width?: Maybe<Scalars['Float']['output']>;
   x?: Maybe<Scalars['Float']['output']>;
   x1?: Maybe<Scalars['Float']['output']>;
@@ -1348,11 +1372,13 @@ export type Components_Component_Stddev_Fields = {
 export type Components_Component_Stddev_Pop_Fields = {
   __typename?: 'components_component_stddev_pop_fields';
   createdAt?: Maybe<Scalars['Float']['output']>;
+  headPortIndex?: Maybe<Scalars['Float']['output']>;
   height?: Maybe<Scalars['Float']['output']>;
   linewidth?: Maybe<Scalars['Float']['output']>;
   opacity?: Maybe<Scalars['Float']['output']>;
   position?: Maybe<Scalars['Float']['output']>;
   radius?: Maybe<Scalars['Float']['output']>;
+  tailPortIndex?: Maybe<Scalars['Float']['output']>;
   width?: Maybe<Scalars['Float']['output']>;
   x?: Maybe<Scalars['Float']['output']>;
   x1?: Maybe<Scalars['Float']['output']>;
@@ -1366,11 +1392,13 @@ export type Components_Component_Stddev_Pop_Fields = {
 export type Components_Component_Stddev_Samp_Fields = {
   __typename?: 'components_component_stddev_samp_fields';
   createdAt?: Maybe<Scalars['Float']['output']>;
+  headPortIndex?: Maybe<Scalars['Float']['output']>;
   height?: Maybe<Scalars['Float']['output']>;
   linewidth?: Maybe<Scalars['Float']['output']>;
   opacity?: Maybe<Scalars['Float']['output']>;
   position?: Maybe<Scalars['Float']['output']>;
   radius?: Maybe<Scalars['Float']['output']>;
+  tailPortIndex?: Maybe<Scalars['Float']['output']>;
   width?: Maybe<Scalars['Float']['output']>;
   x?: Maybe<Scalars['Float']['output']>;
   x1?: Maybe<Scalars['Float']['output']>;
@@ -1398,6 +1426,7 @@ export type Components_Component_Stream_Cursor_Value_Input = {
   createdBy?: InputMaybe<Scalars['String']['input']>;
   fill?: InputMaybe<Scalars['String']['input']>;
   headEdge?: InputMaybe<Scalars['String']['input']>;
+  headPortIndex?: InputMaybe<Scalars['Int']['input']>;
   headShapeId?: InputMaybe<Scalars['uuid']['input']>;
   height?: InputMaybe<Scalars['float8']['input']>;
   iconStroke?: InputMaybe<Scalars['String']['input']>;
@@ -1412,6 +1441,7 @@ export type Components_Component_Stream_Cursor_Value_Input = {
   stroke?: InputMaybe<Scalars['String']['input']>;
   strokeType?: InputMaybe<Scalars['String']['input']>;
   tailEdge?: InputMaybe<Scalars['String']['input']>;
+  tailPortIndex?: InputMaybe<Scalars['Int']['input']>;
   tailShapeId?: InputMaybe<Scalars['uuid']['input']>;
   textColor?: InputMaybe<Scalars['String']['input']>;
   updatedBy?: InputMaybe<Scalars['String']['input']>;
@@ -1428,11 +1458,13 @@ export type Components_Component_Stream_Cursor_Value_Input = {
 export type Components_Component_Sum_Fields = {
   __typename?: 'components_component_sum_fields';
   createdAt?: Maybe<Scalars['bigint']['output']>;
+  headPortIndex?: Maybe<Scalars['Int']['output']>;
   height?: Maybe<Scalars['float8']['output']>;
   linewidth?: Maybe<Scalars['float8']['output']>;
   opacity?: Maybe<Scalars['Float']['output']>;
   position?: Maybe<Scalars['Int']['output']>;
   radius?: Maybe<Scalars['float8']['output']>;
+  tailPortIndex?: Maybe<Scalars['Int']['output']>;
   width?: Maybe<Scalars['float8']['output']>;
   x?: Maybe<Scalars['float8']['output']>;
   x1?: Maybe<Scalars['float8']['output']>;
@@ -1461,6 +1493,8 @@ export type Components_Component_Update_Column =
   /** column name */
   | 'headEdge'
   /** column name */
+  | 'headPortIndex'
+  /** column name */
   | 'headShapeId'
   /** column name */
   | 'height'
@@ -1488,6 +1522,8 @@ export type Components_Component_Update_Column =
   | 'strokeType'
   /** column name */
   | 'tailEdge'
+  /** column name */
+  | 'tailPortIndex'
   /** column name */
   | 'tailShapeId'
   /** column name */
@@ -1532,11 +1568,13 @@ export type Components_Component_Updates = {
 export type Components_Component_Var_Pop_Fields = {
   __typename?: 'components_component_var_pop_fields';
   createdAt?: Maybe<Scalars['Float']['output']>;
+  headPortIndex?: Maybe<Scalars['Float']['output']>;
   height?: Maybe<Scalars['Float']['output']>;
   linewidth?: Maybe<Scalars['Float']['output']>;
   opacity?: Maybe<Scalars['Float']['output']>;
   position?: Maybe<Scalars['Float']['output']>;
   radius?: Maybe<Scalars['Float']['output']>;
+  tailPortIndex?: Maybe<Scalars['Float']['output']>;
   width?: Maybe<Scalars['Float']['output']>;
   x?: Maybe<Scalars['Float']['output']>;
   x1?: Maybe<Scalars['Float']['output']>;
@@ -1550,11 +1588,13 @@ export type Components_Component_Var_Pop_Fields = {
 export type Components_Component_Var_Samp_Fields = {
   __typename?: 'components_component_var_samp_fields';
   createdAt?: Maybe<Scalars['Float']['output']>;
+  headPortIndex?: Maybe<Scalars['Float']['output']>;
   height?: Maybe<Scalars['Float']['output']>;
   linewidth?: Maybe<Scalars['Float']['output']>;
   opacity?: Maybe<Scalars['Float']['output']>;
   position?: Maybe<Scalars['Float']['output']>;
   radius?: Maybe<Scalars['Float']['output']>;
+  tailPortIndex?: Maybe<Scalars['Float']['output']>;
   width?: Maybe<Scalars['Float']['output']>;
   x?: Maybe<Scalars['Float']['output']>;
   x1?: Maybe<Scalars['Float']['output']>;
@@ -1568,11 +1608,13 @@ export type Components_Component_Var_Samp_Fields = {
 export type Components_Component_Variance_Fields = {
   __typename?: 'components_component_variance_fields';
   createdAt?: Maybe<Scalars['Float']['output']>;
+  headPortIndex?: Maybe<Scalars['Float']['output']>;
   height?: Maybe<Scalars['Float']['output']>;
   linewidth?: Maybe<Scalars['Float']['output']>;
   opacity?: Maybe<Scalars['Float']['output']>;
   position?: Maybe<Scalars['Float']['output']>;
   radius?: Maybe<Scalars['Float']['output']>;
+  tailPortIndex?: Maybe<Scalars['Float']['output']>;
   width?: Maybe<Scalars['Float']['output']>;
   x?: Maybe<Scalars['Float']['output']>;
   x1?: Maybe<Scalars['Float']['output']>;
@@ -3585,7 +3627,7 @@ export type GetComponentsForBoardQueryVariables = Exact<{
 }>;
 
 
-export type GetComponentsForBoardQuery = { __typename?: 'query_root', components: Array<{ __typename?: 'components_component', id: string, componentType: string, objectClass: string, children?: unknown | null, metadata?: unknown | null, x: any, x1: any, x2: any, y: any, y1: any, y2: any, fill: string, width: any, height: any, iconStroke?: string | null, stroke?: string | null, linewidth?: any | null, strokeType?: string | null, textColor?: string | null, opacity?: number | null, position: number }> };
+export type GetComponentsForBoardQuery = { __typename?: 'query_root', components: Array<{ __typename?: 'components_component', id: string, componentType: string, objectClass: string, children?: unknown | null, metadata?: unknown | null, x: any, x1: any, x2: any, y: any, y1: any, y2: any, fill: string, width: any, height: any, iconStroke?: string | null, stroke?: string | null, linewidth?: any | null, strokeType?: string | null, textColor?: string | null, opacity?: number | null, position: number, tailShapeId?: string | null, tailEdge?: string | null, headShapeId?: string | null, headEdge?: string | null, tailPortIndex: number, headPortIndex: number }> };
 
 export type GetComponentInfoQueryQueryVariables = Exact<{
   id?: InputMaybe<Scalars['uuid']['input']>;
@@ -3642,7 +3684,7 @@ export const UpdateBoardVisibilityDocument = {"kind":"Document","definitions":[{
 export const UpdateUserRevisitCountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"updateUserRevisitCount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"lastVisit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"timestamptz"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"update_users_user_revisits_by_pk"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"pk_columns"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"user_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userId"}}}]}},{"kind":"Argument","name":{"kind":"Name","value":"_inc"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"count"},"value":{"kind":"StringValue","value":"1","block":false}}]}},{"kind":"Argument","name":{"kind":"Name","value":"_set"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"last_visit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"lastVisit"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"user_id"}},{"kind":"Field","name":{"kind":"Name","value":"last_visit"}}]}}]}}]} as unknown as DocumentNode<UpdateUserRevisitCountMutation, UpdateUserRevisitCountMutationVariables>;
 export const MyQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"MyQuery"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"users"},"name":{"kind":"Name","value":"users_user"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"id"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<MyQueryQuery, MyQueryQueryVariables>;
 export const GetComponentTypesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getComponentTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"componentTypes"},"name":{"kind":"Name","value":"components_componentType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"logo"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}}]}}]}}]} as unknown as DocumentNode<GetComponentTypesQuery, GetComponentTypesQueryVariables>;
-export const GetComponentsForBoardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getComponentsForBoard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"components"},"name":{"kind":"Name","value":"components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"boardId"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}}}]}}]}},{"kind":"Argument","name":{"kind":"Name","value":"order_by"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"position"},"value":{"kind":"EnumValue","value":"asc"}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}},{"kind":"Field","name":{"kind":"Name","value":"objectClass"}},{"kind":"Field","name":{"kind":"Name","value":"children"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"x"}},{"kind":"Field","name":{"kind":"Name","value":"x1"}},{"kind":"Field","name":{"kind":"Name","value":"x2"}},{"kind":"Field","name":{"kind":"Name","value":"y"}},{"kind":"Field","name":{"kind":"Name","value":"y1"}},{"kind":"Field","name":{"kind":"Name","value":"y2"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"iconStroke"}},{"kind":"Field","name":{"kind":"Name","value":"stroke"}},{"kind":"Field","name":{"kind":"Name","value":"linewidth"}},{"kind":"Field","name":{"kind":"Name","value":"strokeType"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}},{"kind":"Field","name":{"kind":"Name","value":"opacity"}},{"kind":"Field","name":{"kind":"Name","value":"position"}}]}}]}}]} as unknown as DocumentNode<GetComponentsForBoardQuery, GetComponentsForBoardQueryVariables>;
+export const GetComponentsForBoardDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getComponentsForBoard"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"components"},"name":{"kind":"Name","value":"components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"boardId"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}}}]}}]}},{"kind":"Argument","name":{"kind":"Name","value":"order_by"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"position"},"value":{"kind":"EnumValue","value":"asc"}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}},{"kind":"Field","name":{"kind":"Name","value":"objectClass"}},{"kind":"Field","name":{"kind":"Name","value":"children"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"x"}},{"kind":"Field","name":{"kind":"Name","value":"x1"}},{"kind":"Field","name":{"kind":"Name","value":"x2"}},{"kind":"Field","name":{"kind":"Name","value":"y"}},{"kind":"Field","name":{"kind":"Name","value":"y1"}},{"kind":"Field","name":{"kind":"Name","value":"y2"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"iconStroke"}},{"kind":"Field","name":{"kind":"Name","value":"stroke"}},{"kind":"Field","name":{"kind":"Name","value":"linewidth"}},{"kind":"Field","name":{"kind":"Name","value":"strokeType"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}},{"kind":"Field","name":{"kind":"Name","value":"opacity"}},{"kind":"Field","name":{"kind":"Name","value":"position"}},{"kind":"Field","name":{"kind":"Name","value":"tailShapeId"}},{"kind":"Field","name":{"kind":"Name","value":"tailEdge"}},{"kind":"Field","name":{"kind":"Name","value":"headShapeId"}},{"kind":"Field","name":{"kind":"Name","value":"headEdge"}},{"kind":"Field","name":{"kind":"Name","value":"tailPortIndex"}},{"kind":"Field","name":{"kind":"Name","value":"headPortIndex"}}]}}]}}]} as unknown as DocumentNode<GetComponentsForBoardQuery, GetComponentsForBoardQueryVariables>;
 export const GetComponentInfoQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getComponentInfoQuery"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"component"},"name":{"kind":"Name","value":"components_component_by_pk"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"fill"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"stroke"}},{"kind":"Field","name":{"kind":"Name","value":"linewidth"}},{"kind":"Field","name":{"kind":"Name","value":"strokeType"}},{"kind":"Field","name":{"kind":"Name","value":"x"}},{"kind":"Field","name":{"kind":"Name","value":"y"}},{"kind":"Field","name":{"kind":"Name","value":"x1"}},{"kind":"Field","name":{"kind":"Name","value":"y1"}},{"kind":"Field","name":{"kind":"Name","value":"x2"}},{"kind":"Field","name":{"kind":"Name","value":"y2"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}},{"kind":"Field","name":{"kind":"Name","value":"children"}},{"kind":"Field","name":{"kind":"Name","value":"updatedBy"}},{"kind":"Field","name":{"kind":"Name","value":"iconStroke"}},{"kind":"Field","name":{"kind":"Name","value":"textColor"}},{"kind":"Field","name":{"kind":"Name","value":"opacity"}}]}}]}}]} as unknown as DocumentNode<GetComponentInfoQueryQuery, GetComponentInfoQueryQueryVariables>;
 export const GetBoardComponentsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getBoardComponents"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"uuid"}}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"components"},"name":{"kind":"Name","value":"components_component"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"boardId"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"boardId"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"componentType"}}]}}]}}]} as unknown as DocumentNode<GetBoardComponentsQuery, GetBoardComponentsQueryVariables>;
 export const UserDetailsSubscriptionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"userDetailsSubscription"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}},"defaultValue":{"kind":"StringValue","value":"","block":false}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","alias":{"kind":"Name","value":"users"},"name":{"kind":"Name","value":"users_user"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"id"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"_eq"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"firstName"}},{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<UserDetailsSubscriptionSubscription, UserDetailsSubscriptionSubscriptionVariables>;

@@ -385,6 +385,42 @@ function addZUI(
         zui.clientToSurface(e.clientX, e.clientY)
     zui.addLimits(0.06, 8)
 
+    // Parchment dot-grid camera sync. The grid is a CSS radial-gradient painted
+    // on the renderer's SVG element, which lives in screen space (Two.js
+    // transforms the scene group inside it, never the SVG itself). To make the
+    // grid feel glued to the canvas we mirror the camera onto the CSS background:
+    // scale the tile by the zoom and offset it by the scene translation. CSS
+    // tiling makes it an infinite grid for free, and the dots re-rasterize sharp
+    // at every zoom. Base tile is 24px (kept in sync with App.css).
+    const BG_TILE_BASE = 24
+    // Keep the on-screen dot spacing inside a comfortable band by stepping the
+    // tile through power-of-2 "octaves". A plain `BG_TILE_BASE * scale` shrinks
+    // the tile as you zoom out, crowding the dots into a dense mush below ~50%
+    // (and into a sparse field when zoomed far in). Doubling/halving the tile at
+    // the band edges keeps apparent spacing roughly constant. MAX must be 2*MIN
+    // so each octave wrap lands back inside the band.
+    const BG_TILE_MIN = 16
+    const BG_TILE_MAX = 32
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let bgSvgEl: any = null
+    const syncBackgroundToCamera = () => {
+        if (!bgSvgEl) {
+            const root = document.getElementById('main-two-root')
+            bgSvgEl = root?.querySelector('svg') || null
+        }
+        if (!bgSvgEl) return
+        const scale = two.scene.scale || 1
+        const tx = two.scene.translation.x
+        const ty = two.scene.translation.y
+        let size = BG_TILE_BASE * scale
+        if (size > 0) {
+            while (size < BG_TILE_MIN) size *= 2
+            while (size > BG_TILE_MAX) size /= 2
+        }
+        bgSvgEl.style.backgroundSize = `${size}px ${size}px`
+        bgSvgEl.style.backgroundPosition = `${tx}px ${ty}px`
+    }
+
     const setRootCursor = (cursor: string) => {
         const root = document.getElementById('main-two-root')
         if (root) root.style.cursor = cursor
@@ -555,9 +591,14 @@ function addZUI(
         },
         commit: (id, patch) => {
             updateComponentBulkPropertiesInLocalStore(id, patch)
+            const g = selectionController.currentGroup
+            // Keep elementData (read by copy/paste and other consumers) in step
+            // with the store + rendered shape after a resize — otherwise a clone
+            // reads stale draw-time width/height. Mirrors the font-resize
+            // metadata sync in selectionController's resize-end path.
+            if (g?.elementData) Object.assign(g.elementData, patch)
             // Resize ended — persist any connectors whose ports tracked the
             // shape so their new tail/head survive a reload.
-            const g = selectionController.currentGroup
             if (g) persistBoundArrows(g)
         },
         onTransform: (group) => {
@@ -2240,6 +2281,7 @@ function addZUI(
             if (dx !== 0 || dy !== 0) {
                 zui.translateSurface(dx, dy)
                 two.update()
+                syncBackgroundToCamera()
                 onCameraChangeRef?.current?.({
                     scale: two.scene.scale,
                     tx: two.scene.translation.x,
@@ -3249,6 +3291,7 @@ function addZUI(
         }
 
         two.update()
+        syncBackgroundToCamera()
 
         onCameraChangeRef?.current?.({
             scale: two.scene.scale,
@@ -3378,6 +3421,7 @@ function addZUI(
                 if (dx !== 0 || dy !== 0) {
                     zui.translateSurface(dx, dy)
                     two.update()
+                    syncBackgroundToCamera()
                     onCameraChangeRef?.current?.({
                         scale: two.scene.scale,
                         tx: two.scene.translation.x,
@@ -3581,6 +3625,7 @@ function addZUI(
         distance = newDist
 
         two.update()
+        syncBackgroundToCamera()
 
         onCameraChangeRef?.current?.({
             scale: two.scene.scale,
@@ -3591,6 +3636,7 @@ function addZUI(
 
     return {
         zui,
+        syncBackgroundToCamera,
         mousemove,
         resetDragState: () => {
             dragging = false
@@ -3761,6 +3807,47 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             }
         }
 
+        // First-land seed: a board opened from Share carries the originating
+        // '/' viewport (pan + zoom) in the URL (vx/vy/vs). Clone it into this
+        // board's viewport localStorage key(s) so restoreViewport below lands
+        // on the same view instead of the origin. Seed both desktop+mobile keys
+        // (sharer and opener may be on different devices), then strip the params
+        // so a later reload uses the save-as-you-go value rather than the frozen
+        // param — i.e. subsequent reloads honour the last pan/zoom for this board.
+        if (props.boardId) {
+            const params = new URLSearchParams(window.location.search)
+            if (params.has('vx') && params.has('vy') && params.has('vs')) {
+                const tx = Number(params.get('vx'))
+                const ty = Number(params.get('vy'))
+                const scale = Number(params.get('vs'))
+                // Guard against malformed/tampered params — a NaN here would
+                // feed zoomSet/translateSurface and corrupt the scene.
+                if (
+                    Number.isFinite(tx) &&
+                    Number.isFinite(ty) &&
+                    Number.isFinite(scale) &&
+                    scale > 0
+                ) {
+                    const seeded = JSON.stringify({
+                        tx,
+                        ty,
+                        scale,
+                        savedAt: Date.now(),
+                    })
+                    localStorage.setItem(
+                        `${VIEWPORT_KEY_PREFIX}${props.boardId}`,
+                        seeded
+                    )
+                    localStorage.setItem(
+                        `${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`,
+                        seeded
+                    )
+                }
+                // Strip the params regardless so a reload never re-seeds.
+                window.history.replaceState({}, '', window.location.pathname)
+            }
+        }
+
         if (isMobile && props.boardId) {
             restoreViewport(`${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`)
         }
@@ -3768,6 +3855,10 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         if (!isMobile && props.boardId) {
             restoreViewport(`${VIEWPORT_KEY_PREFIX}${props.boardId}`)
         }
+
+        // Seed the parchment grid from the restored (or default) camera so it
+        // lands aligned on first paint, not just on the first pan/zoom.
+        zui_instance.syncBackgroundToCamera()
 
         onCameraChangeRef.current?.({
             scale: two.scene.scale as number,

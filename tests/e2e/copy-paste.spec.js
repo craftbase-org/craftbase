@@ -16,6 +16,55 @@ function safeArea(box) {
     return { cx, cy }
 }
 
+// --- Resize + copy/paste dimension-preservation helpers ---
+
+// A shape's body renders as a path (rectangle/diamond) or ellipse (circle).
+const GEOM_SELECTOR = 'ellipse, path, rect, circle'
+// Mirrors SELECTION_PADDING in src/canvas/selectionController.ts. At the default
+// scale (1) surface units ≈ screen px, so a corner handle sits this many px
+// outside the shape's rendered corner.
+const SELECTION_PADDING = 5
+// Clones render identically; allow a couple px for subpixel/stroke rounding.
+const SIZE_TOL = 2
+
+// Reads the rendered geometry box (screen px) of a shape's body node. Size is
+// position-independent, so it lets us compare an original against its pasted
+// clone regardless of where paste drops the copy.
+async function geomRect(handle) {
+    return handle.$eval(GEOM_SELECTOR, (el) => {
+        const r = el.getBoundingClientRect()
+        return {
+            left: r.left,
+            top: r.top,
+            right: r.right,
+            bottom: r.bottom,
+            width: r.width,
+            height: r.height,
+        }
+    })
+}
+
+// Clicks a shape's current center to select it, waiting for the selection
+// chrome (.shape-selected on the canvas root) so the corner handles exist.
+async function selectShape(page, handle) {
+    const r = await geomRect(handle)
+    await page.mouse.click(r.left + r.width / 2, r.top + r.height / 2)
+    await page.waitForSelector('.shape-selected')
+}
+
+// Drags the SE corner handle of an already-selected shape by (dx, dy) to grow
+// its width/height. The handle sits ~SELECTION_PADDING outside the rendered
+// SE corner.
+async function resizeFromSECorner(page, handle, dx, dy) {
+    const r = await geomRect(handle)
+    const startX = r.right + SELECTION_PADDING
+    const startY = r.bottom + SELECTION_PADDING
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(startX + dx, startY + dy, { steps: 10 })
+    await page.mouse.up()
+}
+
 test.describe('Copy-paste', () => {
     test.beforeEach(async ({ page }) => {
         await setupLocalBoard(page)
@@ -262,4 +311,109 @@ test.describe('Copy-paste', () => {
         )
         expect(pastedFill).toBe(NEW_FILL)
     })
+
+    // Resizing commits new width/height (the radius/diameter for circles) to the
+    // shape. These guard the regression risk that the copy handler reads stale
+    // pre-resize geometry — the same class of bug as the rectangle-with-text
+    // staleness above — so the pasted clone must carry the *resized* dimensions,
+    // not the draw-time ones. One test per shape, including circle.
+    const RESIZE_CASES = [
+        {
+            type: 'rectangle',
+            name: 'pasted rectangle preserves width/height set by a prior resize',
+            draw: (cx, cy) => ({
+                startX: cx - 100,
+                startY: cy - 60,
+                endX: cx + 100,
+                endY: cy + 60,
+            }),
+        },
+        {
+            type: 'circle',
+            name: 'pasted circle preserves size (radius) set by a prior resize',
+            draw: (cx, cy) => ({
+                startX: cx - 60,
+                startY: cy - 60,
+                endX: cx + 60,
+                endY: cy + 60,
+            }),
+        },
+        {
+            type: 'diamond',
+            name: 'pasted diamond preserves width/height set by a prior resize',
+            draw: (cx, cy) => ({
+                startX: cx - 70,
+                startY: cy - 70,
+                endX: cx + 70,
+                endY: cy + 70,
+            }),
+        },
+    ]
+
+    for (const shapeCase of RESIZE_CASES) {
+        test(shapeCase.name, async ({ page }) => {
+            const box = await getCanvasBox(page)
+            const { cx, cy } = safeArea(box)
+            // Empty canvas point (left of the shape, clear of the top toolbar
+            // and the left Defaults panel) used for blur and re-blur clicks.
+            const emptyPoint = {
+                x: box.x + box.width * 0.3,
+                y: box.y + box.height * 0.85,
+            }
+
+            const handle = await drawShape(
+                page,
+                shapeCase.type,
+                shapeCase.draw(cx, cy)
+            )
+
+            // Blur: click empty canvas to drop any post-draw selection.
+            await page.mouse.click(emptyPoint.x, emptyPoint.y)
+
+            // Re-select, then grow the shape via its SE corner handle.
+            await selectShape(page, handle)
+            const beforeResize = await geomRect(handle)
+            await resizeFromSECorner(page, handle, 80, 80)
+            const afterResize = await geomRect(handle)
+
+            // Sanity: the resize actually enlarged the shape.
+            expect(afterResize.width).toBeGreaterThan(beforeResize.width + 20)
+            expect(afterResize.height).toBeGreaterThan(beforeResize.height + 20)
+
+            // Deselect → re-select → copy (mirrors the proven select-before-copy
+            // sequence above), then paste on empty canvas.
+            await page.mouse.click(emptyPoint.x, emptyPoint.y)
+            await selectShape(page, handle)
+            await page.keyboard.press('Meta+c')
+            await page.mouse.move(cx - 300, cy)
+            await page.keyboard.press('Meta+v')
+
+            await page.waitForFunction(
+                () =>
+                    document.querySelectorAll('[data-component-id]').length >= 2
+            )
+
+            // The pasted clone is the element whose id differs from the original.
+            const originalId = await handle.getAttribute('id')
+            const allGroups = await page.$$('[data-component-id]')
+            let pastedHandle = null
+            for (const group of allGroups) {
+                const id = await group.getAttribute('id')
+                if (id !== originalId) {
+                    pastedHandle = group
+                    break
+                }
+            }
+            expect(pastedHandle).not.toBeNull()
+
+            // The pasted clone must carry the resized dimensions, not pre-resize.
+            const pasted = await geomRect(pastedHandle)
+            expect(
+                Math.abs(pasted.width - afterResize.width)
+            ).toBeLessThanOrEqual(SIZE_TOL)
+            expect(
+                Math.abs(pasted.height - afterResize.height)
+            ).toBeLessThanOrEqual(SIZE_TOL)
+        })
+    }
 })
