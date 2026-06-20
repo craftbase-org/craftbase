@@ -555,9 +555,14 @@ function addZUI(
         },
         commit: (id, patch) => {
             updateComponentBulkPropertiesInLocalStore(id, patch)
+            const g = selectionController.currentGroup
+            // Keep elementData (read by copy/paste and other consumers) in step
+            // with the store + rendered shape after a resize — otherwise a clone
+            // reads stale draw-time width/height. Mirrors the font-resize
+            // metadata sync in selectionController's resize-end path.
+            if (g?.elementData) Object.assign(g.elementData, patch)
             // Resize ended — persist any connectors whose ports tracked the
             // shape so their new tail/head survive a reload.
-            const g = selectionController.currentGroup
             if (g) persistBoundArrows(g)
         },
         onTransform: (group) => {
@@ -3758,6 +3763,47 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                 two.update()
             } catch (_) {
                 localStorage.removeItem(storageKey)
+            }
+        }
+
+        // First-land seed: a board opened from Share carries the originating
+        // '/' viewport (pan + zoom) in the URL (vx/vy/vs). Clone it into this
+        // board's viewport localStorage key(s) so restoreViewport below lands
+        // on the same view instead of the origin. Seed both desktop+mobile keys
+        // (sharer and opener may be on different devices), then strip the params
+        // so a later reload uses the save-as-you-go value rather than the frozen
+        // param — i.e. subsequent reloads honour the last pan/zoom for this board.
+        if (props.boardId) {
+            const params = new URLSearchParams(window.location.search)
+            if (params.has('vx') && params.has('vy') && params.has('vs')) {
+                const tx = Number(params.get('vx'))
+                const ty = Number(params.get('vy'))
+                const scale = Number(params.get('vs'))
+                // Guard against malformed/tampered params — a NaN here would
+                // feed zoomSet/translateSurface and corrupt the scene.
+                if (
+                    Number.isFinite(tx) &&
+                    Number.isFinite(ty) &&
+                    Number.isFinite(scale) &&
+                    scale > 0
+                ) {
+                    const seeded = JSON.stringify({
+                        tx,
+                        ty,
+                        scale,
+                        savedAt: Date.now(),
+                    })
+                    localStorage.setItem(
+                        `${VIEWPORT_KEY_PREFIX}${props.boardId}`,
+                        seeded
+                    )
+                    localStorage.setItem(
+                        `${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`,
+                        seeded
+                    )
+                }
+                // Strip the params regardless so a reload never re-seeds.
+                window.history.replaceState({}, '', window.location.pathname)
             }
         }
 

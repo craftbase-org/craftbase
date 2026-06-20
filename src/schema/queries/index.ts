@@ -72,6 +72,12 @@ export const GET_COMPONENTS_FOR_BOARD_QUERY: TypedDocumentNode<
             textColor
             opacity
             position
+            tailShapeId
+            tailEdge
+            headShapeId
+            headEdge
+            tailPortIndex
+            headPortIndex
         }
     }
 `

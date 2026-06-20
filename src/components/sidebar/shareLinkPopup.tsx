@@ -15,8 +15,13 @@ const ShareLinkPopup = (): ReactElement => {
     const [showConfirmModal, setShowConfirmModal] = useState(false)
     const [isPersisting, setIsPersisting] = useState(false)
     const [shareUrl, setShareUrl] = useState<string | null>(null)
-    const { isPersisted, persistBoard, backgroundBoardId, stateRefForComponentStore } =
-        useBoardContext()
+    const {
+        isPersisted,
+        persistBoard,
+        backgroundBoardId,
+        stateRefForComponentStore,
+        twoJSInstance,
+    } = useBoardContext()
 
     // Whether there's anything to share. Gate on the actual component store,
     // NOT backgroundBoardId: that id is only minted by ensureBackgroundBoard()
@@ -57,10 +62,22 @@ const ShareLinkPopup = (): ReactElement => {
             const serverBoardId = await persistBoard()
             await updateBoardVisibility({ variables: { id: serverBoardId } })
             const url = `${window.location.origin}/board/${serverBoardId}`
+            // The shared/copied link stays clean (no params) — params only ride
+            // on the auto-opened tab to hand off the current '/' viewport.
             setShareUrl(url)
             setShowConfirmModal(false)
             setShowLink(true)
-            window.open(url, '_blank', 'noopener,noreferrer')
+            // Carry the live '/' viewport (pan + zoom) to the freshly-created
+            // board via query params so the opened tab lands on the same view
+            // instead of the origin. Read the live scene rather than the
+            // debounced localStorage entry so the last pan before clicking Share
+            // is included. The land side (newCanvas) consumes these once, seeds
+            // this board's viewport localStorage key(s), then strips the params.
+            const scene = twoJSInstance?.scene
+            const openUrl = scene
+                ? `${url}?vx=${scene.translation.x}&vy=${scene.translation.y}&vs=${scene.scale}`
+                : url
+            window.open(openUrl, '_blank', 'noopener,noreferrer')
         } finally {
             setIsPersisting(false)
         }
