@@ -303,7 +303,8 @@ See detailed notes in `.claude/context/` for feature-specific implementation det
 - `.claude/context/undo-history.md` - Undo/history stack: action entry shapes, `recordToHistoryLog`, and `undoLastAction()` as the canonical rollback for any failed mutation
 - `.claude/context/responsive-design.md` - When to use Tailwind responsive prefixes vs `useMediaQueryUtils` hook; breakpoint values for both; the core decision rule
 - `.claude/context/font-guide.md` - Font system: Geist (UI chrome), Fraunces (branding/headings), Caveat Brush (canvas sketch); CSS variables, Tailwind config, and usage rules per area
-- `claude/context/reorder.md` - How reording/positioning of elements in Z-Axis (Z-order) works in craftbase
+- `.claude/context/reorder.md` - How reording/positioning of elements in Z-Axis (Z-order) works in craftbase
+- `.claude/context/v1-readiness-roadmap.md` - the roadmpa for v1 readiness of craftbase consisting of plan and promises of data durability, API stability and operational confidence.
 
 ## Port connectors (connectable arrows)
 
