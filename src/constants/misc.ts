@@ -204,6 +204,11 @@ export const WELCOME_DISMISSED_KEY = 'craftbase_welcome_dismissed'
 // `src/utils/featureFlags.ts`). Defaults to enabled.
 export const CONNECTORS_ENABLED_KEY = 'craftbase_connectors_enabled'
 
+// Feature-flag preference: parchment dot-grid background. User-toggled in the
+// Settings modal, persisted in localStorage, read live (see
+// `src/utils/featureFlags.ts`). Defaults to disabled.
+export const DOT_GRID_ENABLED_KEY = 'craftbase_dot_grid_enabled'
+
 // Canvas rendering constants
 export const HOVER_THRESHOLD = 15
 export const HOVER_COLOR = 'rgba(196, 144, 26, 0.7)'

@@ -75,6 +75,8 @@ import { generateUUID } from './utils/misc'
 import {
     getConnectorsEnabled,
     subscribeConnectorsEnabled,
+    getDotGridEnabled,
+    subscribeDotGridEnabled,
 } from './utils/featureFlags'
 import {
     velocityToLinewidth,
@@ -404,6 +406,9 @@ function addZUI(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let bgSvgEl: any = null
     const syncBackgroundToCamera = () => {
+        // Dot grid is behind a feature flag (default off). When disabled the CSS
+        // paints only the solid parchment color, so there's nothing to drive.
+        if (!getDotGridEnabled()) return
         if (!bgSvgEl) {
             const root = document.getElementById('main-two-root')
             bgSvgEl = root?.querySelector('svg') || null
@@ -419,6 +424,14 @@ function addZUI(
         }
         bgSvgEl.style.backgroundSize = `${size}px ${size}px`
         bgSvgEl.style.backgroundPosition = `${tx}px ${ty}px`
+    }
+
+    // Toggle the `cb-dot-grid` class on the canvas root so the CSS dot-grid
+    // rule paints only when the flag is on, then re-sync the live size/position.
+    const syncDotGridClass = () => {
+        const root = document.getElementById('main-two-root')
+        if (root) root.classList.toggle('cb-dot-grid', getDotGridEnabled())
+        syncBackgroundToCamera()
     }
 
     const setRootCursor = (cursor: string) => {
@@ -643,6 +656,13 @@ function addZUI(
     subscribeConnectorsEnabled((enabled) => {
         if (!enabled) selectionController.hidePortGlow()
         selectionController.resync()
+    })
+
+    // Dot-grid flag is live-toggleable from Settings. On flip, add/remove the
+    // `cb-dot-grid` class so the dots appear/disappear immediately, and re-sync
+    // their size/position to the current camera.
+    subscribeDotGridEnabled(() => {
+        syncDotGridClass()
     })
 
     function dblclick(e: MouseEvent) {
@@ -3637,6 +3657,7 @@ function addZUI(
     return {
         zui,
         syncBackgroundToCamera,
+        syncDotGridClass,
         mousemove,
         resetDragState: () => {
             dragging = false
@@ -3856,9 +3877,11 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             restoreViewport(`${VIEWPORT_KEY_PREFIX}${props.boardId}`)
         }
 
-        // Seed the parchment grid from the restored (or default) camera so it
-        // lands aligned on first paint, not just on the first pan/zoom.
-        zui_instance.syncBackgroundToCamera()
+        // Reflect the stored dot-grid flag on the root (adds `cb-dot-grid` when
+        // enabled) and seed the parchment grid from the restored (or default)
+        // camera so it lands aligned on first paint, not just on the first
+        // pan/zoom. No-op visually when the flag is off.
+        zui_instance.syncDotGridClass()
 
         onCameraChangeRef.current?.({
             scale: two.scene.scale as number,
