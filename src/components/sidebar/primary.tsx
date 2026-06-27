@@ -25,6 +25,7 @@ import {
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
+import ThemeSwitcher from './themeSwitcher'
 import MenuDrawer from './menuDrawer'
 
 const DRAW_SHAPE_TYPES = ['circle', 'rectangle', 'diamond']
@@ -36,9 +37,9 @@ const FALLBACK_CATALOG: Record<
     string,
     { width: number; height: number; fill: string; textColor: string | null }
 > = {
-    rectangle: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
-    circle: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
-    diamond: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
+    rectangle: { width: 160, height: 160, fill: '#fff', textColor: '#000' },
+    circle: { width: 160, height: 160, fill: '#fff', textColor: '#000' },
+    diamond: { width: 160, height: 160, fill: '#fff', textColor: '#000' },
     arrowLine: { width: 100, height: 0, fill: 'transparent', textColor: null },
     divider: { width: 100, height: 0, fill: 'transparent', textColor: null },
     text: { width: 120, height: 36, fill: 'transparent', textColor: '#3A342C' },
@@ -561,6 +562,7 @@ const PrimarySidebar = (): ReactElement => {
                     </div>
                 )}
 
+                {!isMobile && <ThemeSwitcher />}
                 {!isMobile && <ShareLinkPopup />}
             </div>
         </>

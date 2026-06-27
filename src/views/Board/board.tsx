@@ -41,10 +41,12 @@ import {
     readOpacity,
 } from '../../utils/canvasUtils'
 import { reflowTextForShape } from '../../utils/shapeTextFit'
+import { themeDefaultInk } from '../../utils/themeColorFlip'
 import { lineHeightFor } from '../../utils/textLayout'
 import {
     TEXT_SIZES_OBJECT,
     MOBILE_TEXT_SIZES_OBJECT,
+    TRANSPARENT_FILL,
 } from '../../utils/constants'
 import {
     RUBBER_MODE_KEY,
@@ -281,6 +283,32 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         setDefaultStrokeTypeInBoard,
         resetDefaults,
     } = useElementDefaults()
+
+    // Force the defaults on mount and on every theme toggle, overwriting any
+    // prior pick: stroke/text → theme ink (#fff in dark, #000 in light), and
+    // fill → transparent. Between toggles the user is free to pick any color from
+    // the toolbar; the next toggle resets them again.
+    useEffect(() => {
+        const forceInkDefaults = (): void => {
+            const ink = themeDefaultInk()
+            setDefaultFill(TRANSPARENT_FILL)
+            setDefaultStrokeColor(ink)
+            setDefaultTextColor(ink)
+        }
+        forceInkDefaults()
+        let prevDark = document.documentElement.classList.contains('dark')
+        const obs = new MutationObserver(() => {
+            const isDark = document.documentElement.classList.contains('dark')
+            if (isDark === prevDark) return
+            prevDark = isDark
+            forceInkDefaults()
+        })
+        obs.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class'],
+        })
+        return () => obs.disconnect()
+    }, [setDefaultFill, setDefaultStrokeColor, setDefaultTextColor])
 
     const onStorageLimitRef = useRef<(() => Promise<void>) | null>(null)
 

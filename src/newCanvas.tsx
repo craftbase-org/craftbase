@@ -95,6 +95,14 @@ import {
     shapeTextStyleFromMeta,
 } from './utils/canvasUtils'
 import { growShapeToFitText, usableTextWidth } from './utils/shapeTextFit'
+import {
+    flipThemeColor,
+    themeDefaultInk,
+    isFillableShapeType,
+    isStrokeFlippableType,
+    paintShapeFill,
+    paintElementStroke,
+} from './utils/themeColorFlip'
 import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
 import { createDiamondPath } from './factory/diamond'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
@@ -665,6 +673,128 @@ function addZUI(
         syncDotGridClass()
     })
 
+    // Theme-toggle color flip. The theme is signalled by the `dark` class on
+    // <html> (toggled by useTheme). On each toggle we flip every element's color
+    // to its paired counterpart (flipThemeColor — a theme-independent involution:
+    // #000↔#fff, light shade↔dark shade) and PERSIST the new value to the store
+    // (skipHistory, so it survives reload and isn't clobbered by later edits).
+    // We mutate the Two.js node directly too, since the element components froze
+    // their props at mount and won't re-render from the store. Colors are never
+    // transformed at create/load/edit — only here, on an explicit toggle. The
+    // selection box stroke is UI chrome and stays theme-driven (active `ink`).
+    let prevDark = document.documentElement.classList.contains('dark')
+    const flipColorOnNodesAndStore = (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        child: any
+    ): void => {
+        const ed = child?.elementData
+        if (!ed?.id) return
+        const ct = ed.componentType
+
+        // Welcome-sketch content is theme-aware too, but it is ephemeral demo
+        // content (metadata.isWelcome) — re-color its nodes to the active theme
+        // ink WITHOUT persisting. Routing it through the persisting path below
+        // would call updateComponentBulkPropertiesInLocalStore → promoteWelcome
+        // Sketch, wrongly claiming the sketch as real content on a theme toggle.
+        if (ed.metadata?.isWelcome) {
+            const ink = themeDefaultInk()
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            getShapeTextNodes(child).forEach((n: any) => {
+                n.fill = ink
+            })
+            if (ed.stroke) {
+                paintElementStroke(child, ed.stroke, ink)
+                ed.stroke = ink
+            }
+            if (ed.textColor) ed.textColor = ink
+            if (ed.metadata?.textFill) {
+                ed.metadata = { ...ed.metadata, textFill: ink }
+            }
+            return
+        }
+
+        // Text color. Standalone text (`newText`) renders from
+        // elementData.textColor; shapes-with-text render from metadata.textFill
+        // (the shapes' own `textColor` is a vestigial template value and not what
+        // renderShapeTextLayer paints), so flip the field that actually drives it.
+        if (ct === 'newText') {
+            if (ed.textColor) {
+                const flipped = flipThemeColor(ed.textColor)
+                if (flipped !== ed.textColor) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    getShapeTextNodes(child).forEach((n: any) => {
+                        n.fill = flipped
+                    })
+                    ed.textColor = flipped
+                    updateComponentBulkPropertiesInLocalStore(
+                        ed.id,
+                        { textColor: flipped },
+                        true
+                    )
+                }
+            }
+        } else if (ed.metadata?.textFill) {
+            const flipped = flipThemeColor(ed.metadata.textFill)
+            if (flipped !== ed.metadata.textFill) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                getShapeTextNodes(child).forEach((n: any) => {
+                    n.fill = flipped
+                })
+                const newMeta = { ...ed.metadata, textFill: flipped }
+                ed.metadata = newMeta
+                updateComponentBulkPropertiesInLocalStore(
+                    ed.id,
+                    { metadata: newMeta },
+                    true
+                )
+            }
+        }
+
+        // Shape fill (rectangle/circle/diamond).
+        if (isFillableShapeType(ct) && ed.fill) {
+            const flipped = flipThemeColor(ed.fill)
+            if (flipped !== ed.fill) {
+                paintShapeFill(child, flipped, findShapeTextLayer(child))
+                ed.fill = flipped
+                updateComponentBulkPropertiesInLocalStore(
+                    ed.id,
+                    { fill: flipped },
+                    true
+                )
+            }
+        }
+
+        // Arrow + pencil stroke (endpoint handles keep their fixed color).
+        if (isStrokeFlippableType(ct) && ed.stroke) {
+            const flipped = flipThemeColor(ed.stroke)
+            if (flipped !== ed.stroke) {
+                paintElementStroke(child, ed.stroke, flipped)
+                ed.stroke = flipped
+                updateComponentBulkPropertiesInLocalStore(
+                    ed.id,
+                    { stroke: flipped },
+                    true
+                )
+            }
+        }
+    }
+    const repaintForTheme = (): void => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        two.scene.children.forEach((child: any) => flipColorOnNodesAndStore(child))
+        // applyThemeStroke runs the single two.update() covering all changes.
+        selectionController.applyThemeStroke()
+    }
+    const themeObserver = new MutationObserver(() => {
+        const isDark = document.documentElement.classList.contains('dark')
+        if (isDark === prevDark) return
+        prevDark = isDark
+        repaintForTheme()
+    })
+    themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class'],
+    })
+
     function dblclick(e: MouseEvent) {
         // In a multi-click geo draw, a double-click finishes it. Drop the
         // duplicate vertex the second mousedown added.
@@ -791,7 +921,7 @@ function addZUI(
             input.style.border = 'none'
             input.style.background = 'transparent'
             input.style.padding = `${vertPad}px 8px`
-            input.style.color = textStyle.fill || '#3A342C'
+            input.style.color = textStyle.fill || '#000'
             input.style.fontSize = `${cssFontSize}px`
             input.style.fontFamily =
                 textStyle.family || DEFAULT_TEXT_FONT_FAMILY
@@ -3670,6 +3800,7 @@ function addZUI(
             lastSelectedShape,
         bringSelectionToFront: () =>
             selectionController.bringSelectionToFront(),
+        disconnectThemeObserver: () => themeObserver.disconnect(),
     }
 }
 
@@ -3919,6 +4050,7 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         // browser defaults take over again; remounting the Board re-applies
         // them, so the whiteboard's no-scroll behavior is unchanged.
         return () => {
+            zui_instance?.disconnectThemeObserver?.()
             for (const prop of [
                 'overflow',
                 'position',

@@ -40,7 +40,6 @@ export const properties = {
 export const allColorShades: string[] = [
     '#FFFFFF',
     '#000000',
-    '#BF2600',
     '#DE350B',
     '#FF5630',
     '#FF7452',
@@ -48,7 +47,6 @@ export const allColorShades: string[] = [
     '#FFBDAD',
     '#FFEBE6',
 
-    '#FF8B00',
     '#FF991F',
     '#FFAB00',
     '#FFC400',
@@ -56,7 +54,6 @@ export const allColorShades: string[] = [
     '#FFF0B3',
     '#FFFAE6',
 
-    '#006644',
     '#00875A',
     '#36B37E',
     '#57D9A3',
@@ -64,7 +61,6 @@ export const allColorShades: string[] = [
     '#ABF5D1',
     '#E3FCEF',
 
-    '#008DA6',
     '#00A3BF',
     '#00B8D9',
     '#00C7E6',
@@ -72,7 +68,6 @@ export const allColorShades: string[] = [
     '#B3F5FF',
     '#E6FCFF',
 
-    '#0747A6',
     '#0052CC',
     '#0065FF',
     '#2684FF',
@@ -80,7 +75,6 @@ export const allColorShades: string[] = [
     '#B3D4FF',
     '#DEEBFF',
 
-    '#403294',
     '#5243AA',
     '#6554C0',
     '#8777D9',
@@ -102,6 +96,13 @@ export const allColorShades: string[] = [
     '#5E6C84',
     '#7A869A',
     '#97A0AF',
+
+    '#BF2600',
+    '#FF8B00',
+    '#006644',
+    '#008DA6',
+    '#0747A6',
+    '#403294',
 ]
 
 // Fully transparent fill ("none"). Browsers accept rgba() in SVG

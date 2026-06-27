@@ -274,7 +274,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 const ReorderRow = ({ onReorder }: { onReorder: (op: ReorderOp) => void }) => (
     <div
         data-section="reorder"
-        className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]"
+        className="pt-2 px-2 pb-2 border-b border-border-panel"
     >
         <SectionLabel>Reorder</SectionLabel>
         <div className="flex gap-2">
@@ -654,7 +654,7 @@ const ElementPropertiesToolbar = () => {
             {sections.includes('fill') && (
                 <div
                     data-section="fill"
-                    className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]"
+                    className="pt-2 px-2 pb-2 border-b border-border-panel"
                 >
                     <ColorPicker
                         title="Fill"
@@ -670,7 +670,7 @@ const ElementPropertiesToolbar = () => {
             {sections.includes('stroke') && (
                 <div
                     data-section="stroke"
-                    className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]"
+                    className="pt-2 px-2 pb-2 border-b border-border-panel"
                 >
                     <ColorPicker
                         title="Stroke"
@@ -699,7 +699,7 @@ const ElementPropertiesToolbar = () => {
             {sections.includes('textColor') && (
                 <div
                     data-section="textColor"
-                    className="pt-2 px-2 pb-2 border-b border-[#EDE7D7]"
+                    className="pt-2 px-2 pb-2 border-b border-border-panel"
                 >
                     <ColorPicker
                         title="Text"

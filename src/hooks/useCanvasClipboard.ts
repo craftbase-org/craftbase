@@ -146,7 +146,13 @@ export function useCanvasClipboard({
                     const textNodes = getShapeTextNodes(liveGroup)
                     const firstNode = textNodes[0]
                     if (firstNode && typeof firstNode.value === 'string') {
-                        item.textColor = firstNode.fill || item.textColor
+                        // Prefer the STORED color (elementData) over the live
+                        // node fill: in dark mode the node fill may be the
+                        // display-swapped white (resolveTextDisplayFill), and we
+                        // must not bake that into the copied component. Fall back
+                        // to the node fill only for legacy items lacking a stored
+                        // textColor.
+                        item.textColor = item.textColor || firstNode.fill
                         item.metadata = {
                             ...item.metadata,
                             content: textNodes

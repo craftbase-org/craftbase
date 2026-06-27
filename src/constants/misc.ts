@@ -185,9 +185,10 @@ export const GEO_MIN_VERTICES: Record<'area' | 'route', number> = {
     route: 2,
 }
 
-// Default colors
-export const PENCIL_DEFAULT_COLOR = '#3A342C'
-export const SHAPE_DEFAULT_STROKE = '#3A342C'
+// Default ink for strokes. Pure black so it flips cleanly to white on a theme
+// toggle (see themeColorFlip): #000 in light, #fff in dark.
+export const PENCIL_DEFAULT_COLOR = '#000'
+export const SHAPE_DEFAULT_STROKE = '#000'
 
 // Draft persistence
 export const DRAFT_STORAGE_KEY = 'craftbase_local_draft'

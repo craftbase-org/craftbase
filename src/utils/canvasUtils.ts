@@ -3,6 +3,7 @@ import {
     DEFAULT_TEXT_FONT_FAMILY,
 } from '../constants/misc'
 import { generateUUID } from './misc'
+import { themeDefaultInk } from './themeColorFlip'
 import { lineHeightFor, measureTextWidth, type FontSpec } from './textLayout'
 import { reflowTextForShape } from './shapeTextFit'
 
@@ -493,7 +494,7 @@ export function renderShapeTextLayer(
 }
 
 // Derive the text style + measurement font from a shape's metadata, matching
-// the historical single-makeText defaults (Caveat / #3A342C / size 24).
+// the historical single-makeText defaults (Caveat / theme ink / size 24).
 export function shapeTextStyleFromMeta(meta: ShapeLike): {
     style: ShapeTextStyle
     font: FontSpec
@@ -504,7 +505,7 @@ export function shapeTextStyleFromMeta(meta: ShapeLike): {
     const weight = meta?.textWeight || 'normal'
     return {
         style: {
-            fill: meta?.textFill || '#3A342C',
+            fill: meta?.textFill || themeDefaultInk(),
             size,
             family,
             weight,
