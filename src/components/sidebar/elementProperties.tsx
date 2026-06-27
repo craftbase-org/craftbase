@@ -14,6 +14,10 @@ import BringToFrontIcon from '../../assets/bring-to-front.svg?react'
 import BringForwardIcon from '../../assets/bring-forward.svg?react'
 import SendBackwardIcon from '../../assets/send-backward.svg?react'
 import SendToBackIcon from '../../assets/send-to-back.svg?react'
+import ColoursIcon from '../../assets/colours.svg?react'
+import EllypsisIcon from '../../assets/ellypsis.svg?react'
+import TextIcon from '../../assets/text.svg?react'
+import SunsetIcon from '../../assets/sunset.svg?react'
 
 // Reorder icon tone — matches the toolbar's ink-mid text. The source SVGs
 // hardcode a blue stroke; SVGR spreads props after the original attrs so this
@@ -35,6 +39,27 @@ const STROKE_TYPES = [
     { label: '—', value: 'solid' },
     { label: '- -', value: 'dashed' },
     { label: '...', value: 'dotted' },
+]
+
+// Mobile-only: the property groups are collapsed into a 4-way segmented control
+// (one group visible at a time) so the panel never overflows a small screen.
+// `extras` folds opacity + reorder together. Tab icons live in src/assets and
+// hardcode a blue stroke; SVGR spreads props after the original attrs so the
+// `stroke` override below wins (same trick as the reorder icons).
+type MobileTab = 'colors' | 'stroke' | 'text' | 'extras'
+
+const MOBILE_TAB_ICON_ACTIVE = '#C4901A'
+const MOBILE_TAB_ICON_INACTIVE = '#8C7E6A'
+
+const MOBILE_TABS: {
+    key: MobileTab
+    label: string
+    Icon: React.FunctionComponent<React.SVGProps<SVGSVGElement>>
+}[] = [
+    { key: 'colors', label: 'Colors', Icon: ColoursIcon },
+    { key: 'stroke', label: 'Stroke', Icon: EllypsisIcon },
+    { key: 'text', label: 'Text', Icon: TextIcon },
+    { key: 'extras', label: 'Opacity & order', Icon: SunsetIcon },
 ]
 
 // `inner` is the diameter (px) of the inner circle that visually nudges
@@ -473,6 +498,46 @@ const FontFamilyRow = ({
     )
 }
 
+const MobileTabBar = ({
+    tabs,
+    active,
+    onSelect,
+}: {
+    tabs: typeof MOBILE_TABS
+    active: MobileTab
+    onSelect: (key: MobileTab) => void
+}) => (
+    <div className="flex gap-1 px-2 py-2 border-t border-border-panel shrink-0">
+        {tabs.map(({ key, label, Icon }) => {
+            const isActive = active === key
+            return (
+                <button
+                    key={key}
+                    type="button"
+                    aria-label={label}
+                    aria-pressed={isActive}
+                    onClick={() => onSelect(key)}
+                    className={`flex-1 h-10 flex items-center justify-center rounded cursor-pointer transition-colors ${
+                        isActive
+                            ? 'bg-accent/20 border-2 border-accent-dark'
+                            : 'border border-border-card hover:bg-accent/20'
+                    }`}
+                >
+                    <Icon
+                        width={25}
+                        height={25}
+                        stroke={
+                            isActive
+                                ? MOBILE_TAB_ICON_ACTIVE
+                                : MOBILE_TAB_ICON_INACTIVE
+                        }
+                    />
+                </button>
+            )
+        })}
+    </div>
+)
+
 const ElementPropertiesToolbar = () => {
     const ctx = useBoardContext()
 
@@ -543,13 +608,19 @@ const ElementPropertiesToolbar = () => {
 
     const [expandedSection, setExpandedSection] = useState<string | null>(null)
 
+    // Mobile-only active segment. Resets to 'colors' (the spec'd default) on any
+    // context change / panel re-open below.
+    const [mobileTab, setMobileTab] = useState<MobileTab>('colors')
+
     const toggleSection = (key: string): void =>
         setExpandedSection((prev) => (prev === key ? null : key))
 
-    // Collapse any open color picker when context changes (new selection, mode switch).
+    // Collapse any open color picker + reset the mobile tab to the colors group
+    // when context changes (new selection, mode switch, panel re-open).
     useEffect(() => {
         setExpandedSection(null)
-    }, [setKey, selectedComponent, selectedGroup])
+        setMobileTab('colors')
+    }, [setKey, selectedComponent, selectedGroup, showMobileToolbarPanel])
 
     // Re-sync local UI state whenever the source of truth changes (selection,
     // mode, or any default). Property mutations bump a default, which flows
@@ -621,6 +692,142 @@ const ElementPropertiesToolbar = () => {
             applyProperty?.(key, val, opts)
         }
 
+    // Build each property group once, then lay them out differently per device:
+    // desktop stacks them all; mobile shows one group at a time via the bottom
+    // segmented bar.
+    const colorsGroup =
+        sections.includes('fill') ||
+        sections.includes('stroke') ||
+        sections.includes('textColor') ? (
+            <div className="pb-2 border-b border-border-panel">
+                {sections.includes('fill') && (
+                    <div data-section="fill" className="pt-2 px-2">
+                        <ColorPicker
+                            title="Fill"
+                            currentColor={values.fill}
+                            onChangeComplete={handle('fill')}
+                            isExpanded={expandedSection === 'fill'}
+                            onToggleExpand={() => toggleSection('fill')}
+                            essentialColors={fillEssentialShades}
+                        />
+                    </div>
+                )}
+
+                {sections.includes('stroke') && (
+                    <div data-section="stroke" className="pt-2 px-2">
+                        <ColorPicker
+                            title="Stroke"
+                            currentColor={values.stroke}
+                            onChangeComplete={handle('stroke')}
+                            isExpanded={expandedSection === 'stroke'}
+                            onToggleExpand={() => toggleSection('stroke')}
+                        />
+                    </div>
+                )}
+
+                {sections.includes('textColor') && (
+                    <div data-section="textColor" className="pt-2 px-2">
+                        <ColorPicker
+                            title="Text"
+                            currentColor={values.textColor}
+                            onChangeComplete={handle('textColor')}
+                            isExpanded={expandedSection === 'textColor'}
+                            onToggleExpand={() => toggleSection('textColor')}
+                        />
+                    </div>
+                )}
+            </div>
+        ) : null
+
+    const strokeGroup =
+        sections.includes('strokeWidth') || sections.includes('strokeType') ? (
+            <div className="pb-3 border-b border-border-panel">
+                {sections.includes('strokeWidth') && (
+                    <StrokeWidthRow
+                        value={values.linewidth}
+                        onChange={handle('linewidth')}
+                    />
+                )}
+
+                {sections.includes('strokeType') && (
+                    <StrokeTypeRow
+                        value={values.strokeType}
+                        onChange={handle('strokeType')}
+                    />
+                )}
+            </div>
+        ) : null
+
+    const textGroup =
+        sections.includes('textSize') || sections.includes('textFont') ? (
+            <div className="pb-3 border-b border-border-panel">
+                {sections.includes('textSize') && (
+                    <TextSizeRow
+                        value={values.textSize}
+                        onChange={handle('textSize')}
+                    />
+                )}
+
+                {sections.includes('textFont') && (
+                    <FontFamilyRow
+                        value={values.textFontFamily}
+                        onChange={handle('textFontFamily')}
+                    />
+                )}
+            </div>
+        ) : null
+
+    const opacityGroup = sections.includes('opacity') ? (
+        <div className="pt-3 px-2 pb-3 border-b border-border-panel">
+            <SectionLabel>Opacity</SectionLabel>
+            <OpacitySlider
+                isMixed={values.opacity === MIXED}
+                currentOpacity={
+                    typeof values.opacity === 'number' ? values.opacity : 1
+                }
+                handleOnDrag={(arr): void =>
+                    // Live preview while dragging: applies to the scene only
+                    // (no store/history write) so the element fades in real
+                    // time. The release (handleOnChange) commits.
+                    handle('opacity', { preview: true })(arr[0])
+                }
+                handleOnChange={(arr) => handle('opacity')(arr[0])}
+            />
+        </div>
+    ) : null
+
+    const reorderGroup = showReorder ? (
+        <ReorderRow onReorder={reorderSelected} />
+    ) : null
+
+    // Mobile: only surface tabs that actually have content for this element.
+    // `extras` folds opacity + reorder together (per the mobile spec).
+    const availableMobileTabs = MOBILE_TABS.filter(({ key }) => {
+        if (key === 'colors') return Boolean(colorsGroup)
+        if (key === 'stroke') return Boolean(strokeGroup)
+        if (key === 'text') return Boolean(textGroup)
+        return Boolean(opacityGroup) || Boolean(reorderGroup)
+    })
+    // Clamp the active tab to one that exists — the state may still point at a
+    // tab the previous selection had but this one doesn't.
+    const activeMobileTab: MobileTab = availableMobileTabs.some(
+        (t) => t.key === mobileTab
+    )
+        ? mobileTab
+        : (availableMobileTabs[0]?.key ?? 'colors')
+
+    let mobileActiveContent: React.ReactNode
+    if (activeMobileTab === 'colors') mobileActiveContent = colorsGroup
+    else if (activeMobileTab === 'stroke') mobileActiveContent = strokeGroup
+    else if (activeMobileTab === 'text') mobileActiveContent = textGroup
+    else
+        mobileActiveContent = (
+            <>
+                {opacityGroup}
+                {reorderGroup}
+            </>
+        )
+
     return (
         <div
             id="floating-toolbar"
@@ -635,7 +842,11 @@ const ElementPropertiesToolbar = () => {
                 if (tag === 'INPUT' || tag === 'TEXTAREA') return
                 e.preventDefault()
             }}
-            className="secondary-sidebar-content fixed bg-card-bg block text-left pb-4 rounded-card shadow-card border border-border-panel overflow-y-auto tablet:max-h-128"
+            className={
+                isMobile
+                    ? 'secondary-sidebar-content fixed bg-card-bg flex flex-col text-left rounded-card border border-border-panel overflow-hidden'
+                    : 'secondary-sidebar-content fixed bg-card-bg block text-left pb-4 rounded-card border border-border-panel overflow-y-auto tablet:max-h-128'
+            }
             style={
                 isMobile
                     ? {
@@ -643,110 +854,39 @@ const ElementPropertiesToolbar = () => {
                           right: '10px',
                           width: '208px',
                           zIndex: 20,
+                          // Anchored to the bottom; cap the height to the space
+                          // above so a tall group still scrolls inside the panel
+                          // instead of overflowing past the top of the screen.
+                          maxHeight: 'calc(100dvh - 70px)',
                       }
                     : { left: '10px', top: '56px', width: '13rem' }
             }
         >
-            <div className="w-full px-2 font-semibold text-xs pt-1 pb-1 border-b border-border-panel text-ink-muted">
+            <div className="w-full px-2 font-semibold text-xs pt-1 pb-1 border-b border-border-panel text-ink-muted shrink-0">
                 {SET_LABELS[setKey as keyof typeof SET_LABELS]}
             </div>
 
-            {sections.includes('fill') && (
-                <div
-                    data-section="fill"
-                    className="pt-2 px-2 pb-2 border-b border-border-panel"
-                >
-                    <ColorPicker
-                        title="Fill"
-                        currentColor={values.fill}
-                        onChangeComplete={handle('fill')}
-                        isExpanded={expandedSection === 'fill'}
-                        onToggleExpand={() => toggleSection('fill')}
-                        essentialColors={fillEssentialShades}
+            {isMobile ? (
+                <>
+                    {/* Content for the active segment, scrollable if tall. */}
+                    <div className="flex-1 overflow-y-auto">
+                        {mobileActiveContent}
+                    </div>
+                    <MobileTabBar
+                        tabs={availableMobileTabs}
+                        active={activeMobileTab}
+                        onSelect={setMobileTab}
                     />
-                </div>
+                </>
+            ) : (
+                <>
+                    {colorsGroup}
+                    {strokeGroup}
+                    {textGroup}
+                    {opacityGroup}
+                    {reorderGroup}
+                </>
             )}
-
-            {sections.includes('stroke') && (
-                <div
-                    data-section="stroke"
-                    className="pt-2 px-2 pb-2 border-b border-border-panel"
-                >
-                    <ColorPicker
-                        title="Stroke"
-                        currentColor={values.stroke}
-                        onChangeComplete={handle('stroke')}
-                        isExpanded={expandedSection === 'stroke'}
-                        onToggleExpand={() => toggleSection('stroke')}
-                    />
-                </div>
-            )}
-
-            {sections.includes('strokeWidth') && (
-                <StrokeWidthRow
-                    value={values.linewidth}
-                    onChange={handle('linewidth')}
-                />
-            )}
-
-            {sections.includes('strokeType') && (
-                <StrokeTypeRow
-                    value={values.strokeType}
-                    onChange={handle('strokeType')}
-                />
-            )}
-
-            {sections.includes('textColor') && (
-                <div
-                    data-section="textColor"
-                    className="pt-2 px-2 pb-2 border-b border-border-panel"
-                >
-                    <ColorPicker
-                        title="Text"
-                        currentColor={values.textColor}
-                        onChangeComplete={handle('textColor')}
-                        isExpanded={expandedSection === 'textColor'}
-                        onToggleExpand={() => toggleSection('textColor')}
-                    />
-                </div>
-            )}
-
-            {sections.includes('textSize') && (
-                <TextSizeRow
-                    value={values.textSize}
-                    onChange={handle('textSize')}
-                />
-            )}
-
-            {sections.includes('textFont') && (
-                <FontFamilyRow
-                    value={values.textFontFamily}
-                    onChange={handle('textFontFamily')}
-                />
-            )}
-
-            {sections.includes('opacity') && (
-                <div className="pt-3 px-2">
-                    <SectionLabel>Opacity</SectionLabel>
-                    <OpacitySlider
-                        isMixed={values.opacity === MIXED}
-                        currentOpacity={
-                            typeof values.opacity === 'number'
-                                ? values.opacity
-                                : 1
-                        }
-                        handleOnDrag={(arr): void =>
-                            // Live preview while dragging: applies to the scene
-                            // only (no store/history write) so the element fades
-                            // in real time. The release (handleOnChange) commits.
-                            handle('opacity', { preview: true })(arr[0])
-                        }
-                        handleOnChange={(arr) => handle('opacity')(arr[0])}
-                    />
-                </div>
-            )}
-
-            {showReorder && <ReorderRow onReorder={reorderSelected} />}
         </div>
     )
 }

@@ -141,7 +141,7 @@ const MenuDrawer = (): ReactElement => {
         <>
             <div
                 ref={refNode}
-                className="relative bg-card-bg border border-border-panel shadow-card rounded-card"
+                className="relative bg-card-bg border border-border-panel rounded-card"
                 style={{
                     position: 'fixed',
                     top: '8px',

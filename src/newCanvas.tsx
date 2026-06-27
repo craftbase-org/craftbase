@@ -93,6 +93,7 @@ import {
     getShapeTextNodes,
     applyShapeText,
     shapeTextStyleFromMeta,
+    getGroupFill,
 } from './utils/canvasUtils'
 import { growShapeToFitText, usableTextWidth } from './utils/shapeTextFit'
 import {
@@ -690,6 +691,15 @@ function addZUI(
         const ed = child?.elementData
         if (!ed?.id) return
         const ct = ed.componentType
+
+        // Group selectors: the background rectangle (children[0]) is tinted from
+        // the theme-aware getGroupFill(), not a flippable element color, so just
+        // re-read it for the active theme. The fill is computed, not persisted.
+        if (ed.isGroupSelector) {
+            const bg = child?.children?.[0]
+            if (bg) bg.fill = getGroupFill()
+            return
+        }
 
         // Welcome-sketch content is theme-aware too, but it is ephemeral demo
         // content (metadata.isWelcome) — re-color its nodes to the active theme
@@ -2621,7 +2631,7 @@ function addZUI(
                 // original mousedown position so it grows with the cursor.
                 if (pendingGroupSelectorOrigin && !shape?.elementData) {
                     const area = two.makePath(0, 0, 10, 0, 10, 10, 0, 10)
-                    area.fill = 'rgba(0,0,0,0)'
+                    area.fill = getGroupFill()
                     area.opacity = 1
                     area.linewidth = 1
                     area.dashes[0] = 4
@@ -4349,13 +4359,18 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                                 // so we want to get result of ( relative coordinate + orginal_vert(x) - originalX )
                                 // here originalX means the coordinates of first set of vertices
                                 // since they were the first coordinates to start a path
+                                //
+                                // Keep the deltas as floats — do NOT Math.trunc.
+                                // Truncating each vertex shifted it sub-pixel off
+                                // the original AND fed altered points into the
+                                // factory's Chaikin smoothing, bending the whole
+                                // stroke off its original path. The member origin
+                                // is truncated once in groupobject (matching the
+                                // original component), so float deltas here land
+                                // each vertex exactly on the original.
                                 return {
-                                    x:
-                                        relativeX +
-                                        Math.trunc(vert.x - meta[0].x),
-                                    y:
-                                        relativeY +
-                                        Math.trunc(vert.y - meta[0].y),
+                                    x: relativeX + (vert.x - meta[0].x),
+                                    y: relativeY + (vert.y - meta[0].y),
                                     ...lwProp,
                                 }
                             }
@@ -4382,10 +4397,16 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                         // Arrow factory adds line as first child (line, pointCircle1Group, pointCircle2Group)
                         const line = arrowShape?.children?.[0]
                         if (line?.vertices?.length >= 2) {
-                            obj.x1 = Math.trunc(line.vertices[0].x)
-                            obj.y1 = Math.trunc(line.vertices[0].y)
-                            obj.x2 = Math.trunc(line.vertices[1].x)
-                            obj.y2 = Math.trunc(line.vertices[1].y)
+                            // Keep endpoints as floats — do NOT Math.trunc. These
+                            // are local vertex coords; truncating them dropped the
+                            // arrow sub-pixel off its original. The member origin
+                            // is truncated once in groupobject (matching the arrow
+                            // factory's parseInt translation), so float endpoints
+                            // reconstruct the line exactly over the original.
+                            obj.x1 = line.vertices[0].x
+                            obj.y1 = line.vertices[0].y
+                            obj.x2 = line.vertices[1].x
+                            obj.y2 = line.vertices[1].y
                         }
                     }
 
@@ -4397,8 +4418,15 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             newGroup.componentType = 'groupobject'
             newGroup.width = e.width
             newGroup.height = e.height
-            newGroup.x = e.x + e.width / 2
-            newGroup.y = e.y + e.height / 2
+            // Use the SAME integer midpoint that the children's relative coords
+            // (relativeX/Y above) were computed against. groupobject truncates
+            // this into group.translation; if it diverged from xMid/yMid by even
+            // a fraction (float surface coords, odd width, panned origin) every
+            // member copy would render group.translation + relativeX ≠ item.x —
+            // the slight displacement seen on select-before-blur. Reusing xMid/
+            // yMid makes the reconstruction cancel to exactly item.x.
+            newGroup.x = xMid
+            newGroup.y = yMid
 
             newGroup.children = newChildren
 

@@ -526,7 +526,7 @@ const PrimarySidebar = (): ReactElement => {
                     </div>
                 </div>
             </div>
-            <div className="absolute top-2 right-1rem flex items-center px-2 py-1 gap-1">
+            <div className="absolute top-2 right-1rem flex items-center px-2 gap-1">
                 <div
                     id="show-saving-loader"
                     className="w-28 h-9 pr-2 transition-all opacity-0"
@@ -553,7 +553,7 @@ const PrimarySidebar = (): ReactElement => {
 
                 {isLiveSession && (
                     <div className="w-9 h-9 text-sm pr-2">
-                        <a className="flex items-center px-4 py-2 rounded-card bg-card-bg text-ink shadow-card">
+                        <a className="flex items-center px-4 py-2 rounded-card bg-card-bg text-ink">
                             <span className="text-sm ">Live</span>
                             <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
                                 <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>

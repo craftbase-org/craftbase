@@ -11,6 +11,7 @@ import getEditComponents from '../utils/editWrapper'
 import { elementOnBlurHandler } from '../../utils/misc'
 import {
     applyShapeText,
+    getGroupFill,
     layoutStandaloneText,
     readOpacity,
 } from '../../utils/canvasUtils'
@@ -393,7 +394,7 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
             props?.width || 0,
             props?.height || 0
         )
-        rectangle.fill = 'rgba(0,0,0,0)'
+        rectangle.fill = getGroupFill()
         rectangle.noStroke()
 
         const group = two.makeGroup(rectangle)
@@ -433,8 +434,16 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                 })
                 const factoryObject = componentFactory.createElement()
                 const coreObject = factoryObject.group
-                coreObject.translation.x = item.x
-                coreObject.translation.y = item.y
+                // Truncate the member origin the SAME way every original element
+                // component does (`group.translation = parseInt(store.x)` in
+                // rectangle/newText/pencil/arrow factories). Using the raw float
+                // `item.x` here placed the copy at `store.x` while the original
+                // renders at `trunc(store.x)` — a sub-pixel offset visible on any
+                // element with fractional store coords (notably standalone text).
+                // xMid (the group translation) is an integer, so this resolves to
+                // exactly `parseInt(store.x)` in world space.
+                coreObject.translation.x = parseInt(String(item.x))
+                coreObject.translation.y = parseInt(String(item.y))
                 coreObject.opacity = readOpacity(item)
 
                 // Standalone text: the factory makes ONE Two.Text from the raw

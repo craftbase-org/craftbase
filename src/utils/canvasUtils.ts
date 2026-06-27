@@ -18,6 +18,25 @@ type ShapeLike = any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ZUILike = any
 
+// Tinted group background. The group surface must read as a subtle *darker*
+// overlay on the light parchment and a subtle *lighter* overlay on the dark
+// canvas, so members stay readable and the group reads as a raised surface in
+// both themes. In light mode we tint with the dark `--color-topbar` token; in
+// dark mode that token is near-black and would make the group look darker than
+// the canvas, so we tint with the light `--color-ink` token instead. This is a
+// Two.js scene color (static string, not a CSS class) so it can't inherit the
+// token otherwise. Low alpha keeps members readable underneath.
+export const getGroupFill = (): string => {
+    if (typeof document === 'undefined') return 'rgba(26, 22, 18, 0.1)'
+    const isDark = document.documentElement.classList.contains('dark')
+    const token = isDark ? '--color-ink' : '--color-topbar'
+    const channels = getComputedStyle(document.documentElement)
+        .getPropertyValue(token)
+        .trim()
+    const rgb = channels ? channels.split(/\s+/).join(', ') : '26, 22, 18'
+    return `rgba(${rgb}, ${isDark ? 0.12 : 0.1})`
+}
+
 interface MouseLikeEvent {
     clientX: number
     clientY: number

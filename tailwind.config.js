@@ -29,7 +29,7 @@ module.exports = {
         fontFamily: {
             ui: ['Geist', 'system-ui', 'sans-serif'],
             display: ['Fraunces', 'Georgia', 'serif'],
-            sketch: ['Caveat Brush', 'cursive'],
+            sketch: ['Caveat', 'cursive'],
             mono: ['Geist Mono', 'monospace'], // added — for coordinates, hex values, dimension chips
         },
         // borderWidth: {

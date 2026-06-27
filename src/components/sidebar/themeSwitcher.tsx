@@ -31,7 +31,7 @@ const ThemeSwitcher = (): ReactElement => {
         <div
             role="radiogroup"
             aria-label="Theme"
-            className="h-10 flex items-center gap-1 px-1 rounded-md bg-card-bg border border-border-panel"
+            className="flex items-center gap-1 px-1 py-1.5 rounded-pill bg-card-bg border border-border-panel"
         >
             {THEME_OPTIONS.map(({ value, label, Icon }) => {
                 const isActive = value === theme
@@ -46,7 +46,7 @@ const ThemeSwitcher = (): ReactElement => {
                         onClick={(): void => setTheme(value)}
                         className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
                             isActive
-                                ? 'bg-accent text-topbar '
+                                ? 'bg-accent text-topbar dark:bg-accent/30 dark:text-white'
                                 : 'text-ink-muted hover:text-ink hover:bg-accent/20'
                         }`}
                     >

@@ -4,17 +4,19 @@
 // the live <svg> element IS the viewport: any scene content panned/zoomed
 // outside the window sits outside the SVG's 0..W / 0..H box and is clipped for
 // free when we rasterize at viewport size. We therefore never touch the live
-// scene — we clone the SVG, re-create the CSS-only dotted background, embed the
-// web font(s) used on canvas (the rasterizer has no access to document fonts),
-// stamp a screen-space watermark, then draw the SVG onto a <canvas> and
-// download it as PNG.
+// scene — we clone the SVG, re-create its background (solid parchment + optional
+// dot grid, read live from the on-screen canvas so theme + feature flag + zoom
+// all carry over), embed the web font(s) used on canvas (the rasterizer has no
+// access to document fonts), stamp a screen-space watermark, then draw the SVG
+// onto a <canvas> and download it as PNG.
 
 import { SVG_NS, embedFonts, stripSelectionChrome } from './svgExportShared'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
 
-const CANVAS_BG = '#f5f0e8' // --color-canvas (App.css)
-const DOT_COLOR = '#c4b89a' // radial-gradient dot color (App.css)
-const DOT_TILE = 24 // background-size: 24px 24px (App.css)
+// Light-theme fallbacks, used only if the live computed style can't be read.
+const CANVAS_BG_FALLBACK = '#f5f0e8' // --color-canvas (App.css)
+const DOT_COLOR_FALLBACK = '#c4b89a' // --color-dot-grid (App.css)
+const DOT_TILE_FALLBACK = 24 // background-size: 24px 24px (App.css)
 const WATERMARK_TEXT = 'Made with craftbase.org'
 const MAX_DPR = 2 // cap device-pixel scaling to bound output file size
 
@@ -44,7 +46,7 @@ export async function downloadViewportAsImage(): Promise<void> {
     // Don't bake the on-screen selection box/handles into the exported image.
     stripSelectionChrome(clone)
 
-    injectBackground(clone, width, height)
+    injectBackground(clone, svg, width, height)
     await embedFonts(clone)
     appendWatermark(clone, width, height)
 
@@ -52,44 +54,90 @@ export async function downloadViewportAsImage(): Promise<void> {
     await rasterizeAndDownload(svgString, width, height)
 }
 
-/** Re-create the CSS-only dotted canvas background as SVG content. */
+/**
+ * Re-create the canvas background as SVG content, reading the resolved colors
+ * and grid scale from the *live* on-screen canvas so the export matches the
+ * active theme (light/dark), the dot-grid feature flag, and the current zoom/pan.
+ *
+ * The live svg only carries a `background-image` when the `cb-dot-grid` class is
+ * on (flag enabled); when it's off we export bare parchment with no dots. The
+ * tile size + offset mirror `syncBackgroundToCamera` so the dots line up with
+ * what's on screen rather than a fixed-density grid.
+ */
 function injectBackground(
-    svg: SVGSVGElement,
+    cloneSvg: SVGSVGElement,
+    liveSvg: SVGSVGElement,
     width: number,
     height: number
 ): void {
-    const defs = document.createElementNS(SVG_NS, 'defs')
-    const pattern = document.createElementNS(SVG_NS, 'pattern')
-    pattern.setAttribute('id', 'cb-dots')
-    pattern.setAttribute('width', String(DOT_TILE))
-    pattern.setAttribute('height', String(DOT_TILE))
-    pattern.setAttribute('patternUnits', 'userSpaceOnUse')
-    const dot = document.createElementNS(SVG_NS, 'circle')
-    dot.setAttribute('cx', '1')
-    dot.setAttribute('cy', '1')
-    dot.setAttribute('r', '1')
-    dot.setAttribute('fill', DOT_COLOR)
-    pattern.appendChild(dot)
-    defs.appendChild(pattern)
+    const cs = getComputedStyle(liveSvg)
 
+    // Solid parchment fill — resolved background-color already reflects the theme.
     const solid = document.createElementNS(SVG_NS, 'rect')
     solid.setAttribute('x', '0')
     solid.setAttribute('y', '0')
     solid.setAttribute('width', String(width))
     solid.setAttribute('height', String(height))
-    solid.setAttribute('fill', CANVAS_BG)
+    solid.setAttribute('fill', cs.backgroundColor || CANVAS_BG_FALLBACK)
 
-    const dots = document.createElementNS(SVG_NS, 'rect')
-    dots.setAttribute('x', '0')
-    dots.setAttribute('y', '0')
-    dots.setAttribute('width', String(width))
-    dots.setAttribute('height', String(height))
-    dots.setAttribute('fill', 'url(#cb-dots)')
+    // Dot grid is opt-in: no background-image means the flag is off → skip dots.
+    const hasDots = Boolean(cs.backgroundImage) && cs.backgroundImage !== 'none'
 
-    // First children → rendered behind the scene content.
-    svg.insertBefore(dots, svg.firstChild)
-    svg.insertBefore(solid, svg.firstChild)
-    svg.insertBefore(defs, svg.firstChild)
+    let defs: SVGDefsElement | null = null
+    let dots: SVGRectElement | null = null
+    if (hasDots) {
+        const tile = parseFloat(cs.backgroundSize) || DOT_TILE_FALLBACK
+        const [posX, posY] = parseBackgroundPosition(cs.backgroundPosition)
+        const dotColor = channelsToRgb(
+            cs.getPropertyValue('--color-dot-grid'),
+            DOT_COLOR_FALLBACK
+        )
+
+        defs = document.createElementNS(SVG_NS, 'defs')
+        const pattern = document.createElementNS(SVG_NS, 'pattern')
+        pattern.setAttribute('id', 'cb-dots')
+        pattern.setAttribute('width', String(tile))
+        pattern.setAttribute('height', String(tile))
+        pattern.setAttribute('patternUnits', 'userSpaceOnUse')
+        // Offset the tile to track the live camera-driven background-position.
+        pattern.setAttribute('x', String(posX))
+        pattern.setAttribute('y', String(posY))
+        const dot = document.createElementNS(SVG_NS, 'circle')
+        // Live dots sit at the tile centre (radial-gradient's default position).
+        dot.setAttribute('cx', String(tile / 2))
+        dot.setAttribute('cy', String(tile / 2))
+        dot.setAttribute('r', '1')
+        dot.setAttribute('fill', dotColor)
+        pattern.appendChild(dot)
+        defs.appendChild(pattern)
+
+        dots = document.createElementNS(SVG_NS, 'rect')
+        dots.setAttribute('x', '0')
+        dots.setAttribute('y', '0')
+        dots.setAttribute('width', String(width))
+        dots.setAttribute('height', String(height))
+        dots.setAttribute('fill', 'url(#cb-dots)')
+    }
+
+    // First children → rendered behind the scene content (solid below dots).
+    if (dots) cloneSvg.insertBefore(dots, cloneSvg.firstChild)
+    cloneSvg.insertBefore(solid, cloneSvg.firstChild)
+    if (defs) cloneSvg.insertBefore(defs, cloneSvg.firstChild)
+}
+
+/** Convert a CSS "r g b" channel triplet (e.g. "196 184 154") to `rgb(...)`. */
+function channelsToRgb(value: string, fallback: string): string {
+    const parts = value.trim().split(/\s+/).filter(Boolean)
+    if (parts.length < 3) return fallback
+    return `rgb(${parts.slice(0, 3).join(', ')})`
+}
+
+/** Parse a CSS background-position like "12px 8px" into [x, y] pixel numbers. */
+function parseBackgroundPosition(value: string): [number, number] {
+    const parts = value.trim().split(/\s+/)
+    const x = parseFloat(parts[0] ?? '') || 0
+    const y = parseFloat(parts[1] ?? '') || 0
+    return [x, y]
 }
 
 /** Bottom-right, screen-space watermark (fixed regardless of zoom/pan). */

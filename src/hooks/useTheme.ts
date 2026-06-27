@@ -10,9 +10,10 @@ const isThemePreference = (value: unknown): value is ThemePreference =>
     value === 'light' || value === 'dark' || value === 'system'
 
 const readStoredTheme = (): ThemePreference => {
-    if (typeof window === 'undefined') return 'system'
+    // Default to light (not system) when the user hasn't picked a preference.
+    if (typeof window === 'undefined') return 'light'
     const stored = window.localStorage.getItem(STORAGE_KEY)
-    return isThemePreference(stored) ? stored : 'system'
+    return isThemePreference(stored) ? stored : 'light'
 }
 
 const systemPrefersDark = (): boolean =>
@@ -33,7 +34,7 @@ const applyResolvedTheme = (resolved: ResolvedTheme): void => {
  * Theme selector state for the Light / Dark / System dropdown.
  *
  * Single source of truth that:
- * - persists the preference to localStorage ('cb-theme'), defaulting to 'system'
+ * - persists the preference to localStorage ('cb-theme'), defaulting to 'light'
  * - toggles the `dark` class on <html> (Tailwind class-based dark mode)
  * - when in 'system' mode, follows the OS `prefers-color-scheme` live
  *
