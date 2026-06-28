@@ -21,11 +21,13 @@ export interface ElementDefaultsState {
 
 const INITIAL_DEFAULTS: ElementDefaultsState = {
     defaultFill: '#FFFFFF',
-    defaultStrokeColor: '#3A342C',
+    // Pure-black ink baselines so they flip cleanly to #fff in dark mode (the
+    // defaults flip on theme toggle — see board.tsx).
+    defaultStrokeColor: '#000',
     defaultLinewidth: 2,
     defaultStrokeType: null,
     defaultOpacity: 1,
-    defaultTextColor: '#1A1612',
+    defaultTextColor: '#000',
     defaultTextSize: 'M',
     defaultTextFontFamily: DEFAULT_TEXT_FONT_FAMILY,
 }

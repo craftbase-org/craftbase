@@ -175,7 +175,7 @@ const Tooltip = ({
                     <div
                         ref={bubbleRef}
                         role="tooltip"
-                        className="fixed z-[200] pointer-events-none px-2 py-1 rounded-md bg-ink text-card-bg text-xs font-medium whitespace-nowrap shadow-card transition-opacity duration-75"
+                        className="fixed z-[200] pointer-events-none px-2 py-1 rounded-md bg-ink text-card-bg text-xs font-medium whitespace-nowrap transition-opacity duration-75"
                         style={{
                             top: pos?.top ?? 0,
                             left: pos?.left ?? 0,

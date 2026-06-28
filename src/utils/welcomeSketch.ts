@@ -13,12 +13,11 @@
 
 import { generateUUID } from './misc'
 import { pollUntilElement } from './canvasUtils'
+import { themeDefaultInk } from './themeColorFlip'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
 import type { ComponentRecord, ComponentStore } from '../types/board'
 
 const SKETCH_OPACITY = 0.45
-const SKETCH_STROKE = '#3A342C'
-const SKETCH_TEXT_COLOR = '#3A342C'
 const SKETCH_FONT = DEFAULT_TEXT_FONT_FAMILY
 
 interface WelcomeMetadata {
@@ -70,7 +69,7 @@ function makeText(
         strokeType: null,
         radius: null,
         iconStroke: null,
-        textColor: SKETCH_TEXT_COLOR,
+        textColor: themeDefaultInk(),
         boardId,
         boardName: null,
         metadata: welcomeMetadata({
@@ -121,12 +120,12 @@ function makeRect(
         width,
         height,
         fill: '#ffffff',
-        stroke: SKETCH_STROKE,
+        stroke: themeDefaultInk(),
         linewidth: 2,
         strokeType: 'solid',
         radius: null,
         iconStroke: null,
-        textColor: SKETCH_TEXT_COLOR,
+        textColor: themeDefaultInk(),
         boardId,
         boardName: null,
         metadata: welcomeMetadata(),
@@ -164,12 +163,12 @@ function makeRectWithText(
         width,
         height,
         fill: 'transparent',
-        stroke: SKETCH_STROKE,
+        stroke: themeDefaultInk(),
         linewidth: 2,
         strokeType: 'solid',
         radius: null,
         iconStroke: null,
-        textColor: SKETCH_TEXT_COLOR,
+        textColor: themeDefaultInk(),
         boardId,
         boardName: null,
         metadata: welcomeMetadata({
@@ -177,7 +176,7 @@ function makeRectWithText(
             textContent: text,
             textFontFamily: SKETCH_FONT,
             textFontSize,
-            textFill: SKETCH_TEXT_COLOR,
+            textFill: themeDefaultInk(),
         }),
         children: null,
         isDummy: null,
@@ -212,7 +211,7 @@ function makeArrow(
         width: 0,
         height: 0,
         fill,
-        stroke: SKETCH_STROKE,
+        stroke: themeDefaultInk(),
         linewidth: 2,
         strokeType,
         radius: null,

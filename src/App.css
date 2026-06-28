@@ -1,22 +1,51 @@
 :root {
     --font-ui: 'Geist', system-ui, sans-serif;
     --font-display: 'Fraunces', Georgia, serif;
-    --font-sketch: 'Caveat Brush';
+    --font-sketch: 'Caveat';
     --font-mono: 'Geist Mono', monospace;
     --font-caveat-brush: 'Caveat Brush', cursive;
 
-    --color-canvas: #f5f0e8;
-    --color-sidebar: #ede8dc;
-    --color-card: #fffcf5;
-    --color-topbar: #1a1612;
-    --color-accent: #e8c87a;
-    --color-accent-dark: #c4901a;
+    /* Warm Studio palette — stored as space-separated RGB *channels* so the
+       Tailwind tokens `rgb(var(--x) / <alpha-value>)` keep opacity modifiers
+       (e.g. bg-accent/30) working. Raw-CSS usages wrap them in rgb(). */
+    --color-canvas: 245 240 232; /* #f5f0e8 — the parchment */
+    --color-sidebar: 237 232 220; /* #ede8dc */
+    --color-card: 255 252 245; /* #fffcf5 */
+    --color-topbar: 26 22 18; /* #1a1612 */
+    --color-topbar-hover: 46 40 32; /* #2e2820 */
+    --color-accent: 232 200 122; /* #e8c87a */
+    --color-accent-dark: 196 144 26; /* #c4901a */
     --color-accent-glow: rgba(184, 134, 11, 0.18);
-    --color-ink: #1a1612;
-    --color-ink-mid: #5a4e3c;
-    --color-ink-muted: #8c7e6a;
-    --color-border-panel: #d4c9b4;
-    --color-border-card: #c4b89a;
+    --color-ink: 26 22 18; /* #1a1612 */
+    --color-ink-mid: 90 78 60; /* #5a4e3c */
+    --color-ink-muted: 140 126 106; /* #8c7e6a */
+    --color-border-panel: 212 201 180; /* #d4c9b4 */
+    --color-border-card: 196 184 154; /* #c4b89a */
+
+    /* dot-grid dot color — overridden in dark so the grid stays visible */
+    --color-dot-grid: 196 184 154; /* #c4b89a */
+}
+
+/* Dark theme: warm-dark derivation of the Warm Studio palette. Applied via a
+   `dark` class on <html> (set by useTheme + the pre-paint script in index.html).
+   Surfaces go espresso/charcoal, ink flips to light-warm, amber accent stays.
+   Values are RGB channels to match :root above. */
+.dark {
+    --color-canvas: 28 24 20; /* #1c1814 — dark parchment */
+    --color-sidebar: 35 32 25; /* #232019 — panel bg */
+    --color-card: 42 37 29; /* #2a251d — card/shape fill */
+    --color-topbar: 15 13 10; /* #0f0d0a — near-black top bar */
+    --color-topbar-hover: 46 40 32; /* #2e2820 */
+    --color-accent: 232 200 122; /* #e8c87a — keep amber */
+    --color-accent-dark: 196 144 26; /* #c4901a */
+    --color-accent-glow: rgba(184, 134, 11, 0.24);
+    --color-ink: 243 236 224; /* #f3ece0 — primary text, light warm */
+    --color-ink-mid: 200 188 166; /* #c8bca6 — secondary text */
+    --color-ink-muted: 154 142 120; /* #9a8e78 — labels, hints */
+    --color-border-panel: 58 52 43; /* #3a342b — panel dividers */
+    --color-border-card: 74 66 52; /* #4a4234 — card outlines */
+
+    --color-dot-grid: 74 66 52; /* #4a4234 */
 }
 
 .caveat-brush-regular {
@@ -51,14 +80,21 @@ code {
     z-index: -9;
 }
 #main-two-root svg {
-    background-color: #f5f0e8;
-    background-image: radial-gradient(circle, #c4b89a 1px, transparent 1px);
-    /* First-paint default. background-size + background-position are driven live
-       by syncBackgroundToCamera() in newCanvas.tsx so the dot grid scales/pans
-       with the Two.js camera. Base tile (24px) is BG_TILE_BASE there — keep in
-       sync. */
-    background-size: 24px 24px;
+    background-color: rgb(var(--color-canvas));
     z-index: -1;
+}
+/* Dot grid is opt-in (default off) behind the `dotGrid` feature flag. The
+   `cb-dot-grid` class is toggled on #main-two-root by newCanvas.tsx based on
+   getDotGridEnabled(). background-size + background-position are then driven live
+   by syncBackgroundToCamera() so the grid scales/pans with the Two.js camera.
+   24px is the first-paint default — kept in sync with BG_TILE_BASE there. */
+#main-two-root.cb-dot-grid svg {
+    background-image: radial-gradient(
+        circle,
+        rgb(var(--color-dot-grid)) 1px,
+        transparent 1px
+    );
+    background-size: 24px 24px;
 }
 
 /* #floating-toolbar {

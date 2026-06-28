@@ -124,10 +124,7 @@ export function useLocalDraftPersistence({
         if (isPersisted) return
         if (Object.keys(componentStore).length === 0) return
 
-        if (draftSaveTimerRef.current) {
-            clearTimeout(draftSaveTimerRef.current)
-        }
-        draftSaveTimerRef.current = setTimeout(() => {
+        const writeDraft = (): void => {
             try {
                 // Skip groupobject (transient) AND welcome-sketch seeds — the
                 // sketch is onboarding scaffolding that must never persist
@@ -156,12 +153,32 @@ export function useLocalDraftPersistence({
                     onStorageLimitRef?.current?.()
                 }
             }
-        }, 500)
+        }
+
+        if (draftSaveTimerRef.current) {
+            clearTimeout(draftSaveTimerRef.current)
+        }
+        draftSaveTimerRef.current = setTimeout(writeDraft, 500)
+
+        // Flush the pending save synchronously if the page is being hidden
+        // (reload / navigation). Without this, a reload fired inside the 500ms
+        // debounce window drops the latest change — most visibly a theme-toggle
+        // recolor — so the next load restores the stale pre-change colors (e.g.
+        // dark shapes after switching to light then quickly reloading).
+        const flushDraftSave = (): void => {
+            if (draftSaveTimerRef.current) {
+                clearTimeout(draftSaveTimerRef.current)
+                draftSaveTimerRef.current = null
+            }
+            writeDraft()
+        }
+        window.addEventListener('pagehide', flushDraftSave)
 
         return (): void => {
             if (draftSaveTimerRef.current) {
                 clearTimeout(draftSaveTimerRef.current)
             }
+            window.removeEventListener('pagehide', flushDraftSave)
         }
     }, [componentStore, isPersisted])
 

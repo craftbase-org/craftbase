@@ -195,7 +195,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                 so the bottom row stays uncrowded. Desktop keeps them inline. */}
             {isMobile && (
                 <div
-                    className="fixed bg-card-bg border border-border-panel shadow-card rounded-card flex items-center flex-row px-1 py-1 gap-0.5"
+                    className="fixed bg-card-bg border border-border-panel rounded-card flex items-center flex-row px-1 py-1 gap-0.5"
                     style={{ bottom: '64px', left: '10px', zIndex: 10 }}
                 >
                     {undoButton}
@@ -203,7 +203,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                 </div>
             )}
             <div
-                className={`fixed bg-card-bg border border-border-panel shadow-card rounded-card flex items-center flex-row
+                className={`fixed bg-card-bg border border-border-panel rounded-card flex items-center flex-row
                     ${isMobile ? 'px-1 py-1 gap-0.5' : 'top-2 left-1/2 px-2 py-1 gap-1'}`}
                 style={
                     isMobile
@@ -229,10 +229,8 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                                 transition-all ease-in-out duration-200
                                 ${
                                     isActive
-                                        ? isMobile
-                                            ? 'bg-accent-dark text-white'
-                                            : 'bg-accent text-ink'
-                                        : 'text-ink-muted hover:bg-accent/30 hover:text-ink'
+                                        ? 'bg-accent text-ink dark:bg-accent/30 dark:text-white'
+                                        : 'text-ink-muted hover:bg-accent dark:hover:bg-accent/30 hover:text-ink'
                                 }
                             `}
                             onClick={(e): void => {
@@ -299,7 +297,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
 
             {openDrawer && shapeDrawerElements.length > 0 && drawerAnchor && (
                 <div
-                    className={`fixed bg-sidebar shadow-card rounded-card flex items-center flex-row
+                    className={`fixed bg-sidebar rounded-card flex items-center flex-row
                         ${isMobile ? 'px-1 py-1 gap-0.5 border-b-4 border-accent-dark' : 'px-2 py-1 gap-1 border-t-4 border-accent-dark'}`}
                     style={
                         isMobile
@@ -330,10 +328,8 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                                     transition-all ease-in-out duration-200
                                     ${
                                         isActive
-                                            ? isMobile
-                                                ? 'bg-accent-dark text-white'
-                                                : 'bg-accent text-ink'
-                                            : 'text-ink-muted hover:bg-accent/30 hover:text-ink'
+                                            ? 'bg-accent text-ink dark:bg-accent/30 dark:text-white'
+                                            : 'text-ink-muted hover:bg-accent dark:hover:bg-accent/30 hover:text-ink'
                                     }
                                 `}
                                 onClick={(): void => {
@@ -356,7 +352,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                 seeds the next placed point, or recolors the focused point. */}
             {openDrawer === 'point' && drawerAnchor && (
                 <div
-                    className={`fixed bg-sidebar shadow-card rounded-card flex items-center flex-row
+                    className={`fixed bg-sidebar rounded-card flex items-center flex-row
                         ${isMobile ? 'px-1 py-1 gap-1 border-b-4 border-accent-dark' : 'px-2 py-1 gap-1.5 border-t-4 border-accent-dark'}`}
                     style={
                         isMobile

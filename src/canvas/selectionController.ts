@@ -135,10 +135,19 @@ const GLOW_PERIOD_MS = 1100
 const GLOW_RING_COLOR = '#E0A22B'
 const GLOW_CORE_COLOR = '#F2C150'
 
-// Selection box + resize-handle stroke. Theme `ink` (#1A1612) — the warm
-// near-black primary ink, for strong contrast against the parchment `canvas`
-// (#F5F0E8). The muted `accent.dark` gold used previously blended into the bg.
-const SELECTION_STROKE = '#1A1612'
+// Selection box + resize-handle stroke. Follows the active theme's `ink` so it
+// stays high-contrast against the canvas in BOTH themes: near-black on the light
+// parchment, light-warm on the dark canvas. Read live from the `--color-ink` CSS
+// variable (RGB channels, set in App.css + flipped by `.dark`) because this is a
+// Two.js scene color, not a CSS class — it can't inherit the token otherwise.
+// The muted `accent.dark` gold used previously blended into the bg.
+const getSelectionStroke = (): string => {
+    if (typeof document === 'undefined') return '#1A1612'
+    const channels = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-ink')
+        .trim()
+    return channels ? `rgb(${channels})` : '#1A1612'
+}
 
 interface ToolbarState {
     element: Record<string, ShapeLike>
@@ -333,14 +342,15 @@ export default class SelectionController {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const box = new (Two as any).Rectangle(0, 0, 0, 0)
         box.noFill()
-        box.stroke = SELECTION_STROKE
+        const selectionStroke = getSelectionStroke()
+        box.stroke = selectionStroke
         box.linewidth = 1.5
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const endpoints = new (Two as any).Points(box.vertices)
         endpoints.size = 10
         endpoints.fill = '#FFFCF5'
-        endpoints.stroke = SELECTION_STROKE
+        endpoints.stroke = selectionStroke
         endpoints.linewidth = 1.5
 
         this.portPoints = [
@@ -593,6 +603,18 @@ export default class SelectionController {
             this.syncToTarget()
             this.two.update()
         }
+    }
+
+    /**
+     * Re-apply the theme-resolved stroke to the selection box + handles. Called
+     * when the theme toggles so an active selection re-colors live (the stroke
+     * is otherwise only computed at _buildUi time). No-op safe when detached.
+     */
+    applyThemeStroke(): void {
+        const stroke = getSelectionStroke()
+        if (this.box) this.box.stroke = stroke
+        if (this.endpoints) this.endpoints.stroke = stroke
+        this.two.update()
     }
 
     syncToTarget(): void {

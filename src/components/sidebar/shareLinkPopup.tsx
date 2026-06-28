@@ -30,9 +30,9 @@ const ShareLinkPopup = (): ReactElement => {
     // wrongly showed "Nothing to share yet" until the user touched the board.
     // Mirror persistBoard's filter (entries without componentType are skipped
     // there) so the two stay consistent.
-    const hasComponents = Object.values(
-        stateRefForComponentStore.current
-    ).some((c) => c?.componentType)
+    const hasComponents = Object.values(stateRefForComponentStore.current).some(
+        (c) => c?.componentType
+    )
     const [updateBoardVisibility] = useMutation(UPDATE_BOARD_VISIBILITY)
 
     useEffect(() => {
@@ -91,7 +91,7 @@ const ShareLinkPopup = (): ReactElement => {
         <>
             <div className="relative " ref={refNode} style={{ right: '-9px' }}>
                 <div
-                    className="w-10 h-10 flex items-center justify-center rounded-md bg-accent text-ink font-semibold shadow-card cursor-pointer"
+                    className="w-[45px] h-[45px] flex items-center justify-center rounded-md bg-accent text-ink font-semibold cursor-pointer"
                     onClick={handleShareClick}
                 >
                     <img src={ShareIcon} className="w-5 h-5" alt="Share" />
@@ -107,7 +107,7 @@ const ShareLinkPopup = (): ReactElement => {
                     <div
                         className="
                         bg-card-bg text-ink-mid border border-border-panel
-                        rounded-md px-2 py-4 shadow-card
+                        rounded-md px-2 py-4
                         "
                         style={{ width: '560px' }}
                     >
@@ -133,7 +133,11 @@ const ShareLinkPopup = (): ReactElement => {
                                     setShowLink(false)
                                 }}
                             >
-                                <img src={CopyIcon} className="w-5 h-5 " alt="Copy" />
+                                <img
+                                    src={CopyIcon}
+                                    className="w-5 h-5 "
+                                    alt="Copy"
+                                />
                             </div>
                         </div>
                     </div>
@@ -193,8 +197,8 @@ const ShareLinkPopup = (): ReactElement => {
                                 Nothing to share yet
                             </h2>
                             <p className="text-sm text-ink-mid mb-4">
-                                Before you share, please create something on
-                                the board to make it shareable.
+                                Before you share, please create something on the
+                                board to make it shareable.
                             </p>
                             <div className="flex justify-end">
                                 <Button

@@ -25,6 +25,7 @@ import {
 
 import './sidebar.css'
 import ShareLinkPopup from './shareLinkPopup'
+import ThemeSwitcher from './themeSwitcher'
 import MenuDrawer from './menuDrawer'
 
 const DRAW_SHAPE_TYPES = ['circle', 'rectangle', 'diamond']
@@ -36,9 +37,9 @@ const FALLBACK_CATALOG: Record<
     string,
     { width: number; height: number; fill: string; textColor: string | null }
 > = {
-    rectangle: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
-    circle: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
-    diamond: { width: 160, height: 160, fill: '#fff', textColor: '#3A342C' },
+    rectangle: { width: 160, height: 160, fill: '#fff', textColor: '#000' },
+    circle: { width: 160, height: 160, fill: '#fff', textColor: '#000' },
+    diamond: { width: 160, height: 160, fill: '#fff', textColor: '#000' },
     arrowLine: { width: 100, height: 0, fill: 'transparent', textColor: null },
     divider: { width: 100, height: 0, fill: 'transparent', textColor: null },
     text: { width: 120, height: 36, fill: 'transparent', textColor: '#3A342C' },
@@ -525,7 +526,7 @@ const PrimarySidebar = (): ReactElement => {
                     </div>
                 </div>
             </div>
-            <div className="absolute top-2 right-1rem flex items-center px-2 py-1 gap-1">
+            <div className="absolute top-2 right-1rem flex items-center px-2 gap-1">
                 <div
                     id="show-saving-loader"
                     className="w-28 h-9 pr-2 transition-all opacity-0"
@@ -552,7 +553,7 @@ const PrimarySidebar = (): ReactElement => {
 
                 {isLiveSession && (
                     <div className="w-9 h-9 text-sm pr-2">
-                        <a className="flex items-center px-4 py-2 rounded-card bg-card-bg text-ink shadow-card">
+                        <a className="flex items-center px-4 py-2 rounded-card bg-card-bg text-ink">
                             <span className="text-sm ">Live</span>
                             <div className="ml-2  w-2 h-2 bg-reds-r400 rounded-50-percent ">
                                 <div className="w-2 h-2 bg-reds-r400 rounded-50-percent animate-ping "></div>
@@ -561,6 +562,7 @@ const PrimarySidebar = (): ReactElement => {
                     </div>
                 )}
 
+                {!isMobile && <ThemeSwitcher />}
                 {!isMobile && <ShareLinkPopup />}
             </div>
         </>

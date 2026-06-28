@@ -2,11 +2,11 @@ export const offsetHeight = 0
 export const GROUP_COMPONENT = 'groupobject'
 
 // Default canvas text font (single source of truth). Kept in sync with the
-// `--font-sketch` / `--font-caveat-brush` vars in App.css, the Tailwind
-// `sketch` token, and the Google Fonts <link> in index.html. Every canvas-text
-// fallback (`family || DEFAULT_TEXT_FONT_FAMILY`) references this so the default
-// lives in exactly one place. Only the Regular 400 weight is loaded/used.
-export const DEFAULT_TEXT_FONT_FAMILY = 'Caveat Brush'
+// `--font-sketch` var in App.css, the Tailwind `sketch` token, and the Google
+// Fonts <link> in index.html. Every canvas-text fallback
+// (`family || DEFAULT_TEXT_FONT_FAMILY`) references this so the default lives in
+// exactly one place — including the welcome sketch (`SKETCH_FONT`).
+export const DEFAULT_TEXT_FONT_FAMILY = 'Caveat'
 
 export const RUBBER_MODE_KEY = 'rubberMode'
 export const VIEWPORT_KEY_PREFIX = 'craftbase_viewport_'
@@ -185,9 +185,10 @@ export const GEO_MIN_VERTICES: Record<'area' | 'route', number> = {
     route: 2,
 }
 
-// Default colors
-export const PENCIL_DEFAULT_COLOR = '#3A342C'
-export const SHAPE_DEFAULT_STROKE = '#3A342C'
+// Default ink for strokes. Pure black so it flips cleanly to white on a theme
+// toggle (see themeColorFlip): #000 in light, #fff in dark.
+export const PENCIL_DEFAULT_COLOR = '#000'
+export const SHAPE_DEFAULT_STROKE = '#000'
 
 // Draft persistence
 export const DRAFT_STORAGE_KEY = 'craftbase_local_draft'
@@ -203,6 +204,11 @@ export const WELCOME_DISMISSED_KEY = 'craftbase_welcome_dismissed'
 // in the Settings modal, persisted in localStorage, read live (see
 // `src/utils/featureFlags.ts`). Defaults to enabled.
 export const CONNECTORS_ENABLED_KEY = 'craftbase_connectors_enabled'
+
+// Feature-flag preference: parchment dot-grid background. User-toggled in the
+// Settings modal, persisted in localStorage, read live (see
+// `src/utils/featureFlags.ts`). Defaults to disabled.
+export const DOT_GRID_ENABLED_KEY = 'craftbase_dot_grid_enabled'
 
 // Canvas rendering constants
 export const HOVER_THRESHOLD = 15

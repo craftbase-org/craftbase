@@ -28,6 +28,29 @@
         />
         <title>Craftbase - Open-source online whiteboard for developers</title>
 
+        <!-- Pre-paint theme: apply the saved/system theme before the bundle
+             loads so the boot loader + first paint match (no light flash).
+             Keep this logic in sync with src/hooks/useTheme.ts. -->
+        <script>
+            ;(function () {
+                try {
+                    var stored = localStorage.getItem('cb-theme')
+                    var pref =
+                        stored === 'light' ||
+                        stored === 'dark' ||
+                        stored === 'system'
+                            ? stored
+                            : 'light'
+                    var dark =
+                        pref === 'dark' ||
+                        (pref === 'system' &&
+                            window.matchMedia('(prefers-color-scheme: dark)')
+                                .matches)
+                    if (dark) document.documentElement.classList.add('dark')
+                } catch (e) {}
+            })()
+        </script>
+
         <script
             defer
             src="https://cloud.umami.is/script.js"
@@ -61,13 +84,15 @@
                 align-items: center;
                 justify-content: center;
                 gap: 22px;
+                /* Solid parchment only — the dot grid is canvas-only (behind
+                   the dotGrid feature flag) and must never appear on the
+                   loader. */
                 background-color: #f5f0e8;
-                background-image: radial-gradient(
-                    circle,
-                    #c4b89a 1px,
-                    transparent 1px
-                );
-                background-size: 24px 24px;
+            }
+            /* Dark boot loader — kept in sync with the .dark tokens in
+               src/App.css so the loader matches the resolved theme. */
+            .dark #cb-boot {
+                background-color: #1c1814;
             }
             #cb-boot svg {
                 width: 72px;
@@ -110,6 +135,9 @@
                 font-size: 22px;
                 letter-spacing: 0.5px;
                 color: #1a1612;
+            }
+            .dark #cb-boot .cb-wordmark {
+                color: #f3ece0;
             }
             #cb-boot .cb-caption {
                 margin-top: -10px;

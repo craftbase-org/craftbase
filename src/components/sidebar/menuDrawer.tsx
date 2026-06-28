@@ -7,7 +7,7 @@ import { downloadViewportAsImage } from '../../utils/exportViewport'
 import Modal from '../common/modal'
 import Button from '../common/button'
 import SettingsModal from './settingsModal'
-import settingsIcon from '../../assets/settings.svg'
+import SettingsIcon from '../../assets/settings.svg?react'
 
 const HamburgerIcon = (): ReactElement => (
     <svg
@@ -141,7 +141,7 @@ const MenuDrawer = (): ReactElement => {
         <>
             <div
                 ref={refNode}
-                className="relative bg-card-bg border border-border-panel shadow-card rounded-card"
+                className="relative bg-card-bg border border-border-panel rounded-card"
                 style={{
                     position: 'fixed',
                     top: '8px',
@@ -301,10 +301,11 @@ const MenuDrawer = (): ReactElement => {
                             style={{ width: 'calc(100% - 8px)' }}
                             onClick={handleSettingsClick}
                         >
-                            <img
-                                src={settingsIcon}
+                            <SettingsIcon
                                 className="w-3.5 h-3.5"
-                                alt=""
+                                stroke="currentColor"
+                                color="currentColor"
+                                aria-hidden="true"
                             />
                             <span>Settings</span>
                         </button>

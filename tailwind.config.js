@@ -7,6 +7,7 @@ module.exports = {
         'bg-accent',
         'bg-topbar-hover',
     ],
+    darkMode: 'class',
     content: [
         './src/**/*.html',
         './src/**/*.js',
@@ -28,7 +29,7 @@ module.exports = {
         fontFamily: {
             ui: ['Geist', 'system-ui', 'sans-serif'],
             display: ['Fraunces', 'Georgia', 'serif'],
-            sketch: ['Caveat Brush', 'cursive'],
+            sketch: ['Caveat', 'cursive'],
             mono: ['Geist Mono', 'monospace'], // added — for coordinates, hex values, dimension chips
         },
         // borderWidth: {
@@ -112,33 +113,40 @@ module.exports = {
                 },
 
                 // ── Warm Studio tokens ────────────────────────────────────
+                // Theming-relevant chrome tokens reference CSS variables (see
+                // :root + .dark in src/App.css) so a `.dark` class on <html>
+                // flips them with zero per-component edits. The variables hold
+                // space-separated RGB *channels* (e.g. `232 200 122`), wrapped
+                // here as `rgb(var(--x) / <alpha-value>)` so opacity modifiers
+                // like `bg-accent/30` keep working. Light/dark values live in
+                // App.css, not here.
                 // Canvas & surfaces
-                canvas: '#F5F0E8', // main canvas bg — the parchment
-                sidebar: '#EDE8DC', // left/right panel bg
-                'card-bg': '#FFFCF5', // default shape/card fill
+                canvas: 'rgb(var(--color-canvas) / <alpha-value>)', // main canvas bg — the parchment
+                sidebar: 'rgb(var(--color-sidebar) / <alpha-value>)', // left/right panel bg
+                'card-bg': 'rgb(var(--color-card) / <alpha-value>)', // default shape/card fill
 
                 // Chrome
-                topbar: '#1A1612', // espresso top bar
-                'topbar-hover': '#2E2820', // tool hover bg in topbar
+                topbar: 'rgb(var(--color-topbar) / <alpha-value>)', // espresso top bar
+                'topbar-hover': 'rgb(var(--color-topbar-hover) / <alpha-value>)', // tool hover bg in topbar
 
                 // Accent — amber replaces blue as the interaction color
                 accent: {
-                    DEFAULT: '#E8C87A', // active tools, buttons, selections → bg-accent
-                    dark: '#C4901A', // highlighted card borders             → bg-accent-dark
-                    glow: 'rgba(184, 134, 11, 0.18)', // focus rings         → (use in CSS, not Tailwind utility)
+                    DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)', // active tools, buttons, selections → bg-accent
+                    dark: 'rgb(var(--color-accent-dark) / <alpha-value>)', // highlighted card borders → bg-accent-dark
+                    glow: 'var(--color-accent-glow)', // focus rings → (use in CSS, not as a utility)
                 },
 
                 // Text — all warm undertones, no cool grays
                 ink: {
-                    DEFAULT: '#1A1612', // primary text, near-black  → text-ink
-                    mid: '#5A4E3C', // secondary text            → text-ink-mid
-                    muted: '#8C7E6A', // labels, hints, placeholders → text-ink-muted
+                    DEFAULT: 'rgb(var(--color-ink) / <alpha-value>)', // primary text, near-black  → text-ink
+                    mid: 'rgb(var(--color-ink-mid) / <alpha-value>)', // secondary text            → text-ink-mid
+                    muted: 'rgb(var(--color-ink-muted) / <alpha-value>)', // labels, hints, placeholders → text-ink-muted
                 },
 
                 // Borders
                 border: {
-                    panel: '#D4C9B4', // sidebar/panel dividers    → border-border-panel
-                    card: '#C4B89A', // card outlines, grid dots  → border-border-card
+                    panel: 'rgb(var(--color-border-panel) / <alpha-value>)', // sidebar/panel dividers → border-border-panel
+                    card: 'rgb(var(--color-border-card) / <alpha-value>)', // card outlines, grid dots → border-border-card
                 },
 
                 // Canvas element fill palette (for shape fill picker)
@@ -162,9 +170,9 @@ module.exports = {
             // ── box shadows ───────────────────────────────────────────────
             // Offset flat shadow = physical index card feel (no blur = no softness)
             boxShadow: {
-                card: '3px 3px 0 #C4B89A', // default card lift
-                'card-accent': '3px 3px 0 #C4901A', // highlighted/selected card
-                focus: '0 0 0 2px rgba(184, 134, 11, 0.18)', // amber focus ring
+                card: '3px 3px 0 rgb(var(--color-border-card))', // default card lift
+                'card-accent': '3px 3px 0 rgb(var(--color-accent-dark))', // highlighted/selected card
+                focus: '0 0 0 2px var(--color-accent-glow)', // amber focus ring
                 sticky: '2px 2px 8px rgba(0, 0, 0, 0.10)', // sticky note
             },
 

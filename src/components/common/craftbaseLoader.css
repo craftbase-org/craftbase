@@ -11,9 +11,9 @@
     align-items: center;
     justify-content: center;
     gap: 22px;
+    /* Solid parchment only — the dot grid is canvas-only (behind the dotGrid
+       feature flag) and must never appear on the loader. */
     background-color: #f5f0e8;
-    background-image: radial-gradient(circle, #c4b89a 1px, transparent 1px);
-    background-size: 24px 24px;
 }
 
 .cb-loader .cb-mark {
