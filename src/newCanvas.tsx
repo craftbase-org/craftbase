@@ -122,6 +122,15 @@ import type {
     CurrentElement,
 } from './types/board'
 
+// A plain `line` shares the arrow's group structure (line + two endpoint
+// circles) and the entire arrow-draw / endpoint-edit machinery, so anywhere we
+// manage endpoint-handle visibility or read vertex coords for selection &
+// copy/paste, both types apply. Port/connector logic stays arrowLine-only
+// (plain lines never dock to shapes), so those guards keep their literal
+// 'arrowLine' check.
+const isLineLikeType = (t?: string | null): boolean =>
+    t === 'arrowLine' || t === 'line'
+
 interface CanvasProps {
     pointerToggle: boolean
     isPencilMode: boolean
@@ -381,7 +390,7 @@ function addZUI(
     // ── Geo multi-click draw state (area / route) ────────────────────────────
     // Vertices are surface coords; preview dots/lines live in two.scene so ZUI
     // transforms them like everything else. Built into a component on finish.
-    let geoDrawType: 'area' | 'route' | null = null
+    let geoDrawType: 'area' | 'route' | 'curvedLine' | null = null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let geoDrawProps: any = null
     let geoVertices: { x: number; y: number }[] = []
@@ -391,6 +400,10 @@ function addZUI(
     let geoLines: any[] = []
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let geoPreviewLine: any = null
+    // For the curved line, a single curved Two.Path preview replaces the straight
+    // segment+rubber-band so the in-transit shape matches the committed curve.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let geoCurvedPreview: any = null
 
     const toSurface = (e: { clientX: number; clientY: number }) =>
         zui.clientToSurface(e.clientX, e.clientY)
@@ -448,23 +461,57 @@ function addZUI(
         if (root) root.style.cursor = cursor
     }
 
-    // ── Geo multi-click draw helpers (area / route) ──────────────────────────
+    // ── Multi-click draw helpers (area / route / curvedLine) ─────────────────
+    const geoPreviewStyle = () => ({
+        stroke:
+            defaultStrokeColorValue ||
+            geoDrawProps?.stroke ||
+            SHAPE_DEFAULT_STROKE,
+        lw: defaultLinewidthValue || geoDrawProps?.linewidth || 2,
+    })
+
+    // Rebuild the curved preview path so the in-transit line is smooth (matching
+    // the committed shape) instead of straight segments. Runs through the placed
+    // vertices plus an optional live cursor point. Recreated each call — the
+    // preview has few points, so this is cheap.
+    const rebuildCurvedPreview = (cursor?: { x: number; y: number }) => {
+        if (geoCurvedPreview) {
+            two.remove(geoCurvedPreview)
+            geoCurvedPreview = null
+        }
+        const pts = cursor ? [...geoVertices, cursor] : [...geoVertices]
+        if (pts.length < 2) return
+        const { stroke, lw } = geoPreviewStyle()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anchors = pts.map((p) => new (Two as any).Anchor(p.x, p.y))
+        // closed = false, curved = true — same as the committed curvedLine.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const path = new (Two as any).Path(anchors, false, true)
+        path.noFill()
+        path.stroke = stroke
+        path.linewidth = lw
+        path.cap = 'round'
+        path.join = 'round'
+        path.opacity = 0.6
+        two.add(path)
+        geoCurvedPreview = path
+    }
+
     const addGeoVertex = (x: number, y: number) => {
         geoVertices.push({ x, y })
         // Read the live element defaults (kept in sync via useEffect) so a
-        // stroke/width change made in the geo panel mid-draw is reflected
+        // stroke/width change made in the panel mid-draw is reflected
         // immediately — same contract as pencil. Falls back to the props
         // stashed at tool-pick, then the global shape default.
-        const stroke =
-            defaultStrokeColorValue ||
-            geoDrawProps?.stroke ||
-            SHAPE_DEFAULT_STROKE
-        const lw = defaultLinewidthValue || geoDrawProps?.linewidth || 2
+        const { stroke, lw } = geoPreviewStyle()
         const dot = two.makeCircle(x, y, 4)
         dot.fill = stroke
         dot.noStroke()
         geoDots.push(dot)
-        if (geoVertices.length >= 2) {
+        if (geoDrawType === 'curvedLine') {
+            // Curved preview through the placed vertices (no straight segments).
+            rebuildCurvedPreview()
+        } else if (geoVertices.length >= 2) {
             const prev = geoVertices[geoVertices.length - 2]!
             const line = two.makeLine(prev.x, prev.y, x, y)
             line.stroke = stroke
@@ -477,12 +524,14 @@ function addZUI(
 
     const updateGeoPreview = (sx: number, sy: number) => {
         if (!geoDrawType || geoVertices.length === 0) return
+        const { stroke, lw } = geoPreviewStyle()
+        if (geoDrawType === 'curvedLine') {
+            // Smooth rubber-band: the curve flows through all points + cursor.
+            rebuildCurvedPreview({ x: sx, y: sy })
+            two.update()
+            return
+        }
         const last = geoVertices[geoVertices.length - 1]!
-        const stroke =
-            defaultStrokeColorValue ||
-            geoDrawProps?.stroke ||
-            SHAPE_DEFAULT_STROKE
-        const lw = defaultLinewidthValue || geoDrawProps?.linewidth || 2
         if (geoPreviewLine) {
             geoPreviewLine.vertices[0].set(last.x, last.y)
             geoPreviewLine.vertices[1].set(sx, sy)
@@ -499,9 +548,11 @@ function addZUI(
         geoDots.forEach((d) => two.remove(d))
         geoLines.forEach((l) => two.remove(l))
         if (geoPreviewLine) two.remove(geoPreviewLine)
+        if (geoCurvedPreview) two.remove(geoCurvedPreview)
         geoDots = []
         geoLines = []
         geoPreviewLine = null
+        geoCurvedPreview = null
         two.update()
     }
 
@@ -515,9 +566,19 @@ function addZUI(
         domElement.removeEventListener('mousemove', mousemove, false)
     }
 
+    // Hide the curved-line "press Esc/Enter to finish" nudge (no-op for geo).
+    const hideMultiClickHint = () => {
+        const hint = document.getElementById('multi-click-draw-hint')
+        if (hint) {
+            hint.style.opacity = '0'
+            hint.style.zIndex = '-1'
+        }
+    }
+
     const cancelGeoDraw = () => {
         clearGeoPreviewArtifacts()
         resetGeoDrawState()
+        hideMultiClickHint()
         setRootCursor('auto')
     }
 
@@ -538,6 +599,9 @@ function addZUI(
         }
 
         const type = geoDrawType
+        // curvedLine is a generic whiteboard shape, not a geo object — it reuses
+        // this multi-click machinery but carries no geo object-class.
+        const isGeo = type !== 'curvedLine'
         const originX = Math.floor(verts[0]!.x)
         const originY = Math.floor(verts[0]!.y)
         const finalId = generateUUID()
@@ -545,7 +609,7 @@ function addZUI(
             ...(geoDrawProps || {}),
             id: finalId,
             componentType: type,
-            objectClass: 'geo',
+            ...(isGeo ? { objectClass: 'geo' } : {}),
             // Stroke/width/type come from the live element defaults so geo
             // draws honor edits made in the panel (just like pencil/shapes),
             // sharing the one default set across shapes/pencil/geo.
@@ -577,6 +641,7 @@ function addZUI(
 
         clearGeoPreviewArtifacts()
         resetGeoDrawState()
+        hideMultiClickHint()
         addToLocalComponentStore(
             finalId,
             type,
@@ -635,6 +700,34 @@ function addZUI(
             two.update()
         },
     })
+
+    // Delete/Backspace for a selected curved line. The selection controller's
+    // own delete only covers SHAPE_ADAPTERS shapes (rect/circle/diamond/text);
+    // arrow and plain line carry their own focus-based key handler. The curved
+    // line (cloned from the geo route, which is never key-deletable) had no
+    // delete path, so wire one here. Scoped to `curvedLine` to avoid
+    // double-deleting the arrow/line that already handle their own key.
+    const onCurvedLineDeleteKeyDown = (e: KeyboardEvent): void => {
+        if (e.keyCode !== 8 && e.keyCode !== 46) return
+        const tag = document.activeElement?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return
+        if ((document.activeElement as HTMLElement | null)?.isContentEditable) {
+            return
+        }
+        // Don't delete mid multi-click draw, or when the controller owns the
+        // selection (its own handler fires for those).
+        if (geoDrawType || selectionController.currentGroup) return
+        const grp = lastSelectedShape
+        if (grp?.elementData?.componentType !== 'curvedLine') return
+        const id = grp.elementData.id
+        if (!id) return
+        deleteComponentFromLocalStore(id)
+        two.remove([grp])
+        two.update()
+        lastSelectedShape = null
+        setSelectedComponentInBoard(null)
+    }
+    window.addEventListener('keydown', onCurvedLineDeleteKeyDown, false)
 
     domElement.addEventListener('mousedown', mousedown, false)
     domElement.addEventListener('mousemove', hoverDetectMove, false)
@@ -1837,7 +1930,7 @@ function addZUI(
             if (selectionController.currentGroup) selectionController.detach()
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             two.scene.children.forEach((child: any) => {
-                if (child?.elementData?.componentType === 'arrowLine') {
+                if (isLineLikeType(child?.elementData?.componentType)) {
                     setArrowEndpointsVisible(child, false)
                 }
             })
@@ -2058,6 +2151,7 @@ function addZUI(
                     geoDrawType = localStorage.getItem(GEO_DRAW_TYPE_KEY) as
                         | 'area'
                         | 'route'
+                        | 'curvedLine'
                         | null
                     geoDrawProps = JSON.parse(
                         localStorage.getItem(GEO_DRAW_PROPS_KEY) ?? 'null'
@@ -2233,7 +2327,7 @@ function addZUI(
                 if (shape === null && hoveredEndpointGroup) {
                     const parentArrow = two.scene.children.find(
                         (child: any) =>
-                            child?.elementData?.componentType === 'arrowLine' &&
+                            isLineLikeType(child?.elementData?.componentType) &&
                             (child.children[1] === hoveredEndpointGroup ||
                                 child.children[2] === hoveredEndpointGroup)
                     )
@@ -2348,7 +2442,7 @@ function addZUI(
                 if (
                     !avoidDragging &&
                     (shape?.elementData?.isLineCircle ||
-                        shape?.elementData?.componentType === 'arrowLine')
+                        isLineLikeType(shape?.elementData?.componentType))
                 ) {
                     document
                         .querySelectorAll<HTMLElement>(
@@ -2391,8 +2485,9 @@ function addZUI(
                     // arrow's port bindings. Re-showing them here keeps the next
                     // endpoint grab an endpoint drag, so bindings survive.
                     if (
-                        groupForToolbar?.elementData?.componentType ===
-                        'arrowLine'
+                        isLineLikeType(
+                            groupForToolbar?.elementData?.componentType
+                        )
                     ) {
                         setArrowEndpointsVisible(groupForToolbar, true)
                     }
@@ -2512,18 +2607,22 @@ function addZUI(
                     }
 
                     // Radar sweep + magnetic snap for the head being pulled out.
-                    updatePortRadar(
-                        {
-                            x: arrowDrawElement.position.x + relX,
-                            y: arrowDrawElement.position.y + relY,
-                        },
-                        {
-                            arrowGroup: arrowDrawElement,
-                            line,
-                            circle: pointCircle2Group,
-                            endpoint: 'head',
-                        }
-                    )
+                    // Plain lines (noArrowhead) never dock to ports — skip the
+                    // radar so they don't snap onto nearby shapes.
+                    if (line?.noArrowhead !== true) {
+                        updatePortRadar(
+                            {
+                                x: arrowDrawElement.position.x + relX,
+                                y: arrowDrawElement.position.y + relY,
+                            },
+                            {
+                                arrowGroup: arrowDrawElement,
+                                line,
+                                circle: pointCircle2Group,
+                                endpoint: 'head',
+                            }
+                        )
+                    }
                 }
                 break
             case SCENARIO_DRAW_SHAPE: {
@@ -4339,12 +4438,15 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                     let relativeY = item.y - yMid
 
                     let newMetadata = item.metadata
-                    // pencil + geo area/route all store an absolute {x,y} vertex
-                    // array; remap it into the group's child coordinate space.
+                    // pencil + geo area/route + curvedLine all store an absolute
+                    // {x,y} vertex array; remap it into the group's child
+                    // coordinate space (else the factory builds the path at a
+                    // wrong offset and the member renders off-screen / invisible).
                     if (
                         (item.componentType === 'pencil' ||
                             item.componentType === 'area' ||
-                            item.componentType === 'route') &&
+                            item.componentType === 'route' ||
+                            item.componentType === 'curvedLine') &&
                         Array.isArray(item.metadata)
                     ) {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -4387,9 +4489,10 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                         relativeY: relativeY,
                     }
 
-                    // For arrowLine: read actual vertex coordinates from Two.js scene
-                    // to preserve arrow direction (componentStore may have stale/missing values)
-                    if (item.componentType === 'arrowLine') {
+                    // For arrowLine / line: read actual vertex coordinates from
+                    // Two.js scene to preserve direction (componentStore may have
+                    // stale/missing values)
+                    if (isLineLikeType(item.componentType)) {
                         const arrowShape = twoJSInstance.scene.children.find(
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             (child: any) => child?.elementData?.id === item.id

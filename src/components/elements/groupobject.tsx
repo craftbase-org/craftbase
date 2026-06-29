@@ -266,8 +266,14 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                     const absY = gy + localY
 
                     let childMetadata = child.metadata
+                    // pencil + curvedLine store an absolute {x,y} vertex array;
+                    // rebase it from the group's child space back to the
+                    // standalone's absolute origin on materialize (else the
+                    // dissolved member renders off-screen). (area/route share this
+                    // shape but aren't grouped in practice — left as-is.)
                     if (
-                        child.componentType === 'pencil' &&
+                        (child.componentType === 'pencil' ||
+                            child.componentType === 'curvedLine') &&
                         Array.isArray(child.metadata)
                     ) {
                         childMetadata = child.metadata.map(

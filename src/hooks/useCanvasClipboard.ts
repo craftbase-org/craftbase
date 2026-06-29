@@ -232,7 +232,8 @@ export function useCanvasClipboard({
                 if (
                     (src.componentType === 'pencil' ||
                         src.componentType === 'area' ||
-                        src.componentType === 'route') &&
+                        src.componentType === 'route' ||
+                        src.componentType === 'curvedLine') &&
                     Array.isArray(src.metadata)
                 ) {
                     const dx = px - src.x
@@ -305,7 +306,8 @@ export function useCanvasClipboard({
                     if (
                         (c.componentType === 'pencil' ||
                             c.componentType === 'area' ||
-                            c.componentType === 'route') &&
+                            c.componentType === 'route' ||
+                            c.componentType === 'curvedLine') &&
                         Array.isArray(c.metadata)
                     ) {
                         const meta = c.metadata as Array<{

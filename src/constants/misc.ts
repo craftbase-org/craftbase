@@ -179,10 +179,15 @@ export const GEO_TYPE_DEFAULTS: Record<
     route: { stroke: '#3B82F6', linewidth: 3 },
 }
 
-// Minimum vertices required to finish a multi-click geo draw.
-export const GEO_MIN_VERTICES: Record<'area' | 'route', number> = {
+// Minimum vertices required to finish a multi-click draw. Shared by the geo
+// area/route tools and the generic curved line (which reuses the same machinery).
+export const GEO_MIN_VERTICES: Record<
+    'area' | 'route' | 'curvedLine',
+    number
+> = {
     area: 3,
     route: 2,
+    curvedLine: 2,
 }
 
 // Default ink for strokes. Pure black so it flips cleanly to white on a theme

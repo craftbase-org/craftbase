@@ -4,7 +4,7 @@ import type { ReactElement } from 'react'
 import { useImmer } from 'use-immer'
 import Two from 'two.js'
 
-import ElementCreator from '../../factory/arrowLine'
+import ElementCreator from '../../factory/line'
 import { readOpacity } from '../../utils/canvasUtils'
 
 import {
@@ -22,6 +22,11 @@ import { useMediaQueryUtils } from '../../constants/exportHooks'
 // the line stays easy to select even at 10%.
 const HIT_BAND_PX = 22
 
+// A plain straight line. This mirrors arrowLine.tsx (same group structure of
+// line + two endpoint circles) so it shares the arrow-draw and endpoint-edit
+// machinery; the `line` factory sets `noArrowhead`, which the vertex updaters
+// honor to keep the segment headless. It intentionally has no port-binding
+// (connector) logic — plain lines do not dock to shapes.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,7 +34,7 @@ type ShapeLike = any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type InternalState = Record<string, any>
 
-function ArrowLine(props: ElementProps): ReactElement {
+function Line(props: ElementProps): ReactElement {
     const [, toggleToolbar] = useState(false)
     const [internalState, setInternalState] = useImmer<InternalState>({})
     const stateRefForGroup = useRef<ShapeLike>(null)
@@ -295,4 +300,4 @@ function ArrowLine(props: ElementProps): ReactElement {
     return <React.Fragment />
 }
 
-export default ArrowLine
+export default Line
