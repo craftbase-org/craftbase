@@ -38,7 +38,7 @@ const cards = [
         icon: <img src={chatAltIcon} className="w-5 h-5" alt="Discussions" />,
         label: 'GitHub Discussions',
         description:
-            'Have a question or idea to share? Join the conversation with the community.',
+            'Have a question or idea to share? Please open a discussion post.',
         cta: 'Start a discussion →',
     },
 ]
@@ -73,8 +73,17 @@ const SupportPage: React.FC = () => {
                         Support
                     </h1>
                     <p className="text-xs tablet-landscape:text-sm text-ink-muted leading-relaxed">
-                        We're here to help. Choose how you'd like to get in
-                        touch.
+                        Meanwhile I create a proper channel (like discord or
+                        slack), you can reach out to me{' '}
+                        <a
+                            className="text-blues-b500 underline"
+                            href="https://x.com/meet_zaveri"
+                            target="_blank"
+                        >
+                            here
+                        </a>{' '}
+                        for the time being and I will respond to your
+                        question(s).
                     </p>
                 </div>
 
@@ -93,18 +102,18 @@ const SupportPage: React.FC = () => {
                         </div>
                         {isMobile && (
                             <div className="text-xs font-semibold text-ink-mid">
-                                Get in touch directly
+                                Support Email
                             </div>
                         )}
                     </div>
                     <div className="flex items-start flex-col gap-1">
                         {!isMobile && (
                             <div className="text-xs font-semibold text-ink-mid">
-                                Get in touch directly
+                                Support Email Address
                             </div>
                         )}
                         <div className="text-xs text-ink-muted">
-                            Email the contact person at{' '}
+                            Please send your detailed query/question here -{' '}
                             <a
                                 href="mailto:support@craftbase.org"
                                 className="text-accent-dark font-semibold no-underline border-b border-accent-dark"
@@ -119,7 +128,7 @@ const SupportPage: React.FC = () => {
                 <div className="flex items-center gap-3 mb-4 tablet-landscape:mb-5">
                     <div className="flex-1 h-px bg-border-panel" />
                     <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider whitespace-nowrap">
-                        Community
+                        Submit Issue/ Forum Channel
                     </span>
                     <div className="flex-1 h-px bg-border-panel" />
                 </div>

@@ -24,6 +24,7 @@ import {
 } from '../../schema/mutations'
 import Canvas from '../../newCanvas'
 import ZoomControls from '../../components/ZoomControls'
+import HelpButton from '../../components/helpButton'
 import Sidebar from '../../components/sidebar/primary'
 import ElementPropertiesToolbar from '../../components/sidebar/elementProperties'
 import PointTooltip from '../../components/elements/pointTooltip'
@@ -1699,6 +1700,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                     <PointTooltip />
                     <ClusterLayer />
                     {!isMobile && <ZoomControls />}
+                    <HelpButton />
                 </div>
             </BoardContext.Provider>
             {/* {isMobile ? (
