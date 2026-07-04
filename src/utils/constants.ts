@@ -202,7 +202,7 @@ export const staticPrimaryElementData: PrimarySection[] = [
                 // (see flattenShapesForDesktop), so it stays a drawer on both
                 // desktop and mobile.
                 elementName: 'lines',
-                elementDisplayName: 'Line',
+                elementDisplayName: 'Lines',
                 elementIcon: LineIcon,
                 hasDrawer: true,
                 noAction: true,
