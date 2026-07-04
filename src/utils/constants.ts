@@ -193,6 +193,20 @@ export const staticPrimaryElementData: PrimarySection[] = [
                         elementDisplayName: 'Diamond',
                         elementIcon: DiamondIcon,
                     },
+                ],
+            },
+            {
+                // Lines live behind their own drawer (main icon = straight line);
+                // clicking it opens a secondary drawer to pick line vs. curved
+                // line. Unlike 'shapes', this drawer is NOT flattened on desktop
+                // (see flattenShapesForDesktop), so it stays a drawer on both
+                // desktop and mobile.
+                elementName: 'lines',
+                elementDisplayName: 'Line',
+                elementIcon: LineIcon,
+                hasDrawer: true,
+                noAction: true,
+                drawerData: [
                     {
                         elementName: 'line',
                         elementDisplayName: 'Line',

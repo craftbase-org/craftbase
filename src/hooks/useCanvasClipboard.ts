@@ -315,16 +315,18 @@ export function useCanvasClipboard({
                             y: number
                             lw?: number
                         }>
-                        const m0 = meta[0] ?? { x: 0, y: 0 }
-                        memberMetadata = meta.map((vert, index) => {
+                        memberMetadata = meta.map((vert) => {
                             const lwProp =
                                 vert.lw !== undefined ? { lw: vert.lw } : {}
-                            if (index === 0) {
-                                return { x: absX, y: absY, ...lwProp }
-                            }
+                            // Group-relative child vertex → absolute at the
+                            // paste origin (the new group origin). Anchor each
+                            // vertex to its own group-relative coord, not the
+                            // stored member origin (relativeX), which drifts
+                            // from metadata[0] for a vertex-edited curvedLine
+                            // and would jump vertex 0.
                             return {
-                                x: absX + Math.trunc(vert.x - m0.x),
-                                y: absY + Math.trunc(vert.y - m0.y),
+                                x: px + vert.x,
+                                y: py + vert.y,
                                 ...lwProp,
                             }
                         })

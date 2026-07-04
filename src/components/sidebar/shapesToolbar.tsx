@@ -22,12 +22,14 @@ const allElementsRaw = staticPrimaryElementData.flatMap(
 // Whiteboard-only tools hidden once geo objects are enabled — the geo workflow
 // uses point/area/route + the zoom-resistant geoText instead. 'shapes' is the
 // mobile drawer; rectangle/circle/diamond are its desktop-flattened children.
+// 'lines' is the line/curvedLine drawer (kept as a drawer on both platforms).
 // 'text' is replaced by 'geoText' (see geoElementData).
 const GEO_HIDDEN_TOOLS = new Set([
     'shapes',
     'rectangle',
     'circle',
     'diamond',
+    'lines',
     'arrowLine',
     'pencil',
     'text',
@@ -297,8 +299,8 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
 
             {openDrawer && shapeDrawerElements.length > 0 && drawerAnchor && (
                 <div
-                    className={`fixed bg-sidebar rounded-card flex items-center flex-row
-                        ${isMobile ? 'px-1 py-1 gap-0.5 border-b-4 border-accent-dark' : 'px-2 py-1 gap-1 border-t-4 border-accent-dark'}`}
+                    className={`fixed bg-card-bg rounded-card flex items-center flex-row border-border-panel
+                        ${isMobile ? 'px-1 py-1 gap-0.5' : 'px-2 py-1 gap-1'}`}
                     style={
                         isMobile
                             ? {

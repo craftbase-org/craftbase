@@ -491,6 +491,22 @@ export function useComponentHistory({
                 reapplyTextFromMeta(group, props.metadata)
             }
 
+            // curvedLine stores an absolute vertex array in metadata and owns
+            // its path + vertex handles (frozen props, so no re-render). Sync
+            // elementData for later drags/reload, then let the component re-flow
+            // through its own refs via this event (works for undo AND redo).
+            if (
+                Array.isArray(props.metadata) &&
+                group.elementData?.componentType === 'curvedLine'
+            ) {
+                group.elementData.metadata = props.metadata
+                window.dispatchEvent(
+                    new CustomEvent('curvedLineVertsReverted', {
+                        detail: { id, metadata: props.metadata },
+                    })
+                )
+            }
+
             // Connector port bindings have no Two.js geometry of their own, so
             // applyPropertyToTwoJSGroup skips them. Mirror them onto elementData
             // here so undo/redo of a detach restores (or re-clears) the binding

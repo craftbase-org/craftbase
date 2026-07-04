@@ -3454,6 +3454,41 @@ function addZUI(
                                         ...arrowDetach,
                                     }
                                 )
+                            } else if (ed.componentType === 'curvedLine') {
+                                // curvedLine's source of truth is an ABSOLUTE
+                                // vertex array in metadata (like pencil/route/
+                                // area). A body drag moves the group but leaves
+                                // metadata at the old absolute coords, so on
+                                // reload the factory rebuilds the path at the
+                                // original spot and the move is lost. Re-derive
+                                // metadata from the moved vertices and fold it
+                                // into the SAME {x,y} update. Undo stays correct:
+                                // applyBulkProps reverts the group translation
+                                // from the snapshotted prevProps, and the
+                                // relative vertices never moved, so restoring the
+                                // translation restores the whole shape (the
+                                // array metadata is a no-op on the Two.js side).
+                                const cpath = shape.children?.[0]
+                                const movedVerts = (cpath?.vertices ?? []).map(
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    (vx: any) => ({
+                                        x: Math.round(
+                                            shape.translation.x + vx.x
+                                        ),
+                                        y: Math.round(
+                                            shape.translation.y + vx.y
+                                        ),
+                                    })
+                                )
+                                ed.metadata = movedVerts
+                                updateComponentBulkPropertiesInLocalStore(
+                                    ed.id,
+                                    {
+                                        x: parseInt(shape.translation.x),
+                                        y: parseInt(shape.translation.y),
+                                        metadata: movedVerts,
+                                    }
+                                )
                             } else {
                                 oldShapeData = { ...shape.elementData }
 
@@ -4451,30 +4486,23 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                     ) {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const meta = item.metadata as any[]
-                        newMetadata = meta.map((vert, index) => {
+                        newMetadata = meta.map((vert) => {
                             const lwProp =
                                 vert.lw !== undefined ? { lw: vert.lw } : {}
-                            if (index === 0) {
-                                return { x: relativeX, y: relativeY, ...lwProp }
-                            } else if (index > 0) {
-                                // here the logic is to get relative vertex coordinates to the original metadata
-                                // so we want to get result of ( relative coordinate + orginal_vert(x) - originalX )
-                                // here originalX means the coordinates of first set of vertices
-                                // since they were the first coordinates to start a path
-                                //
-                                // Keep the deltas as floats — do NOT Math.trunc.
-                                // Truncating each vertex shifted it sub-pixel off
-                                // the original AND fed altered points into the
-                                // factory's Chaikin smoothing, bending the whole
-                                // stroke off its original path. The member origin
-                                // is truncated once in groupobject (matching the
-                                // original component), so float deltas here land
-                                // each vertex exactly on the original.
-                                return {
-                                    x: relativeX + (vert.x - meta[0].x),
-                                    y: relativeY + (vert.y - meta[0].y),
-                                    ...lwProp,
-                                }
+                            // Group-relative vertex = ABSOLUTE vertex − the
+                            // group's integer midpoint. Anchor every vertex to
+                            // its own absolute coord, NOT the stored member
+                            // origin (item.x/y): a curvedLine's x/y is its first
+                            // vertex at *creation* and drifts after a vertex
+                            // edit, so the old item.x-keyed formula translated
+                            // the whole curve by that drift on group. The member
+                            // origin's integer part cancels against the factory's
+                            // prevX, so metadata alone sets position. Floats (no
+                            // trunc) keep pencil's Chaikin smoothing on its path.
+                            return {
+                                x: vert.x - xMid,
+                                y: vert.y - yMid,
+                                ...lwProp,
                             }
                         }) as unknown as typeof item.metadata
                     }

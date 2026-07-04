@@ -67,10 +67,8 @@ const PrimarySidebar = (): ReactElement => {
     const [hintText, setHintText] = useState(
         'Click anywhere to place element there.'
     )
-    const {
-        loading: getComponentTypesLoading,
-        data: getComponentTypesData,
-    } = useQuery(GET_COMPONENT_TYPES)
+    const { loading: getComponentTypesLoading, data: getComponentTypesData } =
+        useQuery(GET_COMPONENT_TYPES)
 
     // Verify component-type seeds are present.
     useEffect(() => {
@@ -129,7 +127,8 @@ const PrimarySidebar = (): ReactElement => {
                         isDummy: null,
                         createdAt: null,
                         metadata: {
-                            ...((item.metadata as Record<string, unknown>) ?? {}),
+                            ...((item.metadata as Record<string, unknown>) ??
+                                {}),
                             opacity: 1,
                             ...(defaultTextFontFamily && {
                                 textFontFamily: defaultTextFontFamily,
@@ -295,8 +294,8 @@ const PrimarySidebar = (): ReactElement => {
         const baseProps = {
             componentType: label,
             ...(isGeo ? { objectClass: 'geo' as const } : {}),
-            stroke: geoDef ? geoDef.stroke : defaultStrokeColor ?? '#3A342C',
-            linewidth: geoDef ? geoDef.linewidth : defaultLinewidth ?? 2.5,
+            stroke: geoDef ? geoDef.stroke : (defaultStrokeColor ?? '#3A342C'),
+            linewidth: geoDef ? geoDef.linewidth : (defaultLinewidth ?? 2.5),
             strokeType: isGeo ? null : defaultStrokeType,
             fill: 'transparent',
             boardId,
@@ -407,7 +406,8 @@ const PrimarySidebar = (): ReactElement => {
                     getComponentTypesData.componentTypes.forEach((item) => {
                         if (item.label === label) {
                             const userId = localStorage.getItem('userId')
-                            const useShapeFill = DRAW_SHAPE_TYPES.includes(label)
+                            const useShapeFill =
+                                DRAW_SHAPE_TYPES.includes(label)
                             shapeData = {
                                 id: generateId,
                                 componentType: label,
@@ -421,7 +421,8 @@ const PrimarySidebar = (): ReactElement => {
                                 ),
                                 y: Math.floor(
                                     window.outerHeight -
-                                        (randomNumber * window.outerHeight) / 100
+                                        (randomNumber * window.outerHeight) /
+                                            100
                                 ),
                                 x1: 0,
                                 x2: label.includes('divider') ? 100 : 0,
@@ -495,9 +496,7 @@ const PrimarySidebar = (): ReactElement => {
                         },
                         width: fb.width,
                         height: fb.height,
-                        fill: useShapeFill
-                            ? (defaultFill ?? fb.fill)
-                            : fb.fill,
+                        fill: useShapeFill ? (defaultFill ?? fb.fill) : fb.fill,
                         textColor: fb.textColor,
                         updatedBy: userId,
                     }
@@ -557,7 +556,7 @@ const PrimarySidebar = (): ReactElement => {
                 id="multi-click-draw-hint"
                 className="fixed w-full flex justify-center pointer-events-none
                 opacity-0 transition-opacity ease-out duration-300"
-                style={{ top: '52px', zIndex: -1 }}
+                style={{ top: '55px', zIndex: -1 }}
             >
                 <div className="w-auto bg-ink text-card-bg px-4 py-2 rounded-md shadow-md">
                     <div className="text-sm text-center whitespace-nowrap">

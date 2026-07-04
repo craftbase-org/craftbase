@@ -210,17 +210,12 @@ function CurvedLine(props: ElementProps): ReactElement {
                         y: Math.round(grp.translation.y + vx.y),
                     }))
                     grp.elementData = { ...grp.elementData, metadata: newVerts }
-                    // skipHistory: the component snapshots props at mount
-                    // (frozen props), so an UPDATE_BULK undo would revert the
-                    // store without re-flowing this Two.js path — a confusing
-                    // partial undo. Persist to store + DB, but keep vertex
-                    // tweaks out of the undo stack for now. (DB write still
-                    // happens — it's gated on persisted mode, not this flag.)
-                    persistRef.current?.(
-                        idRef.current,
-                        { metadata: newVerts },
-                        true
-                    )
+                    // Records an UPDATE_BULK so the vertex edit is undoable. The
+                    // component snapshots props at mount (frozen props), so the
+                    // history hook can't revert us via a re-render — it fires a
+                    // `curvedLineVertsReverted` event instead, which the effect
+                    // below re-flows (path + handles) from the reverted metadata.
+                    persistRef.current?.(idRef.current, { metadata: newVerts })
                 }
 
                 window.addEventListener('mousemove', onMove)
@@ -255,6 +250,47 @@ function CurvedLine(props: ElementProps): ReactElement {
         })
         two.update()
     }, [selectedComponent, two])
+
+    // Undo/redo of a vertex edit reverts our `metadata` in the store, but
+    // ElementRenderWrapper freezes our props at mount so no effect re-fires.
+    // The history hook dispatches this event instead; we re-flow the path's
+    // relative anchors (translation is unchanged by a vertex edit) and move each
+    // handle back to its reverted anchor, mirroring the live drag's onMove.
+    useEffect(() => {
+        const handleReverted = ((
+            e: CustomEvent<{
+                id: string
+                metadata: Array<{ x: number; y: number }>
+            }>
+        ): void => {
+            if (e.detail?.id !== idRef.current) return
+            const grp = groupRef.current
+            const pth = pathRef.current
+            const verts = e.detail.metadata
+            if (!grp || !pth || !Array.isArray(verts)) return
+            pth.vertices.forEach((vx: ShapeLike, i: number) => {
+                const v = verts[i]
+                if (!v) return
+                vx.x = v.x - grp.translation.x
+                vx.y = v.y - grp.translation.y
+            })
+            handlesRef.current.forEach((handle: ShapeLike, i: number) => {
+                const vx = pth.vertices[i]
+                if (!vx) return
+                handle.translation.x = vx.x
+                handle.translation.y = vx.y
+            })
+            // Curved, non-manual Path re-flows its control points on render.
+            pth._flagVertices = true
+            two.update()
+        }) as EventListener
+        window.addEventListener('curvedLineVertsReverted', handleReverted)
+        return () =>
+            window.removeEventListener(
+                'curvedLineVertsReverted',
+                handleReverted
+            )
+    }, [two])
 
     // Reactive style updates (stroke / width / dash) — mirrors route/arrow.
     useEffect(() => {

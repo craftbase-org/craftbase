@@ -5,7 +5,6 @@ import type { ReactElement } from 'react'
 const factoryModules: Record<string, () => Promise<any>> = import.meta.glob(
     '../../factory/*.ts'
 )
-import Two from 'two.js'
 import { useBoardContext } from '../../views/Board/boardContext'
 import getEditComponents from '../utils/editWrapper'
 import { elementOnBlurHandler } from '../../utils/misc'
@@ -147,6 +146,8 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
             props.children.forEach((item: ShapeLike) => {
                 if (item.id === element.elementData.id) relativeData = item
             })
+            const prevTx = element.translation.x
+            const prevTy = element.translation.y
             const newX = gx + parseInt(String(relativeData.x))
             const newY = gy + parseInt(String(relativeData.y))
             element.translation.x = newX
@@ -154,38 +155,29 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
 
             let newMetadata = element.elementData.metadata
             if (
-                element.elementData.componentType === 'pencil' &&
+                (element.elementData.componentType === 'pencil' ||
+                    element.elementData.componentType === 'curvedLine') &&
                 Array.isArray(element.elementData.metadata)
             ) {
-                const m0 = element.elementData.metadata[0]
+                // A group move is a uniform translation: shift the ABSOLUTE
+                // vertex array by the same delta as the element origin. Floats,
+                // no per-vertex parseInt — truncating each vertex fed rounded
+                // points into the factory's Chaikin smoothing on the next
+                // rebuild and bent the stroke ("uneven" pasted/reloaded copies).
+                // Don't rebuild the live anchors from metadata here either: the
+                // factory already smoothed them (pencil Chaikin / curvedLine's
+                // curve) and the translation above moves them, so re-deriving
+                // from the raw simplified metadata would drop the smoothing and
+                // render the stroke jagged.
+                const dxMeta = newX - prevTx
+                const dyMeta = newY - prevTy
                 newMetadata = element.elementData.metadata.map(
-                    (vert: ShapeLike, index: number) => {
-                        const lwProp =
-                            vert.lw !== undefined ? { lw: vert.lw } : {}
-                        if (index === 0) {
-                            return { x: newX, y: newY, ...lwProp }
-                        }
-                        return {
-                            x: newX + parseInt(String(vert.x - m0.x)),
-                            y: newY + parseInt(String(vert.y - m0.y)),
-                            ...lwProp,
-                        }
-                    }
+                    (vert: ShapeLike) => ({
+                        x: vert.x + dxMeta,
+                        y: vert.y + dyMeta,
+                        ...(vert.lw !== undefined ? { lw: vert.lw } : {}),
+                    })
                 )
-                element.children.forEach((eachChild: ShapeLike) => {
-                    if (eachChild.vertices) {
-                        eachChild.vertices = []
-                        newMetadata.forEach((point: ShapeLike) => {
-                            eachChild.vertices.push(
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                new (Two as any).Anchor(
-                                    point.x - newX,
-                                    point.y - newY
-                                )
-                            )
-                        })
-                    }
-                })
             }
 
             const childId = element.elementData.id
@@ -277,15 +269,19 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
                         Array.isArray(child.metadata)
                     ) {
                         childMetadata = child.metadata.map(
-                            (vert: ShapeLike, index: number) => {
+                            (vert: ShapeLike) => {
                                 const lwProp =
                                     vert.lw !== undefined ? { lw: vert.lw } : {}
-                                if (index === 0) {
-                                    return { x: absX, y: absY, ...lwProp }
-                                }
+                                // Group-relative child vertex → absolute =
+                                // group translation + vertex. Anchor every
+                                // vertex (incl. the first) to its own group-
+                                // relative coord, not the stored member origin
+                                // (child.x), which can drift from metadata[0]
+                                // for a vertex-edited curvedLine and would jump
+                                // vertex 0 on ungroup.
                                 return {
-                                    x: absX + parseInt(String(vert.x - localX)),
-                                    y: absY + parseInt(String(vert.y - localY)),
+                                    x: gx + vert.x,
+                                    y: gy + vert.y,
                                     ...lwProp,
                                 }
                             }
