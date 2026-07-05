@@ -24,11 +24,14 @@ import {
 } from '../../schema/mutations'
 import Canvas from '../../newCanvas'
 import ZoomControls from '../../components/ZoomControls'
+import HelpButton from '../../components/helpButton'
 import Sidebar from '../../components/sidebar/primary'
 import ElementPropertiesToolbar from '../../components/sidebar/elementProperties'
 import PointTooltip from '../../components/elements/pointTooltip'
 import ClusterLayer from '../../components/elements/clusterLayer'
 import controlsIcon from '../../assets/controls.svg'
+import OkIcon from '../../assets/ok.svg?react'
+import CloseIcon from '../../assets/close.svg?react'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
 import { generateUUID, generateRandomUsernames } from '../../utils/misc'
@@ -258,6 +261,23 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
 
     const { showMobileToolbarPanel, setShowMobileToolbarPanel } =
         useMobileToolbarPanels({ isMobile, selectedComponent })
+
+    // Mobile-only ✓/✗ controls for the multi-click curved-line draw. There's no
+    // Esc/Enter on touch, so the canvas signals the draw's start/end (via the
+    // same lifecycle as the "press Esc/Enter" nudge) and we surface finish/cancel
+    // buttons that dispatch back the equivalent events.
+    const [showMultiClickDrawControls, setShowMultiClickDrawControls] =
+        useState(false)
+    useEffect(() => {
+        const onStart = (): void => setShowMultiClickDrawControls(true)
+        const onEnd = (): void => setShowMultiClickDrawControls(false)
+        window.addEventListener('multiClickDrawStart', onStart)
+        window.addEventListener('multiClickDrawEnd', onEnd)
+        return (): void => {
+            window.removeEventListener('multiClickDrawStart', onStart)
+            window.removeEventListener('multiClickDrawEnd', onEnd)
+        }
+    }, [])
 
     const {
         // values
@@ -982,9 +1002,66 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         }
     }
 
+    // Deleting a shape must not leave connectors docked to it with dangling
+    // bindings: detach every surviving arrow endpoint bound to a deleted shape
+    // (keep the arrow, clear its shapeId/edge/portIndex). Applies the patches
+    // (store + live elementData + DB) history-suppressed and returns one
+    // UPDATE_BULK entry per detached arrow, so the caller can fold them into
+    // the same BATCH as the shape DELETE — one undo restores the shape AND
+    // re-docks its arrows; redo replays both. Arrows that are themselves in
+    // `deletedIds` are skipped (their DELETE snapshot already carries the
+    // bindings).
+    const detachArrowsForDeletedShapes = (
+        deletedIds: string[]
+    ): HistoryEntry[] => {
+        const deleted = new Set(deletedIds)
+        const store = stateRefForComponentStore.current
+        const entries: HistoryEntry[] = []
+        Object.values(store).forEach((row) => {
+            if (!row?.id || deleted.has(row.id)) return
+            if (row.componentType !== 'arrowLine') return
+            const patch: Partial<ComponentRecord> = {}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const prevProps: Record<string, any> = {}
+            if (row.tailShapeId && deleted.has(row.tailShapeId)) {
+                prevProps.tailShapeId = row.tailShapeId
+                prevProps.tailEdge = row.tailEdge ?? null
+                prevProps.tailPortIndex = row.tailPortIndex ?? 0
+                patch.tailShapeId = null
+                patch.tailEdge = null
+                patch.tailPortIndex = 0
+            }
+            if (row.headShapeId && deleted.has(row.headShapeId)) {
+                prevProps.headShapeId = row.headShapeId
+                prevProps.headEdge = row.headEdge ?? null
+                prevProps.headPortIndex = row.headPortIndex ?? 0
+                patch.headShapeId = null
+                patch.headEdge = null
+                patch.headPortIndex = 0
+            }
+            if (Object.keys(patch).length === 0) return
+            entries.push({
+                action: 'UPDATE_BULK',
+                id: row.id,
+                prevProps,
+                bulkObj: patch,
+            })
+            updateComponentBulkPropertiesInLocalStore(row.id, patch, true)
+            // The store update doesn't touch the scene; mirror onto the live
+            // arrow's elementData, which port re-anchoring reads.
+            const group = twoJSInstanceRef.current?.scene?.children?.find(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (c: any) => c?.elementData?.id === row.id
+            )
+            if (group?.elementData) Object.assign(group.elementData, patch)
+        })
+        return entries
+    }
+
     const deleteBulkComponentsFromLocalStore = (ids: string[]) => {
         ensureBackgroundBoard()
 
+        const detachEntries = detachArrowsForDeletedShapes(ids)
         const batchEntries: HistoryEntry[] = ids.map((id) => ({
             action: 'DELETE',
             id,
@@ -992,7 +1069,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                 ...stateRefForComponentStore.current[id],
             } as ComponentRecord,
         }))
-        recordBatchToHistoryLog(batchEntries)
+        recordBatchToHistoryLog([...detachEntries, ...batchEntries])
 
         const updatedComponentStore = { ...stateRefForComponentStore.current }
         ids.forEach((id) => {
@@ -1013,13 +1090,19 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     const deleteComponentFromLocalStore = (id: string) => {
         ensureBackgroundBoard()
 
-        recordToHistoryLog({
+        const detachEntries = detachArrowsForDeletedShapes([id])
+        const deleteEntry: HistoryEntry = {
             action: 'DELETE',
             id,
             prevState: {
                 ...stateRefForComponentStore.current[id],
             } as ComponentRecord,
-        })
+        }
+        if (detachEntries.length > 0) {
+            recordBatchToHistoryLog([...detachEntries, deleteEntry])
+        } else {
+            recordToHistoryLog(deleteEntry)
+        }
 
         const updatedComponentStore = { ...stateRefForComponentStore.current }
         delete updatedComponentStore[id]
@@ -1649,6 +1732,40 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             >
                 <div>
                     <Sidebar />
+                    {isMobile && showMultiClickDrawControls && (
+                        <div
+                            style={{
+                                position: 'fixed',
+                                bottom: '64px',
+                                right: '10px',
+                                zIndex: 20,
+                            }}
+                            className="flex flex-col gap-2"
+                        >
+                            <button
+                                title="Finish line"
+                                onClick={() =>
+                                    window.dispatchEvent(
+                                        new CustomEvent('finishGeoDraw')
+                                    )
+                                }
+                                className="w-10 h-10 rounded-lg flex items-center justify-center bg-greens-g400 text-white shadow-md transition-colors duration-150"
+                            >
+                                <OkIcon className="w-5 h-5" />
+                            </button>
+                            <button
+                                title="Cancel line"
+                                onClick={() =>
+                                    window.dispatchEvent(
+                                        new CustomEvent('cancelGeoDraw')
+                                    )
+                                }
+                                className="w-10 h-10 rounded-lg flex items-center justify-center bg-reds-r400 text-white shadow-md transition-colors duration-150"
+                            >
+                                <CloseIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                    )}
                     {!isRubberMode && isMobile && (
                         <button
                             title="Element properties"
@@ -1699,6 +1816,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                     <PointTooltip />
                     <ClusterLayer />
                     {!isMobile && <ZoomControls />}
+                    <HelpButton />
                 </div>
             </BoardContext.Provider>
             {/* {isMobile ? (

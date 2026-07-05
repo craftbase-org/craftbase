@@ -20,6 +20,35 @@ export const updateX1Y1Vertices = (
     pointCircle1: PointCircleLike,
     two: TwoLike
 ): void => {
+    // Plain lines carry `noArrowhead` (set by the line factory) — rebuild as a
+    // bare 2-anchor segment so dragging the tail never sprouts an arrowhead.
+    if (line?.noArrowhead === true) {
+        line.vertices = [
+            new TwoRef.Anchor(
+                x1,
+                y1,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                TwoRef.Commands.move
+            ),
+            new TwoRef.Anchor(
+                line.vertices[1].x,
+                line.vertices[1].y,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                TwoRef.Commands.line
+            ),
+        ]
+        pointCircle1.translation.x = line.vertices[0].x
+        pointCircle1.translation.y = line.vertices[0].y
+        two.update()
+        return
+    }
+
     const headlen = 10
     const angle = Math.atan2(line.vertices[1].y - y1, line.vertices[1].x - x1)
 
@@ -86,6 +115,34 @@ export const updateX2Y2Vertices = (
     pointCircle2: PointCircleLike,
     two: TwoLike
 ): void => {
+    // Plain lines (see updateX1Y1Vertices) stay a bare 2-anchor segment.
+    if (line?.noArrowhead === true) {
+        line.vertices = [
+            new TwoRef.Anchor(
+                line.vertices[0].x,
+                line.vertices[0].y,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                TwoRef.Commands.move
+            ),
+            new TwoRef.Anchor(
+                x2,
+                y2,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                TwoRef.Commands.line
+            ),
+        ]
+        pointCircle2.translation.x = line.vertices[1].x
+        pointCircle2.translation.y = line.vertices[1].y
+        two.update()
+        return
+    }
+
     const headlen = 10
     const angle = Math.atan2(y2 - line.vertices[0].y, x2 - line.vertices[0].x)
 

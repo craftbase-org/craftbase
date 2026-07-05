@@ -4,7 +4,7 @@ import { useMutation } from '@apollo/client'
 
 import Button from '../common/button'
 import Modal from '../common/modal'
-import ShareIcon from '../../assets/share-android.svg'
+import ShareIcon from '../../assets/share-android.svg?react'
 import CopyIcon from '../../assets/copy.svg'
 import { useBoardContext } from '../../views/Board/boardContext'
 import { UPDATE_BOARD_VISIBILITY } from '../../schema/mutations'
@@ -91,10 +91,18 @@ const ShareLinkPopup = (): ReactElement => {
         <>
             <div className="relative " ref={refNode} style={{ right: '-9px' }}>
                 <div
-                    className="w-[45px] h-[45px] flex items-center justify-center rounded-md bg-accent text-ink font-semibold cursor-pointer"
+                    className="px-1 py-1 border-border-panel border  flex items-center justify-center rounded-md bg-card-bg text-ink font-semibold cursor-pointer "
                     onClick={handleShareClick}
                 >
-                    <img src={ShareIcon} className="w-5 h-5" alt="Share" />
+                    {/* <div className="pr-2 text-white">Share</div>{' '} */}
+                    <div className="px-2 py-2 hover:bg-accent/50 rounded-md">
+                        <ShareIcon
+                            width={20}
+                            height={20}
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                        />
+                    </div>
                 </div>
 
                 <div

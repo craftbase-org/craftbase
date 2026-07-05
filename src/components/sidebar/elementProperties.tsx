@@ -78,6 +78,8 @@ const STROKE_WIDTHS = [
 const SETS = {
     SHAPE: ['fill', 'stroke', 'strokeWidth', 'strokeType', 'opacity'],
     ARROW: ['stroke', 'strokeWidth', 'strokeType', 'opacity'],
+    // Plain line + curved (multi-point) line — stroke-centric, no fill.
+    LINE: ['stroke', 'strokeWidth', 'strokeType', 'opacity'],
     PENCIL: ['stroke', 'strokeWidth', 'strokeType', 'opacity'],
     TEXT: ['textColor', 'textSize', 'textFont', 'opacity'],
     // Geo objects: stroke-centric. Area's fill is auto-derived from stroke, so
@@ -114,6 +116,7 @@ const SETS = {
 const SET_LABELS = {
     SHAPE: 'Shape',
     ARROW: 'Arrow',
+    LINE: 'Line',
     PENCIL: 'Pencil',
     TEXT: 'Text',
     RECT_WITH_TEXT: 'Shape',
@@ -158,6 +161,9 @@ function resolveSetKey({
         if (elementType === 'point') return null
         if (elementType === 'area') return 'GEO_AREA'
         if (elementType === 'route') return 'GEO_ROUTE'
+        // Plain + curved lines: stroke-centric panel (no fill).
+        if (elementType === 'line' || elementType === 'curvedLine')
+            return 'LINE'
         // rectangle/diamond/circle all carry text the same way — show the
         // shape+text toolbar (text size/color/font) for any of them.
         const isShapeWithText =
@@ -177,6 +183,7 @@ function resolveSetKey({
         )
             return 'SHAPE'
         if (shapeType === 'arrowLine') return 'ARROW'
+        if (shapeType === 'line' || shapeType === 'curvedLine') return 'LINE'
         if (isStandaloneTextType(shapeType)) return 'TEXT'
         // Diamond is a custom Path; the elementData carries the type.
         if (
@@ -200,6 +207,9 @@ function resolveSetKey({
     // Point is excluded: its category lives in the toolbar drawer, not here.
     if (currentElement === 'area') return 'GEO_AREA'
     if (currentElement === 'route') return 'GEO_ROUTE'
+    // Curved-line tool armed (multi-click): show the line panel so a stroke
+    // tweak seeds the next draw, mirroring pencil/geo behavior.
+    if (currentElement === 'curvedLine') return 'LINE'
     // No selection and no active tool — hide the panel. Defaults still apply
     // to the next-created shape (the `useElementDefaults` state is unchanged);
     // users edit them by selecting a shape, which auto-syncs the default per

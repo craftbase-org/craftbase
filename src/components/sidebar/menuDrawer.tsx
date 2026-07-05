@@ -7,7 +7,9 @@ import { downloadViewportAsImage } from '../../utils/exportViewport'
 import Modal from '../common/modal'
 import Button from '../common/button'
 import SettingsModal from './settingsModal'
+import ShortcutsModal from './shortcutsModal'
 import SettingsIcon from '../../assets/settings.svg?react'
+import HelpIcon from '../../assets/help.svg?react'
 
 const HamburgerIcon = (): ReactElement => (
     <svg
@@ -96,6 +98,7 @@ const MenuDrawer = (): ReactElement => {
     const [showMenu, setShowMenu] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const [showSettings, setShowSettings] = useState(false)
+    const [showShortcuts, setShowShortcuts] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
     const { clearBoard } = useBoardContext()
 
@@ -118,6 +121,11 @@ const MenuDrawer = (): ReactElement => {
     const handleSettingsClick = (): void => {
         setShowMenu(false)
         setShowSettings(true)
+    }
+
+    const handleShortcutsClick = (): void => {
+        setShowMenu(false)
+        setShowShortcuts(true)
     }
 
     const handleDownloadClick = async (): Promise<void> => {
@@ -152,9 +160,9 @@ const MenuDrawer = (): ReactElement => {
                 <div
                     title="Menu"
                     className={`
-                        w-9 h-9 flex items-center justify-center rounded cursor-pointer
+                        w-10 h-10 flex items-center justify-center rounded cursor-pointer
                         transition-all ease-in-out duration-200
-                        ${showMenu ? 'bg-accent/30' : 'hover:bg-accent/30'}
+                        ${showMenu ? 'bg-accent/50' : 'hover:bg-accent/50'}
                     `}
                     onClick={(): void => setShowMenu((prev) => !prev)}
                 >
@@ -176,7 +184,7 @@ const MenuDrawer = (): ReactElement => {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center justify-between px-3 py-2 mx-1 text-sm text-ink-mid
-                                hover:bg-accent/30 rounded cursor-pointer no-underline
+                                hover:bg-accent/50 rounded cursor-pointer no-underline
                                 transition-colors ease-in-out duration-150"
                             onClick={(): void => setShowMenu(false)}
                         >
@@ -208,7 +216,7 @@ const MenuDrawer = (): ReactElement => {
                         <Link
                             to={routes.embeddable}
                             className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
-                                hover:bg-accent/30 rounded cursor-pointer no-underline
+                                hover:bg-accent/50 rounded cursor-pointer no-underline
                                 transition-colors ease-in-out duration-150"
                             onClick={(): void => setShowMenu(false)}
                         >
@@ -233,7 +241,7 @@ const MenuDrawer = (): ReactElement => {
                         <Link
                             to={routes.support}
                             className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
-                                hover:bg-accent/30 rounded cursor-pointer no-underline
+                                hover:bg-accent/50 rounded cursor-pointer no-underline
                                 transition-colors ease-in-out duration-150"
                             onClick={(): void => setShowMenu(false)}
                         >
@@ -264,7 +272,7 @@ const MenuDrawer = (): ReactElement => {
                         <Link
                             to={routes.privacy}
                             className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
-                                hover:bg-accent/30 rounded cursor-pointer no-underline
+                                hover:bg-accent/50 rounded cursor-pointer no-underline
                                 transition-colors ease-in-out duration-150"
                             onClick={(): void => setShowMenu(false)}
                         >
@@ -296,7 +304,7 @@ const MenuDrawer = (): ReactElement => {
 
                         <button
                             className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
-                                hover:bg-accent/30 rounded cursor-pointer
+                                hover:bg-accent/50 rounded cursor-pointer
                                 transition-colors ease-in-out duration-150"
                             style={{ width: 'calc(100% - 8px)' }}
                             onClick={handleSettingsClick}
@@ -310,11 +318,27 @@ const MenuDrawer = (): ReactElement => {
                             <span>Settings</span>
                         </button>
 
+                        <button
+                            className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                hover:bg-accent/30 rounded cursor-pointer
+                                transition-colors ease-in-out duration-150"
+                            style={{ width: 'calc(100% - 8px)' }}
+                            onClick={handleShortcutsClick}
+                        >
+                            <HelpIcon
+                                className="w-3.5 h-3.5"
+                                stroke="currentColor"
+                                color="currentColor"
+                                aria-hidden="true"
+                            />
+                            <span>Keyboard shortcuts</span>
+                        </button>
+
                         <div className="h-px bg-border-panel mx-2 mt-1 mb-1" />
 
                         <button
                             className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
-                                hover:bg-accent/30 rounded cursor-pointer
+                                hover:bg-accent/50 rounded cursor-pointer
                                 transition-colors ease-in-out duration-150
                                 disabled:opacity-50 disabled:cursor-default"
                             style={{ width: 'calc(100% - 8px)' }}
@@ -348,6 +372,11 @@ const MenuDrawer = (): ReactElement => {
             <SettingsModal
                 open={showSettings}
                 onClose={(): void => setShowSettings(false)}
+            />
+
+            <ShortcutsModal
+                open={showShortcuts}
+                onClose={(): void => setShowShortcuts(false)}
             />
 
             <Modal

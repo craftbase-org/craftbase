@@ -41,6 +41,7 @@ const FALLBACK_CATALOG: Record<
     circle: { width: 160, height: 160, fill: '#fff', textColor: '#000' },
     diamond: { width: 160, height: 160, fill: '#fff', textColor: '#000' },
     arrowLine: { width: 100, height: 0, fill: 'transparent', textColor: null },
+    line: { width: 100, height: 0, fill: 'transparent', textColor: null },
     divider: { width: 100, height: 0, fill: 'transparent', textColor: null },
     text: { width: 120, height: 36, fill: 'transparent', textColor: '#3A342C' },
 }
@@ -66,10 +67,8 @@ const PrimarySidebar = (): ReactElement => {
     const [hintText, setHintText] = useState(
         'Click anywhere to place element there.'
     )
-    const {
-        loading: getComponentTypesLoading,
-        data: getComponentTypesData,
-    } = useQuery(GET_COMPONENT_TYPES)
+    const { loading: getComponentTypesLoading, data: getComponentTypesData } =
+        useQuery(GET_COMPONENT_TYPES)
 
     // Verify component-type seeds are present.
     useEffect(() => {
@@ -128,7 +127,8 @@ const PrimarySidebar = (): ReactElement => {
                         isDummy: null,
                         createdAt: null,
                         metadata: {
-                            ...((item.metadata as Record<string, unknown>) ?? {}),
+                            ...((item.metadata as Record<string, unknown>) ??
+                                {}),
                             opacity: 1,
                             ...(defaultTextFontFamily && {
                                 textFontFamily: defaultTextFontFamily,
@@ -278,19 +278,25 @@ const PrimarySidebar = (): ReactElement => {
         if (root) root.style.cursor = 'crosshair'
     }
 
-    // Area / Route: multi-click vertex placement. Don't pre-create — stash the
-    // base props and let the canvas collect vertices and build on finish.
-    const handleGeoMultiClick = (label: 'area' | 'route'): void => {
+    // Multi-click vertex placement. Powers the geo area/route tools AND the
+    // generic curved line — they share the canvas vertex-collection machinery
+    // (collect on click, finish on Esc/Enter/double-click). `curvedLine` is NOT
+    // a geo object, so it carries no `objectClass: 'geo'` and pulls its
+    // stroke/width from the shared element defaults instead of GEO_TYPE_DEFAULTS.
+    const handleMultiClickDraw = (
+        label: 'area' | 'route' | 'curvedLine'
+    ): void => {
         togglePencilMode(false)
         togglePointer(false)
 
-        const geoDef = GEO_TYPE_DEFAULTS[label]
+        const isGeo = label !== 'curvedLine'
+        const geoDef = isGeo ? GEO_TYPE_DEFAULTS[label] : null
         const baseProps = {
             componentType: label,
-            objectClass: 'geo' as const,
-            stroke: geoDef.stroke,
-            linewidth: geoDef.linewidth,
-            strokeType: null,
+            ...(isGeo ? { objectClass: 'geo' as const } : {}),
+            stroke: geoDef ? geoDef.stroke : (defaultStrokeColor ?? '#3A342C'),
+            linewidth: geoDef ? geoDef.linewidth : (defaultLinewidth ?? 2.5),
+            strokeType: isGeo ? null : defaultStrokeType,
             fill: 'transparent',
             boardId,
             boardName: null,
@@ -303,6 +309,19 @@ const PrimarySidebar = (): ReactElement => {
         localStorage.setItem(GEO_DRAW_PROPS_KEY, JSON.stringify(baseProps))
         const root = document.getElementById('main-two-root')
         if (root) root.style.cursor = 'crosshair'
+
+        // Nudge banner: only the curved line gets the "press Esc/Enter" hint
+        // (geo area/route live in the consumer's map UI with their own affordances).
+        const hint = document.getElementById('multi-click-draw-hint')
+        if (hint && !isGeo) {
+            hint.style.opacity = '1'
+            hint.style.zIndex = '20'
+        }
+        // Mobile has no Esc/Enter — signal board.tsx to show the ✓/✗ draw
+        // controls for the curved-line draw (matches the nudge lifecycle).
+        if (!isGeo) {
+            window.dispatchEvent(new CustomEvent('multiClickDrawStart'))
+        }
     }
 
     const addElement = (label: string, category?: string): void => {
@@ -334,6 +353,15 @@ const PrimarySidebar = (): ReactElement => {
             case 'arrowLine':
                 handleArrowElement(label)
                 break
+            case 'line':
+                // A plain line draws with the exact same drag gesture as an
+                // arrow (and reuses SCENARIO_ARROW_DRAW); only componentType
+                // differs, which strips the arrowhead via the line factory.
+                handleArrowElement(label)
+                break
+            case 'curvedLine':
+                handleMultiClickDraw('curvedLine')
+                break
             case 'text':
                 handleTextElement()
                 break
@@ -347,7 +375,7 @@ const PrimarySidebar = (): ReactElement => {
                 break
             case 'area':
             case 'route':
-                handleGeoMultiClick(label)
+                handleMultiClickDraw(label)
                 break
             default: {
                 togglePencilMode(false)
@@ -383,7 +411,8 @@ const PrimarySidebar = (): ReactElement => {
                     getComponentTypesData.componentTypes.forEach((item) => {
                         if (item.label === label) {
                             const userId = localStorage.getItem('userId')
-                            const useShapeFill = DRAW_SHAPE_TYPES.includes(label)
+                            const useShapeFill =
+                                DRAW_SHAPE_TYPES.includes(label)
                             shapeData = {
                                 id: generateId,
                                 componentType: label,
@@ -397,7 +426,8 @@ const PrimarySidebar = (): ReactElement => {
                                 ),
                                 y: Math.floor(
                                     window.outerHeight -
-                                        (randomNumber * window.outerHeight) / 100
+                                        (randomNumber * window.outerHeight) /
+                                            100
                                 ),
                                 x1: 0,
                                 x2: label.includes('divider') ? 100 : 0,
@@ -471,9 +501,7 @@ const PrimarySidebar = (): ReactElement => {
                         },
                         width: fb.width,
                         height: fb.height,
-                        fill: useShapeFill
-                            ? (defaultFill ?? fb.fill)
-                            : fb.fill,
+                        fill: useShapeFill ? (defaultFill ?? fb.fill) : fb.fill,
                         textColor: fb.textColor,
                         updatedBy: userId,
                     }
@@ -526,6 +554,33 @@ const PrimarySidebar = (): ReactElement => {
                     </div>
                 </div>
             </div>
+            {/* Curved-line draw nudge. Sits just under the shapes toolbar.
+                Shown by handleMultiClickDraw('curvedLine'); hidden by the
+                canvas on finish/cancel (finishGeoDraw / cancelGeoDraw).
+                Desktop-only: mobile has no Esc/Enter and uses the on-screen
+                ✓/✗ draw controls instead, so the keyboard nudge is omitted. */}
+            {!isMobile && (
+                <div
+                    id="multi-click-draw-hint"
+                    className="fixed w-full flex justify-center pointer-events-none
+                opacity-0 transition-opacity ease-out duration-300"
+                    style={{ top: '55px', zIndex: -1 }}
+                >
+                    <div className="w-auto bg-ink text-card-bg px-4 py-2 rounded-md shadow-md">
+                        <div className="text-sm text-center whitespace-nowrap">
+                            Click to add points · press{' '}
+                            <kbd className="px-1 rounded border border-current">
+                                Enter
+                            </kbd>{' '}
+                            or{' '}
+                            <kbd className="px-1 rounded border border-current">
+                                Esc
+                            </kbd>{' '}
+                            to finish
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="absolute top-2 right-1rem flex items-center px-2 gap-1">
                 <div
                     id="show-saving-loader"

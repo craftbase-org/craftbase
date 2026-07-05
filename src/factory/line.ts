@@ -1,7 +1,7 @@
 import Main from './main'
 import { strokeTypeToDashes } from '../utils/misc'
 
-export interface ArrowLineProperties {
+export interface LineProperties {
     fill?: string
     stroke?: string
     x1?: number
@@ -16,7 +16,12 @@ export interface ArrowLineProperties {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ShapeLike = any
 
-export default class ArrowLineFactory extends Main<ArrowLineProperties> {
+// A plain straight line. Structurally identical to the arrow factory (line +
+// two draggable endpoint circles) so it reuses the entire arrow-draw and
+// endpoint-edit machinery in newCanvas — the only difference is `makeLine`
+// (no arrowhead) plus the `noArrowhead` flag that tells the vertex updaters
+// (updateX1Y1Vertices/updateX2Y2Vertices) to keep it a bare 2-anchor segment.
+export default class LineFactory extends Main<LineProperties> {
     createElement(): {
         group: ShapeLike
         pointCircle1Group: ShapeLike
@@ -39,17 +44,23 @@ export default class ArrowLineFactory extends Main<ArrowLineProperties> {
             isMobile,
         } = this.properties
 
-        const line = two.makeArrow(x1, y1, x2, y2)
+        const line = two.makeLine(x1, y1, x2, y2)
+        line.noArrowhead = true
         line.linewidth = linewidth ? linewidth : 1
         line.dashes = strokeTypeToDashes(strokeType)
+        line.cap = 'round'
+        line.join = 'round'
         line.fill = 'none'
         if (stroke) line.stroke = stroke
 
         const circleRadius = isMobile ? 6 : 4
-        // Larger transparent hit target behind each visible endpoint dot so an
-        // imprecise tap/click still grabs the endpoint (see line.ts for the
-        // rationale). `transparent` hit-tests while staying invisible; it rides
-        // the group's counter-scale and select-time opacity toggle.
+        // The visible endpoint dot stays small, but a finger (or an imprecise
+        // click) needs a far bigger target than ~12px. Add a transparent, larger
+        // hit circle BEHIND each dot so taps landing in the margin still grab the
+        // endpoint. `transparent` is a paint (not `none`), so it hit-tests while
+        // staying invisible — same trick as the line-body hit band. It's a child
+        // of the endpoint group, so it counter-scales to a constant screen size
+        // and rides the group's select-time opacity toggle (opacity 0 → no hits).
         const hitRadius = isMobile ? 18 : 9
 
         const pointCircle1 = two.makeCircle(0, 0, circleRadius)

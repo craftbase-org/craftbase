@@ -2,6 +2,8 @@ import type { FunctionComponent, SVGProps } from 'react'
 import CircleIcon from '../wireframeAssets/circle.svg?react'
 import RectangleIcon from '../wireframeAssets/rectangle.svg?react'
 import DiamondIcon from '../wireframeAssets/diamond.svg?react'
+import LineIcon from '../wireframeAssets/line.svg?react'
+import CurvedLineIcon from '../wireframeAssets/curvedLine.svg?react'
 import ShapesIcon from '../wireframeAssets/shapes.svg?react'
 import TextIcon from '../wireframeAssets/text.svg?react'
 import PencilIcon from '../wireframeAssets/pencil.svg?react'
@@ -190,6 +192,30 @@ export const staticPrimaryElementData: PrimarySection[] = [
                         elementName: 'diamond',
                         elementDisplayName: 'Diamond',
                         elementIcon: DiamondIcon,
+                    },
+                ],
+            },
+            {
+                // Lines live behind their own drawer (main icon = straight line);
+                // clicking it opens a secondary drawer to pick line vs. curved
+                // line. Unlike 'shapes', this drawer is NOT flattened on desktop
+                // (see flattenShapesForDesktop), so it stays a drawer on both
+                // desktop and mobile.
+                elementName: 'lines',
+                elementDisplayName: 'Lines',
+                elementIcon: LineIcon,
+                hasDrawer: true,
+                noAction: true,
+                drawerData: [
+                    {
+                        elementName: 'line',
+                        elementDisplayName: 'Line',
+                        elementIcon: LineIcon,
+                    },
+                    {
+                        elementName: 'curvedLine',
+                        elementDisplayName: 'Curved line',
+                        elementIcon: CurvedLineIcon,
                     },
                 ],
             },

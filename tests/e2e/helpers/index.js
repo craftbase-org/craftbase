@@ -231,6 +231,64 @@ export async function drawPencilStroke(page, { startX, startY, endX, endY }) {
 }
 
 /**
+ * Draws a plain straight line. Line lives inside the "Lines" drawer in the
+ * shapes toolbar (main icon → drawer with Line / Curved line). A line draws
+ * with the SAME drag gesture as an arrow (primary.js routes 'line' through
+ * handleArrowElement / SCENARIO_ARROW_DRAW) — only the componentType differs,
+ * which strips the arrowhead via the line factory.
+ *
+ * Returns the line's SVG group element handle.
+ */
+export async function drawLine(page, { startX, startY, endX, endY }) {
+    const countBefore = await page.$$eval(
+        '[data-component-id]',
+        (els) => els.length
+    )
+
+    // Open the Lines drawer, then pick the plain-line tool.
+    await page.click('[aria-label="Lines"]')
+    await page.click('[aria-label="Line"]')
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(endX, endY, { steps: 10 })
+    await page.mouse.up()
+
+    return waitForNewElement(page, countBefore)
+}
+
+/**
+ * Draws a curved line via the multi-click flow (primary.js →
+ * handleMultiClickDraw('curvedLine') → SCENARIO_GEO_DRAW). Each click places a
+ * vertex; pressing Enter finishes the draw (finishGeoDraw uses every placed
+ * vertex — no dropLast). Pass 3+ points to get a curvedLine with >2 vertices.
+ *
+ * Returns the curved line's SVG group element handle.
+ */
+export async function drawCurvedLine(page, points) {
+    if (!Array.isArray(points) || points.length < 2) {
+        throw new Error('drawCurvedLine needs at least 2 points')
+    }
+    const countBefore = await page.$$eval(
+        '[data-component-id]',
+        (els) => els.length
+    )
+
+    // Open the Lines drawer, then pick the curved-line tool.
+    await page.click('[aria-label="Lines"]')
+    await page.click('[aria-label="Curved line"]')
+
+    // Each click is a mousedown that pushes one vertex (mouseup is a no-op in
+    // geo-draw mode — the draw only finishes on Enter/Escape/double-click).
+    for (const p of points) {
+        await page.mouse.click(p.x, p.y)
+    }
+    await page.keyboard.press('Enter')
+
+    return waitForNewElement(page, countBefore)
+}
+
+/**
  * Places a text element at (x, y) (Path: textDrawMode).
  *   1. Click toolbar Text → handleTextElement adds a newText component
  *      off-screen and sets textDrawMode.

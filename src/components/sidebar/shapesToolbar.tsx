@@ -22,12 +22,14 @@ const allElementsRaw = staticPrimaryElementData.flatMap(
 // Whiteboard-only tools hidden once geo objects are enabled — the geo workflow
 // uses point/area/route + the zoom-resistant geoText instead. 'shapes' is the
 // mobile drawer; rectangle/circle/diamond are its desktop-flattened children.
+// 'lines' is the line/curvedLine drawer (kept as a drawer on both platforms).
 // 'text' is replaced by 'geoText' (see geoElementData).
 const GEO_HIDDEN_TOOLS = new Set([
     'shapes',
     'rectangle',
     'circle',
     'diamond',
+    'lines',
     'arrowLine',
     'pencil',
     'text',
@@ -160,7 +162,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
             className={`
                 ${btnSize} flex items-center justify-center rounded cursor-pointer
                 transition-all ease-in-out duration-200 text-ink-muted
-                ${historyLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/30 hover:text-ink'}
+                ${historyLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/50 hover:text-ink'}
             `}
             onClick={(): void => {
                 if (historyLog.length > 0) {
@@ -177,7 +179,7 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
             className={`
                 ${btnSize} flex items-center justify-center rounded cursor-pointer
                 transition-all ease-in-out duration-200 text-ink-muted
-                ${bucketLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/30 hover:text-ink'}
+                ${bucketLog.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-accent/50 hover:text-ink'}
             `}
             onClick={(): void => {
                 if (bucketLog.length > 0) {
@@ -229,8 +231,8 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                                 transition-all ease-in-out duration-200
                                 ${
                                     isActive
-                                        ? 'bg-accent text-ink dark:bg-accent/30 dark:text-white'
-                                        : 'text-ink-muted hover:bg-accent dark:hover:bg-accent/30 hover:text-ink'
+                                        ? 'bg-accent/50 text-ink dark:bg-accent/50/30 dark:text-white'
+                                        : 'text-ink-muted hover:bg-accent/50 dark:hover:bg-accent/50/30 hover:text-ink'
                                 }
                             `}
                             onClick={(e): void => {
@@ -297,8 +299,8 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
 
             {openDrawer && shapeDrawerElements.length > 0 && drawerAnchor && (
                 <div
-                    className={`fixed bg-sidebar rounded-card flex items-center flex-row
-                        ${isMobile ? 'px-1 py-1 gap-0.5 border-b-4 border-accent-dark' : 'px-2 py-1 gap-1 border-t-4 border-accent-dark'}`}
+                    className={`fixed bg-card-bg rounded-card flex items-center flex-row
+                        ${isMobile ? 'px-1 py-1 gap-0.5 border-t-2 border-accent-dark' : 'px-2 py-1 gap-1 border-b-2 border-accent-dark'}`}
                     style={
                         isMobile
                             ? {
@@ -328,8 +330,8 @@ const ShapesToolbar = ({ addElement }: ShapesToolbarProps): ReactElement => {
                                     transition-all ease-in-out duration-200
                                     ${
                                         isActive
-                                            ? 'bg-accent text-ink dark:bg-accent/30 dark:text-white'
-                                            : 'text-ink-muted hover:bg-accent dark:hover:bg-accent/30 hover:text-ink'
+                                            ? 'bg-accent/50 text-ink dark:bg-accent/50/30 dark:text-white'
+                                            : 'text-ink-muted hover:bg-accent/50 dark:hover:bg-accent/50/30 hover:text-ink'
                                     }
                                 `}
                                 onClick={(): void => {
