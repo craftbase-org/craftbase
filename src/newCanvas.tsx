@@ -151,6 +151,10 @@ interface CanvasProps {
     reorderSelectedRef?: MutableRefObject<
         ((op: 'front' | 'forward' | 'backward' | 'back') => void) | null
     >
+    // Bridge: Canvas owns fitToContent (lives on the live zui handle); it
+    // publishes it here so board.tsx can expose a stable wrapper through
+    // BoardContext for the "Go to content" button. Returns whether a fit ran.
+    fitToContentRef?: MutableRefObject<(() => boolean) | null>
 }
 
 // Shape of the handle addZUI returns and Canvas stores in state. The
@@ -3986,13 +3990,45 @@ function addZUI(
             lastSelectedShape,
         bringSelectionToFront: () =>
             selectionController.bringSelectionToFront(),
+        // True when at least one persistable element overlaps the current
+        // viewport. Uses each element group's *deep* getBoundingClientRect
+        // (worldMatrix → element-local pixel space, i.e. reflects the live
+        // camera), tested against the SVG rect. Drives the auto-fit-on-load
+        // decision: fit only when the restored/default camera shows no content.
+        hasVisibleContent: (): boolean => {
+            const scene = two.scene
+            const vw = domElement.clientWidth || two.width
+            const vh = domElement.clientHeight || two.height
+            if (!vw || !vh) return true // can't measure → don't force a fit
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const children = scene.children as any[]
+            for (const child of children) {
+                const id = child?.elementData?.id
+                if (!id) continue
+                if (child.elementData.componentType === GROUP_COMPONENT)
+                    continue
+                let rect
+                try {
+                    rect = child.getBoundingClientRect(false)
+                } catch {
+                    continue
+                }
+                if (!rect) continue
+                const { left, top, right, bottom } = rect
+                if (![left, top, right, bottom].every((n) => Number.isFinite(n)))
+                    continue
+                // Any overlap between the element rect and the viewport.
+                if (right > 0 && bottom > 0 && left < vw && top < vh) return true
+            }
+            return false
+        },
         // Frame all persistable elements in the viewport (zoom-to-fit). Bounds
         // are read via each element group's *shallow* getBoundingClientRect, so
         // they're in surface (scene) coords — independent of the current camera
         // — and cover every shape type via its real rendered geometry. Returns
         // false when there's nothing measurable to fit (empty board / not yet
-        // mounted) so the caller can keep polling. See the fallback in the mount
-        // effect: only runs when no seeded/saved viewport exists for the board.
+        // mounted) so the caller can keep polling. Used by the auto-fit-on-load
+        // fallback and the "Go to content" button.
         fitToContent: (opts?: { padding?: number }): boolean => {
             const scene = two.scene
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -4255,36 +4291,32 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             }
         }
 
-        let viewportRestored = false
         if (isMobile && props.boardId) {
-            viewportRestored = restoreViewport(
-                `${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`
-            )
+            restoreViewport(`${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`)
         }
 
         if (!isMobile && props.boardId) {
-            viewportRestored = restoreViewport(
-                `${VIEWPORT_KEY_PREFIX}${props.boardId}`
-            )
+            restoreViewport(`${VIEWPORT_KEY_PREFIX}${props.boardId}`)
         }
 
-        // Fallback framing: a shared board opened without a seeded URL viewport
-        // (params already used/stripped, or plain link copied) and without a
-        // per-browser saved viewport lands at the origin (scale 1, translate 0).
-        // If content was drawn far from origin it sits off-screen — the user has
-        // to zoom out to find it. Record the intent to zoom-to-fit here; the
-        // componentStore effect performs it once the (async-loaded) elements
-        // have mounted and settled, then clears the flag so it runs only once.
+        // Auto-fit-on-load: a board can land showing empty space — either the
+        // camera is at the origin (no seeded/saved viewport) while content sits
+        // far away, OR a stale/bad saved viewport (30-day TTL, save-as-you-go) or
+        // a shared link's seeded viewport points at emptiness. In every one of
+        // those cases the user has to hunt for the content by zooming out.
         //
-        // Scope this to URL-loaded boards (/board/:id) only. Local drafts (`/`)
-        // also carry a boardId (localBoardId) but seed the deliberately-placed
-        // welcome sketch — reframing that would disturb the intended landing.
+        // So the trigger is content *visibility*, not "nothing restored": the
+        // componentStore effect settles the (async-loaded) elements, then fits
+        // ONLY IF no element is on-screen. A good restored view (or a deliberate
+        // zoom into one region) shows content → left untouched. Runs once.
+        //
+        // Scope to URL-loaded boards (/board/:id) only. Local drafts (`/`) also
+        // carry a boardId (localBoardId) but seed the deliberately-placed welcome
+        // sketch — reframing that would disturb the intended landing.
         const isUrlBoard =
             typeof window !== 'undefined' &&
             window.location.pathname.startsWith('/board/')
-        pendingInitialFitRef.current = Boolean(
-            props.boardId && isUrlBoard && !viewportRestored
-        )
+        pendingInitialFitRef.current = Boolean(props.boardId && isUrlBoard)
 
         // Reflect the stored dot-grid flag on the root (adds `cb-dot-grid` when
         // enabled) and seed the parchment grid from the restored (or default)
@@ -4522,10 +4554,11 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             // settle — this is what fixes the post-refresh ordering bug.
             startZOrderReconcilePoll()
 
-            // One-time zoom-to-fit fallback (see the mount effect). The board's
+            // One-time auto-fit-on-load (see the mount effect). The board's
             // content arrives async and its element groups mount over several
             // frames, so poll until the mounted count stops growing (settled),
-            // then frame it once and clear the intent flag.
+            // then — only if none of it is on-screen — frame it and clear the
+            // intent flag. A camera that already shows content is left alone.
             if (pendingInitialFitRef.current && zuiInstance) {
                 if (initialFitPollRef.current !== null) {
                     cancelAnimationFrame(initialFitPollRef.current)
@@ -4543,16 +4576,18 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                     stableFrames = present === lastCount ? stableFrames + 1 : 0
                     lastCount = present
                     frame += 1
-                    // Fit once the mounted count has held steady for a few
-                    // frames (all lazy chunks resolved), or bail at the cap.
+                    // Once the mounted count has held steady for a few frames
+                    // (all lazy chunks resolved), or at the cap: fit only when
+                    // the current camera shows no content. Either way this is a
+                    // one-shot — clear the flag so later edits never re-fit.
                     if (
                         (present > 0 && stableFrames >= 3) ||
                         frame >= MAX_FRAMES
                     ) {
-                        if (present > 0) {
-                            const fit = zuiInstance.fitToContent?.()
-                            if (fit) pendingInitialFitRef.current = false
+                        if (present > 0 && !zuiInstance.hasVisibleContent?.()) {
+                            zuiInstance.fitToContent?.()
                         }
+                        pendingInitialFitRef.current = false
                         return
                     }
                     initialFitPollRef.current = requestAnimationFrame(tryFit)
@@ -4930,6 +4965,19 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             if (ref) ref.current = null
         }
     }, [props.reorderSelectedRef, reorderSelected])
+
+    // Publish fitToContent up to board.tsx (see the fitToContentRef bridge) so
+    // the "Go to content" button can frame all elements on demand. Reads the
+    // live zui handle via its ref so it never captures a stale instance.
+    useEffect(() => {
+        const ref = props.fitToContentRef
+        if (ref)
+            ref.current = () =>
+                Boolean(zuiInstanceRef.current?.fitToContent?.())
+        return () => {
+            if (ref) ref.current = null
+        }
+    }, [props.fitToContentRef])
 
     // Right-click (mouse) and two-finger trackpad tap both fire the native
     // 'contextmenu' event. Suppress the OS menu; if something is selected, open

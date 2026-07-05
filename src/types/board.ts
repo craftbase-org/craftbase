@@ -228,6 +228,9 @@ export interface BoardContextValue {
     deleteComponentFromLocalStore: (id: string) => void
     deleteBulkComponentsFromLocalStore: (ids: string[]) => void
     stateRefForComponentStore: MutableRefObject<ComponentStore>
+    // Reactive element store — re-renders consumers when elements are added or
+    // removed (unlike stateRefForComponentStore, which is a mutable ref).
+    componentStore: ComponentStore
 
     // Property application
     applyProperty: (
@@ -245,6 +248,11 @@ export interface BoardContextValue {
     // a ref (the implementation lives there alongside reconcileZOrder); a no-op
     // until Canvas has mounted and populated it.
     reorderSelected: (op: 'front' | 'forward' | 'backward' | 'back') => void
+
+    // Frames all elements in the viewport (zoom-to-fit). Bridged from Canvas via
+    // a ref (the fitToContent implementation lives on the live zui handle);
+    // a no-op returning false until Canvas has mounted. Used by "Go to content".
+    fitToContent: () => boolean
 
     // True while a selected element/group is being dragged or resized — the
     // properties toolbar hides itself so it doesn't overlap the element.
