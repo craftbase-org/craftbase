@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import type { ReactElement } from 'react'
+import Two from 'two.js'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const factoryModules: Record<string, () => Promise<any>> = import.meta.glob(
@@ -8,6 +9,21 @@ const factoryModules: Record<string, () => Promise<any>> = import.meta.glob(
 import { useBoardContext } from '../../views/Board/boardContext'
 import getEditComponents from '../utils/editWrapper'
 import { elementOnBlurHandler } from '../../utils/misc'
+import { updateX1Y1Vertices, updateX2Y2Vertices } from '../../utils/updateVertices'
+import { isStandaloneTextType } from '../../constants/misc'
+
+// PROTOTYPE FLAG — group resize. Flip to false to fully disable the corner
+// resize handles + baking and fall back to the old move-only group overlay.
+const GROUP_RESIZE_ENABLED = true
+// Uniform scale never goes below this factor (avoids collapsing a group to 0).
+const GROUP_RESIZE_MIN_SCALE = 0.1
+// Floor for any scaled stroke width so lines never vanish.
+const GROUP_RESIZE_MIN_STROKE = 0.5
+// Corner resize-handle size in SCREEN px (radius). The handles live in surface
+// space (children of the group), so their radius is counter-scaled by the
+// camera zoom (and the live resize scale) to keep a constant, easily-grabbable
+// size at ANY zoom — mirroring the single-element SelectionController handles.
+const GROUP_HANDLE_SCREEN_RADIUS = 7
 import {
     applyShapeText,
     getGroupFill,
@@ -68,6 +84,15 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
         useState<ShapeLike>(null)
     const [groupId, setGroupId] = useState<string | null>(null)
     const isDeletingRef = useRef(false)
+    // Active corner-resize gesture state (null when not resizing). Set on a
+    // corner-handle mousedown, read/advanced on mousemove, consumed on mouseup.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resizeStateRef = useRef<any>(null)
+    // Set by the mount effect; re-sizes the corner handles to a constant screen
+    // size for a given effective scale. Called from the zoomChanged listener.
+    const sizeHandlesRef = useRef<((effectiveScale: number) => void) | null>(
+        null
+    )
     // Last group position already written to history. commitGroupMove() compares
     // the live translation against this so a move is recorded exactly once,
     // whether the commit is triggered by drag-end (mouseup) or blur.
@@ -417,6 +442,10 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
             const detail = (e as CustomEvent<{ scale: number }>).detail
             if (!selectorInstance || !detail) return
             selectorInstance.setScale(detail.scale)
+            // setScale re-sizes ALL selector circles to a small radius; re-apply
+            // our larger constant-screen-size handles on top so they stay easy
+            // to grab at the new zoom.
+            sizeHandlesRef.current?.(detail.scale)
             two.update()
         }
         window.addEventListener('zoomChanged', onZoomChanged)
@@ -576,9 +605,456 @@ function GroupedObjectWrapper(props: ElementProps): ReactElement {
             y: parseInt(String(group.translation.y)),
         }
 
+        // ---- PROTOTYPE: group corner-resize ------------------------------
+        // The group overlay's origin sits at the group CENTER with every member
+        // positioned relative to it, so a single `group.scale` transform scales
+        // member spacing, shape sizes AND stroke widths together — the exact
+        // behavior we want. During the drag we apply that transform live; on
+        // release we BAKE it into each real (hidden) member's Two.js object +
+        // store (mirroring how history's applyBatch re-materialises a frozen
+        // element), then dissolve the overlay to reveal the resized originals.
+        const resizeCleanups: (() => void)[] = []
+
+        // Map every absolute point through the uniform scale about the pinned
+        // opposite corner O: P' = O + s·(P − O).
+        const scaleAbout = (
+            px: number,
+            py: number,
+            s: number,
+            O: { x: number; y: number }
+        ): { x: number; y: number } => ({
+            x: O.x + s * (px - O.x),
+            y: O.y + s * (py - O.y),
+        })
+
+        // Collect every port bound to/by a member so newCanvas re-glues the
+        // connectors after the members move/resize (mirrors commitGroupMove).
+        const restackMemberPorts = (childrenIds: string[]): void => {
+            const store = stateRefForComponentStore?.current ?? {}
+            const ports: { shapeId: string; edge: string }[] = []
+            const seen = new Set<string>()
+            const collect = (shapeId: unknown, edge: unknown): void => {
+                if (typeof shapeId !== 'string' || typeof edge !== 'string')
+                    return
+                const key = `${shapeId}|${edge}`
+                if (seen.has(key)) return
+                seen.add(key)
+                ports.push({ shapeId, edge })
+            }
+            childrenIds.forEach((childId) => {
+                const row = store[childId]
+                if (!row) return
+                if (row.componentType === 'arrowLine') {
+                    collect(row.tailShapeId, row.tailEdge)
+                    collect(row.headShapeId, row.headEdge)
+                    return
+                }
+                Object.values(store).forEach((r: ShapeLike) => {
+                    if (r?.componentType !== 'arrowLine') return
+                    if (r.tailShapeId === childId) collect(childId, r.tailEdge)
+                    if (r.headShapeId === childId) collect(childId, r.headEdge)
+                })
+            })
+            if (ports.length) {
+                window.dispatchEvent(
+                    new CustomEvent('restackPorts', { detail: { ports } })
+                )
+            }
+        }
+
+        // Bake a finished uniform scale `s` (anchored at surface point `O`) into
+        // every real member: update the store, mutate the live Two.js object,
+        // and record one BATCH of UPDATE_BULK entries so a single undo reverts
+        // the whole resize.
+        const bakeGroupResize = (s: number, O: { x: number; y: number }): void => {
+            const userId = localStorage.getItem('userId')
+            const childrenIds = props.children.map((i: ShapeLike) => i.id)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const batchEntries: any[] = []
+
+            two.scene.children.forEach((element: ShapeLike) => {
+                if (!element.elementData) return
+                const id = element.elementData.id
+                if (!childrenIds.includes(id)) return
+
+                const ct = element.elementData.componentType
+                const current = (stateRefForComponentStore?.current?.[id] ??
+                    {}) as ShapeLike
+
+                const curX = parseInt(
+                    String(current.x ?? element.translation.x)
+                )
+                const curY = parseInt(
+                    String(current.y ?? element.translation.y)
+                )
+                const origin = scaleAbout(curX, curY, s, O)
+                const newX = Math.round(origin.x)
+                const newY = Math.round(origin.y)
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const updateObj: any = { x: newX, y: newY, updatedBy: userId }
+                if (current.width != null) {
+                    updateObj.width = Math.max(1, Math.round(current.width * s))
+                }
+                if (current.height != null) {
+                    updateObj.height = Math.max(
+                        1,
+                        Math.round(current.height * s)
+                    )
+                }
+                if (current.linewidth != null) {
+                    updateObj.linewidth = Math.max(
+                        GROUP_RESIZE_MIN_STROKE,
+                        current.linewidth * s
+                    )
+                }
+                if (current.radius != null) {
+                    updateObj.radius = current.radius * s
+                }
+
+                // arrow/line endpoints are local offsets → scale by s only.
+                const isLineLike =
+                    ct === 'arrowLine' || ct === 'line' || ct === 'divider'
+                if (isLineLike) {
+                    if (current.x1 != null) updateObj.x1 = current.x1 * s
+                    if (current.y1 != null) updateObj.y1 = current.y1 * s
+                    if (current.x2 != null) updateObj.x2 = current.x2 * s
+                    if (current.y2 != null) updateObj.y2 = current.y2 * s
+                }
+
+                // pencil + curvedLine store an ABSOLUTE vertex array → scale
+                // every vertex about O (and its per-vertex stroke width lw).
+                let newMetadata = current.metadata
+                if (
+                    (ct === 'pencil' || ct === 'curvedLine') &&
+                    Array.isArray(current.metadata)
+                ) {
+                    newMetadata = current.metadata.map((vert: ShapeLike) => {
+                        const p = scaleAbout(vert.x, vert.y, s, O)
+                        return {
+                            x: p.x,
+                            y: p.y,
+                            ...(vert.lw !== undefined
+                                ? {
+                                      lw: Math.max(
+                                          GROUP_RESIZE_MIN_STROKE,
+                                          vert.lw * s
+                                      ),
+                                  }
+                                : {}),
+                        }
+                    })
+                    updateObj.metadata = newMetadata
+                }
+
+                // Shape-with-text + standalone text store their font size in an
+                // OBJECT metadata bag. The group.scale transform grew the text
+                // in transit, so scale the font too (and re-render below) —
+                // otherwise the text snaps back to its original size on release.
+                const objMeta =
+                    current.metadata &&
+                    typeof current.metadata === 'object' &&
+                    !Array.isArray(current.metadata)
+                        ? current.metadata
+                        : null
+                const isStandaloneText = isStandaloneTextType(ct)
+                const hasShapeText =
+                    !!objMeta?.hasText &&
+                    typeof objMeta?.textContent === 'string'
+                if (objMeta && hasShapeText) {
+                    const oldSize = objMeta.textFontSize || 24
+                    newMetadata = {
+                        ...objMeta,
+                        textFontSize: Math.max(4, Math.round(oldSize * s)),
+                    }
+                    updateObj.metadata = newMetadata
+                } else if (objMeta && isStandaloneText) {
+                    const oldSize = objMeta.fontSize || 36
+                    newMetadata = {
+                        ...objMeta,
+                        fontSize: Math.max(4, Math.round(oldSize * s)),
+                    }
+                    updateObj.metadata = newMetadata
+                }
+
+                // ---- mutate the live (frozen) element, same contract as
+                // history's applyBatch UPDATE_BULK branch ----
+                element.translation.x = newX
+                element.translation.y = newY
+                const shape = element.children?.[0]
+                if (shape) {
+                    if (updateObj.width != null) shape.width = updateObj.width
+                    if (updateObj.height != null) {
+                        shape.height = updateObj.height
+                    }
+                    if (updateObj.linewidth != null) {
+                        shape.linewidth = updateObj.linewidth
+                    }
+                }
+                // Re-render text at the scaled font size. Shape-with-text reflows
+                // to the new box width; standalone text re-stacks in place. Both
+                // reuse the existing line nodes (same content ⇒ no add/remove),
+                // so this stays in lockstep with the owning component.
+                if (hasShapeText && newMetadata) {
+                    applyShapeText(
+                        two,
+                        element,
+                        ct,
+                        updateObj.width ?? current.width ?? 120,
+                        newMetadata
+                    )
+                } else if (isStandaloneText && newMetadata) {
+                    layoutStandaloneText(
+                        two,
+                        element,
+                        newMetadata.content ?? '',
+                        newMetadata.fontSize || 36
+                    )
+                }
+                if (isLineLike) {
+                    const line = element.children?.[0]
+                    const pc1 = element.children?.[1]
+                    const pc2 = element.children?.[2]
+                    if (line && pc1 && pc2 && line.vertices?.length >= 2) {
+                        const x1 = updateObj.x1 ?? line.vertices[0].x
+                        const y1 = updateObj.y1 ?? line.vertices[0].y
+                        const x2 = updateObj.x2 ?? line.vertices[1].x
+                        const y2 = updateObj.y2 ?? line.vertices[1].y
+                        updateX1Y1Vertices(Two, line, x1, y1, pc1, two)
+                        updateX2Y2Vertices(Two, line, x2, y2, pc2, two)
+                        if (updateObj.linewidth != null) {
+                            line.linewidth = updateObj.linewidth
+                        }
+                    }
+                }
+                if (ct === 'pencil' && Array.isArray(newMetadata)) {
+                    const path = element.children?.[0]
+                    if (path?.vertices) {
+                        path.vertices = newMetadata.map(
+                            (pt: ShapeLike) =>
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                new (Two as any).Anchor(
+                                    pt.x - newX,
+                                    pt.y - newY
+                                )
+                        )
+                    }
+                }
+                if (ct === 'curvedLine' && Array.isArray(newMetadata)) {
+                    element.elementData.metadata = newMetadata
+                    window.dispatchEvent(
+                        new CustomEvent('curvedLineVertsReverted', {
+                            detail: { id, metadata: newMetadata },
+                        })
+                    )
+                }
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const prevProps: any = {}
+                Object.keys(updateObj).forEach((k) => {
+                    prevProps[k] = current[k]
+                })
+                updateComponentBulkPropertiesInLocalStore(id, updateObj, true)
+                batchEntries.push({
+                    action: 'UPDATE_BULK',
+                    id,
+                    prevProps,
+                    bulkObj: updateObj,
+                })
+            })
+
+            if (batchEntries.length > 0) {
+                recordBatchToHistoryLog(batchEntries)
+                restackMemberPorts(childrenIds)
+            }
+            two.update()
+        }
+
+        const onResizeMove = (e: MouseEvent): void => {
+            const st = resizeStateRef.current
+            if (!st || !isInScene(group)) return
+            const curDist = Math.hypot(
+                e.clientX - st.anchorScreen.x,
+                e.clientY - st.anchorScreen.y
+            )
+            const s = Math.max(GROUP_RESIZE_MIN_SCALE, curDist / st.startDist)
+            st.lastScale = s
+            group.scale = s
+            // Keep the opposite corner pinned: translation = C0 + (1−s)·d0.
+            group.translation.x = st.C0.x + (1 - s) * st.d0.x
+            group.translation.y = st.C0.y + (1 - s) * st.d0.y
+            // The group scale would balloon the handles; counter-scale them by
+            // camera zoom × live scale so they stay a constant screen size.
+            sizeResizeHandles(two.scene.scale * s)
+            two.update()
+        }
+
+        const onResizeUp = (): void => {
+            window.removeEventListener('mousemove', onResizeMove, false)
+            window.removeEventListener('mouseup', onResizeUp, false)
+            const st = resizeStateRef.current
+            resizeStateRef.current = null
+            if (!st) return
+
+            const s = st.lastScale ?? 1
+            // Negligible drag — just undo the live transform, keep the overlay.
+            if (Math.abs(s - 1) < 0.01) {
+                group.scale = 1
+                group.translation.x = st.C0.x
+                group.translation.y = st.C0.y
+                sizeResizeHandles(two.scene.scale)
+                isDeletingRef.current = false
+                two.update()
+                return
+            }
+
+            // Clear the live transform BEFORE baking so member mutations write
+            // clean (untransformed) coordinates, then commit + dissolve.
+            group.scale = 1
+            bakeGroupResize(s, st.O)
+            revealMembers()
+            selector?.hide?.()
+            window.dispatchEvent(new CustomEvent('groupBlurred'))
+            try {
+                two.remove([group])
+                two.update()
+            } catch (err) {
+                console.warn('two.update() during resize teardown:', err)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const scene = two.scene as any
+                scene.subtractions.length = 0
+                scene._flagSubtractions = false
+            }
+        }
+
+        // Start a resize from corner `corner` (nw/ne/se/sw). We stopPropagation
+        // so the group-MOVE drag (newCanvas delegation) never begins, and
+        // preventDefault so the group keeps DOM focus (no blur → no dissolve).
+        const beginGroupResize = (corner: string, e: MouseEvent): void => {
+            if (!isInScene(group)) return
+            e.preventDefault()
+            e.stopPropagation()
+
+            const halfW0 = (parseInt(String(props.width)) || 0) / 2
+            const halfH0 = (parseInt(String(props.height)) || 0) / 2
+            const sign: Record<string, [number, number]> = {
+                nw: [-1, -1],
+                ne: [1, -1],
+                se: [1, 1],
+                sw: [-1, 1],
+            }
+            const [sx, sy] = sign[corner] ?? [1, 1]
+            // Opposite corner, in the group's local (== surface at scale 1)
+            // frame: it is the pinned anchor for the whole gesture.
+            const d0 = { x: -sx * halfW0, y: -sy * halfH0 }
+            const C0 = {
+                x: group.translation.x,
+                y: group.translation.y,
+            }
+            const O = { x: C0.x + d0.x, y: C0.y + d0.y }
+
+            // Screen-space anchor = the opposite corner circle's DOM center, so
+            // the scale ratio is computed purely in client pixels (no surface
+            // conversion needed here).
+            const opposite: Record<string, ShapeLike> = {
+                nw: selector.circle3,
+                ne: selector.circle4,
+                se: selector.circle1,
+                sw: selector.circle2,
+            }
+            const oppElem = opposite[corner]?._renderer?.elem as
+                | SVGElement
+                | undefined
+            const oppRect = oppElem?.getBoundingClientRect()
+            const anchorScreen = oppRect
+                ? {
+                      x: oppRect.left + oppRect.width / 2,
+                      y: oppRect.top + oppRect.height / 2,
+                  }
+                : { x: e.clientX, y: e.clientY }
+            const startDist =
+                Math.hypot(
+                    e.clientX - anchorScreen.x,
+                    e.clientY - anchorScreen.y
+                ) || 1
+
+            // Block the move-commit machinery for the duration of the resize.
+            isDeletingRef.current = true
+            resizeStateRef.current = {
+                C0,
+                d0,
+                O,
+                anchorScreen,
+                startDist,
+                lastScale: 1,
+            }
+            window.addEventListener('mousemove', onResizeMove, false)
+            window.addEventListener('mouseup', onResizeUp, false)
+        }
+
+        // Counter-scale the 4 corner handles so they hold a constant screen
+        // size — grabbable at low zoom without precise aim, like the single-
+        // element handles. `effectiveScale` folds in the live resize scale so
+        // they don't balloon while the group is being dragged.
+        const cornerHandles = [
+            selector.circle1,
+            selector.circle2,
+            selector.circle3,
+            selector.circle4,
+        ]
+        const sizeResizeHandles = (effectiveScale: number): void => {
+            const s = effectiveScale > 0 ? effectiveScale : 1
+            const r = GROUP_HANDLE_SCREEN_RADIUS / s
+            cornerHandles.forEach((c: ShapeLike) => {
+                if (!c) return
+                c.radius = r
+                c.linewidth = 1.5 / s
+            })
+        }
+        sizeHandlesRef.current = sizeResizeHandles
+
+        // Wire the 4 corner circles as grab handles. They're children of the
+        // group, so they track the corners automatically while it scales.
+        if (GROUP_RESIZE_ENABLED) {
+            const cornerCircles: { name: string; circle: ShapeLike }[] = [
+                { name: 'nw', circle: selector.circle1 },
+                { name: 'ne', circle: selector.circle2 },
+                { name: 'se', circle: selector.circle3 },
+                { name: 'sw', circle: selector.circle4 },
+            ]
+            const cursorFor: Record<string, string> = {
+                nw: 'nwse-resize',
+                se: 'nwse-resize',
+                ne: 'nesw-resize',
+                sw: 'nesw-resize',
+            }
+            cornerCircles.forEach(({ name, circle }) => {
+                if (!circle) return
+                // Clear, filled handle (cream fill, amber ring) so it reads as a
+                // grab dot at any zoom.
+                circle.fill = '#FFFCF5'
+                circle.stroke = '#C4901A'
+                const elem = circle._renderer?.elem as SVGElement | undefined
+                if (!elem) return
+                elem.style.cursor = cursorFor[name] ?? 'pointer'
+                const onDown = (e: MouseEvent): void =>
+                    beginGroupResize(name, e)
+                elem.addEventListener('mousedown', onDown, false)
+                resizeCleanups.push(() =>
+                    elem.removeEventListener('mousedown', onDown, false)
+                )
+            })
+            // Initial sizing to the current camera zoom (group not yet scaled).
+            sizeResizeHandles(two.scene.scale)
+            two.update()
+        }
+
         setGroupId(group.id)
 
         return (): void => {
+            resizeCleanups.forEach((fn) => fn())
+            window.removeEventListener('mousemove', onResizeMove, false)
+            window.removeEventListener('mouseup', onResizeUp, false)
             if (isInScene(group)) {
                 two.remove(group)
             }
