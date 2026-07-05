@@ -64,6 +64,13 @@ export interface ComponentRecord {
     tailEdge?: string | null
     headShapeId?: string | null
     headEdge?: string | null
+    /**
+     * Fan slot among the connectors docked at the same port (0 = the bare port
+     * point; higher indices offset along the edge so stacked endpoints stay
+     * distinguishable). Reassigned by restackPortConnectors on every release.
+     */
+    tailPortIndex?: number | null
+    headPortIndex?: number | null
 }
 
 export type ComponentStore = Record<string, ComponentRecord>

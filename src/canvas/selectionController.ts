@@ -14,6 +14,7 @@ import {
 } from '../utils/textLayout'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
 import { getConnectorsEnabled } from '../utils/featureFlags'
+import { isPortShape } from '../utils/shapePorts'
 import { markSelectionChrome } from '../utils/svgExportShared'
 
 // Two.js scene shapes carry codebase-specific bookkeeping (elementData,
@@ -293,8 +294,14 @@ export default class SelectionController {
 
     // Dashed amber skeleton drawn around the shape whose port is the current
     // radar target — signals "the connector will attach to THIS shape". Shown
-    // and hidden together with `portGlow`.
+    // and hidden together with `portGlow`. A group holding one outline variant
+    // per port shape (rectangle/ellipse/diamond); `_showNearbyPortShape` shows
+    // the variant matching the candidate's componentType so the skeleton traces
+    // the shape's real silhouette, not just its bounding box.
     nearbyPortExpectedShape!: ShapeLike
+    private _skeletonRect!: ShapeLike
+    private _skeletonEllipse!: ShapeLike
+    private _skeletonDiamond!: ShapeLike
 
     private _halfW = 0
     private _halfH = 0
@@ -394,18 +401,53 @@ export default class SelectionController {
         this.nearbyPortExpectedShape = nearbyPortExpectedShape
     }
 
-    // A dashed amber rectangle outline (no fill) that wraps the radar-target
-    // shape. Positioned/sized per-frame by `_showNearbyPortShape` to match the
-    // candidate shape's bounds; counter-scaled so the stroke stays crisp.
+    // A dashed amber outline (no fill) that wraps the radar-target shape.
+    // Holds one prebuilt variant per port shape type; positioned/sized
+    // per-frame by `_showNearbyPortShape` to match the candidate shape's
+    // bounds; counter-scaled so the stroke stays crisp.
     private _buildNearbyPortShape(): ShapeLike {
+        const applyDashStyle = (outline: ShapeLike): void => {
+            outline.noFill()
+            outline.stroke = GLOW_RING_COLOR
+            outline.linewidth = 1.5
+            outline.dashes = [6, 4]
+            outline.visible = false
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rect = new (Two as any).Rectangle(0, 0, 0, 0)
-        rect.noFill()
-        rect.stroke = GLOW_RING_COLOR
-        rect.linewidth = 1.5
-        rect.dashes = [6, 4]
-        rect.visible = false
-        return rect
+        applyDashStyle(rect)
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ellipse = new (Two as any).Ellipse(0, 0, 0, 0)
+        applyDashStyle(ellipse)
+
+        // 4-anchor closed path re-pointed per-frame to the candidate diamond's
+        // tips (bbox edge midpoints) — the plain silhouette, no rounding.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Anchor = (Two as any).Anchor
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const diamond = new (Two as any).Path(
+            [
+                new Anchor(0, 0),
+                new Anchor(0, 0),
+                new Anchor(0, 0),
+                new Anchor(0, 0),
+            ],
+            true,
+            false
+        )
+        applyDashStyle(diamond)
+
+        this._skeletonRect = rect
+        this._skeletonEllipse = ellipse
+        this._skeletonDiamond = diamond
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g = new (Two as any).Group()
+        g.add(rect, ellipse, diamond)
+        g.visible = false
+        return g
     }
 
     // An amber "radar ping": a steady translucent core plus an expanding ring
@@ -650,10 +692,11 @@ export default class SelectionController {
         )
         this.ui.rotation = this.currentGroup.rotation || 0
 
-        const isRect =
-            this.currentGroup?.elementData?.componentType === 'rectangle'
+        const isPortShapeSelected = isPortShape(
+            this.currentGroup?.elementData?.componentType
+        )
         // Ports only render when the connectors feature flag is on (live).
-        const portsOn = isRect && getConnectorsEnabled()
+        const portsOn = isPortShapeSelected && getConnectorsEnabled()
         this.portHandles.visible = portsOn
         if (portsOn) {
             const hw = (width + pad * 2) / 2
@@ -774,28 +817,54 @@ export default class SelectionController {
     }
 
     // Wrap the radar-target shape with the dashed skeleton, matching its
-    // centre, size (+ selection padding) and rotation. Counter-scales the
-    // stroke/dashes so they stay crisp at any zoom.
+    // centre, size (+ selection padding), rotation and silhouette (rectangle,
+    // ellipse or diamond). Counter-scales the stroke/dashes so they stay crisp
+    // at any zoom.
     private _showNearbyPortShape(group: ShapeLike): void {
-        const rect = this.nearbyPortExpectedShape
-        if (!rect) return
+        const skeleton = this.nearbyPortExpectedShape
+        if (!skeleton) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const shape = (group as any)?.children?.[0]
         const w = shape?.width ?? group?.elementData?.width ?? 0
         const h = shape?.height ?? group?.elementData?.height ?? 0
         if (!w || !h) {
-            rect.visible = false
+            skeleton.visible = false
             return
         }
         const scale = this.zui.scale || 1
         const pad = SELECTION_PADDING
-        rect.width = w + pad * 2
-        rect.height = h + pad * 2
-        rect.translation.set(group.translation.x, group.translation.y)
-        rect.rotation = group.rotation || 0
-        rect.linewidth = 1.5 / scale
-        rect.dashes = [6 / scale, 4 / scale]
-        rect.visible = true
+        const outerW = w + pad * 2
+        const outerH = h + pad * 2
+
+        const componentType = group?.elementData?.componentType
+        let outline = this._skeletonRect
+        if (componentType === 'circle') {
+            outline = this._skeletonEllipse
+        } else if (componentType === 'diamond') {
+            outline = this._skeletonDiamond
+        }
+
+        if (outline === this._skeletonDiamond) {
+            const hw = outerW / 2
+            const hh = outerH / 2
+            outline.vertices[0].set(0, -hh)
+            outline.vertices[1].set(hw, 0)
+            outline.vertices[2].set(0, hh)
+            outline.vertices[3].set(-hw, 0)
+        } else {
+            outline.width = outerW
+            outline.height = outerH
+        }
+        outline.linewidth = 1.5 / scale
+        outline.dashes = [6 / scale, 4 / scale]
+
+        this._skeletonRect.visible = outline === this._skeletonRect
+        this._skeletonEllipse.visible = outline === this._skeletonEllipse
+        this._skeletonDiamond.visible = outline === this._skeletonDiamond
+
+        skeleton.translation.set(group.translation.x, group.translation.y)
+        skeleton.rotation = group.rotation || 0
+        skeleton.visible = true
     }
 
     // rAF loop so the ping keeps animating even when the cursor holds still over
@@ -936,12 +1005,12 @@ export default class SelectionController {
     }
 
     // Edge name (n/e/s/w-resize) whose port the surface point is hovering, or
-    // null. Rectangle-only; this is what the port arrow keys off of.
+    // null. Port shapes only; this is what the port arrow keys off of.
     private _hoveredPortEdge(point: { x: number; y: number }): string | null {
         // Single chokepoint for both hover (port arrow) and `hitTestPort`
         // (pull-out). Off when connectors are disabled.
         if (!getConnectorsEnabled()) return null
-        if (this.currentGroup?.elementData?.componentType !== 'rectangle') {
+        if (!isPortShape(this.currentGroup?.elementData?.componentType)) {
             return null
         }
         const scale = this.zui.scale || 1

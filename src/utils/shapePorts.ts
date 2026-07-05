@@ -10,6 +10,15 @@ type GroupLike = any
 // Edge names mirror the resize-handle naming used by the selection controller.
 export type PortEdge = 'n-resize' | 'e-resize' | 's-resize' | 'w-resize'
 
+// Shapes that expose connection ports. Port geometry only needs a bounding box
+// (`children[0].width/height`), which rectangle, circle (Two.Ellipse) and
+// diamond (custom path with width/height accessors) all provide.
+export const PORT_SHAPE_TYPES = new Set(['rectangle', 'circle', 'diamond'])
+
+export function isPortShape(componentType: unknown): boolean {
+    return typeof componentType === 'string' && PORT_SHAPE_TYPES.has(componentType)
+}
+
 // `gap` (surface units) pushes the anchor outward past the edge so the tail
 // lands on the floated selection port instead of flush against the edge.
 export function getShapePortPoint(
@@ -111,10 +120,10 @@ export interface PortCandidate {
 
 // Radar search used while a connector is being drawn: among the candidate
 // `groups`, find the edge port closest to `point` that sits within `threshold`
-// surface units. Only rectangles expose ports (mirrors the selection
-// controller's `isRect` gate); `excludeShapeId` drops the connector's own
-// source shape so it can't dock back onto itself. Returns null when no port is
-// in range.
+// surface units. Only `PORT_SHAPE_TYPES` shapes expose ports (mirrors the
+// selection controller's `isPortShape` gate); `excludeShapeId` drops the
+// connector's own source shape so it can't dock back onto itself. Returns null
+// when no port is in range.
 export function findNearestPort(
     groups: GroupLike[],
     point: { x: number; y: number },
@@ -127,7 +136,7 @@ export function findNearestPort(
     let bestSq = thresholdSq
 
     for (const group of groups) {
-        if (group?.elementData?.componentType !== 'rectangle') continue
+        if (!isPortShape(group?.elementData?.componentType)) continue
         const shapeId = group?.elementData?.id
         if (excludeShapeId && shapeId === excludeShapeId) continue
 

@@ -7,7 +7,7 @@ import {
     getShapeTextNodes,
     pollUntilElement,
 } from '../utils/canvasUtils'
-import type { ComponentRecord } from '../types/board'
+import type { ComponentRecord, ComponentStore } from '../types/board'
 import type { HistoryEntry } from './useComponentHistory'
 
 // Two.js scene objects are typed loosely here; canvas-side typing converges
@@ -53,6 +53,7 @@ export interface CanvasClipboardOptions {
     renderGroupRef: MutableRefObject<
         ((groups: ComponentRecord[]) => void) | null
     >
+    stateRefForComponentStore: MutableRefObject<ComponentStore | undefined>
 }
 
 export interface CanvasClipboardApi {
@@ -67,6 +68,7 @@ export function useCanvasClipboard({
     addToLocalComponentStore,
     recordBatchToHistoryLog,
     renderGroupRef,
+    stateRefForComponentStore,
 }: CanvasClipboardOptions): CanvasClipboardApi {
     const clipboardRef = useRef<ClipboardPayload | null>(null)
     const lastMouseRef = useRef<MousePosition>({
@@ -74,6 +76,58 @@ export function useCanvasClipboard({
         clientY: 0,
         hasMoved: false,
     })
+
+    // Rebind a cloned arrow's port bindings so the paste stays attached:
+    // a binding to a shape cloned in the SAME paste is remapped to the clone
+    // (`idMap` old→new); a binding to a shape still on the canvas is kept
+    // (the copy docks beside the original's connector — the fan spreads
+    // them); a binding whose shape no longer exists is cleared. Returns the
+    // ports the pasted arrow docks to, so the caller can request a restack
+    // once the arrow has mounted (which glues its endpoints onto the ports).
+    const rebindClonedArrow = (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        cloned: any,
+        idMap: Map<string, string>
+    ): { shapeId: string; edge: string }[] => {
+        const ports: { shapeId: string; edge: string }[] = []
+        const store = stateRefForComponentStore.current
+        ;(['tail', 'head'] as const).forEach((end) => {
+            const shapeKey = `${end}ShapeId`
+            const edgeKey = `${end}Edge`
+            const indexKey = `${end}PortIndex`
+            const boundId = cloned[shapeKey]
+            const edge = cloned[edgeKey]
+            if (typeof boundId !== 'string' || typeof edge !== 'string') return
+            const mapped = idMap.get(boundId)
+            if (mapped) {
+                cloned[shapeKey] = mapped
+                ports.push({ shapeId: mapped, edge })
+            } else if (store?.[boundId]) {
+                ports.push({ shapeId: boundId, edge })
+            } else {
+                cloned[shapeKey] = null
+                cloned[edgeKey] = null
+                cloned[indexKey] = 0
+            }
+        })
+        return ports
+    }
+
+    // Once the pasted arrow is actually in the scene, ask newCanvas to
+    // restack its docked ports — that recomputes fan indices AND glues the
+    // pasted endpoints onto the ports. Must wait for the mount: a restack
+    // that runs before the arrow exists would re-fan the port without it.
+    const restackWhenMounted = (
+        arrowId: string,
+        ports: { shapeId: string; edge: string }[]
+    ): void => {
+        if (!ports.length || !twoJSInstance) return
+        pollUntilElement(twoJSInstance, arrowId, () => {
+            window.dispatchEvent(
+                new CustomEvent('restackPorts', { detail: { ports } })
+            )
+        })
+    }
 
     // Track cursor position so paste can land at mouse location
     useEffect(() => {
@@ -219,6 +273,7 @@ export function useCanvasClipboard({
                     px,
                     py
                 )
+                let arrowPorts: { shapeId: string; edge: string }[] = []
                 if (src.componentType === 'arrowLine') {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const s = src as any
@@ -228,6 +283,9 @@ export function useCanvasClipboard({
                     newItem.y1 = 0
                     newItem.x2 = dx
                     newItem.y2 = dy
+                    // Keep the copy attached to whatever the original was
+                    // docked to (no same-paste counterparts on a single copy).
+                    arrowPorts = rebindClonedArrow(newItem, new Map())
                 }
                 if (
                     (src.componentType === 'pencil' ||
@@ -251,10 +309,14 @@ export function useCanvasClipboard({
                     newItem.componentType,
                     newItem
                 )
+                restackWhenMounted(newItem.id, arrowPorts)
                 return
             }
 
             if (clipboard.kind === 'group') {
+                // Map each source member's id to its clone's, so connectors
+                // pasted alongside their bound shapes re-dock to the CLONES.
+                const idMap = new Map<string, string>()
                 const newChildren = clipboard.items.map((child) => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const c = child as any
@@ -269,7 +331,19 @@ export function useCanvasClipboard({
                     )
                     cloned.relativeX = rX
                     cloned.relativeY = rY
+                    if (typeof c.id === 'string') idMap.set(c.id, cloned.id)
                     return cloned
+                })
+                const arrowRestacks: {
+                    arrowId: string
+                    ports: { shapeId: string; edge: string }[]
+                }[] = []
+                newChildren.forEach((cloned) => {
+                    if (cloned.componentType !== 'arrowLine') return
+                    const ports = rebindClonedArrow(cloned, idMap)
+                    if (ports.length) {
+                        arrowRestacks.push({ arrowId: cloned.id, ports })
+                    }
                 })
 
                 // Persist the pasted members to the store IMMEDIATELY, at
@@ -364,6 +438,12 @@ export function useCanvasClipboard({
                 if (pasteBatchEntries.length > 0) {
                     recordBatchToHistoryLog(pasteBatchEntries)
                 }
+
+                // Glue every pasted connector's docked endpoints onto their
+                // (possibly remapped) ports once the arrows mount.
+                arrowRestacks.forEach(({ arrowId, ports }) =>
+                    restackWhenMounted(arrowId, ports)
+                )
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const newGroup: any = {

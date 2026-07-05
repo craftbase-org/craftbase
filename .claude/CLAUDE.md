@@ -312,30 +312,51 @@ Connectors are `arrowLine` elements whose tail/head can dock onto a shape's
 edge **port**.
 
 - **Port** — a connection point floated just outside each edge midpoint
-  (n/e/s/w) of a `rectangle` selection box. Rendered + hit-tested in
+  (n/e/s/w) of a port shape's selection box. Port shapes are `rectangle`,
+  `circle` and `diamond` (`PORT_SHAPE_TYPES`/`isPortShape` in
+  `src/utils/shapePorts.ts` — the single gate shared by rendering, hover
+  hit-test and the radar). Rendered + hit-tested in
   `src/canvas/selectionController.ts`; geometry in `src/utils/shapePorts.ts`
-  (`getShapePortPoint`). Clicking a port pulls out a connector whose tail is
-  pinned there (`startPortConnector` in `src/newCanvas.tsx`).
+  (`getShapePortPoint`, bbox-based, so circle ports sit on the cardinal points
+  and diamond ports on the tips). Clicking a port pulls out a connector whose
+  tail is pinned there (`startPortConnector` in `src/newCanvas.tsx`).
 - **Nearby-port radar** — while an arrow endpoint is being dragged, the cursor
   is the probe: `findNearestPort` (`shapePorts.ts`) finds the closest port in
   range (`PORT_RADAR_RADIUS`), which the controller highlights with the amber
   pulsing `portGlow` ring + the dashed `nearbyPortExpectedShape` skeleton around
-  the candidate shape. A **one-off magnetic snap** glues the endpoint to that
+  the candidate shape (shape-true silhouette: rectangle/ellipse/diamond
+  variants). A **one-off magnetic snap** glues the endpoint to that
   port; pulling past the threshold releases it (never forced). On release while
   docked, the binding is committed (`updatePortRadar`/`applyPendingPortConnection`).
-- **Binding columns** — attachment is stored as 4 fields on the arrow row:
-  `tailShapeId`/`tailEdge` and `headShapeId`/`headEdge` (`*Edge` = `n/e/s/w-resize`).
-  Reverse lookup is derived by scanning the store (no shape-side columns).
+- **Binding columns** — attachment is stored as 6 fields on the arrow row:
+  `tailShapeId`/`tailEdge`/`tailPortIndex` and `headShapeId`/`headEdge`/
+  `headPortIndex` (`*Edge` = `n/e/s/w-resize`; `*PortIndex` = fan slot among
+  connectors stacked on the same port, reassigned by `restackPortConnectors`).
+  All 6 are Hasura columns (in `generated.ts` and the board-load query), so
+  bindings persist in both local mode and saved boards. Reverse lookup is
+  derived by scanning the store (no shape-side columns).
   `reanchorArrowsForShape`/`persistBoundArrows` keep a docked endpoint glued when
   the bound shape moves/resizes.
-
-**Persisted-mode caveat:** these 4 fields currently live only on Two.js
-`elementData` + the local/localStorage store — they are **not** columns in the
-Hasura `components` table or `src/schema/generated.ts`. So bindings work in
-**local mode (`/`)** but do **not** survive a reload on a **saved board
-(`/board/:id`)** yet. Enabling persisted mode needs: `ALTER TABLE` to add the 4
-nullable columns + track them in Hasura, `yarn codegen`, and adding them to the
-board-load query so they read back.
+- **The `restackPorts` event** — the generic "re-glue these ports" command:
+  `window.dispatchEvent(new CustomEvent('restackPorts', { detail: { ports:
+  [{shapeId, edge}] } }))`. The listener in `newCanvas` polls for the shape
+  (fresh mounts) then runs `restackPortConnectors`, which re-anchors every
+  docked endpoint to the shape's current edge and reassigns fan indices
+  (persisted with `skipHistory`). Dispatched by: `useComponentHistory`
+  (binding reverts, position/size reverts, arrow insert/remove),
+  `groupobject.tsx` `commitGroupMove` (a group move relocates member ports;
+  connectors crossing the group boundary must re-glue), and the clipboard
+  (paste of a bound arrow, after its mount).
+- **Undo/redo** — binding changes ride `UPDATE_BULK`/`BATCH` entries;
+  `useComponentHistory` mirrors all 6 fields onto `elementData` and fires
+  `restackPorts` for every touched port. Deleting a shape detaches its docked
+  arrows (bindings cleared, arrows kept) as one `BATCH` with the shape's
+  DELETE (`detachArrowsForDeletedShapes` in `board.tsx`) — one undo restores
+  the shape and re-docks the arrows.
+- **Copy/paste** — `cloneElementData` carries the 6 binding fields; the paste
+  path (`rebindClonedArrow` in `useCanvasClipboard`) remaps bindings to shapes
+  cloned in the same paste, keeps bindings to shapes still on the canvas, and
+  clears bindings whose shape is gone — then restacks once the arrow mounts.
 
 ### Component schema (from DB)
 

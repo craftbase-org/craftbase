@@ -751,6 +751,30 @@ function addZUI(
         activeGroupRef.current = null
     })
 
+    // Generic "re-glue these ports" command: fired by useComponentHistory
+    // (undo/redo of binding changes and position reverts), groupobject
+    // (group-move commit) and the clipboard (paste of bound arrows). Restack
+    // each port so the docked connectors re-anchor to the shape's current
+    // edge and their fan layout (port indices + endpoint offsets) settles.
+    // Poll first: the shape may still be mounting (undo of its delete, a
+    // freshly pasted clone); if it's gone entirely (redo of a delete) the
+    // poll times out and the restack is a no-op anyway.
+    window.addEventListener('restackPorts', ((e: CustomEvent) => {
+        if (!getConnectorsEnabled()) return
+        const ports = e.detail?.ports as
+            | { shapeId: string; edge: string }[]
+            | undefined
+        if (!ports?.length) return
+        ports.forEach(({ shapeId, edge }) => {
+            pollUntilElement(
+                two,
+                shapeId,
+                () => restackPortConnectors(shapeId, edge),
+                { maxRetries: 60 }
+            )
+        })
+    }) as EventListener)
+
     // Connectors flag is live-toggleable from Settings. When it flips, re-sync
     // the current selection box so its edge ports appear/disappear immediately
     // (rather than waiting for the next transform). If the flag goes off mid
@@ -4044,6 +4068,7 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         addToLocalComponentStore,
         recordBatchToHistoryLog,
         renderGroupRef,
+        stateRefForComponentStore,
     })
 
     useEffect(() => {

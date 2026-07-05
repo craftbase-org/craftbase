@@ -122,6 +122,15 @@ interface ElementCloneSource {
     children: unknown
     relativeX?: number
     relativeY?: number
+    // Connector port bindings (arrowLine only). Cloned as-is; the paste path
+    // remaps the shape ids to the pasted counterparts (group paste) or keeps
+    // them pointing at the still-present originals (single paste).
+    tailShapeId?: string | null
+    tailEdge?: string | null
+    tailPortIndex?: number | null
+    headShapeId?: string | null
+    headEdge?: string | null
+    headPortIndex?: number | null
 }
 
 interface ClonedElement extends ElementCloneSource {
@@ -174,6 +183,14 @@ export function cloneElementData(
     }
     if (src.relativeX !== undefined) cloned.relativeX = src.relativeX
     if (src.relativeY !== undefined) cloned.relativeY = src.relativeY
+    if (src.componentType === 'arrowLine') {
+        cloned.tailShapeId = src.tailShapeId ?? null
+        cloned.tailEdge = src.tailEdge ?? null
+        cloned.tailPortIndex = src.tailPortIndex ?? 0
+        cloned.headShapeId = src.headShapeId ?? null
+        cloned.headEdge = src.headEdge ?? null
+        cloned.headPortIndex = src.headPortIndex ?? 0
+    }
     return cloned
 }
 
