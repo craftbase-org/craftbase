@@ -1,6 +1,6 @@
 {
     "name": "craftbase",
-    "version": "0.8.0",
+    "version": "0.8.1",
     "private": true,
     "main": "src/lib.ts",
     "module": "src/lib.ts",
