@@ -3986,6 +3986,72 @@ function addZUI(
             lastSelectedShape,
         bringSelectionToFront: () =>
             selectionController.bringSelectionToFront(),
+        // Frame all persistable elements in the viewport (zoom-to-fit). Bounds
+        // are read via each element group's *shallow* getBoundingClientRect, so
+        // they're in surface (scene) coords — independent of the current camera
+        // — and cover every shape type via its real rendered geometry. Returns
+        // false when there's nothing measurable to fit (empty board / not yet
+        // mounted) so the caller can keep polling. See the fallback in the mount
+        // effect: only runs when no seeded/saved viewport exists for the board.
+        fitToContent: (opts?: { padding?: number }): boolean => {
+            const scene = two.scene
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const children = scene.children as any[]
+            let left = Infinity
+            let top = Infinity
+            let right = -Infinity
+            let bottom = -Infinity
+            for (const child of children) {
+                const id = child?.elementData?.id
+                if (!id) continue
+                if (child.elementData.componentType === GROUP_COMPONENT)
+                    continue
+                let rect
+                try {
+                    rect = child.getBoundingClientRect(true)
+                } catch {
+                    continue
+                }
+                if (!rect) continue
+                const { left: l, top: t, right: r, bottom: b } = rect
+                if (![l, t, r, b].every((n) => Number.isFinite(n))) continue
+                left = Math.min(left, l)
+                top = Math.min(top, t)
+                right = Math.max(right, r)
+                bottom = Math.max(bottom, b)
+            }
+            const bboxW = right - left
+            const bboxH = bottom - top
+            if (!Number.isFinite(left) || bboxW <= 0 || bboxH <= 0) return false
+
+            const vw = domElement.clientWidth || two.width
+            const vh = domElement.clientHeight || two.height
+            if (!vw || !vh) return false
+
+            // Leave a margin; clamp to the same limits addLimits(0.06, 8) enforces
+            // so a huge or tiny board doesn't overshoot the zoom range.
+            const padding = opts?.padding ?? 0.8
+            const scale = Math.max(
+                0.06,
+                Math.min(8, Math.min(vw / bboxW, vh / bboxH) * padding)
+            )
+
+            // reset → zoomSet establishes the scale from a known identity camera;
+            // then translate so the content's center lands at the viewport center.
+            // Work in element-local pixels (surfaceMatrix output space, 0,0 at the
+            // SVG top-left) — NOT surfaceToClient, which adds the element's page
+            // offset. The delta translateSurface needs lives in this same space,
+            // so an embedded board (consumer not at page origin) still centers
+            // correctly. viewport center = (vw/2, vh/2) is element-local too.
+            zui.reset()
+            zui.zoomSet(scale, 0, 0)
+            const cx = (left + right) / 2
+            const cy = (top + bottom) / 2
+            const [curX, curY] = zui.surfaceMatrix.multiply(cx, cy, 1)
+            zui.translateSurface(vw / 2 - curX, vh / 2 - curY)
+            two.update()
+            return true
+        },
         disconnectThemeObserver: () => themeObserver.disconnect(),
     }
 }
@@ -4123,15 +4189,15 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         // Use ZUI's own API so its internal zScale stays in sync with the
         // scene — setting two.scene.scale directly desynchronises ZUI and
         // causes the first pan gesture to jump back to the origin.
-        const restoreViewport = (storageKey: string) => {
+        const restoreViewport = (storageKey: string): boolean => {
             const saved = localStorage.getItem(storageKey)
-            if (!saved) return
+            if (!saved) return false
             try {
                 const parsed = JSON.parse(saved)
                 const { tx, ty, scale, savedAt } = parsed
                 if (!savedAt || Date.now() - savedAt > VIEWPORT_TTL_MS) {
                     localStorage.removeItem(storageKey)
-                    return
+                    return false
                 }
                 // zoomSet updates zui.zScale + surface.scale atomically.
                 // Centering at (0,0) with initial translation (0,0) means no
@@ -4141,8 +4207,10 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                 // (still 0,0) to the saved position.
                 zui_instance.zui.translateSurface(tx, ty)
                 two.update()
+                return true
             } catch (_) {
                 localStorage.removeItem(storageKey)
+                return false
             }
         }
 
@@ -4187,13 +4255,36 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             }
         }
 
+        let viewportRestored = false
         if (isMobile && props.boardId) {
-            restoreViewport(`${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`)
+            viewportRestored = restoreViewport(
+                `${MOBILE_VIEWPORT_KEY_PREFIX}${props.boardId}`
+            )
         }
 
         if (!isMobile && props.boardId) {
-            restoreViewport(`${VIEWPORT_KEY_PREFIX}${props.boardId}`)
+            viewportRestored = restoreViewport(
+                `${VIEWPORT_KEY_PREFIX}${props.boardId}`
+            )
         }
+
+        // Fallback framing: a shared board opened without a seeded URL viewport
+        // (params already used/stripped, or plain link copied) and without a
+        // per-browser saved viewport lands at the origin (scale 1, translate 0).
+        // If content was drawn far from origin it sits off-screen — the user has
+        // to zoom out to find it. Record the intent to zoom-to-fit here; the
+        // componentStore effect performs it once the (async-loaded) elements
+        // have mounted and settled, then clears the flag so it runs only once.
+        //
+        // Scope this to URL-loaded boards (/board/:id) only. Local drafts (`/`)
+        // also carry a boardId (localBoardId) but seed the deliberately-placed
+        // welcome sketch — reframing that would disturb the intended landing.
+        const isUrlBoard =
+            typeof window !== 'undefined' &&
+            window.location.pathname.startsWith('/board/')
+        pendingInitialFitRef.current = Boolean(
+            props.boardId && isUrlBoard && !viewportRestored
+        )
 
         // Reflect the stored dot-grid flag on the root (adds `cb-dot-grid` when
         // enabled) and seed the parchment grid from the restored (or default)
@@ -4256,6 +4347,11 @@ const Canvas: React.FC<CanvasProps> = (props) => {
     // Handle for an in-flight z-order reconcile poll so a new store change can
     // cancel a stale one instead of stacking rAF loops.
     const zOrderPollRef = useRef<number | null>(null)
+    // Set true on mount when a board opened with no seeded/saved viewport should
+    // be zoom-to-fit once its (async-loaded) content settles. Consumed + cleared
+    // by the one-time fit poll in the componentStore effect so it fires once.
+    const pendingInitialFitRef = useRef<boolean>(false)
+    const initialFitPollRef = useRef<number | null>(null)
 
     // Deterministically re-sort the element groups inside two.scene.children by
     // their store `position` (back→front). Element mounting is async (React.lazy
@@ -4399,6 +4495,9 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             if (zOrderPollRef.current !== null) {
                 cancelAnimationFrame(zOrderPollRef.current)
             }
+            if (initialFitPollRef.current !== null) {
+                cancelAnimationFrame(initialFitPollRef.current)
+            }
         },
         []
     )
@@ -4422,6 +4521,44 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             // Re-assert deterministic z-order once the (async) element mounts
             // settle — this is what fixes the post-refresh ordering bug.
             startZOrderReconcilePoll()
+
+            // One-time zoom-to-fit fallback (see the mount effect). The board's
+            // content arrives async and its element groups mount over several
+            // frames, so poll until the mounted count stops growing (settled),
+            // then frame it once and clear the intent flag.
+            if (pendingInitialFitRef.current && zuiInstance) {
+                if (initialFitPollRef.current !== null) {
+                    cancelAnimationFrame(initialFitPollRef.current)
+                }
+                let lastCount = -1
+                let stableFrames = 0
+                let frame = 0
+                const MAX_FRAMES = 300
+                const tryFit = (): void => {
+                    initialFitPollRef.current = null
+                    const store = stateRefForComponentStore.current ?? {}
+                    const present = (
+                        twoJSInstance.scene.children as unknown[]
+                    ).filter((c) => isReorderableElementChild(c, store)).length
+                    stableFrames = present === lastCount ? stableFrames + 1 : 0
+                    lastCount = present
+                    frame += 1
+                    // Fit once the mounted count has held steady for a few
+                    // frames (all lazy chunks resolved), or bail at the cap.
+                    if (
+                        (present > 0 && stableFrames >= 3) ||
+                        frame >= MAX_FRAMES
+                    ) {
+                        if (present > 0) {
+                            const fit = zuiInstance.fitToContent?.()
+                            if (fit) pendingInitialFitRef.current = false
+                        }
+                        return
+                    }
+                    initialFitPollRef.current = requestAnimationFrame(tryFit)
+                }
+                initialFitPollRef.current = requestAnimationFrame(tryFit)
+            }
         }
     }, [props.componentStore])
 
