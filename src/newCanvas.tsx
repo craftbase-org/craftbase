@@ -4485,13 +4485,48 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                       compareByZOrder
                   )
                 : []
+
+            // Geometric marquee hit-test on an element's stored origin.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const isInsideMarquee = (item: any): boolean =>
+                item.x > x1Coord &&
+                item.x < x2Coord &&
+                item.y > y1Coord &&
+                item.y < y2Coord
+
+            // A connector's origin (item.x/y) is a single point near its tail —
+            // NOT its span or its attachment — so the bare geometric test flips
+            // it in/out of the group depending on exactly where the marquee
+            // lands (see the "whole vs head-only" inconsistency). Decide shape
+            // membership geometrically first, then pull in every connector docked
+            // to a member shape regardless of its origin, so a bound connector
+            // ALWAYS travels with its group. commitGroupMove already re-glues any
+            // endpoint docked to a shape OUTSIDE the group (restackPorts), so a
+            // connector straddling the boundary stays correct after the move.
+            const memberShapeIds = new Set(
+                allComponentCoords
+                    .filter(
+                        (it) =>
+                            it.componentType !== 'arrowLine' &&
+                            isInsideMarquee(it)
+                    )
+                    .map((it) => it.id)
+            )
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const isMember = (item: any): boolean => {
+                if (isInsideMarquee(item)) return true
+                // Bound connector: member iff docked to a member shape.
+                if (item.componentType === 'arrowLine') {
+                    return (
+                        memberShapeIds.has(item.tailShapeId) ||
+                        memberShapeIds.has(item.headShapeId)
+                    )
+                }
+                return false
+            }
+
             allComponentCoords.forEach((item) => {
-                if (
-                    item.x > x1Coord &&
-                    item.x < x2Coord &&
-                    item.y > y1Coord &&
-                    item.y < y2Coord
-                ) {
+                if (isMember(item)) {
                     selectedComponentArr.push(item.id)
 
                     let relativeX = item.x - xMid
