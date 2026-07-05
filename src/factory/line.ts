@@ -54,6 +54,14 @@ export default class LineFactory extends Main<LineProperties> {
         if (stroke) line.stroke = stroke
 
         const circleRadius = isMobile ? 6 : 4
+        // The visible endpoint dot stays small, but a finger (or an imprecise
+        // click) needs a far bigger target than ~12px. Add a transparent, larger
+        // hit circle BEHIND each dot so taps landing in the margin still grab the
+        // endpoint. `transparent` is a paint (not `none`), so it hit-tests while
+        // staying invisible — same trick as the line-body hit band. It's a child
+        // of the endpoint group, so it counter-scales to a constant screen size
+        // and rides the group's select-time opacity toggle (opacity 0 → no hits).
+        const hitRadius = isMobile ? 18 : 9
 
         const pointCircle1 = two.makeCircle(0, 0, circleRadius)
         pointCircle1.fill = '#f4f4f2'
@@ -65,8 +73,17 @@ export default class LineFactory extends Main<LineProperties> {
         pointCircle2.stroke = '#3A342C'
         pointCircle2.linewidth = 1.5
 
-        const pointCircle1Group = two.makeGroup(pointCircle1)
-        const pointCircle2Group = two.makeGroup(pointCircle2)
+        const hitCircle1 = two.makeCircle(0, 0, hitRadius)
+        hitCircle1.fill = 'transparent'
+        hitCircle1.noStroke()
+
+        const hitCircle2 = two.makeCircle(0, 0, hitRadius)
+        hitCircle2.fill = 'transparent'
+        hitCircle2.noStroke()
+
+        // Hit circle first (rendered beneath) so the visible dot stays on top.
+        const pointCircle1Group = two.makeGroup(hitCircle1, pointCircle1)
+        const pointCircle2Group = two.makeGroup(hitCircle2, pointCircle2)
 
         const group = two.makeGroup(line, pointCircle1Group, pointCircle2Group)
 

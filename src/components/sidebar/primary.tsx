@@ -317,6 +317,11 @@ const PrimarySidebar = (): ReactElement => {
             hint.style.opacity = '1'
             hint.style.zIndex = '20'
         }
+        // Mobile has no Esc/Enter — signal board.tsx to show the ✓/✗ draw
+        // controls for the curved-line draw (matches the nudge lifecycle).
+        if (!isGeo) {
+            window.dispatchEvent(new CustomEvent('multiClickDrawStart'))
+        }
     }
 
     const addElement = (label: string, category?: string): void => {
@@ -551,27 +556,31 @@ const PrimarySidebar = (): ReactElement => {
             </div>
             {/* Curved-line draw nudge. Sits just under the shapes toolbar.
                 Shown by handleMultiClickDraw('curvedLine'); hidden by the
-                canvas on finish/cancel (finishGeoDraw / cancelGeoDraw). */}
-            <div
-                id="multi-click-draw-hint"
-                className="fixed w-full flex justify-center pointer-events-none
+                canvas on finish/cancel (finishGeoDraw / cancelGeoDraw).
+                Desktop-only: mobile has no Esc/Enter and uses the on-screen
+                ✓/✗ draw controls instead, so the keyboard nudge is omitted. */}
+            {!isMobile && (
+                <div
+                    id="multi-click-draw-hint"
+                    className="fixed w-full flex justify-center pointer-events-none
                 opacity-0 transition-opacity ease-out duration-300"
-                style={{ top: '55px', zIndex: -1 }}
-            >
-                <div className="w-auto bg-ink text-card-bg px-4 py-2 rounded-md shadow-md">
-                    <div className="text-sm text-center whitespace-nowrap">
-                        Click to add points · press{' '}
-                        <kbd className="px-1 rounded border border-current">
-                            Enter
-                        </kbd>{' '}
-                        or{' '}
-                        <kbd className="px-1 rounded border border-current">
-                            Esc
-                        </kbd>{' '}
-                        to finish
+                    style={{ top: '55px', zIndex: -1 }}
+                >
+                    <div className="w-auto bg-ink text-card-bg px-4 py-2 rounded-md shadow-md">
+                        <div className="text-sm text-center whitespace-nowrap">
+                            Click to add points · press{' '}
+                            <kbd className="px-1 rounded border border-current">
+                                Enter
+                            </kbd>{' '}
+                            or{' '}
+                            <kbd className="px-1 rounded border border-current">
+                                Esc
+                            </kbd>{' '}
+                            to finish
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
             <div className="absolute top-2 right-1rem flex items-center px-2 gap-1">
                 <div
                     id="show-saving-loader"

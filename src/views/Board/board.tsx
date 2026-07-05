@@ -30,6 +30,8 @@ import ElementPropertiesToolbar from '../../components/sidebar/elementProperties
 import PointTooltip from '../../components/elements/pointTooltip'
 import ClusterLayer from '../../components/elements/clusterLayer'
 import controlsIcon from '../../assets/controls.svg'
+import OkIcon from '../../assets/ok.svg?react'
+import CloseIcon from '../../assets/close.svg?react'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
 import { generateUUID, generateRandomUsernames } from '../../utils/misc'
@@ -259,6 +261,23 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
 
     const { showMobileToolbarPanel, setShowMobileToolbarPanel } =
         useMobileToolbarPanels({ isMobile, selectedComponent })
+
+    // Mobile-only ✓/✗ controls for the multi-click curved-line draw. There's no
+    // Esc/Enter on touch, so the canvas signals the draw's start/end (via the
+    // same lifecycle as the "press Esc/Enter" nudge) and we surface finish/cancel
+    // buttons that dispatch back the equivalent events.
+    const [showMultiClickDrawControls, setShowMultiClickDrawControls] =
+        useState(false)
+    useEffect(() => {
+        const onStart = (): void => setShowMultiClickDrawControls(true)
+        const onEnd = (): void => setShowMultiClickDrawControls(false)
+        window.addEventListener('multiClickDrawStart', onStart)
+        window.addEventListener('multiClickDrawEnd', onEnd)
+        return (): void => {
+            window.removeEventListener('multiClickDrawStart', onStart)
+            window.removeEventListener('multiClickDrawEnd', onEnd)
+        }
+    }, [])
 
     const {
         // values
@@ -1713,6 +1732,40 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             >
                 <div>
                     <Sidebar />
+                    {isMobile && showMultiClickDrawControls && (
+                        <div
+                            style={{
+                                position: 'fixed',
+                                bottom: '64px',
+                                right: '10px',
+                                zIndex: 20,
+                            }}
+                            className="flex flex-col gap-2"
+                        >
+                            <button
+                                title="Finish line"
+                                onClick={() =>
+                                    window.dispatchEvent(
+                                        new CustomEvent('finishGeoDraw')
+                                    )
+                                }
+                                className="w-10 h-10 rounded-lg flex items-center justify-center bg-greens-g400 text-white shadow-md transition-colors duration-150"
+                            >
+                                <OkIcon className="w-5 h-5" />
+                            </button>
+                            <button
+                                title="Cancel line"
+                                onClick={() =>
+                                    window.dispatchEvent(
+                                        new CustomEvent('cancelGeoDraw')
+                                    )
+                                }
+                                className="w-10 h-10 rounded-lg flex items-center justify-center bg-reds-r400 text-white shadow-md transition-colors duration-150"
+                            >
+                                <CloseIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                    )}
                     {!isRubberMode && isMobile && (
                         <button
                             title="Element properties"

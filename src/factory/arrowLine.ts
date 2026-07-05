@@ -46,6 +46,11 @@ export default class ArrowLineFactory extends Main<ArrowLineProperties> {
         if (stroke) line.stroke = stroke
 
         const circleRadius = isMobile ? 6 : 4
+        // Larger transparent hit target behind each visible endpoint dot so an
+        // imprecise tap/click still grabs the endpoint (see line.ts for the
+        // rationale). `transparent` hit-tests while staying invisible; it rides
+        // the group's counter-scale and select-time opacity toggle.
+        const hitRadius = isMobile ? 18 : 9
 
         const pointCircle1 = two.makeCircle(0, 0, circleRadius)
         pointCircle1.fill = '#f4f4f2'
@@ -57,8 +62,17 @@ export default class ArrowLineFactory extends Main<ArrowLineProperties> {
         pointCircle2.stroke = '#3A342C'
         pointCircle2.linewidth = 1.5
 
-        const pointCircle1Group = two.makeGroup(pointCircle1)
-        const pointCircle2Group = two.makeGroup(pointCircle2)
+        const hitCircle1 = two.makeCircle(0, 0, hitRadius)
+        hitCircle1.fill = 'transparent'
+        hitCircle1.noStroke()
+
+        const hitCircle2 = two.makeCircle(0, 0, hitRadius)
+        hitCircle2.fill = 'transparent'
+        hitCircle2.noStroke()
+
+        // Hit circle first (rendered beneath) so the visible dot stays on top.
+        const pointCircle1Group = two.makeGroup(hitCircle1, pointCircle1)
+        const pointCircle2Group = two.makeGroup(hitCircle2, pointCircle2)
 
         const group = two.makeGroup(line, pointCircle1Group, pointCircle2Group)
 

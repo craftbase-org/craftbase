@@ -567,12 +567,15 @@ function addZUI(
     }
 
     // Hide the curved-line "press Esc/Enter to finish" nudge (no-op for geo).
+    // Also signals React (board.tsx) to drop the mobile ✓/✗ draw controls — the
+    // nudge and those controls share the exact curved-line draw lifecycle.
     const hideMultiClickHint = () => {
         const hint = document.getElementById('multi-click-draw-hint')
         if (hint) {
             hint.style.opacity = '0'
             hint.style.zIndex = '-1'
         }
+        window.dispatchEvent(new CustomEvent('multiClickDrawEnd'))
     }
 
     const cancelGeoDraw = () => {
@@ -656,6 +659,12 @@ function addZUI(
 
     window.addEventListener('cancelGeoDraw', () => {
         if (geoDrawType) cancelGeoDraw()
+    })
+
+    // Mobile ✓ button (board.tsx) — finish the in-progress multi-click draw,
+    // the touch equivalent of pressing Enter (no keyboard on mobile).
+    window.addEventListener('finishGeoDraw', () => {
+        if (geoDrawType) finishGeoDraw({})
     })
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -933,9 +942,13 @@ function addZUI(
         mouse.x = e.clientX
         mouse.y = e.clientY
         let avoidDragging = false
-        // Hide all arrow endpoint circles before processing the new selection
+        // Hide all arrow/line endpoint circles before processing the new
+        // selection. Covers plain lines too (isLineLikeType): on mobile, blur
+        // never fires (synthetic taps don't move focus), so the line's own
+        // onBlur can't hide them — this next-tap sweep is what clears them,
+        // exactly as it does for arrows.
         two.scene.children.forEach((child: any) => {
-            if (child?.elementData?.componentType === 'arrowLine') {
+            if (isLineLikeType(child?.elementData?.componentType)) {
                 setArrowEndpointsVisible(child, false)
             }
         })
@@ -1384,7 +1397,9 @@ function addZUI(
         let foundWy = 0
 
         for (const child of two.scene.children) {
-            if (child?.elementData?.componentType !== 'arrowLine') continue
+            // Both arrowLine and plain line share the [line, circle1, circle2]
+            // group shape, so the endpoint-hover indicator applies to both.
+            if (!isLineLikeType(child?.elementData?.componentType)) continue
             const gx = child.translation.x
             const gy = child.translation.y
             for (const circleGroup of [child.children[1], child.children[2]]) {
@@ -2331,11 +2346,14 @@ function addZUI(
                 // Snapshot before clearing — used below to select arrow by endpoint click
                 const hoveredEndpointGroup = lastHoveredCircleGroup
 
-                // Hide all arrow endpoint circles and hover indicator before processing the new selection
+                // Hide all arrow/line endpoint circles and hover indicator before
+                // processing the new selection. Includes plain lines (mobile has
+                // no blur to hide them, so this next-tap sweep does it) — the
+                // clicked line re-reveals its own via setArrowEndpointsVisible.
                 lastHoveredCircleGroup = null
                 hoverCircle.opacity = 0
                 two.scene.children.forEach((child: any) => {
-                    if (child?.elementData?.componentType === 'arrowLine') {
+                    if (isLineLikeType(child?.elementData?.componentType)) {
                         setArrowEndpointsVisible(child, false)
                     }
                 })
