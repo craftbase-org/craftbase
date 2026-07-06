@@ -174,7 +174,12 @@ test.describe('Fit-to-content on board load', () => {
 
         // Content near the origin is not centered at the default camera. After
         // clicking, the fit should center the content bbox in the viewport.
-        await button.click()
+        // Use dispatchEvent rather than click(): Netlify deploy previews inject a
+        // bottom-anchored "Drawer" iframe that overlaps this bottom-center button
+        // and intercepts pointer events. dispatchEvent fires the click directly
+        // on the element (React's delegated onClick still runs), immune to the
+        // overlay — which is a CI-only artifact, not part of the product.
+        await button.dispatchEvent('click')
         await page.waitForTimeout(600)
 
         const { width: vw, height: vh } = page.viewportSize()
