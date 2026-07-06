@@ -87,10 +87,14 @@ test.describe('Fit-to-content on board load', () => {
         await mockGraphql(page, FAR_COMPONENTS)
         await page.goto(`/board/${BOARD_ID}`)
         await page.waitForSelector('#main-two-root svg')
-        await expect(page.locator('[data-component-id]')).toHaveCount(2)
+        // Generous waits: on a network-served prod build the element chunks load
+        // lazily, so mounting + the geometry-settle can take a few seconds.
+        await expect(page.locator('[data-component-id]')).toHaveCount(2, {
+            timeout: 15000,
+        })
 
         // Auto-fit brings the off-screen content into view and zooms out.
-        await expect.poll(() => firstElementVisible(page), { timeout: 8000 }).toBe(true)
+        await expect.poll(() => firstElementVisible(page), { timeout: 12000 }).toBe(true)
         const scale = await sceneScale(page)
         expect(scale).toBeLessThan(0.99)
     })
@@ -110,9 +114,11 @@ test.describe('Fit-to-content on board load', () => {
         }, BOARD_ID)
         await page.goto(`/board/${BOARD_ID}`)
         await page.waitForSelector('#main-two-root svg')
-        await expect(page.locator('[data-component-id]')).toHaveCount(2)
+        await expect(page.locator('[data-component-id]')).toHaveCount(2, {
+            timeout: 15000,
+        })
 
-        await expect.poll(() => firstElementVisible(page), { timeout: 8000 }).toBe(true)
+        await expect.poll(() => firstElementVisible(page), { timeout: 12000 }).toBe(true)
         // Camera moved off the restored scale of 2 to frame the content.
         const scale = await sceneScale(page)
         expect(scale).toBeLessThan(0.99)
@@ -122,7 +128,7 @@ test.describe('Fit-to-content on board load', () => {
         await mockGraphql(page, NEAR_COMPONENTS)
         await page.goto(`/board/${BOARD_ID}`)
         await page.waitForSelector('#main-two-root svg')
-        await expect(page.locator('[data-component-id]')).toHaveCount(2)
+        await expect(page.locator('[data-component-id]')).toHaveCount(2, { timeout: 15000 })
         // Near-origin content is on-screen at the default camera → no fit.
         await page.waitForTimeout(6000)
         expect(await firstElementVisible(page)).toBe(true)
@@ -161,7 +167,7 @@ test.describe('Fit-to-content on board load', () => {
         await mockGraphql(page, NEAR_COMPONENTS)
         await page.goto(`/board/${BOARD_ID}`)
         await page.waitForSelector('#main-two-root svg')
-        await expect(page.locator('[data-component-id]')).toHaveCount(2)
+        await expect(page.locator('[data-component-id]')).toHaveCount(2, { timeout: 15000 })
 
         const button = page.getByRole('button', { name: 'Go to content' })
         await expect(button).toBeVisible()

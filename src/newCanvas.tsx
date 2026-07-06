@@ -3974,6 +3974,43 @@ function addZUI(
         })
     }
 
+    // Union of every persistable element's *surface* (scene-coord) bounds —
+    // position-based (shallow getBoundingClientRect), so it reflects where the
+    // elements actually are regardless of the live camera. Returns null when
+    // there's nothing measurable yet. Shared by fitToContent and the load poll's
+    // settle check (bounds stabilise once the element components apply x/y).
+    const computeContentSurfaceBounds = ():
+        | { left: number; top: number; right: number; bottom: number }
+        | null => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const children = two.scene.children as any[]
+        let left = Infinity
+        let top = Infinity
+        let right = -Infinity
+        let bottom = -Infinity
+        for (const child of children) {
+            const id = child?.elementData?.id
+            if (!id) continue
+            if (child.elementData.componentType === GROUP_COMPONENT) continue
+            let rect
+            try {
+                rect = child.getBoundingClientRect(true)
+            } catch {
+                continue
+            }
+            if (!rect) continue
+            const { left: l, top: t, right: r, bottom: b } = rect
+            if (![l, t, r, b].every((n) => Number.isFinite(n))) continue
+            left = Math.min(left, l)
+            top = Math.min(top, t)
+            right = Math.max(right, r)
+            bottom = Math.max(bottom, b)
+        }
+        if (!Number.isFinite(left) || right - left <= 0 || bottom - top <= 0)
+            return null
+        return { left, top, right, bottom }
+    }
+
     return {
         zui,
         syncBackgroundToCamera,
@@ -4022,6 +4059,18 @@ function addZUI(
             }
             return false
         },
+        // Rounded signature of the content's surface bounds, or '' when nothing
+        // is measurable. The load poll watches this: once it's non-empty and
+        // stable across frames, the element components have applied their x/y
+        // (the count alone stabilises too early — groups are in the scene before
+        // their position is set), so the visibility decision can be trusted.
+        contentBoundsSignature: (): string => {
+            const b = computeContentSurfaceBounds()
+            if (!b) return ''
+            return [b.left, b.top, b.right, b.bottom]
+                .map((n) => Math.round(n))
+                .join(',')
+        },
         // Frame all persistable elements in the viewport (zoom-to-fit). Bounds
         // are read via each element group's *shallow* getBoundingClientRect, so
         // they're in surface (scene) coords — independent of the current camera
@@ -4030,35 +4079,9 @@ function addZUI(
         // mounted) so the caller can keep polling. Used by the auto-fit-on-load
         // fallback and the "Go to content" button.
         fitToContent: (opts?: { padding?: number }): boolean => {
-            const scene = two.scene
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const children = scene.children as any[]
-            let left = Infinity
-            let top = Infinity
-            let right = -Infinity
-            let bottom = -Infinity
-            for (const child of children) {
-                const id = child?.elementData?.id
-                if (!id) continue
-                if (child.elementData.componentType === GROUP_COMPONENT)
-                    continue
-                let rect
-                try {
-                    rect = child.getBoundingClientRect(true)
-                } catch {
-                    continue
-                }
-                if (!rect) continue
-                const { left: l, top: t, right: r, bottom: b } = rect
-                if (![l, t, r, b].every((n) => Number.isFinite(n))) continue
-                left = Math.min(left, l)
-                top = Math.min(top, t)
-                right = Math.max(right, r)
-                bottom = Math.max(bottom, b)
-            }
-            const bboxW = right - left
-            const bboxH = bottom - top
-            if (!Number.isFinite(left) || bboxW <= 0 || bboxH <= 0) return false
+            const bounds = computeContentSurfaceBounds()
+            if (!bounds) return false
+            const { left, top, right, bottom } = bounds
 
             const vw = domElement.clientWidth || two.width
             const vh = domElement.clientHeight || two.height
@@ -4066,6 +4089,8 @@ function addZUI(
 
             // Leave a margin; clamp to the same limits addLimits(0.06, 8) enforces
             // so a huge or tiny board doesn't overshoot the zoom range.
+            const bboxW = right - left
+            const bboxH = bottom - top
             const padding = opts?.padding ?? 0.8
             const scale = Math.max(
                 0.06,
@@ -4555,37 +4580,45 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             startZOrderReconcilePoll()
 
             // One-time auto-fit-on-load (see the mount effect). The board's
-            // content arrives async and its element groups mount over several
-            // frames, so poll until the mounted count stops growing (settled),
-            // then — only if none of it is on-screen — frame it and clear the
-            // intent flag. A camera that already shows content is left alone.
+            // content arrives async: element groups enter the scene a frame or
+            // two BEFORE their component applies x/y, so settling on the child
+            // *count* is too early — the visibility test would run while the
+            // groups are still at the origin and wrongly conclude "visible".
+            // Instead settle on the content *geometry*: poll the surface-bounds
+            // signature until it's non-empty and unchanged for a few frames
+            // (positions applied). Then force a render so worldMatrix is current,
+            // and fit only if nothing is on-screen. One-shot: clear the flag so
+            // later edits never re-fit. A cap bails out on a genuinely empty or
+            // never-settling board (chunks that never load).
             if (pendingInitialFitRef.current && zuiInstance) {
                 if (initialFitPollRef.current !== null) {
                     cancelAnimationFrame(initialFitPollRef.current)
                 }
-                let lastCount = -1
+                let lastSig: string | null = null
                 let stableFrames = 0
                 let frame = 0
-                const MAX_FRAMES = 300
+                const MAX_FRAMES = 600
                 const tryFit = (): void => {
                     initialFitPollRef.current = null
-                    const store = stateRefForComponentStore.current ?? {}
-                    const present = (
-                        twoJSInstance.scene.children as unknown[]
-                    ).filter((c) => isReorderableElementChild(c, store)).length
-                    stableFrames = present === lastCount ? stableFrames + 1 : 0
-                    lastCount = present
+                    const sig = zuiInstance.contentBoundsSignature?.() ?? ''
+                    stableFrames = sig !== '' && sig === lastSig
+                        ? stableFrames + 1
+                        : 0
+                    lastSig = sig
                     frame += 1
-                    // Once the mounted count has held steady for a few frames
-                    // (all lazy chunks resolved), or at the cap: fit only when
-                    // the current camera shows no content. Either way this is a
-                    // one-shot — clear the flag so later edits never re-fit.
-                    if (
-                        (present > 0 && stableFrames >= 3) ||
-                        frame >= MAX_FRAMES
-                    ) {
-                        if (present > 0 && !zuiInstance.hasVisibleContent?.()) {
-                            zuiInstance.fitToContent?.()
+                    if ((sig !== '' && stableFrames >= 3) || frame >= MAX_FRAMES) {
+                        if (sig !== '') {
+                            // Ensure the SVG (and each group's worldMatrix) is
+                            // rendered at the settled positions before the
+                            // camera-relative visibility test.
+                            try {
+                                twoJSInstance.update()
+                            } catch (_) {
+                                /* tear-down races are non-fatal here */
+                            }
+                            if (!zuiInstance.hasVisibleContent?.()) {
+                                zuiInstance.fitToContent?.()
+                            }
                         }
                         pendingInitialFitRef.current = false
                         return
