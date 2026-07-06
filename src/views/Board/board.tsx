@@ -24,6 +24,7 @@ import {
 } from '../../schema/mutations'
 import Canvas from '../../newCanvas'
 import ZoomControls from '../../components/ZoomControls'
+import GoToContentButton from '../../components/goToContentButton'
 import HelpButton from '../../components/helpButton'
 import Sidebar from '../../components/sidebar/primary'
 import ElementPropertiesToolbar from '../../components/sidebar/elementProperties'
@@ -228,6 +229,14 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         (op: 'front' | 'forward' | 'backward' | 'back'): void => {
             reorderSelectedRef.current?.(op)
         },
+        []
+    )
+    // newCanvas owns fitToContent (it lives on the live zui handle). It
+    // populates this ref on mount; the context exposes a stable wrapper so the
+    // "Go to content" button can frame all elements. No-op until Canvas mounts.
+    const fitToContentRef = useRef<(() => boolean) | null>(null)
+    const fitToContent = useCallback(
+        (): boolean => Boolean(fitToContentRef.current?.()),
         []
     )
     // Guards the one-shot welcome-sketch soft-land entrance.
@@ -1694,6 +1703,8 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         selectedGroup,
         applyGroupProperty,
         reorderSelected,
+        fitToContent,
+        componentStore,
         isElementDragging,
         // Defaults — read by ElementPropertiesToolbar, also still exposed
         // individually so legacy primary.js / Canvas reads keep working.
@@ -1812,10 +1823,12 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                         onCameraChange={props.onCameraChange}
                         renderBackground={props.renderBackground}
                         reorderSelectedRef={reorderSelectedRef}
+                        fitToContentRef={fitToContentRef}
                     />
                     <PointTooltip />
                     <ClusterLayer />
                     {!isMobile && <ZoomControls />}
+                    <GoToContentButton />
                     <HelpButton />
                 </div>
             </BoardContext.Provider>
