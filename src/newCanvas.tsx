@@ -3992,6 +3992,13 @@ function addZUI(
             const id = child?.elementData?.id
             if (!id) continue
             if (child.elementData.componentType === GROUP_COMPONENT) continue
+            // Skip non-content children that would bloat the bbox and force an
+            // over-zoomed-out fit (the 6%-floor symptom): hidden groups, and
+            // transient dummy/preview elements (the drag preview, the
+            // lastAddedElement stand-in) that can sit at the origin or cursor,
+            // far from the real content.
+            if (child.visible === false) continue
+            if (child.elementData.isDummy === true) continue
             let rect
             try {
                 rect = child.getBoundingClientRect(true)
@@ -4111,6 +4118,20 @@ function addZUI(
             const [curX, curY] = zui.surfaceMatrix.multiply(cx, cy, 1)
             zui.translateSurface(vw / 2 - curX, vh / 2 - curY)
             two.update()
+
+            // Notify the rest of the app the camera moved — same trio every other
+            // zoom/pan path fires. Without this the ZoomControls readout keeps its
+            // stale value (e.g. shows 100% while the fit set 6%), the dot-grid
+            // background drifts, and consumers' onCameraChange never hears the fit.
+            window.dispatchEvent(
+                new CustomEvent('zoomChanged', { detail: { scale: zui.scale } })
+            )
+            syncBackgroundToCamera()
+            onCameraChangeRef?.current?.({
+                scale: two.scene.scale,
+                tx: two.scene.translation.x,
+                ty: two.scene.translation.y,
+            })
             return true
         },
         disconnectThemeObserver: () => themeObserver.disconnect(),
