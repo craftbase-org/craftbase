@@ -97,6 +97,13 @@ test.describe('Fit-to-content on board load', () => {
         await expect.poll(() => firstElementVisible(page), { timeout: 12000 }).toBe(true)
         const scale = await sceneScale(page)
         expect(scale).toBeLessThan(0.99)
+
+        // The ZoomControls readout must reflect the fit, not a stale 100%.
+        const pct = Math.round(scale * 100)
+        expect(pct).toBeLessThan(100)
+        await expect(
+            page.getByText(new RegExp(`^${pct}%$`))
+        ).toBeVisible()
     })
 
     test('rescues a stale saved viewport that shows empty space', async ({ page }) => {
