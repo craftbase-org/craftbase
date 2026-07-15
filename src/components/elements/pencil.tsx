@@ -6,6 +6,7 @@ import { strokeTypeToDashes } from '../../utils/misc'
 import getEditComponents from '../utils/editWrapper'
 import PencilFactory from '../../factory/pencil'
 import { readOpacity } from '../../utils/canvasUtils'
+import { scheduleRender } from '../../utils/renderScheduler'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -39,7 +40,7 @@ function Pencil(props: ElementProps): ReactElement {
             shapeRef.translation.y = props.properties.y
             shapeRef.opacity = pencilOpacity
             parentGroup.add(shapeRef)
-            two.update()
+            scheduleRender(two)
         } else {
             group.opacity = pencilOpacity
             getEditComponents(two, group, 4)
@@ -47,17 +48,19 @@ function Pencil(props: ElementProps): ReactElement {
             if (path) {
                 group.children.unshift(path)
             }
-            two.update()
-
-            const groupEl = document.getElementById(group.id)
-            if (groupEl) {
-                groupEl.setAttribute('class', 'avoid-dragging')
-                groupEl.setAttribute('data-component-id', props.id)
-                groupEl.setAttribute(
-                    'data-linewidth',
-                    String(props.linewidth ?? '')
-                )
-            }
+            // SVG node exists only after a render. Batch this render with
+            // every other element mounting in this frame, then tag the node.
+            scheduleRender(two, () => {
+                const groupEl = document.getElementById(group.id)
+                if (groupEl) {
+                    groupEl.setAttribute('class', 'avoid-dragging')
+                    groupEl.setAttribute('data-component-id', props.id)
+                    groupEl.setAttribute(
+                        'data-linewidth',
+                        String(props.linewidth ?? '')
+                    )
+                }
+            })
 
             setInternalState((draft) => {
                 draft.element = {
@@ -88,7 +91,7 @@ function Pencil(props: ElementProps): ReactElement {
             const groupInstance = internalState.group.data
             groupInstance.translation.x = props.x
             groupInstance.translation.y = props.y
-            two.update()
+            scheduleRender(two)
         }
         if (internalState?.shape?.data) {
             const shapeInstance = internalState.shape.data
@@ -99,7 +102,7 @@ function Pencil(props: ElementProps): ReactElement {
                 ? props.height
                 : shapeInstance.height
             shapeInstance.fill = props.fill ? props.fill : shapeInstance.fill
-            two.update()
+            scheduleRender(two)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.x, props.y, props.fill, props.width, props.height])
@@ -111,7 +114,7 @@ function Pencil(props: ElementProps): ReactElement {
             internalState.group.data.children.forEach((child: any) => {
                 child.dashes = dashes
             })
-            two.update()
+            scheduleRender(two)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.strokeType])

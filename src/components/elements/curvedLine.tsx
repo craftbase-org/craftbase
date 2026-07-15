@@ -8,6 +8,7 @@ import {
     attachHandleCounterScale,
     attachStrokeCounterScale,
 } from '../../utils/handleScale'
+import { scheduleRender } from '../../utils/renderScheduler'
 
 // A multi-point curved line. Renders as an open, curved Two.Path (see the
 // factory). Unlike the geo route it does NOT counter-scale on zoom — a plain
@@ -61,6 +62,7 @@ function CurvedLine(props: ElementProps): ReactElement {
     }, [props.id])
 
     useEffect(() => {
+        let mountCancelled = false
         const prevX = props.x
         const prevY = props.y
 
@@ -77,7 +79,7 @@ function CurvedLine(props: ElementProps): ReactElement {
             path.translation.x = props.properties.x
             path.translation.y = props.properties.y
             parentGroup.add(path)
-            two.update()
+            scheduleRender(two)
             return (): void => {
                 two.remove(group)
             }
@@ -85,57 +87,6 @@ function CurvedLine(props: ElementProps): ReactElement {
 
         groupRef.current = group
         pathRef.current = path
-        two.update()
-
-        const groupEl = document.getElementById(group.id)
-        if (groupEl) {
-            groupEl.setAttribute('class', 'dragger-picker')
-            groupEl.setAttribute('data-component-id', props.id)
-            groupEl.setAttribute('data-linewidth', String(props.linewidth ?? ''))
-        }
-        // Show the `move` cursor over the line body, matching the selection
-        // controller's body cursor for other shapes (the curve is a drag zone).
-        // Inline beats the base `.dragger-picker` rule but yields to the
-        // `!important` draw/pan-mode overrides.
-        const pathEl = document.getElementById(path.id)
-        if (pathEl) pathEl.style.cursor = 'move'
-
-        // Fat transparent hit path so the (thin) curve is easy to click — its
-        // `d` mirrors the visible path (a MutationObserver tracks vertex drags
-        // for free), and its stroke width counter-scales so the clickable band
-        // stays a constant ~22px on screen at any zoom (else ~0.25px at 10%).
-        // A raw SVG node (not a Two child) so it never gets recolored/exported.
-        let hitObserver: MutationObserver | null = null
-        let detachHitScale: (() => void) | null = null
-        if (pathEl) {
-            const hitEl = document.createElementNS(
-                'http://www.w3.org/2000/svg',
-                'path'
-            )
-            hitEl.setAttribute('stroke', 'transparent')
-            hitEl.setAttribute('fill', 'none')
-            hitEl.setAttribute('pointer-events', 'stroke')
-            hitEl.setAttribute('stroke-linecap', 'round')
-            hitEl.setAttribute('stroke-linejoin', 'round')
-            hitEl.style.cursor = 'move'
-            const syncD = (): void => {
-                const d = pathEl.getAttribute('d')
-                if (d) hitEl.setAttribute('d', d)
-            }
-            syncD()
-            pathEl.parentNode?.insertBefore(hitEl, pathEl)
-            hitObserver = new MutationObserver(syncD)
-            hitObserver.observe(pathEl, {
-                attributes: true,
-                attributeFilter: ['d'],
-            })
-            detachHitScale = attachStrokeCounterScale(
-                (w) => hitEl.setAttribute('stroke-width', String(w)),
-                HIT_BAND_PX,
-                two,
-                zuiRef.current?.zui?.scale ?? two?.scene?.scale ?? 1
-            )
-        }
 
         // Build one draggable handle per vertex (children of the group, so they
         // move/scale with it). Hidden until the line is selected.
@@ -151,7 +102,6 @@ function CurvedLine(props: ElementProps): ReactElement {
             handles.push(handle)
         }
         handlesRef.current = handles
-        two.update()
 
         // Hold the vertex dots at a constant on-screen size so they stay
         // grabbable when zoomed far out (else ~1px at 20%).
@@ -163,70 +113,144 @@ function CurvedLine(props: ElementProps): ReactElement {
             initialScale
         )
 
-        // Per-vertex drag, wired directly on each handle's SVG node. stopPropagation
-        // keeps the canvas from also starting a body-drag / reselect.
+        let hitObserver: MutationObserver | null = null
+        let detachHitScale: (() => void) | null = null
         const cleanups: Array<() => void> = []
-        handles.forEach((handle, index) => {
-            const el = document.getElementById(handle.id)
-            if (!el) return
-            // `move` cursor on the vertex handles too, matching the body + the
-            // selection controller's drag-zone cursor.
-            el.style.cursor = 'move'
-            el.setAttribute('class', 'dragger-picker is-vertex-handle')
-            el.setAttribute('data-vertex-index', String(index))
-            // Hidden handles must not eat clicks (opacity-0 SVG still hit-tests).
-            el.style.pointerEvents = 'none'
 
-            const onMouseDown = (e: MouseEvent): void => {
-                e.preventDefault()
-                e.stopPropagation()
+        // Every DOM read below needs the rendered SVG nodes, which only exist
+        // after a render. Batch that render with every other element mounting
+        // this frame — a synchronous two.update() per element made mounting a
+        // board O(N²). `mountCancelled` guards an unmount before the frame
+        // fires, so we never observe/bind a node that is already gone.
+        scheduleRender(two, () => {
+            if (mountCancelled) return
 
-                const onMove = (me: MouseEvent): void => {
-                    const z = zuiRef.current
-                    const grp = groupRef.current
-                    const pth = pathRef.current
-                    if (!z?.zui || !grp || !pth) return
-                    const surface = z.zui.clientToSurface(me.clientX, me.clientY)
-                    const vertex = pth.vertices[index]
-                    vertex.x = surface.x - grp.translation.x
-                    vertex.y = surface.y - grp.translation.y
-                    handle.translation.x = vertex.x
-                    handle.translation.y = vertex.y
-                    // Curved, non-manual Path recomputes its control points from
-                    // the anchors on render — flag the vertices so it re-flows.
-                    pth._flagVertices = true
-                    two.update()
+            const groupEl = document.getElementById(group.id)
+            if (groupEl) {
+                groupEl.setAttribute('class', 'dragger-picker')
+                groupEl.setAttribute('data-component-id', props.id)
+                groupEl.setAttribute(
+                    'data-linewidth',
+                    String(props.linewidth ?? '')
+                )
+            }
+            // Show the `move` cursor over the line body, matching the selection
+            // controller's body cursor for other shapes (the curve is a drag zone).
+            // Inline beats the base `.dragger-picker` rule but yields to the
+            // `!important` draw/pan-mode overrides.
+            const pathEl = document.getElementById(path.id)
+            if (pathEl) pathEl.style.cursor = 'move'
+
+            // Fat transparent hit path so the (thin) curve is easy to click — its
+            // `d` mirrors the visible path (a MutationObserver tracks vertex drags
+            // for free), and its stroke width counter-scales so the clickable band
+            // stays a constant ~22px on screen at any zoom (else ~0.25px at 10%).
+            // A raw SVG node (not a Two child) so it never gets recolored/exported.
+            if (pathEl) {
+                const hitEl = document.createElementNS(
+                    'http://www.w3.org/2000/svg',
+                    'path'
+                )
+                hitEl.setAttribute('stroke', 'transparent')
+                hitEl.setAttribute('fill', 'none')
+                hitEl.setAttribute('pointer-events', 'stroke')
+                hitEl.setAttribute('stroke-linecap', 'round')
+                hitEl.setAttribute('stroke-linejoin', 'round')
+                hitEl.style.cursor = 'move'
+                const syncD = (): void => {
+                    const d = pathEl.getAttribute('d')
+                    if (d) hitEl.setAttribute('d', d)
                 }
-
-                const onUp = (): void => {
-                    window.removeEventListener('mousemove', onMove)
-                    window.removeEventListener('mouseup', onUp)
-                    const grp = groupRef.current
-                    const pth = pathRef.current
-                    if (!grp || !pth) return
-                    // Persist absolute vertex coords (same convention as route).
-                    const newVerts = pth.vertices.map((vx: ShapeLike) => ({
-                        x: Math.round(grp.translation.x + vx.x),
-                        y: Math.round(grp.translation.y + vx.y),
-                    }))
-                    grp.elementData = { ...grp.elementData, metadata: newVerts }
-                    // Records an UPDATE_BULK so the vertex edit is undoable. The
-                    // component snapshots props at mount (frozen props), so the
-                    // history hook can't revert us via a re-render — it fires a
-                    // `curvedLineVertsReverted` event instead, which the effect
-                    // below re-flows (path + handles) from the reverted metadata.
-                    persistRef.current?.(idRef.current, { metadata: newVerts })
-                }
-
-                window.addEventListener('mousemove', onMove)
-                window.addEventListener('mouseup', onUp)
+                syncD()
+                pathEl.parentNode?.insertBefore(hitEl, pathEl)
+                hitObserver = new MutationObserver(syncD)
+                hitObserver.observe(pathEl, {
+                    attributes: true,
+                    attributeFilter: ['d'],
+                })
+                detachHitScale = attachStrokeCounterScale(
+                    (w) => hitEl.setAttribute('stroke-width', String(w)),
+                    HIT_BAND_PX,
+                    two,
+                    zuiRef.current?.zui?.scale ?? two?.scene?.scale ?? 1
+                )
             }
 
-            el.addEventListener('mousedown', onMouseDown)
-            cleanups.push(() => el.removeEventListener('mousedown', onMouseDown))
+            // Per-vertex drag, wired directly on each handle's SVG node. stopPropagation
+            // keeps the canvas from also starting a body-drag / reselect.
+            handles.forEach((handle, index) => {
+                const el = document.getElementById(handle.id)
+                if (!el) return
+                // `move` cursor on the vertex handles too, matching the body + the
+                // selection controller's drag-zone cursor.
+                el.style.cursor = 'move'
+                el.setAttribute('class', 'dragger-picker is-vertex-handle')
+                el.setAttribute('data-vertex-index', String(index))
+                // Hidden handles must not eat clicks (opacity-0 SVG still hit-tests).
+                el.style.pointerEvents = 'none'
+
+                const onMouseDown = (e: MouseEvent): void => {
+                    e.preventDefault()
+                    e.stopPropagation()
+
+                    const onMove = (me: MouseEvent): void => {
+                        const z = zuiRef.current
+                        const grp = groupRef.current
+                        const pth = pathRef.current
+                        if (!z?.zui || !grp || !pth) return
+                        const surface = z.zui.clientToSurface(
+                            me.clientX,
+                            me.clientY
+                        )
+                        const vertex = pth.vertices[index]
+                        vertex.x = surface.x - grp.translation.x
+                        vertex.y = surface.y - grp.translation.y
+                        handle.translation.x = vertex.x
+                        handle.translation.y = vertex.y
+                        // Curved, non-manual Path recomputes its control points from
+                        // the anchors on render — flag the vertices so it re-flows.
+                        pth._flagVertices = true
+                        two.update()
+                    }
+
+                    const onUp = (): void => {
+                        window.removeEventListener('mousemove', onMove)
+                        window.removeEventListener('mouseup', onUp)
+                        const grp = groupRef.current
+                        const pth = pathRef.current
+                        if (!grp || !pth) return
+                        // Persist absolute vertex coords (same convention as route).
+                        const newVerts = pth.vertices.map((vx: ShapeLike) => ({
+                            x: Math.round(grp.translation.x + vx.x),
+                            y: Math.round(grp.translation.y + vx.y),
+                        }))
+                        grp.elementData = {
+                            ...grp.elementData,
+                            metadata: newVerts,
+                        }
+                        // Records an UPDATE_BULK so the vertex edit is undoable. The
+                        // component snapshots props at mount (frozen props), so the
+                        // history hook can't revert us via a re-render — it fires a
+                        // `curvedLineVertsReverted` event instead, which the effect
+                        // below re-flows (path + handles) from the reverted metadata.
+                        persistRef.current?.(idRef.current, {
+                            metadata: newVerts,
+                        })
+                    }
+
+                    window.addEventListener('mousemove', onMove)
+                    window.addEventListener('mouseup', onUp)
+                }
+
+                el.addEventListener('mousedown', onMouseDown)
+                cleanups.push(() =>
+                    el.removeEventListener('mousedown', onMouseDown)
+                )
+            })
         })
 
         return (): void => {
+            mountCancelled = true
             hitObserver?.disconnect()
             detachHitScale?.()
             detachHandleScale()
@@ -248,7 +272,7 @@ function CurvedLine(props: ElementProps): ReactElement {
             const el = document.getElementById(handle.id)
             if (el) el.style.pointerEvents = isSelected ? 'auto' : 'none'
         })
-        two.update()
+        scheduleRender(two)
     }, [selectedComponent, two])
 
     // Undo/redo of a vertex edit reverts our `metadata` in the store, but
@@ -299,7 +323,7 @@ function CurvedLine(props: ElementProps): ReactElement {
         if (props.stroke) path.stroke = props.stroke
         if (props.linewidth) path.linewidth = props.linewidth
         path.dashes = strokeTypeToDashes(props.strokeType)
-        two.update()
+        scheduleRender(two)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.stroke, props.linewidth, props.strokeType])
 

@@ -215,6 +215,12 @@ export const CONNECTORS_ENABLED_KEY = 'craftbase_connectors_enabled'
 // `src/utils/featureFlags.ts`). Defaults to disabled.
 export const DOT_GRID_ENABLED_KEY = 'craftbase_dot_grid_enabled'
 
+// Feature-flag preference: viewport culling. Hides scene elements whose
+// screen-space bounds fall outside the viewport so the SVG renderer skips
+// painting them — the lever against the pan/zoom paint cost on dense boards.
+// Read live (see `src/utils/featureFlags.ts`). Defaults to disabled.
+export const VIEWPORT_CULLING_ENABLED_KEY = 'craftbase_viewport_culling_enabled'
+
 // Canvas rendering constants
 export const HOVER_THRESHOLD = 15
 export const HOVER_COLOR = 'rgba(196, 144, 26, 0.7)'

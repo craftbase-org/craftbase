@@ -28,11 +28,10 @@ export const ElementRenderWrapper = (
             useState<ComponentRecord | null>(null)
 
         useEffect(() => {
-            const allComponents = Object.values(componentStore)
-            if (allComponents.length > 0) {
-                const match = allComponents.find((item) => data.id === item.id)
-                if (match) setComponentData(match)
-            }
+            // Keyed lookup, not a scan: this runs once per element, so an
+            // Object.values(...).find() here made mounting a board O(n²).
+            const match = componentStore[data.id]
+            if (match) setComponentData(match)
         }, [])
 
         if (componentData === null) {

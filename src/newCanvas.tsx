@@ -77,7 +77,13 @@ import {
     subscribeConnectorsEnabled,
     getDotGridEnabled,
     subscribeDotGridEnabled,
+    getViewportCullingEnabled,
 } from './utils/featureFlags'
+import {
+    cullToViewport,
+    uncullViewport,
+    CULLED_FLAG,
+} from './utils/viewportCulling'
 import {
     velocityToLinewidth,
     smoothLinewidth,
@@ -105,11 +111,13 @@ import {
     paintElementStroke,
 } from './utils/themeColorFlip'
 import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
+import { scheduleRender } from './utils/renderScheduler'
 import { createDiamondPath } from './factory/diamond'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
 import type { HistoryEntry } from './hooks/useComponentHistory'
 import { exportSelectionAsSvg } from './utils/exportSelectionAsSvg'
 import CanvasContextMenu from './components/canvasContextMenu'
+import PerfOverlay from './components/dev/PerfOverlay'
 import {
     ElementRenderWrapper,
     GroupRenderWrapper,
@@ -121,6 +129,36 @@ import type {
     SelectedComponent,
     CurrentElement,
 } from './types/board'
+
+/**
+ * One lazy component per element *type*, not per element.
+ *
+ * `React.lazy()` returns a NEW component type on every call, and each one
+ * suspends and resolves independently — so calling it per element made a board
+ * of N elements resolve N Suspense boundaries in N separate commits, spreading
+ * the mount across hundreds of frames. Every one of those frames triggered a
+ * full O(scene) Two.js render (the SVG renderer walks every child on each
+ * update), which is O(frames × N) work.
+ *
+ * Keyed by componentType, the ~10 element modules resolve once and React can
+ * commit the elements in far fewer passes.
+ */
+const lazyElementCache = new Map<string, React.ComponentType<unknown>>()
+
+const getLazyElement = (
+    componentType: string,
+    moduleLoader: () => Promise<{
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        default: React.ComponentType<any>
+    }>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): React.ComponentType<any> => {
+    const cached = lazyElementCache.get(componentType)
+    if (cached) return cached
+    const lazy = React.lazy(moduleLoader)
+    lazyElementCache.set(componentType, lazy as React.ComponentType<unknown>)
+    return lazy
+}
 
 // A plain `line` shares the arrow's group structure (line + two endpoint
 // circles) and the entire arrow-draw / endpoint-edit machinery, so anywhere we
@@ -298,6 +336,33 @@ function addZUI(
     let lastTapTime = 0
     let lastTapX = 0
     let lastTapY = 0
+    // Wheel has no gesture-end event, so "is the user still zooming/scrolling"
+    // is tracked with a trailing timer. Used to suppress the hover hit-test
+    // mid-gesture, where its result is thrown away anyway.
+    let isWheeling = false
+    let wheelSettleTimer: number | null = null
+    // rAF gate for hoverDetectMove: pointers fire faster than we paint, and the
+    // hover scan is O(scene). At most one scan per frame.
+    let hoverFrame: number | null = null
+    let hoverPendingEvent: MouseEvent | null = null
+    // Viewport culling settle timer: cull runs on every camera change; once the
+    // gesture stops, unhide everything so the at-rest board is fully painted.
+    let cullSettleTimer: number | null = null
+
+    // Called from every camera handler (pan/zoom, mouse + touch) right before
+    // the batched render. Hides off-screen elements so the browser paints only
+    // the visible slice, then arms a timer to reveal them all once motion stops.
+    // A no-op (beyond the flag read) when culling is disabled.
+    function cullOnCameraChange(): void {
+        if (!getViewportCullingEnabled()) return
+        cullToViewport(two)
+        if (cullSettleTimer !== null) window.clearTimeout(cullSettleTimer)
+        cullSettleTimer = window.setTimeout(() => {
+            cullSettleTimer = null
+            uncullViewport(two)
+            scheduleRender(two)
+        }, 200)
+    }
     // Single-finger pan-mode state: when the toolbar pan button is active,
     // a one-finger touchstart begins panning the surface (instead of routing
     // to a synthetic mousedown). Cleared on touchend.
@@ -920,7 +985,9 @@ function addZUI(
     }
     const repaintForTheme = (): void => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        two.scene.children.forEach((child: any) => flipColorOnNodesAndStore(child))
+        two.scene.children.forEach((child: any) =>
+            flipColorOnNodesAndStore(child)
+        )
         // applyThemeStroke runs the single two.update() covering all changes.
         selectionController.applyThemeStroke()
     }
@@ -1376,7 +1443,25 @@ function addZUI(
     hoverCircle.noStroke()
     hoverCircle.opacity = 0
 
+    // Throttle the (O(scene)) hover scan to at most once per frame, and drop it
+    // entirely while a wheel gesture is in flight — the camera is moving under
+    // the cursor, so any hover result is stale before it paints. Only the most
+    // recent event of the frame is scanned; the earlier ones are superseded.
     function hoverDetectMove(e: MouseEvent) {
+        if (isWheeling) return
+
+        hoverPendingEvent = e
+        if (hoverFrame !== null) return
+
+        hoverFrame = requestAnimationFrame(() => {
+            hoverFrame = null
+            const pendingEvent = hoverPendingEvent
+            hoverPendingEvent = null
+            if (pendingEvent) runHoverDetect(pendingEvent)
+        })
+    }
+
+    function runHoverDetect(e: MouseEvent) {
         // No arrow-endpoint hover while panning or drawing/placing a geo object.
         if (
             isMousePanning ||
@@ -1388,7 +1473,7 @@ function addZUI(
         if (!isSelectPanMode(isPencilModeRef.current)) {
             if (lastHoveredCircleGroup) {
                 hoverCircle.opacity = 0
-                two.update()
+                scheduleRender(two)
                 lastHoveredCircleGroup = null
             }
             return
@@ -1424,13 +1509,19 @@ function addZUI(
         }
 
         if (found) {
+            // The indicator snaps to the endpoint, not the cursor, so while the
+            // pointer wanders within the hover threshold of the same endpoint
+            // nothing actually moves. Only render when something changed.
+            const moved =
+                hoverCircle.translation.x !== foundWx ||
+                hoverCircle.translation.y !== foundWy
             hoverCircle.translation.x = foundWx
             hoverCircle.translation.y = foundWy
             if (found !== lastHoveredCircleGroup) hoverCircle.opacity = 1
-            two.update()
+            if (moved || found !== lastHoveredCircleGroup) scheduleRender(two)
         } else if (lastHoveredCircleGroup) {
             hoverCircle.opacity = 0
-            two.update()
+            scheduleRender(two)
         }
         lastHoveredCircleGroup = found ?? null
     }
@@ -1731,7 +1822,11 @@ function addZUI(
             const line = child.children?.[0]
             if (!line) return
             if (ed.tailShapeId === shapeId && ed.tailEdge) {
-                const p = getShapePortPoint(group, ed.tailEdge, portGapSurface())
+                const p = getShapePortPoint(
+                    group,
+                    ed.tailEdge,
+                    portGapSurface()
+                )
                 if (ed.tailPortIndex > 0) {
                     // Keep the fan offset (direction follows the bound head).
                     applyStackedEndpoint(
@@ -1755,7 +1850,11 @@ function addZUI(
                 }
             }
             if (ed.headShapeId === shapeId && ed.headEdge) {
-                const p = getShapePortPoint(group, ed.headEdge, portGapSurface())
+                const p = getShapePortPoint(
+                    group,
+                    ed.headEdge,
+                    portGapSurface()
+                )
                 if (ed.headPortIndex > 0) {
                     // Keep the fan offset (direction follows the bound tail).
                     applyStackedEndpoint(
@@ -1852,7 +1951,11 @@ function addZUI(
         // Far endpoint vertex index for ordering: a tail bound here is ordered
         // by its head (vertex[1]); a head bound here by its tail (vertex[0]).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const pushEntry = (child: any, line: any, endpoint: 'tail' | 'head') => {
+        const pushEntry = (
+            child: any,
+            line: any,
+            endpoint: 'tail' | 'head'
+        ) => {
             const farIdx = endpoint === 'tail' ? 1 : 0
             const coord = sideEdge
                 ? child.position.y + line.vertices[farIdx].y
@@ -2581,7 +2684,12 @@ function addZUI(
             mousePanLastY = e.clientY
             if (dx !== 0 || dy !== 0) {
                 zui.translateSurface(dx, dy)
-                two.update()
+                cullOnCameraChange()
+                // Batched, NOT a direct two.update(): pointers fire well above
+                // the paint rate (120Hz+ trackpads), so a synchronous render
+                // here means 2x the full O(scene) renders the display can even
+                // show. scheduleRender coalesces the burst into one per frame.
+                scheduleRender(two)
                 syncBackgroundToCamera()
                 onCameraChangeRef?.current?.({
                     scale: two.scene.scale,
@@ -3061,10 +3169,7 @@ function addZUI(
                 }
                 const drawnEd = arrowDrawElement?.elementData
                 if (drawnEd?.headShapeId && drawnEd?.headEdge) {
-                    restackPortConnectors(
-                        drawnEd.headShapeId,
-                        drawnEd.headEdge
-                    )
+                    restackPortConnectors(drawnEd.headShapeId, drawnEd.headEdge)
                 }
                 arrowDrawTailShapeId = null
                 arrowDrawTailPort = null
@@ -3630,7 +3735,20 @@ function addZUI(
             zui.translateSurface(-e.deltaX, -e.deltaY)
         }
 
-        two.update()
+        // A wheel gesture is in flight — suppress the hover hit-test until it
+        // settles (see hoverDetectMove). Wheel has no gesture-end event, so the
+        // flag is cleared on a short trailing timer.
+        isWheeling = true
+        if (wheelSettleTimer !== null) window.clearTimeout(wheelSettleTimer)
+        wheelSettleTimer = window.setTimeout(() => {
+            isWheeling = false
+            wheelSettleTimer = null
+        }, 120)
+
+        cullOnCameraChange()
+        // Batched — same reason as the pan handler: wheel/trackpad events fire
+        // faster than the display paints.
+        scheduleRender(two)
         syncBackgroundToCamera()
 
         onCameraChangeRef?.current?.({
@@ -3760,7 +3878,9 @@ function addZUI(
                 panLastY = lastTouch.clientY
                 if (dx !== 0 || dy !== 0) {
                     zui.translateSurface(dx, dy)
-                    two.update()
+                    cullOnCameraChange()
+                    // Batched — touchmove also outruns the paint rate.
+                    scheduleRender(two)
                     syncBackgroundToCamera()
                     onCameraChangeRef?.current?.({
                         scale: two.scene.scale,
@@ -3964,7 +4084,9 @@ function addZUI(
         twoFingerMidY = newMidY
         distance = newDist
 
-        two.update()
+        cullOnCameraChange()
+        // Batched — pinchmove fires per touch sample, not per frame.
+        scheduleRender(two)
         syncBackgroundToCamera()
 
         onCameraChangeRef?.current?.({
@@ -3979,9 +4101,12 @@ function addZUI(
     // elements actually are regardless of the live camera. Returns null when
     // there's nothing measurable yet. Shared by fitToContent and the load poll's
     // settle check (bounds stabilise once the element components apply x/y).
-    const computeContentSurfaceBounds = ():
-        | { left: number; top: number; right: number; bottom: number }
-        | null => {
+    const computeContentSurfaceBounds = (): {
+        left: number
+        top: number
+        right: number
+        bottom: number
+    } | null => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const children = two.scene.children as any[]
         let left = Infinity
@@ -3997,7 +4122,10 @@ function addZUI(
             // transient dummy/preview elements (the drag preview, the
             // lastAddedElement stand-in) that can sit at the origin or cursor,
             // far from the real content.
-            if (child.visible === false) continue
+            // A viewport-culled element is hidden for paint only — it's still
+            // real content, so measure it (its world bbox is valid regardless
+            // of visibility). Only skip genuinely-hidden groups.
+            if (child.visible === false && child[CULLED_FLAG] !== true) continue
             if (child.elementData.isDummy === true) continue
             let rect
             try {
@@ -4059,10 +4187,13 @@ function addZUI(
                 }
                 if (!rect) continue
                 const { left, top, right, bottom } = rect
-                if (![left, top, right, bottom].every((n) => Number.isFinite(n)))
+                if (
+                    ![left, top, right, bottom].every((n) => Number.isFinite(n))
+                )
                     continue
                 // Any overlap between the element rect and the viewport.
-                if (right > 0 && bottom > 0 && left < vw && top < vh) return true
+                if (right > 0 && bottom > 0 && left < vw && top < vh)
+                    return true
             }
             return false
         },
@@ -4261,6 +4392,15 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             createTextAtSurfaceRef,
             onCameraChangeRef
         )
+
+        // Dev-only handles for profiling the camera from the console or a
+        // headless perf harness (drive the zoom/pan without synthesising input).
+        if (import.meta.env.DEV) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(window as any).__cbZui = zui_instance.zui
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(window as any).__cbTwo = two
+        }
 
         setZuiInstance(zui_instance)
         setTwoJSInstance(two)
@@ -4483,6 +4623,14 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         const rank = new Map<unknown, number>()
         desired.forEach((c, i) => rank.set(c, i))
 
+        // Already in the desired order? Then there is nothing to restack, and
+        // re-rendering would be pure waste. This matters because the reconcile
+        // POLL re-runs this every frame while a board mounts: each render is
+        // O(scene) in the SVG renderer, so unconditionally rendering here cost
+        // ~90 full-scene renders per store change on a large board.
+        const alreadyOrdered = children.every((c, i) => desired[i] === c)
+        if (alreadyOrdered) return
+
         // Collection.sort fires the 'order' event that flags the SVG renderer
         // to physically reorder the <g> nodes — a bare splice would NOT.
         children.sort((a, b) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0))
@@ -4622,12 +4770,14 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                 const tryFit = (): void => {
                     initialFitPollRef.current = null
                     const sig = zuiInstance.contentBoundsSignature?.() ?? ''
-                    stableFrames = sig !== '' && sig === lastSig
-                        ? stableFrames + 1
-                        : 0
+                    stableFrames =
+                        sig !== '' && sig === lastSig ? stableFrames + 1 : 0
                     lastSig = sig
                     frame += 1
-                    if ((sig !== '' && stableFrames >= 3) || frame >= MAX_FRAMES) {
+                    if (
+                        (sig !== '' && stableFrames >= 3) ||
+                        frame >= MAX_FRAMES
+                    ) {
                         if (sig !== '') {
                             // Ensure the SVG (and each group's worldMatrix) is
                             // rendered at the settled positions before the
@@ -5117,6 +5267,9 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         currentComponents: ComponentRecord[]
     ) => {
         let arr = [...prevElementsRef.current]
+        // Membership set over `arr`: this runs for every record on every store
+        // change, so a linear Array.includes() per item made it O(n²).
+        const seen = new Set(arr)
         let components = [...componentsToRenderRef.current]
         if (currentComponents && twoJSInstance) {
             // console.log(
@@ -5143,14 +5296,13 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                     return
                 }
 
-                if (prevElementsRef.current.includes(item.id)) {
-                    // do nothing
-                    // console.log(
-                    //     'newCanvas ... Canvas ... handleSetComponentsToRender ... condition(currentComponents && twoJSInstance) === true ... condition(prevElements.includes(item.id)) === true'
-                    // )
+                if (seen.has(item.id)) {
+                    // do nothing — wrapper already exists
                 } else {
                     arr.push(item.id)
-                    const ElementToRender = React.lazy(
+                    seen.add(item.id)
+                    const ElementToRender = getLazyElement(
+                        item.componentType,
                         moduleLoader as () => Promise<{
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             default: React.ComponentType<any>
@@ -5262,6 +5414,7 @@ const Canvas: React.FC<CanvasProps> = (props) => {
 
     return (
         <>
+            {import.meta.env.DEV && <PerfOverlay />}
             <div id="selector-rect"></div>
             {props.renderBackground?.()}
             <div id="main-two-root"></div>

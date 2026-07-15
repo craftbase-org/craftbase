@@ -1,5 +1,6 @@
 import Two from 'two.js'
 import { markSelectionChrome } from '../../utils/svgExportShared'
+import { scheduleRender } from '../../utils/renderScheduler'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TwoLike = any
@@ -102,10 +103,15 @@ export default class Selector {
 
         this.areaGroup = areaGroup
         this.group.add(areaGroup)
-        this.two.update()
-        // Tag the overlay so SVG/PNG exports can strip it — it lives inside the
-        // group's <g>, so a clone of the group would otherwise carry it.
-        markSelectionChrome(areaGroup)
+        // Batched, NOT a direct two.update(): this runs once per element that
+        // has edit chrome (every pencil), so a synchronous full-scene render
+        // here is O(N²) across a board load. markSelectionChrome reads
+        // `_renderer.elem`, so it must wait for the render — hence afterRender.
+        scheduleRender(this.two, () => {
+            // Tag the overlay so SVG/PNG exports can strip it — it lives inside
+            // the group's <g>, so a clone of the group would otherwise carry it.
+            markSelectionChrome(areaGroup)
+        })
 
         const clearSelector = (): void => {
             this.areaGroup.opacity = 0
@@ -141,24 +147,50 @@ export default class Selector {
         }
     }
 
-    update(
-        x1: number,
-        x2: number,
-        y1: number,
-        y2: number,
-        scale = 1
-    ): void {
+    update(x1: number, x2: number, y1: number, y2: number, scale = 1): void {
         this.vertices = { x1, x2, y1, y2 }
 
         this.area.vertices = [
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            new (Two as any).Anchor(x1, y1, null, null, null, null, (Two as any).Commands.line),
+            new (Two as any).Anchor(
+                x1,
+                y1,
+                null,
+                null,
+                null,
+                null,
+                (Two as any).Commands.line
+            ),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            new (Two as any).Anchor(x2, y1, null, null, null, null, (Two as any).Commands.line),
+            new (Two as any).Anchor(
+                x2,
+                y1,
+                null,
+                null,
+                null,
+                null,
+                (Two as any).Commands.line
+            ),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            new (Two as any).Anchor(x2, y2, null, null, null, null, (Two as any).Commands.line),
+            new (Two as any).Anchor(
+                x2,
+                y2,
+                null,
+                null,
+                null,
+                null,
+                (Two as any).Commands.line
+            ),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            new (Two as any).Anchor(x1, y2, null, null, null, null, (Two as any).Commands.line),
+            new (Two as any).Anchor(
+                x1,
+                y2,
+                null,
+                null,
+                null,
+                null,
+                (Two as any).Commands.line
+            ),
         ]
 
         if (this.showCircles) {

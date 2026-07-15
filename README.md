@@ -87,6 +87,15 @@ yarn test        # unit tests (vitest)
 yarn test:e2e    # end-to-end tests (playwright)
 ```
 
+## Perf test
+
+Before 0.8.3
+
+```
+     1200 mixed elems (0.97 MB) | settle   3512 ms | blocking   2043 ms | svg nodes 7817 | selectable nodes 1200
+     3000 mixed elems (2.43 MB) | settle  15629 ms | blocking  14242 ms | svg nodes 19517 | selectable nodes 3000
+```
+
 ## Contributing
 
 Issues and pull requests are welcome — features, suggestions, and bug reports all count. It's a weekend project, so I appreciate the patience and the company.

@@ -1,6 +1,7 @@
 import {
     CONNECTORS_ENABLED_KEY,
     DOT_GRID_ENABLED_KEY,
+    VIEWPORT_CULLING_ENABLED_KEY,
 } from '../constants/misc'
 
 // Live, user-toggleable feature flags backed by localStorage.
@@ -86,5 +87,46 @@ export function subscribeDotGridEnabled(fn: Listener): () => void {
     dotGridListeners.add(fn)
     return (): void => {
         dotGridListeners.delete(fn)
+    }
+}
+
+// ── Viewport culling flag ─────────────────────────────────────────────────
+// Same runtime/localStorage model. Gates the paint-cost optimisation that hides
+// off-screen scene elements during pan/zoom (see `src/utils/viewportCulling.ts`).
+// The hot camera handlers read `getViewportCullingEnabled()` cheaply per frame.
+
+// Opt-in feature: default OFF while it's validated on real boards.
+const DEFAULT_VIEWPORT_CULLING_ENABLED = false
+
+let cullingCached: boolean | null = null
+const cullingListeners = new Set<Listener>()
+
+export function getViewportCullingEnabled(): boolean {
+    if (cullingCached === null) {
+        const stored = localStorage.getItem(VIEWPORT_CULLING_ENABLED_KEY)
+        cullingCached =
+            stored === null
+                ? DEFAULT_VIEWPORT_CULLING_ENABLED
+                : stored === 'true'
+    }
+    return cullingCached
+}
+
+export function setViewportCullingEnabled(enabled: boolean): void {
+    cullingCached = enabled
+    try {
+        localStorage.setItem(VIEWPORT_CULLING_ENABLED_KEY, String(enabled))
+    } catch {
+        // Persistence is best-effort; an in-memory toggle still works for the
+        // current session even if storage is full/blocked.
+    }
+    cullingListeners.forEach((fn) => fn(enabled))
+}
+
+// Subscribe to live changes. Returns an unsubscribe fn.
+export function subscribeViewportCullingEnabled(fn: Listener): () => void {
+    cullingListeners.add(fn)
+    return (): void => {
+        cullingListeners.delete(fn)
     }
 }
