@@ -25,7 +25,8 @@ const listeners = new Set<Listener>()
 export function getConnectorsEnabled(): boolean {
     if (cached === null) {
         const stored = localStorage.getItem(CONNECTORS_ENABLED_KEY)
-        cached = stored === null ? DEFAULT_CONNECTORS_ENABLED : stored === 'true'
+        cached =
+            stored === null ? DEFAULT_CONNECTORS_ENABLED : stored === 'true'
     }
     return cached
 }
@@ -96,7 +97,7 @@ export function subscribeDotGridEnabled(fn: Listener): () => void {
 // The hot camera handlers read `getViewportCullingEnabled()` cheaply per frame.
 
 // Opt-in feature: default OFF while it's validated on real boards.
-const DEFAULT_VIEWPORT_CULLING_ENABLED = false
+const DEFAULT_VIEWPORT_CULLING_ENABLED = true
 
 let cullingCached: boolean | null = null
 const cullingListeners = new Set<Listener>()
