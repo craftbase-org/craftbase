@@ -85,6 +85,12 @@ import {
     CULLED_FLAG,
 } from './utils/viewportCulling'
 import {
+    createDrawPreview,
+    updateDrawPreview,
+    removeDrawPreview,
+    type DrawPreviewKind,
+} from './utils/drawPreviewOverlay'
+import {
     velocityToLinewidth,
     smoothLinewidth,
     simplifyWithLinewidth,
@@ -112,7 +118,6 @@ import {
 } from './utils/themeColorFlip'
 import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
 import { scheduleRender } from './utils/renderScheduler'
-import { createDiamondPath } from './factory/diamond'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
 import type { HistoryEntry } from './hooks/useComponentHistory'
 import { exportSelectionAsSvg } from './utils/exportSelectionAsSvg'
@@ -442,8 +447,50 @@ function addZUI(
     let drawOrigin: any = null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let drawCurrentCoords: any = null
+    // The shape-creation preview is a DOM overlay (see drawPreviewOverlay), not
+    // a Two.js scene child — so growing it never repaints the scene SVG. These
+    // hold the drag's start corner in *client* (screen) coords for the overlay.
+    let drawPreviewActive = false
+    let drawScreenOriginX = 0
+    let drawScreenOriginY = 0
+    // CSS-transform move-drag: while dragging a (non-rotated, non-group) element
+    // we translate its own SVG layer via a CSS transform + will-change instead of
+    // mutating its Two.js position and calling a full-scene two.update() every
+    // frame. The scene SVG is never touched, so the drag is a GPU composite —
+    // 60fps regardless of zoom or element count. The real position is written
+    // once on mouseup, so all the existing move/persist/history logic still runs.
+    let cssMoveActive = false
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let previewShape: any = null
+    let cssMoveEl: any = null
+    let cssMoveNode: SVGGraphicsElement | null = null
+    let cssMoveChrome: {
+        node: SVGGraphicsElement
+        baseX: number
+        baseY: number
+    } | null = null
+    let cssMoveBaseX = 0
+    let cssMoveBaseY = 0
+    let cssMoveStartClientX = 0
+    let cssMoveStartClientY = 0
+    let cssMoveLastDxWorld = 0
+    let cssMoveLastDyWorld = 0
+
+    // Clear the live CSS transforms and drop the drag state. Called on commit
+    // (mouseup) and defensively when a new gesture starts.
+    const clearCssMove = (): void => {
+        if (cssMoveNode) {
+            cssMoveNode.style.transform = ''
+            cssMoveNode.style.willChange = ''
+        }
+        if (cssMoveChrome) {
+            cssMoveChrome.node.style.transform = ''
+            cssMoveChrome.node.style.willChange = ''
+        }
+        cssMoveActive = false
+        cssMoveEl = null
+        cssMoveNode = null
+        cssMoveChrome = null
+    }
     let drawShapeType: string | null = null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let drawShapeProps: any = null
@@ -2132,11 +2179,13 @@ function addZUI(
 
         // Clean up orphaned draw state from an interrupted drag
         // (e.g. user moved cursor outside canvas and released mouse there)
-        if (previewShape) {
-            two.remove(previewShape)
-            two.update()
-            previewShape = null
+        if (drawPreviewActive) {
+            removeDrawPreview()
+            drawPreviewActive = false
         }
+        // Defensive: a prior move-drag whose mouseup was missed (released off
+        // canvas) would leave a stale CSS transform — clear it before a new one.
+        if (cssMoveActive) clearCssMove()
         if (drawOrigin) {
             drawOrigin = null
             drawCurrentCoords = null
@@ -2323,36 +2372,28 @@ function addZUI(
                 localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)
                 localStorage.removeItem(PENDING_SHAPE_PROPS_KEY)
 
-                if (drawShapeType === 'circle') {
-                    previewShape = two.makeEllipse(
-                        surfaceCoords.x,
-                        surfaceCoords.y,
-                        0,
-                        0
+                // Preview lives on a DOM overlay, positioned in client coords —
+                // it never enters the scene, so the drag never repaints the SVG.
+                if (
+                    drawShapeType === 'circle' ||
+                    drawShapeType === 'rectangle' ||
+                    drawShapeType === 'diamond'
+                ) {
+                    drawScreenOriginX = e.clientX
+                    drawScreenOriginY = e.clientY
+                    drawPreviewActive = true
+                    createDrawPreview(drawShapeType as DrawPreviewKind, {
+                        fill: drawShapeProps?.fill || '#fff',
+                        stroke: drawShapeProps?.stroke || SHAPE_DEFAULT_STROKE,
+                        linewidth: drawShapeProps?.linewidth || 1,
+                        opacity: DEFAULT_PREVIEW_OPACITY,
+                    })
+                    updateDrawPreview(
+                        e.clientX,
+                        e.clientY,
+                        e.clientX,
+                        e.clientY
                     )
-                } else if (drawShapeType === 'rectangle') {
-                    previewShape = two.makeRoundedRectangle(
-                        surfaceCoords.x,
-                        surfaceCoords.y,
-                        0,
-                        0,
-                        3
-                    )
-                } else if (drawShapeType === 'diamond') {
-                    previewShape = createDiamondPath(two, 0, 0, 6)
-                    previewShape.translation.set(
-                        surfaceCoords.x,
-                        surfaceCoords.y
-                    )
-                }
-
-                if (previewShape) {
-                    previewShape.fill = drawShapeProps?.fill || '#fff'
-                    previewShape.stroke =
-                        drawShapeProps?.stroke || SHAPE_DEFAULT_STROKE
-                    previewShape.linewidth = drawShapeProps?.linewidth || 1
-                    previewShape.opacity = DEFAULT_PREVIEW_OPACITY
-                    two.update()
                 }
 
                 domElement.addEventListener('mousemove', mousemove, false)
@@ -2675,6 +2716,9 @@ function addZUI(
     }
 
     function mousemove(e: MouseEvent) {
+        // Set when this frame moved a selected element via CSS transform (no
+        // scene render) — used to skip the full-scene two.update() at the end.
+        let didCssMove = false
         // Pan-mode (desktop): translate the surface by the per-frame mouse
         // delta. Mirrors the single-finger touch pan in touchmove.
         if (isMousePanning) {
@@ -2786,17 +2830,15 @@ function addZUI(
                     y: surfaceCoordsMove.y,
                 }
 
-                const drawWidth = Math.abs(surfaceCoordsMove.x - drawOrigin.x)
-                const drawHeight = Math.abs(surfaceCoordsMove.y - drawOrigin.y)
-                const centerX = (surfaceCoordsMove.x + drawOrigin.x) / 2
-                const centerY = (surfaceCoordsMove.y + drawOrigin.y) / 2
-
-                if (previewShape) {
-                    previewShape.translation.x = centerX
-                    previewShape.translation.y = centerY
-                    previewShape.width = drawWidth
-                    previewShape.height = drawHeight
-                    two.update()
+                // Grow the DOM overlay from client coords — O(1), no two.update(),
+                // so the scene SVG is never touched during the drag.
+                if (drawPreviewActive) {
+                    updateDrawPreview(
+                        drawScreenOriginX,
+                        drawScreenOriginY,
+                        e.clientX,
+                        e.clientY
+                    )
                 }
                 break
             }
@@ -3042,11 +3084,58 @@ function addZUI(
                         }
                         // code block condition to handle normal component's dragging
                         else {
-                            shape.position.x += dx / zui.scale
-                            shape.position.y += dy / zui.scale
-                            // Drag any connector tails/heads pinned to this
-                            // shape's ports along with it.
-                            reanchorArrowsForShape(shape)
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const node = (shape as any)._renderer
+                                ?.elem as SVGGraphicsElement | undefined
+                            // CSS-transform move: eligible for non-rotated,
+                            // non-group elements. Rotated shapes and groups keep
+                            // the legacy position-mutate + full-render path.
+                            const eligible =
+                                !!node &&
+                                !shape.rotation &&
+                                shape.elementData?.componentType !==
+                                    GROUP_COMPONENT
+                            if (eligible) {
+                                if (!cssMoveActive) {
+                                    cssMoveActive = true
+                                    cssMoveEl = shape
+                                    cssMoveNode = node!
+                                    cssMoveBaseX = shape.position.x
+                                    cssMoveBaseY = shape.position.y
+                                    cssMoveLastDxWorld = 0
+                                    cssMoveLastDyWorld = 0
+                                    node!.style.willChange = 'transform'
+                                    // Move the selection box in lockstep so it
+                                    // stays glued to the element during the drag.
+                                    cssMoveChrome =
+                                        selectionController.getChromeDragHandle(
+                                            shape
+                                        )
+                                    if (cssMoveChrome) {
+                                        cssMoveChrome.node.style.willChange =
+                                            'transform'
+                                    }
+                                }
+                                cssMoveLastDxWorld += dx / zui.scale
+                                cssMoveLastDyWorld += dy / zui.scale
+                                cssMoveNode!.style.transform = `translate(${
+                                    cssMoveBaseX + cssMoveLastDxWorld
+                                }px, ${cssMoveBaseY + cssMoveLastDyWorld}px)`
+                                if (cssMoveChrome) {
+                                    cssMoveChrome.node.style.transform = `translate(${
+                                        cssMoveChrome.baseX + cssMoveLastDxWorld
+                                    }px, ${
+                                        cssMoveChrome.baseY + cssMoveLastDyWorld
+                                    }px)`
+                                }
+                                didCssMove = true
+                            } else {
+                                shape.position.x += dx / zui.scale
+                                shape.position.y += dy / zui.scale
+                                // Drag any connector tails/heads pinned to this
+                                // shape's ports along with it.
+                                reanchorArrowsForShape(shape)
+                            }
                         }
                     } else if (shape.elementData.isGroupSelector) {
                         // this blocks falls for the case when user has clicked and
@@ -3066,12 +3155,31 @@ function addZUI(
                         two.update()
                     }
                     mouse.set(e.clientX, e.clientY)
-                    two.update()
+                    // A CSS-transform move-drag repaints nothing in the scene, so
+                    // skip the full-scene render this frame — that's the whole win.
+                    if (!didCssMove) two.update()
                 }
         }
     }
 
     function mouseup(e: MouseEvent) {
+        // Commit a CSS-transform move-drag: write the accumulated delta into the
+        // element's real Two.js position, clear the live CSS transforms, then let
+        // the normal move/persist/history path below run (it reads the committed
+        // translation, sees the move, and persists + records it as usual).
+        if (cssMoveActive) {
+            const el = cssMoveEl
+            const finalX = cssMoveBaseX + cssMoveLastDxWorld
+            const finalY = cssMoveBaseY + cssMoveLastDyWorld
+            clearCssMove()
+            if (el) {
+                el.position.x = finalX
+                el.position.y = finalY
+                reanchorArrowsForShape(el)
+                selectionController.syncToTarget()
+                two.update()
+            }
+        }
         // Pan-mode (desktop): end the grab-drag, restore the grab cursor and
         // detach the on-demand listeners. Persist the viewport like the wheel.
         if (isMousePanning) {
@@ -3236,8 +3344,7 @@ function addZUI(
                     (drawOrigin.y + endCoords.y) / 2
                 )
 
-                const capturedPreview = previewShape
-                previewShape = null
+                drawPreviewActive = false
 
                 const finalId = generateUUID()
                 const finalShapeData = {
@@ -3261,10 +3368,9 @@ function addZUI(
                 // immediately — a visual cue to new users that the freshly drawn shape is editable.
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const finishPlacement = (el?: any) => {
-                    if (capturedPreview) {
-                        two.remove(capturedPreview)
-                        two.update()
-                    }
+                    // Keep the overlay up until the real element has rendered so
+                    // there's no blank flash, then drop it.
+                    removeDrawPreview()
                     if (el) selectionController.attach(el)
                 }
                 pollUntilElement(two, finalId, finishPlacement, {
