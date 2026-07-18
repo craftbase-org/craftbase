@@ -6,7 +6,7 @@ export const GROUP_COMPONENT = 'groupobject'
 // Fonts <link> in index.html. Every canvas-text fallback
 // (`family || DEFAULT_TEXT_FONT_FAMILY`) references this so the default lives in
 // exactly one place — including the welcome sketch (`SKETCH_FONT`).
-export const DEFAULT_TEXT_FONT_FAMILY = 'Caveat'
+export const DEFAULT_TEXT_FONT_FAMILY = 'Caveat Brush'
 
 export const RUBBER_MODE_KEY = 'rubberMode'
 export const VIEWPORT_KEY_PREFIX = 'craftbase_viewport_'
