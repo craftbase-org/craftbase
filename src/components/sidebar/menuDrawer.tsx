@@ -95,6 +95,31 @@ const DownloadIcon = (): ReactElement => (
     </svg>
 )
 
+const UploadIcon = (): ReactElement => (
+    <svg
+        width="14"
+        height="14"
+        viewBox="0 0 14 14"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        <path
+            d="M7 8.5v-7M4 4.5L7 1.5l3 3"
+            stroke="#8C7E6A"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <path
+            d="M2 9.5v1.5a1 1 0 001 1h8a1 1 0 001-1V9.5"
+            stroke="#8C7E6A"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </svg>
+)
+
 const MenuDrawer = (): ReactElement => {
     const refNode = useRef<HTMLDivElement | null>(null)
     const [showMenu, setShowMenu] = useState(false)
@@ -103,8 +128,13 @@ const MenuDrawer = (): ReactElement => {
     const [showShortcuts, setShowShortcuts] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
     const [showExportSubmenu, setShowExportSubmenu] = useState(false)
-    const { clearBoard, stateRefForComponentStore, twoJSInstance } =
-        useBoardContext()
+    const [showImportSubmenu, setShowImportSubmenu] = useState(false)
+    const {
+        clearBoard,
+        stateRefForComponentStore,
+        twoJSInstance,
+        beginBoardImport,
+    } = useBoardContext()
 
     useEffect(() => {
         const handleClick = (e: MouseEvent): void => {
@@ -117,10 +147,13 @@ const MenuDrawer = (): ReactElement => {
         }
     }, [])
 
-    // Collapse the export flyout whenever the menu itself closes, so it never
-    // lingers open on the next menu open (covers outside-click + toggle paths).
+    // Collapse the export/import flyouts whenever the menu itself closes, so
+    // neither lingers open on the next menu open (covers outside-click + toggle).
     useEffect(() => {
-        if (!showMenu) setShowExportSubmenu(false)
+        if (!showMenu) {
+            setShowExportSubmenu(false)
+            setShowImportSubmenu(false)
+        }
     }, [showMenu])
 
     const handleClearClick = (): void => {
@@ -164,6 +197,13 @@ const MenuDrawer = (): ReactElement => {
         exportBoardAsJson(stateRefForComponentStore.current, viewport)
         setShowExportSubmenu(false)
         setShowMenu(false)
+    }
+
+    const handleImportJson = (): void => {
+        setShowImportSubmenu(false)
+        setShowMenu(false)
+        // board.tsx owns the file-pick → parse → chooser flow.
+        beginBoardImport()
     }
 
     const handleConfirmClear = (): void => {
@@ -368,9 +408,10 @@ const MenuDrawer = (): ReactElement => {
                                     hover:bg-accent/50 rounded cursor-pointer
                                     transition-colors ease-in-out duration-150"
                                 style={{ width: 'calc(100% - 8px)' }}
-                                onClick={(): void =>
+                                onClick={(): void => {
+                                    setShowImportSubmenu(false)
                                     setShowExportSubmenu((prev) => !prev)
-                                }
+                                }}
                             >
                                 <span className="flex items-center gap-2.5">
                                     <DownloadIcon />
@@ -408,6 +449,58 @@ const MenuDrawer = (): ReactElement => {
                                         disabled
                                     >
                                         <span>Export as SVG</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="relative">
+                            <button
+                                className="flex items-center justify-between gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                    hover:bg-accent/50 rounded cursor-pointer
+                                    transition-colors ease-in-out duration-150"
+                                style={{ width: 'calc(100% - 8px)' }}
+                                onClick={(): void => {
+                                    setShowExportSubmenu(false)
+                                    setShowImportSubmenu((prev) => !prev)
+                                }}
+                            >
+                                <span className="flex items-center gap-2.5">
+                                    <UploadIcon />
+                                    <span>Import board</span>
+                                </span>
+                                <ChevronRightIcon
+                                    className="w-3.5 h-3.5"
+                                    stroke="currentColor"
+                                    color="currentColor"
+                                    aria-hidden="true"
+                                />
+                            </button>
+
+                            {showImportSubmenu && (
+                                <div
+                                    className="absolute top-0 bg-card-bg border border-border-panel
+                                        rounded-lg shadow-lg py-1 w-max min-w-[152px] z-[101]"
+                                    style={{ left: '100%' }}
+                                >
+                                    <button
+                                        className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                            hover:bg-accent/50 rounded cursor-pointer
+                                            transition-colors ease-in-out duration-150"
+                                        style={{ width: 'calc(100% - 8px)' }}
+                                        onClick={handleImportJson}
+                                    >
+                                        <span>Import JSON</span>
+                                    </button>
+                                    <button
+                                        className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                            rounded transition-colors ease-in-out duration-150
+                                            disabled:opacity-50 disabled:cursor-default"
+                                        style={{ width: 'calc(100% - 8px)' }}
+                                        title="Coming soon"
+                                        disabled
+                                    >
+                                        <span>Import SVG</span>
                                     </button>
                                 </div>
                             )}

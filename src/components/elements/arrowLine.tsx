@@ -17,6 +17,7 @@ import {
     attachStrokeCounterScale,
 } from '../../utils/handleScale'
 import { useMediaQueryUtils } from '../../constants/exportHooks'
+import { scheduleRender } from '../../utils/renderScheduler'
 
 // Clickable band width (screen px) around the line, held constant at any zoom so
 // the line stays easy to select even at 10%.
@@ -87,6 +88,7 @@ function ArrowLine(props: ElementProps): ReactElement {
     }
 
     useEffect(() => {
+        let mountCancelled = false
         let hitAreaObserver: MutationObserver | null = null
         let detachHandleScale: (() => void) | null = null
         let detachHitScale: (() => void) | null = null
@@ -102,12 +104,8 @@ function ArrowLine(props: ElementProps): ReactElement {
             linewidth: props.linewidth,
             isMobile,
         })
-        const {
-            group,
-            pointCircle1Group,
-            pointCircle2Group,
-            line,
-        } = elementFactory.createElement()
+        const { group, pointCircle1Group, pointCircle2Group, line } =
+            elementFactory.createElement()
         group.elementData = { ...props.itemData, ...props }
         line.opacity = readOpacity(props)
         if (props.stroke) line.stroke = props.stroke
@@ -116,7 +114,7 @@ function ArrowLine(props: ElementProps): ReactElement {
         if (props.parentGroup) {
             const parentGroup = props.parentGroup
             parentGroup.add(group)
-            two.update()
+            scheduleRender(two)
         } else {
             groupObject = group
             stateRefForGroup.current = group
@@ -124,8 +122,6 @@ function ArrowLine(props: ElementProps): ReactElement {
                 pointCircle1Group,
                 pointCircle2Group,
             }
-
-            two.update()
 
             // Hold the endpoint circles at a constant on-screen size so they
             // stay grabbable when zoomed far out (else ~0.8px at 20%).
@@ -135,79 +131,97 @@ function ArrowLine(props: ElementProps): ReactElement {
                 two?.scene?.scale ?? 1
             )
 
-            const lineDomElem = document.getElementById(line.id)
-            if (lineDomElem) {
-                const HIT_INSET = 20
-                const hitElem = document.createElementNS(
-                    'http://www.w3.org/2000/svg',
-                    'line'
-                )
-                hitElem.setAttribute('stroke', 'transparent')
-                hitElem.setAttribute('pointer-events', 'stroke')
-                // Match the selection controller's body cursor (a drag zone).
-                hitElem.style.cursor = 'move'
+            // Every DOM read below needs the rendered SVG nodes, which only
+            // exist after a render. Batch that render with every other element
+            // mounting this frame — a synchronous two.update() per element made
+            // mounting a board O(N²). `mountCancelled` guards an unmount before
+            // the frame fires, so we never observe/bind a node already gone.
+            scheduleRender(two, () => {
+                if (mountCancelled) return
 
-                const syncHitLine = (): void => {
-                    const v0 = line.vertices[0]
-                    const v1 = line.vertices[1]
-                    const dx = v1.x - v0.x
-                    const dy = v1.y - v0.y
-                    const len = Math.sqrt(dx * dx + dy * dy)
-                    if (len < HIT_INSET * 2 + 5) return
-                    const r = HIT_INSET / len
-                    hitElem.setAttribute('x1', String(v0.x + dx * r))
-                    hitElem.setAttribute('y1', String(v0.y + dy * r))
-                    hitElem.setAttribute('x2', String(v1.x - dx * r))
-                    hitElem.setAttribute('y2', String(v1.y - dy * r))
+                const lineDomElem = document.getElementById(line.id)
+                if (lineDomElem) {
+                    const HIT_INSET = 20
+                    const hitElem = document.createElementNS(
+                        'http://www.w3.org/2000/svg',
+                        'line'
+                    )
+                    hitElem.setAttribute('stroke', 'transparent')
+                    hitElem.setAttribute('pointer-events', 'stroke')
+                    // Match the selection controller's body cursor (a drag zone).
+                    hitElem.style.cursor = 'move'
+
+                    const syncHitLine = (): void => {
+                        const v0 = line.vertices[0]
+                        const v1 = line.vertices[1]
+                        const dx = v1.x - v0.x
+                        const dy = v1.y - v0.y
+                        const len = Math.sqrt(dx * dx + dy * dy)
+                        if (len < HIT_INSET * 2 + 5) return
+                        const r = HIT_INSET / len
+                        hitElem.setAttribute('x1', String(v0.x + dx * r))
+                        hitElem.setAttribute('y1', String(v0.y + dy * r))
+                        hitElem.setAttribute('x2', String(v1.x - dx * r))
+                        hitElem.setAttribute('y2', String(v1.y - dy * r))
+                    }
+
+                    syncHitLine()
+                    lineDomElem.parentNode?.insertBefore(hitElem, lineDomElem)
+                    hitAreaObserver = new MutationObserver(syncHitLine)
+                    hitAreaObserver.observe(lineDomElem, {
+                        attributes: true,
+                        attributeFilter: ['d'],
+                    })
+                    // Keep the clickable band a constant screen width at any zoom.
+                    detachHitScale = attachStrokeCounterScale(
+                        (w) => hitElem.setAttribute('stroke-width', String(w)),
+                        HIT_BAND_PX,
+                        two,
+                        two?.scene?.scale ?? 1
+                    )
                 }
 
-                syncHitLine()
-                lineDomElem.parentNode?.insertBefore(hitElem, lineDomElem)
-                hitAreaObserver = new MutationObserver(syncHitLine)
-                hitAreaObserver.observe(lineDomElem, {
-                    attributes: true,
-                    attributeFilter: ['d'],
-                })
-                // Keep the clickable band a constant screen width at any zoom.
-                detachHitScale = attachStrokeCounterScale(
-                    (w) => hitElem.setAttribute('stroke-width', String(w)),
-                    HIT_BAND_PX,
-                    two,
-                    two?.scene?.scale ?? 1
-                )
-            }
+                // Show the `move` cursor over the line + endpoint circles, matching
+                // the selection controller's body cursor for other shapes. Inline so
+                // it beats the base `.dragger-picker { cursor: pointer }` rule, but
+                // still yields to the `!important` draw/pan-mode cursor overrides.
+                const lineEl = document.getElementById(line.id)
+                if (lineEl) lineEl.style.cursor = 'move'
+                const p1El = document.getElementById(pointCircle1Group.id)
+                if (p1El) {
+                    p1El.style.cursor = 'move'
+                    p1El.setAttribute('class', 'dragger-picker is-line-circle')
+                    p1El.setAttribute('data-parent-id', group.id)
+                    p1El.setAttribute('data-line-id', line.id)
+                    p1El.setAttribute('data-direction', 'left')
+                }
+                const p2El = document.getElementById(pointCircle2Group.id)
+                if (p2El) {
+                    p2El.style.cursor = 'move'
+                    p2El.setAttribute('class', 'dragger-picker is-line-circle')
+                    p2El.setAttribute('data-parent-id', group.id)
+                    p2El.setAttribute('data-line-id', line.id)
+                    p2El.setAttribute('data-direction', 'right')
+                }
+                const groupEl = document.getElementById(group.id)
+                if (groupEl) {
+                    groupEl.setAttribute('class', 'dragger-picker')
+                    groupEl.setAttribute('data-component-id', props.id)
+                    groupEl.setAttribute(
+                        'data-linewidth',
+                        String(props.linewidth ?? '')
+                    )
+                }
 
-            // Show the `move` cursor over the line + endpoint circles, matching
-            // the selection controller's body cursor for other shapes. Inline so
-            // it beats the base `.dragger-picker { cursor: pointer }` rule, but
-            // still yields to the `!important` draw/pan-mode cursor overrides.
-            const lineEl = document.getElementById(line.id)
-            if (lineEl) lineEl.style.cursor = 'move'
-            const p1El = document.getElementById(pointCircle1Group.id)
-            if (p1El) {
-                p1El.style.cursor = 'move'
-                p1El.setAttribute('class', 'dragger-picker is-line-circle')
-                p1El.setAttribute('data-parent-id', group.id)
-                p1El.setAttribute('data-line-id', line.id)
-                p1El.setAttribute('data-direction', 'left')
-            }
-            const p2El = document.getElementById(pointCircle2Group.id)
-            if (p2El) {
-                p2El.style.cursor = 'move'
-                p2El.setAttribute('class', 'dragger-picker is-line-circle')
-                p2El.setAttribute('data-parent-id', group.id)
-                p2El.setAttribute('data-line-id', line.id)
-                p2El.setAttribute('data-direction', 'right')
-            }
-            const groupEl = document.getElementById(group.id)
-            if (groupEl) {
-                groupEl.setAttribute('class', 'dragger-picker')
-                groupEl.setAttribute('data-component-id', props.id)
-                groupEl.setAttribute(
-                    'data-linewidth',
-                    String(props.linewidth ?? '')
+                const getGroupElementFromDOM = document.getElementById(
+                    `${group.id}`
                 )
-            }
+                getGroupElementFromDOM?.addEventListener(
+                    'focus',
+                    onFocusHandler
+                )
+                getGroupElementFromDOM?.addEventListener('blur', onBlurHandler)
+            })
 
             setInternalState((draft) => {
                 draft.element = {
@@ -228,15 +242,10 @@ function ArrowLine(props: ElementProps): ReactElement {
                 draft.text = { data: {} }
                 draft.icon = { data: {} }
             })
-
-            const getGroupElementFromDOM = document.getElementById(
-                `${group.id}`
-            )
-            getGroupElementFromDOM?.addEventListener('focus', onFocusHandler)
-            getGroupElementFromDOM?.addEventListener('blur', onBlurHandler)
         }
 
         return (): void => {
+            mountCancelled = true
             hitAreaObserver?.disconnect()
             detachHandleScale?.()
             detachHitScale?.()
@@ -252,7 +261,7 @@ function ArrowLine(props: ElementProps): ReactElement {
             groupInstance.translation.x = props.x
             groupInstance.translation.y = props.y
             lineInstance.opacity = readOpacity(props)
-            two.update()
+            scheduleRender(two)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.x, props.y, props.metadata])
@@ -263,7 +272,7 @@ function ArrowLine(props: ElementProps): ReactElement {
             if (props.stroke) lineInstance.stroke = props.stroke
             if (props.linewidth) lineInstance.linewidth = props.linewidth
             lineInstance.dashes = strokeTypeToDashes(props.strokeType)
-            two.update()
+            scheduleRender(two)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.stroke, props.linewidth, props.strokeType])

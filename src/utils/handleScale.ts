@@ -10,6 +10,8 @@
 // per-handle drag listeners).
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+import { scheduleRender } from './renderScheduler'
+
 type ShapeLike = any
 
 // Set each handle's uniform scale to cancel the current camera zoom.
@@ -40,9 +42,12 @@ export function attachStrokeCounterScale(
         if (!Number.isFinite(scale) || scale <= 0) return
         apply(basePx / scale)
     }
-    // Seed once (mount-time, off the hot path) — this single update is fine.
+    // Seed once at mount. Batched, NOT a direct two.update(): every line/arrow
+    // seeds on mount, so a synchronous render here is one full O(scene) render
+    // per element — O(N²) across a board load. scheduleRender coalesces them
+    // all into a single render for the frame.
     set(initialScale || 1)
-    two.update()
+    scheduleRender(two)
     // On zoom, ONLY mutate — never call two.update() here. The camera's wheel
     // handler dispatches `zoomChanged` synchronously and then calls two.update()
     // exactly once, which paints every listener's mutation in a single render.
@@ -68,9 +73,10 @@ export function attachHandleCounterScale(
     two: ShapeLike,
     initialScale: number
 ): () => void {
-    // Seed once (mount-time, off the hot path) — this single update is fine.
+    // Seed once at mount — batched for the same reason as above: one sync render
+    // per mounting element is O(N²) across a board load.
     applyHandleCounterScale(handles, initialScale || 1)
-    two.update()
+    scheduleRender(two)
     // On zoom, ONLY mutate — never call two.update() here. The camera's wheel
     // handler calls two.update() once after dispatching `zoomChanged`, painting
     // every listener's mutation in a single render. A per-listener update would

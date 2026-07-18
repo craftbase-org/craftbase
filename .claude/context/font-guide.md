@@ -2,42 +2,54 @@
 
 ## Font Stack
 
-| Font           | Role                                     | Import                    |
-| -------------- | ---------------------------------------- | ------------------------- |
-| **Geist**      | UI chrome, all app interface text        | Google Fonts / Vercel CDN |
-| **Geist Mono** | Numeric values, coordinates, hex codes   | Google Fonts / Vercel CDN |
-| **Fraunces**   | Branding, headings, display text         | Google Fonts              |
-| **Caveat**     | Canvas sketch elements (user-selectable) | Google Fonts              |
+| Font             | Role                                                          | Import                    |
+| ---------------- | ------------------------------------------------------------- | ------------------------- |
+| **Geist**        | UI chrome, all app interface text                             | Google Fonts / Vercel CDN |
+| **Geist Mono**   | Numeric values, coordinates, hex codes                        | Google Fonts / Vercel CDN |
+| **Fraunces**     | Branding, headings, display text                              | Google Fonts              |
+| **Caveat Brush** | Canvas text — the **default** for anything drawn on the board | Google Fonts              |
+| **Caveat**       | Canvas text — alternate, user-selectable                      | Google Fonts              |
+
+> **Canvas ≠ app chrome.** The app UI defaults to Geist; the _canvas_ defaults to
+> Caveat Brush. Don't collapse the two — see §5.
 
 ---
 
 ## Import (Google Fonts)
 
-Add this to your root `index.html` or global CSS file:
+This is the live link in `index.html` — keep it in sync when adding a family:
 
 ```html
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400&family=Caveat:wght@400;600&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=Caveat+Brush&display=swap"
     rel="stylesheet"
 />
 ```
+
+> **Caveat Brush ships regular (400) only** — it has no bold cut. Asking for
+> bold canvas text gets browser-synthesized fake bold, not a real weight.
 
 ---
 
 ## CSS Variables (Design Tokens)
 
-Define these in your `:root` or Tailwind config:
+Defined in `src/App.css`:
 
 ```css
 :root {
     --font-ui: 'Geist', system-ui, sans-serif;
     --font-mono: 'Geist Mono', monospace;
     --font-display: 'Fraunces', Georgia, serif;
-    --font-sketch: 'Caveat', cursive;
+    --font-sketch: 'Caveat Brush', cursive;
+    --font-caveat-brush: 'Caveat Brush', cursive;
 }
 ```
+
+`--font-sketch` (the _role_) and `--font-caveat-brush` (the _family_) currently
+resolve to the same stack. Keep both named — the role token is what moves if the
+canvas default ever changes again.
 
 ### Tailwind Config (`tailwind.config.js`)
 
@@ -46,9 +58,24 @@ fontFamily: {
     ui:      ['Geist', 'system-ui', 'sans-serif'],
     mono:    ['Geist Mono', 'monospace'],
     display: ['Fraunces', 'Georgia', 'serif'],
-    sketch:  ['Caveat', 'cursive'],
+    sketch:  ['Caveat Brush', 'cursive'],
 },
 ```
+
+### The canvas default lives in TypeScript, not CSS
+
+Canvas text is rendered by Two.js (`twoText.family = …`), so it reads a JS
+constant rather than a CSS variable:
+
+```ts
+// src/constants/misc.ts — single source of truth
+export const DEFAULT_TEXT_FONT_FAMILY = 'Caveat Brush'
+```
+
+Every canvas-text fallback is written `family || DEFAULT_TEXT_FONT_FAMILY`, and
+`useElementDefaults` seeds `defaultTextFontFamily` from it. **Changing the canvas
+default means changing this constant** — then keeping `--font-sketch`, the
+Tailwind `sketch` token, and the `index.html` link in step with it.
 
 ---
 
@@ -79,7 +106,7 @@ button {
 ;<div className="font-ui text-sm font-medium">Stroke Width</div>
 ```
 
-> **Rule:** Never use Fraunces, Geist Mono, or Caveat anywhere inside the toolbar or sidebar. Geist only.
+> **Rule:** Never use Fraunces, Geist Mono, Caveat, or Caveat Brush anywhere inside the toolbar or sidebar. Geist only.
 
 ---
 
@@ -171,44 +198,47 @@ button {
 
 ### 5. Canvas — Default Text Elements
 
-**Font:** Geist  
-**When:** Text boxes, sticky notes, and labels that users place on the canvas by default.
+**Font:** Caveat Brush  
+**When:** Anything the user draws on the board — standalone text elements, text
+typed inside a shape, arrow labels. Also the welcome sketch (`welcomeSketch.ts`
+sets `SKETCH_FONT = DEFAULT_TEXT_FONT_FAMILY`).
 
-```css
-/* CSS */
-.canvas-text-element {
-    font-family: var(--font-ui);
-    font-size: 14px;
-    font-weight: 400;
-}
+Canvas text isn't styled by CSS classes — Two.js sets the family on the text node
+directly, so the default flows from the constant:
+
+```ts
+import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
+
+twoText.family = textFontFamily ?? DEFAULT_TEXT_FONT_FAMILY // 'Caveat Brush'
 ```
 
-> Keep canvas defaults neutral so the user's content stays in focus. Geist is clean and readable at any zoom level.
+> **Why handwritten by default?** The canvas is a sketching surface — a
+> handwritten face signals "this is a draft, move things around" in a way a
+> neutral UI font doesn't. That's a deliberate product choice, not an oversight:
+> the canvas and the app chrome are meant to feel like different materials.
 
 ---
 
-### 6. Canvas — Sketch / Handwritten Style (User-selectable)
+### 6. Canvas — Switching Fonts (User-selectable)
 
-**Font:** Caveat  
-**When:** User explicitly switches a text element to "sketch" style. Great for annotations, arrow labels, sticky notes in brainstorm mode.
+Users change the font of a selected element from the properties panel
+(`elementProperties.tsx`). The picker currently offers exactly three:
 
-```css
-/* CSS */
-.canvas-text-element.sketch {
-    font-family: var(--font-sketch);
-    font-size: 16px; /* Caveat needs slightly larger size to read well */
-    font-weight: 400;
-}
-```
+| Option           | Feel                                            |
+| ---------------- | ----------------------------------------------- |
+| **Caveat Brush** | Default — brushy, higher-contrast handwriting   |
+| **Caveat**       | Lighter, more legible handwriting               |
+| **Geist**        | Neutral — for diagrams that must read as formal |
 
-```jsx
-{
-    /* Tailwind */
-}
-;<span className="font-sketch text-base">This is a sketch annotation</span>
-```
+Picking a font is **universal, not per-element**: `board.tsx` calls
+`setDefaultTextFontFamily(fontFamily)` on change, so every element created
+afterward inherits it. Changing it also triggers
+`reflowShapeTextAfterStyleChange` — families have different metrics, so shape
+text must re-wrap and the shape may need to grow.
 
-> **Note:** Caveat should never appear in the app UI. It's a canvas-only, user-triggered font. Treat it like a tool, not a default.
+> Existing elements store their family in `metadata.textFontFamily`. Changing
+> `DEFAULT_TEXT_FONT_FAMILY` is **not** retroactive — saved elements keep the
+> family they were created with.
 
 ---
 
@@ -232,27 +262,29 @@ button {
 
 ## Quick Reference Cheatsheet
 
-| Area                      | Font       | Weight    | Style  |
-| ------------------------- | ---------- | --------- | ------ |
-| Toolbar, sidebar, menus   | Geist      | 400 / 500 | Normal |
-| Input fields, labels      | Geist      | 400       | Normal |
-| Coordinates, dimensions   | Geist Mono | 400       | Normal |
-| Hex colors, percentages   | Geist Mono | 400       | Normal |
-| Zoom level, status bar    | Geist Mono | 400 / 500 | Normal |
-| Logo / wordmark           | Fraunces   | 600       | Normal |
-| Landing page hero         | Fraunces   | 600       | Normal |
-| App modal / panel titles  | Fraunces   | 400       | Normal |
-| Empty states, microcopy   | Fraunces   | 400       | Italic |
-| Canvas text (default)     | Geist      | 400       | Normal |
-| Canvas text (sketch mode) | Caveat     | 400       | Normal |
+| Area                     | Font           | Weight    | Style  |
+| ------------------------ | -------------- | --------- | ------ |
+| Toolbar, sidebar, menus  | Geist          | 400 / 500 | Normal |
+| Input fields, labels     | Geist          | 400       | Normal |
+| Coordinates, dimensions  | Geist Mono     | 400       | Normal |
+| Hex colors, percentages  | Geist Mono     | 400       | Normal |
+| Zoom level, status bar   | Geist Mono     | 400 / 500 | Normal |
+| Logo / wordmark          | Fraunces       | 600       | Normal |
+| Landing page hero        | Fraunces       | 600       | Normal |
+| App modal / panel titles | Fraunces       | 400       | Normal |
+| Empty states, microcopy  | Fraunces       | 400       | Italic |
+| Canvas text (default)    | Caveat Brush   | 400       | Normal |
+| Canvas text (alternates) | Caveat / Geist | 400       | Normal |
 
 ---
 
 ## What to Avoid
 
-- **Don't mix Fraunces and Caveat** in the same area — they're both expressive and will clash.
-- **Don't use Caveat in UI chrome** — it signals "rough draft" which is wrong for navigation and controls.
+- **Don't mix Fraunces and the Caveats** in the same area — they're both expressive and will clash.
+- **Don't use Caveat or Caveat Brush in UI chrome** — they signal "rough draft", which is wrong for navigation and controls. Handwritten faces are canvas-only.
 - **Don't use Geist for branding** — it's invisible by design, which is a liability for identity.
+- **Don't hard-code `'Caveat Brush'` at a call site** — reference `DEFAULT_TEXT_FONT_FAMILY` so the default stays swappable in one place.
+- **Don't ask Caveat Brush for bold** — it has no bold cut; you'll get fake bold.
 - **Don't use Fraunces below 14px** — its optical sizing works best at display and heading sizes.
 - **Don't use Geist Mono for labels or headings** — it's data-only; used elsewhere it feels cold and technical.
 - **Don't use Geist Mono on the canvas** — canvas text should feel human, not like a terminal.
