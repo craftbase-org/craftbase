@@ -619,16 +619,19 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     // the write-side guard revert a too-large import is what froze the page —
     // so gate here (against the browser's REAL localStorage quota) and keep the
     // modal in its error state instead.
-    const rejectIfWontFit = useCallback((projected: ComponentStore): boolean => {
-        if (draftFitsForStore(projected)) return false
-        setImportError(
-            "This board is too large to fit in this browser's local storage. " +
-                'Browsers store canvas text at roughly twice its file size and ' +
-                'cap local storage near 5 MB, so very large boards can’t be ' +
-                'saved locally. Try a smaller board, or split it across canvases.'
-        )
-        return true
-    }, [])
+    const rejectIfWontFit = useCallback(
+        (projected: ComponentStore): boolean => {
+            if (draftFitsForStore(projected)) return false
+            setImportError(
+                "This board is too large to fit in this browser's local storage. " +
+                    'Browsers store canvas text at roughly twice its file size and ' +
+                    'cap local storage near 5 MB, so very large boards can’t be ' +
+                    'saved locally. Try a smaller board, or split it across canvases.'
+            )
+            return true
+        },
+        []
+    )
 
     const handleImportOpenAsNew = useCallback(() => {
         const parsed = pendingImportRef.current
@@ -1601,8 +1604,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             node.translation.set(0, (i - (n - 1) / 2) * lineH)
         })
         const componentId = sel?.group?.data?.elementData?.id
-        const existingMetadata =
-            sel?.group?.data?.elementData?.metadata ?? {}
+        const existingMetadata = sel?.group?.data?.elementData?.metadata ?? {}
         const updatedMetadata = {
             ...existingMetadata,
             fontSize: textSize,
@@ -1711,8 +1713,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         const nodes = familyNodes.length > 0 ? familyNodes : [twoText]
         nodes.forEach((node) => (node.family = fontFamily))
         const componentId = sel?.group?.data?.elementData?.id
-        const existingMetadata =
-            sel?.group?.data?.elementData?.metadata ?? {}
+        const existingMetadata = sel?.group?.data?.elementData?.metadata ?? {}
         const updatedMetadata = {
             ...existingMetadata,
             textFontFamily: fontFamily,
@@ -2150,11 +2151,11 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                 onOpenAsNew={handleImportOpenAsNew}
                 onMerge={handleImportMerge}
             />
-            {!isPersisted && draftSizeBytes > 0 && (
+            {/* {!isPersisted && draftSizeBytes > 0 && (
                 <div
                     style={{
                         position: 'fixed',
-                        bottom: 20,
+                        bottom: 5,
                         right: 12,
                         zIndex: 10,
                     }}
@@ -2163,7 +2164,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                 >
                     Draft {formatDraftBytes(draftSizeBytes)}
                 </div>
-            )}
+            )} */}
         </>
     )
 }
