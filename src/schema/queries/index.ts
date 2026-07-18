@@ -11,6 +11,8 @@ import type {
     GetComponentInfoQueryQueryVariables,
     GetBoardComponentsQuery,
     GetBoardComponentsQueryVariables,
+    GetBoardComponentCountQuery,
+    GetBoardComponentCountQueryVariables,
 } from '../generated'
 
 export const GET_USER_DETAILS: TypedDocumentNode<
@@ -122,6 +124,21 @@ export const GET_BOARD_DATA_QUERY: TypedDocumentNode<
         ) {
             id
             componentType
+        }
+    }
+`
+
+export const GET_BOARD_COMPONENT_COUNT_QUERY: TypedDocumentNode<
+    GetBoardComponentCountQuery,
+    GetBoardComponentCountQueryVariables
+> = gql`
+    query getBoardComponentCount($boardId: uuid! = "") {
+        components: components_component_aggregate(
+            where: { boardId: { _eq: $boardId } }
+        ) {
+            aggregate {
+                count
+            }
         }
     }
 `

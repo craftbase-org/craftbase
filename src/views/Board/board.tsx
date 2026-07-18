@@ -94,6 +94,9 @@ import { useDrawingModes } from '../../hooks/useDrawingModes'
 import { useElementDefaults } from '../../hooks/useElementDefaults'
 import { useMobileToolbarPanels } from '../../hooks/useMobileToolbarPanels'
 import { useLocalDraftPersistence } from '../../hooks/useLocalDraftPersistence'
+import { useElementCountWarning } from '../../hooks/useElementCountWarning'
+import { PERFORMANCE_WARNING_THRESHOLD } from '../../utils/countBoardElements'
+import Toast from '../../components/common/toast'
 import {
     useComponentHistory,
     type HistoryEntry,
@@ -213,6 +216,13 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     })
 
     const [componentStore, setComponentStore] = useState<ComponentStore>({})
+
+    const { showPerfWarning, dismissPerfWarning } = useElementCountWarning({
+        componentStore,
+        isPersisted,
+        boardId,
+    })
+
     const [lastAddedElement, setLastAddedElement] =
         useState<ComponentRecord | null>(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2150,6 +2160,11 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                 skipped={pendingImportRef.current?.skipped}
                 onOpenAsNew={handleImportOpenAsNew}
                 onMerge={handleImportMerge}
+            />
+            <Toast
+                open={showPerfWarning}
+                onClose={dismissPerfWarning}
+                message={`This board has over ${PERFORMANCE_WARNING_THRESHOLD.toLocaleString()} elements — panning, zooming and editing may feel slow.`}
             />
             {/* {!isPersisted && draftSizeBytes > 0 && (
                 <div
