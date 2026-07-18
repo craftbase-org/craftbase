@@ -659,6 +659,23 @@ export default class SelectionController {
         this.two.update()
     }
 
+    // For CSS-transform move-drags: hand back the selection-chrome SVG node and
+    // its base position so the caller can translate the box in lockstep with the
+    // element (via a CSS transform) without a full-scene re-render. Returns null
+    // when nothing is selected or the chrome isn't mounted yet. `group` guards
+    // that the chrome actually belongs to the element being dragged.
+    getChromeDragHandle(
+        group: GroupLike
+    ): { node: SVGGraphicsElement; baseX: number; baseY: number } | null {
+        if (!this.currentGroup || this.currentGroup !== group) return null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const node = (this.ui as any)?._renderer?.elem as
+            | SVGGraphicsElement
+            | undefined
+        if (!node) return null
+        return { node, baseX: this.ui.position.x, baseY: this.ui.position.y }
+    }
+
     syncToTarget(): void {
         if (!this.currentGroup || !this.currentShape || !this.currentAdapter)
             return

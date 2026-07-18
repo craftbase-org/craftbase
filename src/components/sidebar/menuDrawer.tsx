@@ -4,12 +4,14 @@ import { Link } from 'react-router-dom'
 import routes from '../../routes'
 import { useBoardContext } from '../../views/Board/boardContext'
 import { downloadViewportAsImage } from '../../utils/exportViewport'
+import { exportBoardAsJson } from '../../utils/exportBoard'
 import Modal from '../common/modal'
 import Button from '../common/button'
 import SettingsModal from './settingsModal'
 import ShortcutsModal from './shortcutsModal'
 import SettingsIcon from '../../assets/settings.svg?react'
 import HelpIcon from '../../assets/help.svg?react'
+import ChevronRightIcon from '../../assets/chevron-right.svg?react'
 
 const HamburgerIcon = (): ReactElement => (
     <svg
@@ -93,6 +95,31 @@ const DownloadIcon = (): ReactElement => (
     </svg>
 )
 
+const UploadIcon = (): ReactElement => (
+    <svg
+        width="14"
+        height="14"
+        viewBox="0 0 14 14"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        <path
+            d="M7 8.5v-7M4 4.5L7 1.5l3 3"
+            stroke="#8C7E6A"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <path
+            d="M2 9.5v1.5a1 1 0 001 1h8a1 1 0 001-1V9.5"
+            stroke="#8C7E6A"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </svg>
+)
+
 const MenuDrawer = (): ReactElement => {
     const refNode = useRef<HTMLDivElement | null>(null)
     const [showMenu, setShowMenu] = useState(false)
@@ -100,7 +127,14 @@ const MenuDrawer = (): ReactElement => {
     const [showSettings, setShowSettings] = useState(false)
     const [showShortcuts, setShowShortcuts] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
-    const { clearBoard } = useBoardContext()
+    const [showExportSubmenu, setShowExportSubmenu] = useState(false)
+    const [showImportSubmenu, setShowImportSubmenu] = useState(false)
+    const {
+        clearBoard,
+        stateRefForComponentStore,
+        twoJSInstance,
+        beginBoardImport,
+    } = useBoardContext()
 
     useEffect(() => {
         const handleClick = (e: MouseEvent): void => {
@@ -112,6 +146,15 @@ const MenuDrawer = (): ReactElement => {
             document.removeEventListener('mousedown', handleClick, false)
         }
     }, [])
+
+    // Collapse the export/import flyouts whenever the menu itself closes, so
+    // neither lingers open on the next menu open (covers outside-click + toggle).
+    useEffect(() => {
+        if (!showMenu) {
+            setShowExportSubmenu(false)
+            setShowImportSubmenu(false)
+        }
+    }, [showMenu])
 
     const handleClearClick = (): void => {
         setShowMenu(false)
@@ -138,6 +181,29 @@ const MenuDrawer = (): ReactElement => {
         } finally {
             setIsExporting(false)
         }
+    }
+
+    const handleExportJson = (): void => {
+        const scene = twoJSInstance?.scene
+        const viewport = scene
+            ? {
+                  // scene.scale is uniform (number) in this app; guard the
+                  // Two.js Vector union rather than cast.
+                  scale: typeof scene.scale === 'number' ? scene.scale : 1,
+                  tx: scene.translation.x,
+                  ty: scene.translation.y,
+              }
+            : { scale: 1, tx: 0, ty: 0 }
+        exportBoardAsJson(stateRefForComponentStore.current, viewport)
+        setShowExportSubmenu(false)
+        setShowMenu(false)
+    }
+
+    const handleImportJson = (): void => {
+        setShowImportSubmenu(false)
+        setShowMenu(false)
+        // board.tsx owns the file-pick → parse → chooser flow.
+        beginBoardImport()
     }
 
     const handleConfirmClear = (): void => {
@@ -335,6 +401,110 @@ const MenuDrawer = (): ReactElement => {
                         </button>
 
                         <div className="h-px bg-border-panel mx-2 mt-1 mb-1" />
+
+                        <div className="relative">
+                            <button
+                                className="flex items-center justify-between gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                    hover:bg-accent/50 rounded cursor-pointer
+                                    transition-colors ease-in-out duration-150"
+                                style={{ width: 'calc(100% - 8px)' }}
+                                onClick={(): void => {
+                                    setShowImportSubmenu(false)
+                                    setShowExportSubmenu((prev) => !prev)
+                                }}
+                            >
+                                <span className="flex items-center gap-2.5">
+                                    <DownloadIcon />
+                                    <span>Export board</span>
+                                </span>
+                                <ChevronRightIcon
+                                    className="w-3.5 h-3.5"
+                                    stroke="currentColor"
+                                    color="currentColor"
+                                    aria-hidden="true"
+                                />
+                            </button>
+
+                            {showExportSubmenu && (
+                                <div
+                                    className="absolute top-0 bg-card-bg border border-border-panel
+                                        rounded-lg shadow-lg py-1 w-max min-w-[152px] z-[101]"
+                                    style={{ left: '100%' }}
+                                >
+                                    <button
+                                        className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                            hover:bg-accent/50 rounded cursor-pointer
+                                            transition-colors ease-in-out duration-150"
+                                        style={{ width: 'calc(100% - 8px)' }}
+                                        onClick={handleExportJson}
+                                    >
+                                        <span>Export as JSON</span>
+                                    </button>
+                                    <button
+                                        className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                            rounded transition-colors ease-in-out duration-150
+                                            disabled:opacity-50 disabled:cursor-default"
+                                        style={{ width: 'calc(100% - 8px)' }}
+                                        title="Coming soon"
+                                        disabled
+                                    >
+                                        <span>Export as SVG</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="relative">
+                            <button
+                                className="flex items-center justify-between gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                    hover:bg-accent/50 rounded cursor-pointer
+                                    transition-colors ease-in-out duration-150"
+                                style={{ width: 'calc(100% - 8px)' }}
+                                onClick={(): void => {
+                                    setShowExportSubmenu(false)
+                                    setShowImportSubmenu((prev) => !prev)
+                                }}
+                            >
+                                <span className="flex items-center gap-2.5">
+                                    <UploadIcon />
+                                    <span>Import board</span>
+                                </span>
+                                <ChevronRightIcon
+                                    className="w-3.5 h-3.5"
+                                    stroke="currentColor"
+                                    color="currentColor"
+                                    aria-hidden="true"
+                                />
+                            </button>
+
+                            {showImportSubmenu && (
+                                <div
+                                    className="absolute top-0 bg-card-bg border border-border-panel
+                                        rounded-lg shadow-lg py-1 w-max min-w-[152px] z-[101]"
+                                    style={{ left: '100%' }}
+                                >
+                                    <button
+                                        className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                            hover:bg-accent/50 rounded cursor-pointer
+                                            transition-colors ease-in-out duration-150"
+                                        style={{ width: 'calc(100% - 8px)' }}
+                                        onClick={handleImportJson}
+                                    >
+                                        <span>Import JSON</span>
+                                    </button>
+                                    <button
+                                        className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid
+                                            rounded transition-colors ease-in-out duration-150
+                                            disabled:opacity-50 disabled:cursor-default"
+                                        style={{ width: 'calc(100% - 8px)' }}
+                                        title="Coming soon"
+                                        disabled
+                                    >
+                                        <span>Import SVG</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
 
                         <button
                             className="flex items-center gap-2.5 px-3 py-2 mx-1 text-sm text-ink-mid

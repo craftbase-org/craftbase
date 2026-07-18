@@ -176,6 +176,8 @@ export interface BoardContextValue {
     onCreateBoard: () => void
     createBoardLoading: boolean
     clearBoard: () => void
+    /** Open the file picker → parse → new-vs-merge chooser flow (P0 import). */
+    beginBoardImport: () => void
 
     // Two.js handles
     twoJSInstance: Two | null

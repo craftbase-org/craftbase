@@ -35,6 +35,18 @@ import OkIcon from '../../assets/ok.svg?react'
 import CloseIcon from '../../assets/close.svg?react'
 import PermissionErrorModal from '../../components/modals/PermissionErrorModal'
 import StorageLimitModal from '../../components/modals/StorageLimitModal'
+import {
+    BoardFullModal,
+    BoardTooLargeModal,
+} from '../../components/modals/BoardSizeLimitModal'
+import { exportBoardAsJson } from '../../utils/exportBoard'
+import ImportBoardModal from '../../components/modals/ImportBoardModal'
+import {
+    openBoardFilePicker,
+    parseImportedBoard,
+} from '../../utils/importBoard'
+import type { ParsedImport, BoardViewport } from '../../utils/importBoard'
+import { draftFitsForStore } from '../../utils/boardSizeGuard'
 import { generateUUID, generateRandomUsernames } from '../../utils/misc'
 import { prefetchElementModule } from '../../elementModules'
 import {
@@ -82,6 +94,9 @@ import { useDrawingModes } from '../../hooks/useDrawingModes'
 import { useElementDefaults } from '../../hooks/useElementDefaults'
 import { useMobileToolbarPanels } from '../../hooks/useMobileToolbarPanels'
 import { useLocalDraftPersistence } from '../../hooks/useLocalDraftPersistence'
+import { useElementCountWarning } from '../../hooks/useElementCountWarning'
+import { PERFORMANCE_WARNING_THRESHOLD } from '../../utils/countBoardElements'
+import Toast from '../../components/common/toast'
 import {
     useComponentHistory,
     type HistoryEntry,
@@ -113,6 +128,13 @@ function stripTypename(obj: any): any {
         )
     }
     return obj
+}
+
+/** Human-readable size for the live local-draft readout (UTF-8 bytes). */
+const formatDraftBytes = (n: number): string => {
+    if (n < 1024) return `${n} B`
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
+    return `${(n / (1024 * 1024)).toFixed(2)} MB`
 }
 
 const BoardViewPage: React.FC<BoardProps> = (props) => {
@@ -194,6 +216,13 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     })
 
     const [componentStore, setComponentStore] = useState<ComponentStore>({})
+
+    const { showPerfWarning, dismissPerfWarning } = useElementCountWarning({
+        componentStore,
+        isPersisted,
+        boardId,
+    })
+
     const [lastAddedElement, setLastAddedElement] =
         useState<ComponentRecord | null>(null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -340,6 +369,8 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
     }, [setDefaultFill, setDefaultStrokeColor, setDefaultTextColor])
 
     const onStorageLimitRef = useRef<(() => Promise<void>) | null>(null)
+    // Write-side guard callback: assigned below once undoLastAction exists.
+    const onDraftOverBudgetRef = useRef<(() => void) | null>(null)
 
     const {
         showStorageLimitModal,
@@ -348,6 +379,11 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         setStorageLimitBoardUrl,
         handleStartNewCanvas,
         handleContinueOnSavedBoard,
+        showBoardTooLargeModal,
+        handleDownloadBoardBackup,
+        handleStartFreshFromTooLarge,
+        handleOpenBoardAnyway,
+        draftSizeBytes,
     } = useLocalDraftPersistence({
         isPersisted,
         localBoardId,
@@ -356,6 +392,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         backgroundBoardIdRef,
         setBackgroundBoardId,
         onStorageLimitRef,
+        onDraftOverBudgetRef,
         welcomeSketch: props.welcomeSketch,
         isMobile,
     })
@@ -387,6 +424,259 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         selectedGroupRef,
         stripTypename,
     })
+
+    // Write-side size guard. The measurement lives in useLocalDraftPersistence
+    // (real UTF-8 size of the persisted draft, after each save); when it's over
+    // budget it calls this, and we revert the last action + open the "board is
+    // full" modal. Skip when there's nothing to revert (a draft hydration or
+    // "open anyway"), so the guard never fights a load it can't roll back.
+    const [showBoardFullModal, setShowBoardFullModal] = useState(false)
+    onDraftOverBudgetRef.current = (): void => {
+        if (historyLogRef.current.length === 0) return
+        undoLastAction()
+        setShowBoardFullModal(true)
+    }
+
+    // Export the current board to a .json file — the "keep working elsewhere"
+    // path offered by the board-full modal. Reads viewport off the live scene.
+    const handleExportBoardFromModal = useCallback(() => {
+        const scene = twoJSInstanceRef.current?.scene
+        const viewport = scene
+            ? {
+                  scale: typeof scene.scale === 'number' ? scene.scale : 1,
+                  tx: scene.translation.x,
+                  ty: scene.translation.y,
+              }
+            : { scale: 1, tx: 0, ty: 0 }
+        exportBoardAsJson(stateRefForComponentStore.current, viewport)
+        setShowBoardFullModal(false)
+    }, [])
+
+    // ---- Board import (P0) ----
+    // The chooser modal is driven by board state; the parsed file waits in a
+    // ref until the user picks "Open as new" vs "Merge".
+    const [showImportChooser, setShowImportChooser] = useState(false)
+    const [importError, setImportError] = useState<string | null>(null)
+    const pendingImportRef = useRef<ParsedImport | null>(null)
+
+    // Set the camera absolutely to a saved viewport: reset to identity, then
+    // zoom + translate (the fitToContent pattern in newCanvas). zoomSet keeps
+    // ZUI's internal scale in sync — never set two.scene.scale directly.
+    const restoreImportedViewport = useCallback((vp: BoardViewport): void => {
+        const zui = zuiInBoardRef.current?.zui
+        if (!zui) return
+        try {
+            zui.reset?.()
+            zui.zoomSet(vp.scale, 0, 0)
+            zui.translateSurface(vp.tx, vp.ty)
+            twoJSInstanceRef.current?.update()
+        } catch (e) {
+            console.error('[import] viewport restore failed', e)
+        }
+    }, [])
+
+    // Re-glue every docked connector whose bound shape is present in `store`.
+    // The listener in newCanvas polls for fresh mounts, so dispatching now
+    // (before the elements mount) is safe.
+    const restackBoundPortsForStore = useCallback(
+        (store: ComponentStore): void => {
+            const ports: { shapeId: string; edge: string }[] = []
+            Object.values(store).forEach((r) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const rec = r as any
+                ;(['tail', 'head'] as const).forEach((end) => {
+                    const sid = rec[`${end}ShapeId`]
+                    const edge = rec[`${end}Edge`]
+                    if (
+                        typeof sid === 'string' &&
+                        store[sid] &&
+                        typeof edge === 'string'
+                    ) {
+                        ports.push({ shapeId: sid, edge })
+                    }
+                })
+            })
+            if (ports.length > 0) {
+                window.dispatchEvent(
+                    new CustomEvent('restackPorts', { detail: { ports } })
+                )
+            }
+        },
+        []
+    )
+
+    // Replace the whole canvas with the imported board and rotate the local
+    // board id. Mirrors clearBoard's teardown + persistBoard's id rotation.
+    const importAsNewCanvas = useCallback(
+        (parsed: ParsedImport): void => {
+            window.dispatchEvent(new Event('clearSelector'))
+            setSelectedComponent(null)
+            twoJSInstanceRef.current?.clear()
+            twoJSInstanceRef.current?.update()
+
+            const newLocalId = generateUUID()
+            const store: ComponentStore = {}
+            Object.entries(parsed.components).forEach(([id, comp]) => {
+                store[id] = { ...comp, boardId: newLocalId }
+            })
+            stateRefForComponentStore.current = store
+            // Rotate localBoardId without the id-change effect wiping the store.
+            skipComponentStoreResetRef.current = true
+            setLocalBoardId(newLocalId)
+            setComponentStore(store)
+            clearHistory(isPersisted)
+
+            if (parsed.viewport) restoreImportedViewport(parsed.viewport)
+            restackBoundPortsForStore(store)
+        },
+        [isPersisted, restoreImportedViewport, restackBoundPortsForStore]
+    )
+
+    // Merge the imported board into the current canvas: re-key every id to a
+    // fresh UUID (so it can't collide), remap in-file port bindings to the
+    // clones (drop bindings to shapes not in the file), and stack on top. One
+    // BATCH entry so a single undo removes the whole import.
+    const mergeImportedBoard = useCallback(
+        (parsed: ParsedImport): void => {
+            const records = Object.values(parsed.components)
+            // Add in ascending original z-order so the assigned positions
+            // preserve the imported set's relative stacking.
+            records.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+
+            // Precompute the current top position ONCE. Passing explicit
+            // positions makes addToLocalComponentStore skip its per-add O(n)
+            // max-scan — otherwise a bulk merge is O(n²) and freezes.
+            const baseMax = Object.values(
+                stateRefForComponentStore.current
+            ).reduce((m: number, c) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const p = (c as any)?.position
+                return Number.isFinite(p) ? Math.max(m, p) : m
+            }, 0)
+
+            const idMap = new Map<string, string>()
+            records.forEach((r) => idMap.set(r.id, generateUUID()))
+
+            const batch: HistoryEntry[] = []
+            const ports: { shapeId: string; edge: string }[] = []
+            records.forEach((r, i) => {
+                const newId = idMap.get(r.id) as string
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const cloned: any = { ...r, id: newId, boardId }
+                // Explicit top position, in sorted order — O(1) per add.
+                cloned.position = baseMax + i + 1
+                ;(['tail', 'head'] as const).forEach((end) => {
+                    const boundId = cloned[`${end}ShapeId`]
+                    if (typeof boundId !== 'string') return
+                    const mapped = idMap.get(boundId)
+                    if (mapped) {
+                        cloned[`${end}ShapeId`] = mapped
+                        const edge = cloned[`${end}Edge`]
+                        if (typeof edge === 'string') {
+                            ports.push({ shapeId: mapped, edge })
+                        }
+                    } else {
+                        cloned[`${end}ShapeId`] = null
+                        cloned[`${end}Edge`] = null
+                        cloned[`${end}PortIndex`] = 0
+                    }
+                })
+                addToLocalComponentStore(
+                    newId,
+                    cloned.componentType,
+                    cloned,
+                    true
+                )
+                batch.push({
+                    action: 'ADD',
+                    id: newId,
+                    componentInfo: { ...cloned },
+                })
+            })
+            if (batch.length > 0) recordBatchToHistoryLog(batch)
+            if (ports.length > 0) {
+                window.dispatchEvent(
+                    new CustomEvent('restackPorts', { detail: { ports } })
+                )
+            }
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [boardId]
+    )
+
+    const beginBoardImport = useCallback(async (): Promise<void> => {
+        const text = await openBoardFilePicker()
+        if (text == null) return // cancelled
+        try {
+            const parsed = parseImportedBoard(text)
+            if (Object.keys(parsed.components).length === 0) {
+                pendingImportRef.current = null
+                setImportError('This file has no readable board elements.')
+            } else {
+                pendingImportRef.current = parsed
+                setImportError(null)
+            }
+        } catch (e) {
+            pendingImportRef.current = null
+            setImportError(
+                e instanceof Error ? e.message : 'Could not read this file.'
+            )
+        }
+        setShowImportChooser(true)
+    }, [])
+
+    // Reject an import that can't fit BEFORE applying it. Applying then letting
+    // the write-side guard revert a too-large import is what froze the page —
+    // so gate here (against the browser's REAL localStorage quota) and keep the
+    // modal in its error state instead.
+    const rejectIfWontFit = useCallback(
+        (projected: ComponentStore): boolean => {
+            if (draftFitsForStore(projected)) return false
+            setImportError(
+                "This board is too large to fit in this browser's local storage. " +
+                    'Browsers store canvas text at roughly twice its file size and ' +
+                    'cap local storage near 5 MB, so very large boards can’t be ' +
+                    'saved locally. Try a smaller board, or split it across canvases.'
+            )
+            return true
+        },
+        []
+    )
+
+    const handleImportOpenAsNew = useCallback(() => {
+        const parsed = pendingImportRef.current
+        if (!parsed) {
+            setShowImportChooser(false)
+            return
+        }
+        if (rejectIfWontFit(parsed.components)) return // stay open, show error
+        setShowImportChooser(false)
+        pendingImportRef.current = null
+        importAsNewCanvas(parsed)
+    }, [importAsNewCanvas, rejectIfWontFit])
+
+    const handleImportMerge = useCallback(() => {
+        const parsed = pendingImportRef.current
+        if (!parsed) {
+            setShowImportChooser(false)
+            return
+        }
+        // Project the merged result (current store + imported) and gate on it.
+        const projected: ComponentStore = {
+            ...stateRefForComponentStore.current,
+            ...parsed.components,
+        }
+        if (rejectIfWontFit(projected)) return // stay open, show error
+        setShowImportChooser(false)
+        pendingImportRef.current = null
+        mergeImportedBoard(parsed)
+    }, [mergeImportedBoard, rejectIfWontFit])
+
+    const handleImportChooserClose = useCallback(() => {
+        setShowImportChooser(false)
+        pendingImportRef.current = null
+        setImportError(null)
+    }, [])
 
     // Clear stale interaction flags from localStorage on mount so a page refresh
     // never triggers SCENARIO_DRAW_SHAPE / SCENARIO_ARROW_DRAW / etc. on the
@@ -1324,8 +1614,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
             node.translation.set(0, (i - (n - 1) / 2) * lineH)
         })
         const componentId = sel?.group?.data?.elementData?.id
-        const existingMetadata =
-            sel?.group?.data?.elementData?.metadata ?? {}
+        const existingMetadata = sel?.group?.data?.elementData?.metadata ?? {}
         const updatedMetadata = {
             ...existingMetadata,
             fontSize: textSize,
@@ -1434,8 +1723,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         const nodes = familyNodes.length > 0 ? familyNodes : [twoText]
         nodes.forEach((node) => (node.family = fontFamily))
         const componentId = sel?.group?.data?.elementData?.id
-        const existingMetadata =
-            sel?.group?.data?.elementData?.metadata ?? {}
+        const existingMetadata = sel?.group?.data?.elementData?.metadata ?? {}
         const updatedMetadata = {
             ...existingMetadata,
             textFontFamily: fontFamily,
@@ -1734,6 +2022,7 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
         undoLastAction,
         redoLastAction,
         clearBoard,
+        beginBoardImport,
     }
 
     return (
@@ -1852,6 +2141,45 @@ const BoardViewPage: React.FC<BoardProps> = (props) => {
                 onStartNew={handleStartNewCanvas}
                 onContinue={handleContinueOnSavedBoard}
             />
+            <BoardFullModal
+                open={showBoardFullModal}
+                onClose={() => setShowBoardFullModal(false)}
+                onExport={handleExportBoardFromModal}
+            />
+            <BoardTooLargeModal
+                open={showBoardTooLargeModal}
+                onDownloadBackup={handleDownloadBoardBackup}
+                onStartFresh={handleStartFreshFromTooLarge}
+                onOpenAnyway={handleOpenBoardAnyway}
+            />
+            <ImportBoardModal
+                open={showImportChooser}
+                onClose={handleImportChooserClose}
+                error={importError}
+                total={pendingImportRef.current?.total}
+                skipped={pendingImportRef.current?.skipped}
+                onOpenAsNew={handleImportOpenAsNew}
+                onMerge={handleImportMerge}
+            />
+            <Toast
+                open={showPerfWarning}
+                onClose={dismissPerfWarning}
+                message={`This board has over ${PERFORMANCE_WARNING_THRESHOLD.toLocaleString()} elements — panning, zooming and editing may feel slow.`}
+            />
+            {/* {!isPersisted && draftSizeBytes > 0 && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        bottom: 5,
+                        right: 12,
+                        zIndex: 10,
+                    }}
+                    className="text-xs text-ink-mid bg-card-bg border border-border-panel rounded px-2 py-1 select-none pointer-events-none"
+                    title="Local draft size (UTF-8)"
+                >
+                    Draft {formatDraftBytes(draftSizeBytes)}
+                </div>
+            )} */}
         </>
     )
 }

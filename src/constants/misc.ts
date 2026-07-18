@@ -6,7 +6,7 @@ export const GROUP_COMPONENT = 'groupobject'
 // Fonts <link> in index.html. Every canvas-text fallback
 // (`family || DEFAULT_TEXT_FONT_FAMILY`) references this so the default lives in
 // exactly one place — including the welcome sketch (`SKETCH_FONT`).
-export const DEFAULT_TEXT_FONT_FAMILY = 'Caveat'
+export const DEFAULT_TEXT_FONT_FAMILY = 'Caveat Brush'
 
 export const RUBBER_MODE_KEY = 'rubberMode'
 export const VIEWPORT_KEY_PREFIX = 'craftbase_viewport_'
@@ -214,6 +214,19 @@ export const CONNECTORS_ENABLED_KEY = 'craftbase_connectors_enabled'
 // Settings modal, persisted in localStorage, read live (see
 // `src/utils/featureFlags.ts`). Defaults to disabled.
 export const DOT_GRID_ENABLED_KEY = 'craftbase_dot_grid_enabled'
+
+// Perf-testing flag: the O(N) per-frame scene scans that ride along with
+// dragging — `reanchorArrowsForShape` (legacy move path), `shapeHasBoundArrows`
+// (CSS fast-path eligibility) and the hover-detect endpoint scan. Disable to
+// isolate their cost from the Two.js render/paint cost during stress tests.
+// Read live (see `src/utils/featureFlags.ts`). Defaults to enabled.
+export const DRAG_SCANS_ENABLED_KEY = 'craftbase_drag_scans_enabled'
+
+// Feature-flag preference: viewport culling. Hides scene elements whose
+// screen-space bounds fall outside the viewport so the SVG renderer skips
+// painting them — the lever against the pan/zoom paint cost on dense boards.
+// Read live (see `src/utils/featureFlags.ts`). Defaults to disabled.
+export const VIEWPORT_CULLING_ENABLED_KEY = 'craftbase_viewport_culling_enabled'
 
 // Canvas rendering constants
 export const HOVER_THRESHOLD = 15

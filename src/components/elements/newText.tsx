@@ -8,6 +8,7 @@ import { syncTextHitRect, readOpacity } from '../../utils/canvasUtils'
 import { lineHeightFor } from '../../utils/textLayout'
 import { htmlToBulletText } from '../../utils/htmlToBulletText'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../../constants/misc'
+import { scheduleRender } from '../../utils/renderScheduler'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -43,6 +44,7 @@ function NewText(props: ElementProps): ReactElement {
     const two = props.twoJSInstance
 
     useEffect(() => {
+        let mountCancelled = false
         const prevX = props.x
         const prevY = props.y
 
@@ -92,7 +94,7 @@ function NewText(props: ElementProps): ReactElement {
             // Keep the transparent hit area covering the whole block so clicks
             // in the gaps between lines still select the text (see canvasUtils).
             syncTextHitRect(two, group)
-            two.update()
+            scheduleRender(two)
         }
         syncMultilineRef.current = syncMultilineLayout
 
@@ -136,13 +138,29 @@ function NewText(props: ElementProps): ReactElement {
 
         // Render any persisted multiline content as the stacked block.
         syncMultilineLayout()
-        two.update()
 
-        const groupEl = document.getElementById(group.id)
-        if (groupEl) {
-            groupEl.setAttribute('class', 'dragger-picker')
-            groupEl.setAttribute('data-component-id', props.id)
-        }
+        // Everything below that touches the DOM (node tagging, the dblclick
+        // listeners) needs the rendered SVG nodes, which only exist after a
+        // render. Batch that render with every other element mounting this
+        // frame — a synchronous two.update() per element made mounting a board
+        // O(N²). `mountCancelled` guards an unmount before the frame fires, so
+        // we never bind listeners to a node that is already gone.
+        scheduleRender(two, () => {
+            if (mountCancelled) return
+
+            const groupEl = document.getElementById(group.id)
+            if (groupEl) {
+                groupEl.setAttribute('class', 'dragger-picker')
+                groupEl.setAttribute('data-component-id', props.id)
+            }
+
+            twoText._renderer?.elem?.addEventListener('dblclick', () => {
+                showTextInput()
+            })
+            groupEl?.addEventListener('dblclick', () => {
+                showTextInput()
+            })
+        })
 
         setInternalState((draft) => {
             draft.group = { id: group.id, data: group }
@@ -151,8 +169,6 @@ function NewText(props: ElementProps): ReactElement {
             draft.text = { id: twoText.id, data: twoText }
             draft.icon = { data: {} }
         })
-
-        const getGroupElementFromDOM = document.getElementById(`${group.id}`)
 
         const showTextInput = (): void => {
             // A dblclick bubbles from the text node to the group, firing BOTH
@@ -227,7 +243,10 @@ function NewText(props: ElementProps): ReactElement {
             // Calibrate the constant part (canvas page offset + glyph bearing)
             // from the real start position so there's no jump entering edit.
             const calibX =
-                startRect.left - 8 - two.scene.translation.x - surfaceLeft * scale0
+                startRect.left -
+                8 -
+                two.scene.translation.x -
+                surfaceLeft * scale0
             const calibY =
                 startRect.top +
                 startRect.height / 2 -
@@ -444,13 +463,6 @@ function NewText(props: ElementProps): ReactElement {
             })
         }
 
-        twoText._renderer.elem.addEventListener('dblclick', () => {
-            showTextInput()
-        })
-        getGroupElementFromDOM?.addEventListener('dblclick', () => {
-            showTextInput()
-        })
-
         const handleTriggerTextInput = (e: Event): void => {
             const detail = (e as CustomEvent<{ elementId: string }>).detail
             if (detail?.elementId === props.id) {
@@ -460,6 +472,7 @@ function NewText(props: ElementProps): ReactElement {
         window.addEventListener('triggerTextInput', handleTriggerTextInput)
 
         return (): void => {
+            mountCancelled = true
             window.removeEventListener(
                 'triggerTextInput',
                 handleTriggerTextInput
@@ -472,7 +485,7 @@ function NewText(props: ElementProps): ReactElement {
         if (internalState?.group?.data) {
             internalState.group.data.translation.x = props.x
             internalState.group.data.translation.y = props.y
-            two.update()
+            scheduleRender(two)
         }
 
         if (internalState?.twoText?.data) {
@@ -501,7 +514,7 @@ function NewText(props: ElementProps): ReactElement {
             // group-apply, plus external content updates).
             syncMultilineRef.current?.()
 
-            two.update()
+            scheduleRender(two)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.x, props.y, props.textColor, props.metadata])

@@ -1,5 +1,6 @@
 import Main from './main'
 import { DEFAULT_TEXT_FONT_FAMILY } from '../constants/misc'
+import { scheduleRender } from '../utils/renderScheduler'
 
 export interface NewTextMetadata {
     content?: string
@@ -39,7 +40,9 @@ export default class NewTextFactory extends Main<NewTextProperties> {
         group.translation.x = parseInt(String(prevX))
         group.translation.y = parseInt(String(prevY))
 
-        two.update()
+        // Batched, NOT a direct two.update(): this fires once per text element,
+        // so a synchronous full-scene render here is O(N²) across a board load.
+        scheduleRender(two)
 
         return { group, twoText }
     }

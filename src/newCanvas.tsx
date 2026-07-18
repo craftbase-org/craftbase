@@ -77,7 +77,20 @@ import {
     subscribeConnectorsEnabled,
     getDotGridEnabled,
     subscribeDotGridEnabled,
+    getDragScansEnabled,
+    getViewportCullingEnabled,
 } from './utils/featureFlags'
+import {
+    cullToViewport,
+    uncullViewport,
+    CULLED_FLAG,
+} from './utils/viewportCulling'
+import {
+    createDrawPreview,
+    updateDrawPreview,
+    removeDrawPreview,
+    type DrawPreviewKind,
+} from './utils/drawPreviewOverlay'
 import {
     velocityToLinewidth,
     smoothLinewidth,
@@ -105,11 +118,12 @@ import {
     paintElementStroke,
 } from './utils/themeColorFlip'
 import { isSelectPanMode, isPanMode } from './utils/drawModeUtils'
-import { createDiamondPath } from './factory/diamond'
+import { scheduleRender } from './utils/renderScheduler'
 import { useCanvasClipboard } from './hooks/useCanvasClipboard'
 import type { HistoryEntry } from './hooks/useComponentHistory'
 import { exportSelectionAsSvg } from './utils/exportSelectionAsSvg'
 import CanvasContextMenu from './components/canvasContextMenu'
+import PerfOverlay from './components/dev/PerfOverlay'
 import {
     ElementRenderWrapper,
     GroupRenderWrapper,
@@ -121,6 +135,36 @@ import type {
     SelectedComponent,
     CurrentElement,
 } from './types/board'
+
+/**
+ * One lazy component per element *type*, not per element.
+ *
+ * `React.lazy()` returns a NEW component type on every call, and each one
+ * suspends and resolves independently — so calling it per element made a board
+ * of N elements resolve N Suspense boundaries in N separate commits, spreading
+ * the mount across hundreds of frames. Every one of those frames triggered a
+ * full O(scene) Two.js render (the SVG renderer walks every child on each
+ * update), which is O(frames × N) work.
+ *
+ * Keyed by componentType, the ~10 element modules resolve once and React can
+ * commit the elements in far fewer passes.
+ */
+const lazyElementCache = new Map<string, React.ComponentType<unknown>>()
+
+const getLazyElement = (
+    componentType: string,
+    moduleLoader: () => Promise<{
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        default: React.ComponentType<any>
+    }>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): React.ComponentType<any> => {
+    const cached = lazyElementCache.get(componentType)
+    if (cached) return cached
+    const lazy = React.lazy(moduleLoader)
+    lazyElementCache.set(componentType, lazy as React.ComponentType<unknown>)
+    return lazy
+}
 
 // A plain `line` shares the arrow's group structure (line + two endpoint
 // circles) and the entire arrow-draw / endpoint-edit machinery, so anywhere we
@@ -298,6 +342,33 @@ function addZUI(
     let lastTapTime = 0
     let lastTapX = 0
     let lastTapY = 0
+    // Wheel has no gesture-end event, so "is the user still zooming/scrolling"
+    // is tracked with a trailing timer. Used to suppress the hover hit-test
+    // mid-gesture, where its result is thrown away anyway.
+    let isWheeling = false
+    let wheelSettleTimer: number | null = null
+    // rAF gate for hoverDetectMove: pointers fire faster than we paint, and the
+    // hover scan is O(scene). At most one scan per frame.
+    let hoverFrame: number | null = null
+    let hoverPendingEvent: MouseEvent | null = null
+    // Viewport culling settle timer: cull runs on every camera change; once the
+    // gesture stops, unhide everything so the at-rest board is fully painted.
+    let cullSettleTimer: number | null = null
+
+    // Called from every camera handler (pan/zoom, mouse + touch) right before
+    // the batched render. Hides off-screen elements so the browser paints only
+    // the visible slice, then arms a timer to reveal them all once motion stops.
+    // A no-op (beyond the flag read) when culling is disabled.
+    function cullOnCameraChange(): void {
+        if (!getViewportCullingEnabled()) return
+        cullToViewport(two)
+        if (cullSettleTimer !== null) window.clearTimeout(cullSettleTimer)
+        cullSettleTimer = window.setTimeout(() => {
+            cullSettleTimer = null
+            uncullViewport(two)
+            scheduleRender(two)
+        }, 200)
+    }
     // Single-finger pan-mode state: when the toolbar pan button is active,
     // a one-finger touchstart begins panning the surface (instead of routing
     // to a synthetic mousedown). Cleared on touchend.
@@ -377,8 +448,55 @@ function addZUI(
     let drawOrigin: any = null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let drawCurrentCoords: any = null
+    // The shape-creation preview is a DOM overlay (see drawPreviewOverlay), not
+    // a Two.js scene child — so growing it never repaints the scene SVG. These
+    // hold the drag's start corner in *client* (screen) coords for the overlay.
+    let drawPreviewActive = false
+    let drawScreenOriginX = 0
+    let drawScreenOriginY = 0
+    // CSS-transform move-drag: while dragging a non-rotated element (including
+    // the group overlay, whose member copies + selector chrome share its node)
+    // we translate its own SVG layer via a CSS transform + will-change instead of
+    // mutating its Two.js position and calling a full-scene two.update() every
+    // frame. The scene SVG is never touched, so the drag is a GPU composite —
+    // 60fps regardless of zoom or element count. The real position is written
+    // once on mouseup, so all the existing move/persist/history logic still runs.
+    let cssMoveActive = false
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let previewShape: any = null
+    let cssMoveEl: any = null
+    let cssMoveNode: SVGGraphicsElement | null = null
+    let cssMoveChrome: {
+        node: SVGGraphicsElement
+        baseX: number
+        baseY: number
+    } | null = null
+    let cssMoveBaseX = 0
+    let cssMoveBaseY = 0
+    let cssMoveStartClientX = 0
+    let cssMoveStartClientY = 0
+    let cssMoveLastDxWorld = 0
+    let cssMoveLastDyWorld = 0
+    // Set once per drag when the shape is ineligible for the CSS fast-path (e.g.
+    // it has bound connectors) so the whole drag stays on the legacy live path.
+    let cssMoveRejected = false
+
+    // Clear the live CSS transforms and drop the drag state. Called on commit
+    // (mouseup) and defensively when a new gesture starts.
+    const clearCssMove = (): void => {
+        if (cssMoveNode) {
+            cssMoveNode.style.transform = ''
+            cssMoveNode.style.willChange = ''
+        }
+        if (cssMoveChrome) {
+            cssMoveChrome.node.style.transform = ''
+            cssMoveChrome.node.style.willChange = ''
+        }
+        cssMoveActive = false
+        cssMoveEl = null
+        cssMoveNode = null
+        cssMoveChrome = null
+        cssMoveRejected = false
+    }
     let drawShapeType: string | null = null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let drawShapeProps: any = null
@@ -920,7 +1038,9 @@ function addZUI(
     }
     const repaintForTheme = (): void => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        two.scene.children.forEach((child: any) => flipColorOnNodesAndStore(child))
+        two.scene.children.forEach((child: any) =>
+            flipColorOnNodesAndStore(child)
+        )
         // applyThemeStroke runs the single two.update() covering all changes.
         selectionController.applyThemeStroke()
     }
@@ -1376,7 +1496,25 @@ function addZUI(
     hoverCircle.noStroke()
     hoverCircle.opacity = 0
 
+    // Throttle the (O(scene)) hover scan to at most once per frame, and drop it
+    // entirely while a wheel gesture is in flight — the camera is moving under
+    // the cursor, so any hover result is stale before it paints. Only the most
+    // recent event of the frame is scanned; the earlier ones are superseded.
     function hoverDetectMove(e: MouseEvent) {
+        if (isWheeling) return
+
+        hoverPendingEvent = e
+        if (hoverFrame !== null) return
+
+        hoverFrame = requestAnimationFrame(() => {
+            hoverFrame = null
+            const pendingEvent = hoverPendingEvent
+            hoverPendingEvent = null
+            if (pendingEvent) runHoverDetect(pendingEvent)
+        })
+    }
+
+    function runHoverDetect(e: MouseEvent) {
         // No arrow-endpoint hover while panning or drawing/placing a geo object.
         if (
             isMousePanning ||
@@ -1388,7 +1526,17 @@ function addZUI(
         if (!isSelectPanMode(isPencilModeRef.current)) {
             if (lastHoveredCircleGroup) {
                 hoverCircle.opacity = 0
-                two.update()
+                scheduleRender(two)
+                lastHoveredCircleGroup = null
+            }
+            return
+        }
+        // Perf-testing lever: skip the O(N) endpoint scan (arrow-endpoint hover
+        // indicator won't appear while off).
+        if (!getDragScansEnabled()) {
+            if (lastHoveredCircleGroup) {
+                hoverCircle.opacity = 0
+                scheduleRender(two)
                 lastHoveredCircleGroup = null
             }
             return
@@ -1424,13 +1572,19 @@ function addZUI(
         }
 
         if (found) {
+            // The indicator snaps to the endpoint, not the cursor, so while the
+            // pointer wanders within the hover threshold of the same endpoint
+            // nothing actually moves. Only render when something changed.
+            const moved =
+                hoverCircle.translation.x !== foundWx ||
+                hoverCircle.translation.y !== foundWy
             hoverCircle.translation.x = foundWx
             hoverCircle.translation.y = foundWy
             if (found !== lastHoveredCircleGroup) hoverCircle.opacity = 1
-            two.update()
+            if (moved || found !== lastHoveredCircleGroup) scheduleRender(two)
         } else if (lastHoveredCircleGroup) {
             hoverCircle.opacity = 0
-            two.update()
+            scheduleRender(two)
         }
         lastHoveredCircleGroup = found ?? null
     }
@@ -1722,6 +1876,9 @@ function addZUI(
         // off, existing bindings lie dormant (the arrow stays put) rather than
         // being stripped — flip the flag back on to resume gluing.
         if (!getConnectorsEnabled()) return
+        // Perf-testing lever: skip the O(N) scene scan entirely (bound arrows
+        // won't follow their shape while off).
+        if (!getDragScansEnabled()) return
         const shapeId = group?.elementData?.id
         if (!shapeId) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1731,7 +1888,11 @@ function addZUI(
             const line = child.children?.[0]
             if (!line) return
             if (ed.tailShapeId === shapeId && ed.tailEdge) {
-                const p = getShapePortPoint(group, ed.tailEdge, portGapSurface())
+                const p = getShapePortPoint(
+                    group,
+                    ed.tailEdge,
+                    portGapSurface()
+                )
                 if (ed.tailPortIndex > 0) {
                     // Keep the fan offset (direction follows the bound head).
                     applyStackedEndpoint(
@@ -1755,7 +1916,11 @@ function addZUI(
                 }
             }
             if (ed.headShapeId === shapeId && ed.headEdge) {
-                const p = getShapePortPoint(group, ed.headEdge, portGapSurface())
+                const p = getShapePortPoint(
+                    group,
+                    ed.headEdge,
+                    portGapSurface()
+                )
                 if (ed.headPortIndex > 0) {
                     // Keep the fan offset (direction follows the bound tail).
                     applyStackedEndpoint(
@@ -1778,6 +1943,26 @@ function addZUI(
                     )
                 }
             }
+        })
+    }
+
+    // Does any connector currently dock onto this shape? Used to opt a shape out
+    // of the CSS-transform move fast-path: a bound arrow must reshape every frame
+    // to stay glued, which needs the shape's real position (not just a CSS
+    // transform), so such shapes fall back to the legacy live-render drag. O(N)
+    // scan, but run once at drag start — never per frame.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function shapeHasBoundArrows(group: any): boolean {
+        // Perf-testing lever: skip the O(N) scan; every shape then reads as
+        // unbound and stays eligible for the CSS move fast-path.
+        if (!getDragScansEnabled()) return false
+        const shapeId = group?.elementData?.id
+        if (!shapeId) return false
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return two.scene.children.some((child: any) => {
+            const ed = child?.elementData
+            if (ed?.componentType !== 'arrowLine') return false
+            return ed.tailShapeId === shapeId || ed.headShapeId === shapeId
         })
     }
 
@@ -1852,7 +2037,11 @@ function addZUI(
         // Far endpoint vertex index for ordering: a tail bound here is ordered
         // by its head (vertex[1]); a head bound here by its tail (vertex[0]).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const pushEntry = (child: any, line: any, endpoint: 'tail' | 'head') => {
+        const pushEntry = (
+            child: any,
+            line: any,
+            endpoint: 'tail' | 'head'
+        ) => {
             const farIdx = endpoint === 'tail' ? 1 : 0
             const coord = sideEdge
                 ? child.position.y + line.vertices[farIdx].y
@@ -2029,11 +2218,16 @@ function addZUI(
 
         // Clean up orphaned draw state from an interrupted drag
         // (e.g. user moved cursor outside canvas and released mouse there)
-        if (previewShape) {
-            two.remove(previewShape)
-            two.update()
-            previewShape = null
+        if (drawPreviewActive) {
+            removeDrawPreview()
+            drawPreviewActive = false
         }
+        // Defensive: a prior move-drag whose mouseup was missed (released off
+        // canvas) would leave a stale CSS transform — clear it before a new one.
+        if (cssMoveActive) clearCssMove()
+        // Reset the fast-path decision for the new gesture (a rejected drag never
+        // runs clearCssMove, so its flag would otherwise leak into the next one).
+        cssMoveRejected = false
         if (drawOrigin) {
             drawOrigin = null
             drawCurrentCoords = null
@@ -2220,36 +2414,28 @@ function addZUI(
                 localStorage.removeItem(PENDING_SHAPE_TYPE_KEY)
                 localStorage.removeItem(PENDING_SHAPE_PROPS_KEY)
 
-                if (drawShapeType === 'circle') {
-                    previewShape = two.makeEllipse(
-                        surfaceCoords.x,
-                        surfaceCoords.y,
-                        0,
-                        0
+                // Preview lives on a DOM overlay, positioned in client coords —
+                // it never enters the scene, so the drag never repaints the SVG.
+                if (
+                    drawShapeType === 'circle' ||
+                    drawShapeType === 'rectangle' ||
+                    drawShapeType === 'diamond'
+                ) {
+                    drawScreenOriginX = e.clientX
+                    drawScreenOriginY = e.clientY
+                    drawPreviewActive = true
+                    createDrawPreview(drawShapeType as DrawPreviewKind, {
+                        fill: drawShapeProps?.fill || '#fff',
+                        stroke: drawShapeProps?.stroke || SHAPE_DEFAULT_STROKE,
+                        linewidth: drawShapeProps?.linewidth || 1,
+                        opacity: DEFAULT_PREVIEW_OPACITY,
+                    })
+                    updateDrawPreview(
+                        e.clientX,
+                        e.clientY,
+                        e.clientX,
+                        e.clientY
                     )
-                } else if (drawShapeType === 'rectangle') {
-                    previewShape = two.makeRoundedRectangle(
-                        surfaceCoords.x,
-                        surfaceCoords.y,
-                        0,
-                        0,
-                        3
-                    )
-                } else if (drawShapeType === 'diamond') {
-                    previewShape = createDiamondPath(two, 0, 0, 6)
-                    previewShape.translation.set(
-                        surfaceCoords.x,
-                        surfaceCoords.y
-                    )
-                }
-
-                if (previewShape) {
-                    previewShape.fill = drawShapeProps?.fill || '#fff'
-                    previewShape.stroke =
-                        drawShapeProps?.stroke || SHAPE_DEFAULT_STROKE
-                    previewShape.linewidth = drawShapeProps?.linewidth || 1
-                    previewShape.opacity = DEFAULT_PREVIEW_OPACITY
-                    two.update()
                 }
 
                 domElement.addEventListener('mousemove', mousemove, false)
@@ -2572,6 +2758,9 @@ function addZUI(
     }
 
     function mousemove(e: MouseEvent) {
+        // Set when this frame moved a selected element via CSS transform (no
+        // scene render) — used to skip the full-scene two.update() at the end.
+        let didCssMove = false
         // Pan-mode (desktop): translate the surface by the per-frame mouse
         // delta. Mirrors the single-finger touch pan in touchmove.
         if (isMousePanning) {
@@ -2581,7 +2770,12 @@ function addZUI(
             mousePanLastY = e.clientY
             if (dx !== 0 || dy !== 0) {
                 zui.translateSurface(dx, dy)
-                two.update()
+                cullOnCameraChange()
+                // Batched, NOT a direct two.update(): pointers fire well above
+                // the paint rate (120Hz+ trackpads), so a synchronous render
+                // here means 2x the full O(scene) renders the display can even
+                // show. scheduleRender coalesces the burst into one per frame.
+                scheduleRender(two)
                 syncBackgroundToCamera()
                 onCameraChangeRef?.current?.({
                     scale: two.scene.scale,
@@ -2678,17 +2872,15 @@ function addZUI(
                     y: surfaceCoordsMove.y,
                 }
 
-                const drawWidth = Math.abs(surfaceCoordsMove.x - drawOrigin.x)
-                const drawHeight = Math.abs(surfaceCoordsMove.y - drawOrigin.y)
-                const centerX = (surfaceCoordsMove.x + drawOrigin.x) / 2
-                const centerY = (surfaceCoordsMove.y + drawOrigin.y) / 2
-
-                if (previewShape) {
-                    previewShape.translation.x = centerX
-                    previewShape.translation.y = centerY
-                    previewShape.width = drawWidth
-                    previewShape.height = drawHeight
-                    two.update()
+                // Grow the DOM overlay from client coords — O(1), no two.update(),
+                // so the scene SVG is never touched during the drag.
+                if (drawPreviewActive) {
+                    updateDrawPreview(
+                        drawScreenOriginX,
+                        drawScreenOriginY,
+                        e.clientX,
+                        e.clientY
+                    )
                 }
                 break
             }
@@ -2934,11 +3126,78 @@ function addZUI(
                         }
                         // code block condition to handle normal component's dragging
                         else {
-                            shape.position.x += dx / zui.scale
-                            shape.position.y += dy / zui.scale
-                            // Drag any connector tails/heads pinned to this
-                            // shape's ports along with it.
-                            reanchorArrowsForShape(shape)
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const node = (shape as any)._renderer
+                                ?.elem as SVGGraphicsElement | undefined
+                            // CSS-transform move: eligible for non-rotated
+                            // elements, including the group overlay — its member
+                            // copies and selector chrome live inside its own SVG
+                            // node, so one transform moves them all; the mouseup
+                            // commit below writes the real translation before
+                            // groupobject's window-mouseup commitGroupMove reads
+                            // it (domElement listeners fire first in the bubble).
+                            // Rotated shapes keep the legacy path.
+                            const cheapEligible = !!node && !shape.rotation
+                            // Decide CSS-vs-legacy ONCE per drag. A shape with
+                            // bound connectors must reshape its arrows every
+                            // frame (needs its real position), so it takes the
+                            // legacy live-render path. The bound-arrow scan is
+                            // O(N) but runs only on this first-frame decision,
+                            // and only when connectors are on.
+                            if (
+                                cheapEligible &&
+                                !cssMoveActive &&
+                                !cssMoveRejected
+                            ) {
+                                if (
+                                    getConnectorsEnabled() &&
+                                    shapeHasBoundArrows(shape)
+                                ) {
+                                    cssMoveRejected = true
+                                }
+                            }
+                            const eligible = cheapEligible && !cssMoveRejected
+                            if (eligible) {
+                                if (!cssMoveActive) {
+                                    cssMoveActive = true
+                                    cssMoveEl = shape
+                                    cssMoveNode = node!
+                                    cssMoveBaseX = shape.position.x
+                                    cssMoveBaseY = shape.position.y
+                                    cssMoveLastDxWorld = 0
+                                    cssMoveLastDyWorld = 0
+                                    node!.style.willChange = 'transform'
+                                    // Move the selection box in lockstep so it
+                                    // stays glued to the element during the drag.
+                                    cssMoveChrome =
+                                        selectionController.getChromeDragHandle(
+                                            shape
+                                        )
+                                    if (cssMoveChrome) {
+                                        cssMoveChrome.node.style.willChange =
+                                            'transform'
+                                    }
+                                }
+                                cssMoveLastDxWorld += dx / zui.scale
+                                cssMoveLastDyWorld += dy / zui.scale
+                                cssMoveNode!.style.transform = `translate(${
+                                    cssMoveBaseX + cssMoveLastDxWorld
+                                }px, ${cssMoveBaseY + cssMoveLastDyWorld}px)`
+                                if (cssMoveChrome) {
+                                    cssMoveChrome.node.style.transform = `translate(${
+                                        cssMoveChrome.baseX + cssMoveLastDxWorld
+                                    }px, ${
+                                        cssMoveChrome.baseY + cssMoveLastDyWorld
+                                    }px)`
+                                }
+                                didCssMove = true
+                            } else {
+                                shape.position.x += dx / zui.scale
+                                shape.position.y += dy / zui.scale
+                                // Drag any connector tails/heads pinned to this
+                                // shape's ports along with it.
+                                reanchorArrowsForShape(shape)
+                            }
                         }
                     } else if (shape.elementData.isGroupSelector) {
                         // this blocks falls for the case when user has clicked and
@@ -2958,12 +3217,31 @@ function addZUI(
                         two.update()
                     }
                     mouse.set(e.clientX, e.clientY)
-                    two.update()
+                    // A CSS-transform move-drag repaints nothing in the scene, so
+                    // skip the full-scene render this frame — that's the whole win.
+                    if (!didCssMove) two.update()
                 }
         }
     }
 
     function mouseup(e: MouseEvent) {
+        // Commit a CSS-transform move-drag: write the accumulated delta into the
+        // element's real Two.js position, clear the live CSS transforms, then let
+        // the normal move/persist/history path below run (it reads the committed
+        // translation, sees the move, and persists + records it as usual).
+        if (cssMoveActive) {
+            const el = cssMoveEl
+            const finalX = cssMoveBaseX + cssMoveLastDxWorld
+            const finalY = cssMoveBaseY + cssMoveLastDyWorld
+            clearCssMove()
+            if (el) {
+                el.position.x = finalX
+                el.position.y = finalY
+                reanchorArrowsForShape(el)
+                selectionController.syncToTarget()
+                two.update()
+            }
+        }
         // Pan-mode (desktop): end the grab-drag, restore the grab cursor and
         // detach the on-demand listeners. Persist the viewport like the wheel.
         if (isMousePanning) {
@@ -3061,10 +3339,7 @@ function addZUI(
                 }
                 const drawnEd = arrowDrawElement?.elementData
                 if (drawnEd?.headShapeId && drawnEd?.headEdge) {
-                    restackPortConnectors(
-                        drawnEd.headShapeId,
-                        drawnEd.headEdge
-                    )
+                    restackPortConnectors(drawnEd.headShapeId, drawnEd.headEdge)
                 }
                 arrowDrawTailShapeId = null
                 arrowDrawTailPort = null
@@ -3131,8 +3406,7 @@ function addZUI(
                     (drawOrigin.y + endCoords.y) / 2
                 )
 
-                const capturedPreview = previewShape
-                previewShape = null
+                drawPreviewActive = false
 
                 const finalId = generateUUID()
                 const finalShapeData = {
@@ -3156,10 +3430,9 @@ function addZUI(
                 // immediately — a visual cue to new users that the freshly drawn shape is editable.
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const finishPlacement = (el?: any) => {
-                    if (capturedPreview) {
-                        two.remove(capturedPreview)
-                        two.update()
-                    }
+                    // Keep the overlay up until the real element has rendered so
+                    // there's no blank flash, then drop it.
+                    removeDrawPreview()
                     if (el) selectionController.attach(el)
                 }
                 pollUntilElement(two, finalId, finishPlacement, {
@@ -3630,7 +3903,20 @@ function addZUI(
             zui.translateSurface(-e.deltaX, -e.deltaY)
         }
 
-        two.update()
+        // A wheel gesture is in flight — suppress the hover hit-test until it
+        // settles (see hoverDetectMove). Wheel has no gesture-end event, so the
+        // flag is cleared on a short trailing timer.
+        isWheeling = true
+        if (wheelSettleTimer !== null) window.clearTimeout(wheelSettleTimer)
+        wheelSettleTimer = window.setTimeout(() => {
+            isWheeling = false
+            wheelSettleTimer = null
+        }, 120)
+
+        cullOnCameraChange()
+        // Batched — same reason as the pan handler: wheel/trackpad events fire
+        // faster than the display paints.
+        scheduleRender(two)
         syncBackgroundToCamera()
 
         onCameraChangeRef?.current?.({
@@ -3760,7 +4046,9 @@ function addZUI(
                 panLastY = lastTouch.clientY
                 if (dx !== 0 || dy !== 0) {
                     zui.translateSurface(dx, dy)
-                    two.update()
+                    cullOnCameraChange()
+                    // Batched — touchmove also outruns the paint rate.
+                    scheduleRender(two)
                     syncBackgroundToCamera()
                     onCameraChangeRef?.current?.({
                         scale: two.scene.scale,
@@ -3964,7 +4252,9 @@ function addZUI(
         twoFingerMidY = newMidY
         distance = newDist
 
-        two.update()
+        cullOnCameraChange()
+        // Batched — pinchmove fires per touch sample, not per frame.
+        scheduleRender(two)
         syncBackgroundToCamera()
 
         onCameraChangeRef?.current?.({
@@ -3979,9 +4269,12 @@ function addZUI(
     // elements actually are regardless of the live camera. Returns null when
     // there's nothing measurable yet. Shared by fitToContent and the load poll's
     // settle check (bounds stabilise once the element components apply x/y).
-    const computeContentSurfaceBounds = ():
-        | { left: number; top: number; right: number; bottom: number }
-        | null => {
+    const computeContentSurfaceBounds = (): {
+        left: number
+        top: number
+        right: number
+        bottom: number
+    } | null => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const children = two.scene.children as any[]
         let left = Infinity
@@ -3997,7 +4290,10 @@ function addZUI(
             // transient dummy/preview elements (the drag preview, the
             // lastAddedElement stand-in) that can sit at the origin or cursor,
             // far from the real content.
-            if (child.visible === false) continue
+            // A viewport-culled element is hidden for paint only — it's still
+            // real content, so measure it (its world bbox is valid regardless
+            // of visibility). Only skip genuinely-hidden groups.
+            if (child.visible === false && child[CULLED_FLAG] !== true) continue
             if (child.elementData.isDummy === true) continue
             let rect
             try {
@@ -4059,10 +4355,13 @@ function addZUI(
                 }
                 if (!rect) continue
                 const { left, top, right, bottom } = rect
-                if (![left, top, right, bottom].every((n) => Number.isFinite(n)))
+                if (
+                    ![left, top, right, bottom].every((n) => Number.isFinite(n))
+                )
                     continue
                 // Any overlap between the element rect and the viewport.
-                if (right > 0 && bottom > 0 && left < vw && top < vh) return true
+                if (right > 0 && bottom > 0 && left < vw && top < vh)
+                    return true
             }
             return false
         },
@@ -4261,6 +4560,15 @@ const Canvas: React.FC<CanvasProps> = (props) => {
             createTextAtSurfaceRef,
             onCameraChangeRef
         )
+
+        // Dev-only handles for profiling the camera from the console or a
+        // headless perf harness (drive the zoom/pan without synthesising input).
+        if (import.meta.env.DEV) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(window as any).__cbZui = zui_instance.zui
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(window as any).__cbTwo = two
+        }
 
         setZuiInstance(zui_instance)
         setTwoJSInstance(two)
@@ -4483,6 +4791,14 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         const rank = new Map<unknown, number>()
         desired.forEach((c, i) => rank.set(c, i))
 
+        // Already in the desired order? Then there is nothing to restack, and
+        // re-rendering would be pure waste. This matters because the reconcile
+        // POLL re-runs this every frame while a board mounts: each render is
+        // O(scene) in the SVG renderer, so unconditionally rendering here cost
+        // ~90 full-scene renders per store change on a large board.
+        const alreadyOrdered = children.every((c, i) => desired[i] === c)
+        if (alreadyOrdered) return
+
         // Collection.sort fires the 'order' event that flags the SVG renderer
         // to physically reorder the <g> nodes — a bare splice would NOT.
         children.sort((a, b) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0))
@@ -4622,12 +4938,14 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                 const tryFit = (): void => {
                     initialFitPollRef.current = null
                     const sig = zuiInstance.contentBoundsSignature?.() ?? ''
-                    stableFrames = sig !== '' && sig === lastSig
-                        ? stableFrames + 1
-                        : 0
+                    stableFrames =
+                        sig !== '' && sig === lastSig ? stableFrames + 1 : 0
                     lastSig = sig
                     frame += 1
-                    if ((sig !== '' && stableFrames >= 3) || frame >= MAX_FRAMES) {
+                    if (
+                        (sig !== '' && stableFrames >= 3) ||
+                        frame >= MAX_FRAMES
+                    ) {
                         if (sig !== '') {
                             // Ensure the SVG (and each group's worldMatrix) is
                             // rendered at the settled positions before the
@@ -5117,6 +5435,9 @@ const Canvas: React.FC<CanvasProps> = (props) => {
         currentComponents: ComponentRecord[]
     ) => {
         let arr = [...prevElementsRef.current]
+        // Membership set over `arr`: this runs for every record on every store
+        // change, so a linear Array.includes() per item made it O(n²).
+        const seen = new Set(arr)
         let components = [...componentsToRenderRef.current]
         if (currentComponents && twoJSInstance) {
             // console.log(
@@ -5143,14 +5464,13 @@ const Canvas: React.FC<CanvasProps> = (props) => {
                     return
                 }
 
-                if (prevElementsRef.current.includes(item.id)) {
-                    // do nothing
-                    // console.log(
-                    //     'newCanvas ... Canvas ... handleSetComponentsToRender ... condition(currentComponents && twoJSInstance) === true ... condition(prevElements.includes(item.id)) === true'
-                    // )
+                if (seen.has(item.id)) {
+                    // do nothing — wrapper already exists
                 } else {
                     arr.push(item.id)
-                    const ElementToRender = React.lazy(
+                    seen.add(item.id)
+                    const ElementToRender = getLazyElement(
+                        item.componentType,
                         moduleLoader as () => Promise<{
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             default: React.ComponentType<any>
@@ -5262,6 +5582,7 @@ const Canvas: React.FC<CanvasProps> = (props) => {
 
     return (
         <>
+            {import.meta.env.DEV && <PerfOverlay />}
             <div id="selector-rect"></div>
             {props.renderBackground?.()}
             <div id="main-two-root"></div>

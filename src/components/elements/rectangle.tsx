@@ -5,6 +5,7 @@ import { useBoardContext } from '../../views/Board/boardContext'
 import ElementFactory from '../../factory/rectangle'
 import { strokeTypeToDashes } from '../../utils/misc'
 import { applyShapeText, readOpacity } from '../../utils/canvasUtils'
+import { scheduleRender } from '../../utils/renderScheduler'
 import { componentTypes } from '../../constants/misc'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,7 +36,7 @@ function Rectangle(props: ElementProps): ReactElement {
             const parentGroup = props.parentGroup
             rectangle.opacity = opacityValue
             parentGroup.add(rectangle)
-            two.update()
+            scheduleRender(two)
         } else {
             groupRef.current = group
             shapeRef.current = rectangle
@@ -57,17 +58,19 @@ function Rectangle(props: ElementProps): ReactElement {
             // which leaves leaf-level opacity flags unprocessed on render).
             group.opacity = opacityValue
 
-            two.update()
-
-            const groupEl = document.getElementById(group.id)
-            if (groupEl) {
-                groupEl.setAttribute('class', 'dragger-picker')
-                groupEl.setAttribute('data-component-id', props.id)
-                groupEl.setAttribute(
-                    'data-linewidth',
-                    String(props.linewidth ?? '')
-                )
-            }
+            // The SVG node only exists after a render. Batch the render with
+            // every other element mounting this frame, then tag the node.
+            scheduleRender(two, () => {
+                const groupEl = document.getElementById(group.id)
+                if (groupEl) {
+                    groupEl.setAttribute('class', 'dragger-picker')
+                    groupEl.setAttribute('data-component-id', props.id)
+                    groupEl.setAttribute(
+                        'data-linewidth',
+                        String(props.linewidth ?? '')
+                    )
+                }
+            })
         }
 
         return (): void => {
@@ -86,7 +89,7 @@ function Rectangle(props: ElementProps): ReactElement {
         shapeInstance.width = props.width || shapeInstance.width
         shapeInstance.height = props.height || shapeInstance.height
         shapeInstance.fill = props.fill || shapeInstance.fill
-        two.update()
+        scheduleRender(two)
     }, [props.x, props.y, props.width, props.height, props.fill, two])
 
     // Re-wrap the embedded text whenever the box width or text metadata
@@ -102,13 +105,13 @@ function Rectangle(props: ElementProps): ReactElement {
             props.width || shapeInstance.width || 120,
             props.metadata || {}
         )
-        two.update()
+        scheduleRender(two)
     }, [props.width, props.metadata, two])
 
     useEffect(() => {
         if (shapeRef.current) {
             shapeRef.current.dashes = strokeTypeToDashes(props.strokeType)
-            two.update()
+            scheduleRender(two)
         }
     }, [props.strokeType, two])
 

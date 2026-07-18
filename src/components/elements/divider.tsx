@@ -7,6 +7,7 @@ import { strokeTypeToDashes } from '../../utils/misc'
 
 import ElementCreator from '../../factory/divider'
 import { readOpacity } from '../../utils/canvasUtils'
+import { scheduleRender } from '../../utils/renderScheduler'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ElementProps = any
@@ -91,32 +92,39 @@ function Divider(props: ElementProps): ReactElement {
         if (props.parentGroup) {
             const parentGroup = props.parentGroup
             parentGroup.add(group)
-            two.update()
+            scheduleRender(two)
         } else {
             groupObject = group
             stateRefForGroup.current = group
 
             selectorInstance = { pointCircle1, pointCircle2 }
 
-            two.update()
+            // SVG nodes exist only after a render. Batch this render with every
+            // other element mounting in this frame, then tag the nodes and wire
+            // up focus/blur — all of which need the nodes to be in the DOM.
+            scheduleRender(two, () => {
+                const lineEl = document.getElementById(line.id)
+                if (lineEl) lineEl.style.cursor = 'pointer'
+                const p1El = document.getElementById(pointCircle1.id)
+                if (p1El) {
+                    p1El.style.cursor = 'pointer'
+                    p1El.setAttribute('class', 'avoid-dragging')
+                }
+                const p2El = document.getElementById(pointCircle2.id)
+                if (p2El) {
+                    p2El.style.cursor = 'pointer'
+                    p2El.setAttribute('class', 'avoid-dragging')
+                }
+                const groupEl = document.getElementById(group.id)
+                if (groupEl) {
+                    groupEl.setAttribute('class', 'dragger-picker')
+                    groupEl.setAttribute('data-component-id', props.id)
+                }
 
-            const lineEl = document.getElementById(line.id)
-            if (lineEl) lineEl.style.cursor = 'pointer'
-            const p1El = document.getElementById(pointCircle1.id)
-            if (p1El) {
-                p1El.style.cursor = 'pointer'
-                p1El.setAttribute('class', 'avoid-dragging')
-            }
-            const p2El = document.getElementById(pointCircle2.id)
-            if (p2El) {
-                p2El.style.cursor = 'pointer'
-                p2El.setAttribute('class', 'avoid-dragging')
-            }
-            const groupEl = document.getElementById(group.id)
-            if (groupEl) {
-                groupEl.setAttribute('class', 'dragger-picker')
-                groupEl.setAttribute('data-component-id', props.id)
-            }
+                const el = document.getElementById(`${group.id}`)
+                el?.addEventListener('focus', onFocusHandler)
+                el?.addEventListener('blur', onBlurHandler)
+            })
 
             setInternalState((draft) => {
                 draft.element = {
@@ -131,10 +139,6 @@ function Divider(props: ElementProps): ReactElement {
                 draft.text = { data: {} }
                 draft.icon = { data: {} }
             })
-
-            const el = document.getElementById(`${group.id}`)
-            el?.addEventListener('focus', onFocusHandler)
-            el?.addEventListener('blur', onBlurHandler)
         }
 
         return (): void => {
@@ -148,7 +152,7 @@ function Divider(props: ElementProps): ReactElement {
             internalState.line.data.dashes = strokeTypeToDashes(
                 props.strokeType
             )
-            two.update()
+            scheduleRender(two)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.strokeType])
@@ -306,7 +310,7 @@ function Divider(props: ElementProps): ReactElement {
 
             groupInstance.translation.x = props.x
             groupInstance.translation.y = props.y
-            two.update()
+            scheduleRender(two)
 
             updateX1Y1VerticesLocal(
                 lineInstance,
@@ -322,7 +326,15 @@ function Divider(props: ElementProps): ReactElement {
             )
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [props.x, props.y, props.metadata, props.x1, props.x2, props.y1, props.y2])
+    }, [
+        props.x,
+        props.y,
+        props.metadata,
+        props.x1,
+        props.x2,
+        props.y1,
+        props.y2,
+    ])
 
     void toggleToolbar
 

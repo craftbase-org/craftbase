@@ -5,6 +5,7 @@ import { useBoardContext } from '../../views/Board/boardContext'
 import ElementFactory from '../../factory/diamond'
 import { strokeTypeToDashes } from '../../utils/misc'
 import { applyShapeText, readOpacity } from '../../utils/canvasUtils'
+import { scheduleRender } from '../../utils/renderScheduler'
 import { componentTypes } from '../../constants/misc'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,7 +36,7 @@ function Diamond(props: ElementProps): ReactElement {
             const parentGroup = props.parentGroup
             diamond.opacity = opacityValue
             parentGroup.add(diamond)
-            two.update()
+            scheduleRender(two)
         } else {
             groupRef.current = group
             shapeRef.current = diamond
@@ -55,17 +56,19 @@ function Diamond(props: ElementProps): ReactElement {
             // actually repaint (see rectangle.tsx for the unshift rationale).
             group.opacity = opacityValue
 
-            two.update()
-
-            const groupEl = document.getElementById(group.id)
-            if (groupEl) {
-                groupEl.setAttribute('class', 'dragger-picker')
-                groupEl.setAttribute('data-component-id', props.id)
-                groupEl.setAttribute(
-                    'data-linewidth',
-                    String(props.linewidth ?? '')
-                )
-            }
+            // The SVG node only exists after a render. Batch the render
+            // with every other element mounting this frame, then tag it.
+            scheduleRender(two, () => {
+                const groupEl = document.getElementById(group.id)
+                if (groupEl) {
+                    groupEl.setAttribute('class', 'dragger-picker')
+                    groupEl.setAttribute('data-component-id', props.id)
+                    groupEl.setAttribute(
+                        'data-linewidth',
+                        String(props.linewidth ?? '')
+                    )
+                }
+            })
         }
 
         return (): void => {
@@ -84,7 +87,7 @@ function Diamond(props: ElementProps): ReactElement {
         if (props.width) shapeInstance.width = props.width
         if (props.height) shapeInstance.height = props.height
         shapeInstance.fill = props.fill || shapeInstance.fill
-        two.update()
+        scheduleRender(two)
     }, [props.x, props.y, props.width, props.height, props.fill, two])
 
     // Re-wrap the embedded text whenever the box width or text metadata
@@ -100,13 +103,13 @@ function Diamond(props: ElementProps): ReactElement {
             props.width || shapeInstance.width || 120,
             props.metadata || {}
         )
-        two.update()
+        scheduleRender(two)
     }, [props.width, props.metadata, two])
 
     useEffect(() => {
         if (shapeRef.current) {
             shapeRef.current.dashes = strokeTypeToDashes(props.strokeType)
-            two.update()
+            scheduleRender(two)
         }
     }, [props.strokeType, two])
 
