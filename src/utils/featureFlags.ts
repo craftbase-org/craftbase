@@ -1,6 +1,7 @@
 import {
     CONNECTORS_ENABLED_KEY,
     DOT_GRID_ENABLED_KEY,
+    DRAG_SCANS_ENABLED_KEY,
     VIEWPORT_CULLING_ENABLED_KEY,
 } from '../constants/misc'
 
@@ -88,6 +89,48 @@ export function subscribeDotGridEnabled(fn: Listener): () => void {
     dotGridListeners.add(fn)
     return (): void => {
         dotGridListeners.delete(fn)
+    }
+}
+
+// ── Drag-scan flag (perf testing) ─────────────────────────────────────────
+// Same runtime/localStorage model. Gates the O(N) scene scans that ride along
+// with dragging: `reanchorArrowsForShape` (per-frame, legacy move path),
+// `shapeHasBoundArrows` (once per drag, CSS fast-path eligibility) and the
+// hover-detect endpoint scan (per rAF). Turn OFF to measure drag/paint cost
+// with the scans removed on dense boards. Connector gluing and endpoint hover
+// stop working while off — this is a measurement lever, not a user feature.
+
+// Default ON: normal behavior. Disable only for perf isolation runs.
+const DEFAULT_DRAG_SCANS_ENABLED = true
+
+let dragScansCached: boolean | null = null
+const dragScansListeners = new Set<Listener>()
+
+export function getDragScansEnabled(): boolean {
+    if (dragScansCached === null) {
+        const stored = localStorage.getItem(DRAG_SCANS_ENABLED_KEY)
+        dragScansCached =
+            stored === null ? DEFAULT_DRAG_SCANS_ENABLED : stored === 'true'
+    }
+    return dragScansCached
+}
+
+export function setDragScansEnabled(enabled: boolean): void {
+    dragScansCached = enabled
+    try {
+        localStorage.setItem(DRAG_SCANS_ENABLED_KEY, String(enabled))
+    } catch {
+        // Persistence is best-effort; an in-memory toggle still works for the
+        // current session even if storage is full/blocked.
+    }
+    dragScansListeners.forEach((fn) => fn(enabled))
+}
+
+// Subscribe to live changes. Returns an unsubscribe fn.
+export function subscribeDragScansEnabled(fn: Listener): () => void {
+    dragScansListeners.add(fn)
+    return (): void => {
+        dragScansListeners.delete(fn)
     }
 }
 

@@ -77,6 +77,7 @@ import {
     subscribeConnectorsEnabled,
     getDotGridEnabled,
     subscribeDotGridEnabled,
+    getDragScansEnabled,
     getViewportCullingEnabled,
 } from './utils/featureFlags'
 import {
@@ -453,7 +454,8 @@ function addZUI(
     let drawPreviewActive = false
     let drawScreenOriginX = 0
     let drawScreenOriginY = 0
-    // CSS-transform move-drag: while dragging a (non-rotated, non-group) element
+    // CSS-transform move-drag: while dragging a non-rotated element (including
+    // the group overlay, whose member copies + selector chrome share its node)
     // we translate its own SVG layer via a CSS transform + will-change instead of
     // mutating its Two.js position and calling a full-scene two.update() every
     // frame. The scene SVG is never touched, so the drag is a GPU composite —
@@ -474,6 +476,9 @@ function addZUI(
     let cssMoveStartClientY = 0
     let cssMoveLastDxWorld = 0
     let cssMoveLastDyWorld = 0
+    // Set once per drag when the shape is ineligible for the CSS fast-path (e.g.
+    // it has bound connectors) so the whole drag stays on the legacy live path.
+    let cssMoveRejected = false
 
     // Clear the live CSS transforms and drop the drag state. Called on commit
     // (mouseup) and defensively when a new gesture starts.
@@ -490,6 +495,7 @@ function addZUI(
         cssMoveEl = null
         cssMoveNode = null
         cssMoveChrome = null
+        cssMoveRejected = false
     }
     let drawShapeType: string | null = null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1525,6 +1531,16 @@ function addZUI(
             }
             return
         }
+        // Perf-testing lever: skip the O(N) endpoint scan (arrow-endpoint hover
+        // indicator won't appear while off).
+        if (!getDragScansEnabled()) {
+            if (lastHoveredCircleGroup) {
+                hoverCircle.opacity = 0
+                scheduleRender(two)
+                lastHoveredCircleGroup = null
+            }
+            return
+        }
 
         const worldPos = toSurface(e)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1860,6 +1876,9 @@ function addZUI(
         // off, existing bindings lie dormant (the arrow stays put) rather than
         // being stripped — flip the flag back on to resume gluing.
         if (!getConnectorsEnabled()) return
+        // Perf-testing lever: skip the O(N) scene scan entirely (bound arrows
+        // won't follow their shape while off).
+        if (!getDragScansEnabled()) return
         const shapeId = group?.elementData?.id
         if (!shapeId) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1924,6 +1943,26 @@ function addZUI(
                     )
                 }
             }
+        })
+    }
+
+    // Does any connector currently dock onto this shape? Used to opt a shape out
+    // of the CSS-transform move fast-path: a bound arrow must reshape every frame
+    // to stay glued, which needs the shape's real position (not just a CSS
+    // transform), so such shapes fall back to the legacy live-render drag. O(N)
+    // scan, but run once at drag start — never per frame.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function shapeHasBoundArrows(group: any): boolean {
+        // Perf-testing lever: skip the O(N) scan; every shape then reads as
+        // unbound and stays eligible for the CSS move fast-path.
+        if (!getDragScansEnabled()) return false
+        const shapeId = group?.elementData?.id
+        if (!shapeId) return false
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return two.scene.children.some((child: any) => {
+            const ed = child?.elementData
+            if (ed?.componentType !== 'arrowLine') return false
+            return ed.tailShapeId === shapeId || ed.headShapeId === shapeId
         })
     }
 
@@ -2186,6 +2225,9 @@ function addZUI(
         // Defensive: a prior move-drag whose mouseup was missed (released off
         // canvas) would leave a stale CSS transform — clear it before a new one.
         if (cssMoveActive) clearCssMove()
+        // Reset the fast-path decision for the new gesture (a rejected drag never
+        // runs clearCssMove, so its flag would otherwise leak into the next one).
+        cssMoveRejected = false
         if (drawOrigin) {
             drawOrigin = null
             drawCurrentCoords = null
@@ -3087,14 +3129,34 @@ function addZUI(
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             const node = (shape as any)._renderer
                                 ?.elem as SVGGraphicsElement | undefined
-                            // CSS-transform move: eligible for non-rotated,
-                            // non-group elements. Rotated shapes and groups keep
-                            // the legacy position-mutate + full-render path.
-                            const eligible =
-                                !!node &&
-                                !shape.rotation &&
-                                shape.elementData?.componentType !==
-                                    GROUP_COMPONENT
+                            // CSS-transform move: eligible for non-rotated
+                            // elements, including the group overlay — its member
+                            // copies and selector chrome live inside its own SVG
+                            // node, so one transform moves them all; the mouseup
+                            // commit below writes the real translation before
+                            // groupobject's window-mouseup commitGroupMove reads
+                            // it (domElement listeners fire first in the bubble).
+                            // Rotated shapes keep the legacy path.
+                            const cheapEligible = !!node && !shape.rotation
+                            // Decide CSS-vs-legacy ONCE per drag. A shape with
+                            // bound connectors must reshape its arrows every
+                            // frame (needs its real position), so it takes the
+                            // legacy live-render path. The bound-arrow scan is
+                            // O(N) but runs only on this first-frame decision,
+                            // and only when connectors are on.
+                            if (
+                                cheapEligible &&
+                                !cssMoveActive &&
+                                !cssMoveRejected
+                            ) {
+                                if (
+                                    getConnectorsEnabled() &&
+                                    shapeHasBoundArrows(shape)
+                                ) {
+                                    cssMoveRejected = true
+                                }
+                            }
+                            const eligible = cheapEligible && !cssMoveRejected
                             if (eligible) {
                                 if (!cssMoveActive) {
                                     cssMoveActive = true
